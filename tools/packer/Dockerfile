@@ -19,6 +19,8 @@ COPY --from=devkitarm /opt/devkitpro/tools/bin/tex3ds /usr/local/bin/tex3ds
 COPY VERSION /opt/sh23ds/VERSION
 COPY tools/make_pack.sh /opt/sh23ds/tools/make_pack.sh
 COPY tools/sh2conv /opt/sh23ds/tools/sh2conv
+# the stage table and function list that events.py and demos.py read
+COPY sh2-3ds-port-kit/data/dc /opt/sh23ds/sh2-3ds-port-kit/data/dc
 COPY tools/packer/entrypoint.sh /opt/sh23ds/tools/packer/entrypoint.sh
 
 ENV PY="python3 -I" \

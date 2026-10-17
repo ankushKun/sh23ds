@@ -5,8 +5,8 @@
 #
 #   tools/lr3ds/smoke.sh
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-SD="$ROOT/.lr3ds/save/Azahar/sdmc/3ds/sh23ds"
-OUT="$ROOT/.lr3ds/smoke"
+SD="${LR3DS_SAVE:-$ROOT/.lr3ds/save}/Azahar/sdmc/3ds/sh23ds"   # LR3DS_SAVE: another virtual SD
+OUT="${SMOKE_OUT:-$ROOT/.lr3ds/smoke}"
 RUN="$ROOT/tools/lr3ds/run.sh"
 mkdir -p "$OUT"
 [ -f "$SD/debug.txt" ] && cp "$SD/debug.txt" "$OUT/debug.txt.bak"

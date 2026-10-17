@@ -85,7 +85,7 @@ You need:
 
 - A **New Nintendo 3DS, New 3DS XL or New 2DS XL** running Luma3DS custom firmware, with FBI or the Homebrew Launcher. Not set up yet? Follow [3ds.hacks.guide](https://3ds.hacks.guide/) first. The original 3DS and 2DS don't have the speed or memory this port is made for.
 - Your own copy of **Silent Hill 2 PC, Director's Cut**. The packer checks that `sh2pc.exe` has the MD5 `f3f5360298b6d0f6f2e09cf24a0925d1`, the unmodified retail Director's Cut build.
-- About **1.4 GB free** on the SD card, and a computer with [Docker](https://www.docker.com/products/docker-desktop/) to build the game data.
+- About **1.7 GB free** on the SD card, and a computer with [Docker](https://www.docker.com/products/docker-desktop/) to build the game data.
 
 Then:
 
@@ -147,7 +147,7 @@ mkdir sd
 docker run --rm -v "C:\Games\Silent Hill 2:/game:ro" -v "${PWD}\sd:/out" ghcr.io/ankushkun/sh23ds-packer
 ```
 
-When it finishes, `sd/3ds/sh23ds/` holds about 1.4 GB. It takes a while, most of it on textures: plan on an hour on a laptop.
+When it finishes, `sd/3ds/sh23ds/` holds about 1.7 GB. It takes a while, most of it on textures: plan on an hour or two, depending on how many CPU cores Docker gets.
 
 <details>
 <summary><b>Notes and other ways to run it</b></summary>
@@ -156,6 +156,7 @@ When it finishes, `sd/3ds/sh23ds/` holds about 1.4 GB. It takes a while, most of
 
 - **Linux:** add `--user "$(id -u):$(id -g)"` after `--rm` so the files belong to you.
 - **macOS with Colima:** only your home folder is shared with Docker, so keep both the game folder and the output folder inside it.
+- **If it stops partway**, run the same command again. Steps that finished are skipped. Add `-e FRESH=1` to start over.
 - **Inspection files:** add `-e KEEP_EXTRAS=1` to keep the PNG previews of every texture and the decoded events as JSON, about 0.6 GB more. The game doesn't need them.
 - **Build the image yourself** from a clone instead of pulling it:
 

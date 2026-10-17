@@ -361,8 +361,28 @@ pack (`pack/fog/*.fcl`, `pack/fog/fog.t3x`).
   (0x486710; the PC adds the three trilinear weights instead of multiplying them), a slow random
   alpha drift towards Alpha (0x4870e0), and James as a cylinder (r 110 at waist height) and a
   sphere (r 60) that take the fog along when he moves (0x486f20 / 0x486d70). Touched particles fade
-  out and come back in the thinnest cell. The wall test (0x4864a0) is left out: the PC's wall normals
-  are unnormalised cross products (0x485f00 -> 0x447f40), so it almost never fires.
+  out and come back in the thinnest cell.
+* Walls (0x4838a0, 0x485f00, 0x4864a0): the walls with a corner within 5000 of the fog centre are
+  loaded (again whenever the centre moves 500), up to 188, each as a normal, the centre of its four
+  corners and their box (10 wider in x and z). With walls about, a particle closer to a wall's plane
+  than PartSize + 10 + EscapeRange and inside its box is pushed out, loses the speed across the wall
+  and counts as touched (fading out from the next frame on). The PC's normal is the unnormalised
+  cross product of two edges (0x447f40), so the distance is the real one times the wall's area: in
+  practice only particles almost exactly in a wall's plane are affected, plus every particle that
+  passes within 10 units of one of the zero-area walls in the data (they have |n| = 0, so the
+  distance test always passes). The port does the same, quirk included.
+* Blow points (0x48a320, 0x489ee0, 0x489f70, 0x48a0d0, 0x48a180, drawn by 0x48a500): flag 0x100,
+  set for the three Eddie rooms (room ids 0x8e, 0x8f, 0x90). Each room has a table of vents (14, 10
+  and 16; position, velocity, start size) and an interval (20, 30, 60 in 1/60 s); every vent puffs
+  at that interval with a random spread, up to 200 puffs. A puff starts at its vent's size and
+  grows to PartSize, falls slowly (4.9 x frame time per update, Y down: cold air sinks), slows by
+  0.95 an update, its alpha wanders towards the fog's Alpha, and it fades out when it leaves the
+  box (twice MaxPos) or sinks under the floor. They are drawn like the particles at their own size,
+  with a fixed near limit of 64 and the PC's 0.049 texture window. `fog.py` takes the three tables
+  from the exe into `pack/fog/blow.txt`. The port keeps the PC's 30 updates a second for them and
+  draws at most 48. Their alpha byte is the one the port uses for the particles (EE FogFix's 112)
+  where the PC reads the colour's alpha, so the puffs and the particles stay in step. They are
+  faint either way: the puffs keep to the floor, where the floor fade takes most of their alpha.
 * Drawing (0x488a80): each particle is a camera-facing fan, alpha at the centre and 0 at the
   corners, PartSize across, stretched along its screen movement, squashed near FloorY, faded near
   the camera, with a 0.1-wide window of the 256x256 fog texture (id 0x2b22) that scrolls with the
@@ -442,10 +462,13 @@ programs.
   per triangle, in the bone's space. The gameplay models of James and Maria (`hll_jms.kg1`,
   `lll_mar.kg1`) are empty files, so on the PC they cast none of these shadows; the enemies do,
   and the cutscene models (`hhh_jms`, `hhh_mar`) have full ones.
-- **Which shadows.** `0x5aad70` runs every frame when the record's ShadowDarkNess (+0x0e, `0x47bb00`)
-  is not 0 and the flashlight is available. The light is `0x47e000`: an event's light when one is
-  set, otherwise James' flashlight; light kind 0 (spot) except in two rooms. Up to four characters
-  are added (`0x5a4ed0`, `0x5a8630`: range 5000, the cone from the light's parameters).
+- **Which shadows.** `0x5a8370` picks one of two kinds every frame. In a dark room
+  (`gFlashlightAvailable` 2, set from the record's NightOrDay by `0x47b200`) whose record has
+  ShadowDarkNess (+0x0e, `0x47bb00`) set, `0x5aad70` draws the stencil shadows below. The light is
+  `0x47e000`: an event's light when one is set, otherwise James' flashlight; light kind 0 (spot)
+  except in two rooms. Up to four characters are added (`0x5a4ed0`, `0x5a8630`: range 5000, the
+  cone from the light's parameters). Everywhere else, the lit rooms included, it draws the drop
+  shadows (`0x5a7c90`, see the end of this section).
 - **Volumes.** `0x444b20` culls each object and strip against the range and cone, and `0x4449f0`
   walks a strip: a triangle is lit when `(v - L) . n < 0`, and for each run of lit triangles it emits
   the side walls of the run's outer edges, each edge pulled away from the light (`0x442ae0`).
@@ -465,10 +488,23 @@ rooms), faded in over about 33 frames when the flashlight comes on as EE does, w
 the colour. The blur of EE's soft shadows is left out (the PICA has no cheap way to do it). Volumes
 are pulled out to 6000 units from the light, past the 5000 range, so they never fold back.
 
-Not ported: the drop shadows (`sh2shd_exe_drop_shadow`, `0x5a7c90` / `0x445780`, used where the
-record asks for them), shadows from other light kinds (point, parallel, James' "self" shadow of
-`0x5a6560`), shadow casting map objects (`.kg2`), items and weapons, and cutscene shadows (each
-scene has its own shadow light).
+**Drop shadows** (`sh2shd_exe_drop_shadow` on the PS2; `0x5a7c90`, `0x5a7730`, `0x445780`,
+`0x445220`, `0x444780`, states `0x442370`). The characters' .kg1 models again, flattened onto a
+plane 16 units above the floor under each character (`0x5a6ad0`, `0x5a4d20`) along a light
+direction of (1000, -10000, 1000), almost straight down (`0x5ab830`: exactly down in rooms 0xbd and
+0xc1 of glb 0xb). Only the triangles facing the light remain (the PC culls the others after the
+projection). Every corner gets the colour of the drop env (`0x5ab750`, grey 8 by default) and an
+alpha of 2 x a0 at 700 units above the floor up to 2 x a1 at the floor, at most 128 (`0x444780`;
+a0 0 and a1 32 by default, with overrides for some maps of glb 1, 3, 5, 9 and 0xb), blended over the
+scene with D3D fog on and no depth writes. With James' and Maria's gameplay .kg1 files empty, these
+are the enemies' shadows in the town, the streets and the lit rooms: a soft dark patch around the
+feet that fades out higher up the body. The port draws them the same way (`shadow_begin_drop`).
+The distance factor `0x5a7730` computes per character (0.3..1) is stored but not used by the PC's
+drawing code, so the port leaves it out.
+
+Not ported: shadows from other light kinds (point, parallel, James' "self" shadow of `0x5a6560`),
+shadow casting map objects (`.kg2`), items and weapons, the per-room exclusions (`0x5abcd0`), and
+cutscene shadows (each scene has its own shadow light).
 
 ## 12. Confidence
 

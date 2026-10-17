@@ -1,7 +1,8 @@
 #!/bin/sh
 # Entry point of the packer image. Mount your game folder at /game (read-only is fine) and an empty
 # folder at /out. The result is /out/3ds/sh23ds/, ready to copy to the root of the SD card.
-# Set KEEP_EXTRAS=1 to keep the inspection files (bg/*/png folders and events/*.json, about 0.6 GB).
+# Set KEEP_EXTRAS=1 to keep the inspection files (the png folders and the .json files, about 0.6 GB).
+# If a run stops partway, the same command picks up where it stopped; set FRESH=1 to start over.
 set -e
 if [ ! -f /game/sh2pc.exe ] || [ ! -d /game/data ]; then
 	echo "Mount your Silent Hill 2 folder at /game: it must hold sh2pc.exe and the data folder." >&2
@@ -12,8 +13,8 @@ OUT=/out/3ds/sh23ds
 echo "sh23ds packer $(cat /opt/sh23ds/VERSION), writing $OUT"
 /opt/sh23ds/tools/make_pack.sh /game "$OUT"
 if [ "${KEEP_EXTRAS:-0}" != "1" ]; then
-	find "$OUT/bg" -mindepth 2 -maxdepth 2 -type d -name png -exec rm -rf {} +
-	find "$OUT/events" -name '*.json' -delete
+	find "$OUT" -type d -name png -prune -exec rm -rf {} +
+	find "$OUT" -name '*.json' -delete
 fi
 echo
 echo "Done. Copy the 3ds folder inside your output folder to the root of the SD card."

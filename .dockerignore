@@ -4,4 +4,5 @@
 !tools/make_pack.sh
 !tools/sh2conv
 !tools/packer
+!sh2-3ds-port-kit/data/dc
 **/__pycache__

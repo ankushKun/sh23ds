@@ -94,6 +94,7 @@ def write_overlays(data, pack, exe_path):
     blob = b'SHOV' + struct.pack('<I', len(OVERLAY_TABLES))
     for name, va, size in OVERLAY_TABLES:
         blob += name.encode().ljust(16, b'\0') + struct.pack('<I', size) + exe.read(va, size)
+    os.makedirs(os.path.join(pack, 'pic'), exist_ok=True)
     with open(os.path.join(pack, 'pic', 'overlay.dat'), 'wb') as f:
         f.write(blob)
     jobs = []

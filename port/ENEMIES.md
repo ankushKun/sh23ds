@@ -907,6 +907,32 @@ states (`s<near>|s<far>` and their distances) when the nearest enemy is one of t
 * Not seen: a ceiling creeper falling (the one placed ran out of the shot's reach), and a released
   creeper's fall from a wall nest (in ps39 a floor nest stays nearest on the debug line).
 
+## Batch 8: creepers round the corners, with the PC's probe
+
+* On a wall a creeper now walks the room's wall segments as one surface: past a segment's end it goes
+  on along a segment that meets it there and spans its height. At an inside corner (the next wall
+  turns towards the creeper's side) it faces back the way it came; at an outside corner (a pillar)
+  it wraps round onto the other face. The heading keeps going away from the corner.
+* Its heading follows 0x4ad3a0: a probe walks 500 ahead along the surface in 50-unit steps (the top
+  of the wall, the floor and an end with no wall beyond are obstacles). While clear it keeps its
+  heading; blocked at d it tries 15 degrees to either side (probing d + 50), widening by 15 up to 75,
+  and turns right round when none is clear. It turns 5 degrees a tick towards the new heading while
+  the obstacle is 250 or more away, at once when nearer, and within 100 of it heads straight down
+  (up when the obstacle is the floor). More than 2000 above James, or on its way down (status 3),
+  it heads down.
+* On the ceiling (0x4b00f0) it turns by up to 60 degrees at 0.01 a tick, and when the point 500 ahead
+  has no floor under it or a wall on the way it turns 15 degrees at a time until it has.
+
+In the emulator (a temporary log, removed again, and `.enemytest/shots`):
+
+* `m8a*` (ma77): the log had creepers crossing from segment 19 to 18, 17 and 12, and from 21 to 22,
+  back to 21 and on to 24, the inward bearing changing with each face. The corridor is too dark for
+  the screenshots to show the creepers well.
+* `m8b444` .. `m8b512` (ru25): a ceiling creeper (state 5) shot by the handgun falls (state 7.10)
+  from y -1300 to the floor.
+* `m8f612` .. `m8f640` (ru25, a debug wall nest above the door): the shot nest releases a creeper
+  that falls (state 7.10) from y -900 to the floor (y -17).
+
 ## Testing keys (debug.txt, read by enemy_init)
 
 * `action <0..3>`: action level (main.c reads the same key for new games; 0 beginner: one hit knocks a
@@ -959,11 +985,10 @@ screen counts shot and beaten kills apart, and the ending score counts both).
   and in the freezer the carcasses are not in the collision, so he mostly runs the pillars instead);
   the moths fly on fixed orbits round the swarm point instead of steering one by one (0x4ab780) and do
   not leave by the room's three exits.
-* Creeper climbing is simplified: the port's creeper holds on to one straight wall segment (the PC
-  follows the room's mesh round corners and onto other faces, 0x4aed10), and its turning on the wall
-  is a random walk that turns back at the segment's ends and the wall's top, not the PC's 500-unit
-  probe ahead (0x4ad3a0). The ceiling creeper keeps its height and turns back at walls. The nurse's
-  and the oni's hyper spray reactions (the item is not in the port).
+* Creeper climbing works on the collision's vertical wall segments, so a creeper crosses inside and
+  outside corners but cannot climb from a wall onto the ceiling or onto sloped faces (the S3L has no
+  ceilings); the ceiling creeper keeps its height. The nurse's and the oni's hyper spray reactions
+  (the item is not in the port).
 * Maria: alert / discover (she looks at enemies and points), the one-step shuffle, James' friendly
   fire (0.1 x in 0x52d280); type 1 (the resting rooms) shows her standing, since lll_mar.anm has no
   lying pose; the appear point list only fits rooms the port loads whole (a spot in another piece of

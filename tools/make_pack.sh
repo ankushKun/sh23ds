@@ -26,65 +26,105 @@ if [ "$SUM" != "f3f5360298b6d0f6f2e09cf24a0925d1" ]; then
 fi
 
 mkdir -p "$OUT"
-echo "== rooms (geometry, textures)"
-$PY "$ROOT/tools/sh2conv/convert.py" "$DATA" "$OUT"
-$PY "$ROOT/tools/sh2conv/convert.py" "$DATA" "$OUT" --bg bg2
-echo "== collision"
-$PY "$ROOT/tools/sh2conv/collision.py" "$DATA" "$OUT"
-$PY "$ROOT/tools/sh2conv/collision.py" "$DATA" "$OUT" --bg bg2
-echo "== James"
-$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" jms hll_jms.mdl jms_basic1.anm
-# animation clips inside jms_basic1 (frame ranges, loop flag)
-printf 'idle 0 50 1\nwalk 51 91 1\nrun 92 170 1\n' > "$OUT/chr/jms/clips.txt"
-echo "== enemies and weapons (Lying Figure, Mannequin, wooden plank, James' plank moves)"
-$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" jms hll_jms.mdl jms_basic1.anm jms_wpkaku.anm jms_wpnone.anm \
-	jms_wphand.anm jms_wpshot.anm jms_wprifl.anm
-$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" scu scu.mdl scu.anm
-$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" mkn mkn.mdl mkn.anm
-$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" wp wp_kakuzai.mdl
-for c in "nse nse.mdl nse.anm" "xoo xoo.mdl xoo.anm" "tyu tyu.mdl tyu.anm" "red red.mdl red.anm" \
-         "mar lll_mar.mdl lll_mar.anm" "pap pap.mdl pap.anm" "oni oni.mdl oni.anm" "bos bos.mdl bos.anm" \
-         "arm arm.mdl arm.anm" "ike ike.mdl ike.anm" "edi lll_edi.mdl lll_edi.anm" \
-         "wp wp_handgun.mdl" "wp wp_shotgun.mdl" "wp wp_riflgun.mdl"; do
-	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" $c
-done
-# Mary's moths (camera-facing quads with the PC's wing-beat texture) and the creeper nests
-$PY "$ROOT/tools/sh2conv/moths.py" "$DATA" "$OUT"
-$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" item ty2.mdl
-$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" item ty3.mdl
-# Maria as the Born From a Wish player: her models live in data/chr2, which chr.py reads through a
-# folder of links laid out as chr/xmar
-X=$(mktemp -d); mkdir -p "$X/chr/xmar"
-for f in lxx_mar.mdl xmar_wpnone.anm xmar_wpcolt.anm xmar_wpknif.anm; do ln -s "$DATA/chr2/mar/$f" "$X/chr/xmar/"; done
-for f in wp_colt.mdl wp_chinanife.mdl; do ln -s "$DATA/chr2/wp/$f" "$X/chr/xmar/"; done
-$PY "$ROOT/tools/sh2conv/chr.py" "$X" "$OUT" xmar lxx_mar.mdl xmar_wpnone.anm xmar_wpcolt.anm xmar_wpknif.anm
-$PY "$ROOT/tools/sh2conv/chr.py" "$X" "$OUT" xmar wp_colt.mdl
-$PY "$ROOT/tools/sh2conv/chr.py" "$X" "$OUT" xmar wp_chinanife.mdl
-rm -rf "$X"
-echo "== stage events and messages"
-$PY "$ROOT/tools/sh2conv/events.py" --exe "$GAME/sh2pc.exe" --data "$DATA" --out "$OUT/events"
-$PY "$ROOT/tools/sh2conv/events_pack.py" "$DATA" "$OUT"
-$PY "$ROOT/tools/sh2conv/enemies_pack.py" "$OUT"
-echo "== room lighting and fog (DrawEnvData records in the exe)"
-$PY "$ROOT/tools/sh2conv/lighting.py" --exe "$GAME/sh2pc.exe" --pack "$OUT"
-echo "== fog particle layer (.fcl areas, fog texture)"
-$PY "$ROOT/tools/sh2conv/fog.py" "$DATA" "$OUT"
-echo "== title art"
-$PY "$ROOT/tools/sh2conv/ui.py" --exe "$GAME/sh2pc.exe" "$DATA" "$OUT"
-echo "== stills for the stage programs (data/pic)"
-$PY "$ROOT/tools/sh2conv/pics.py" "$DATA" "$OUT"
-echo "== maps and memos"
-$PY "$ROOT/tools/sh2conv/maps.py" "$DATA" "$OUT"
-echo "== music"
-mkdir -p "$OUT/sound"
-cp -R "$DATA/sound/adx" "$OUT/sound/"
-echo "== movies (MPEG-1 + MP2 for movie.c; needs ffmpeg)"
-$PY "$ROOT/tools/sh2conv/movies.py" --data "$DATA" --out "$OUT"
-echo "== sound effects, footstep materials, per-stage BGM tables"
-$PY "$ROOT/tools/sh2conv/sound.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT/sound"
-echo "== cutscenes (scripts, motions, the characters they need, voices from voice.afs)"
-$PY "$ROOT/tools/sh2conv/demos.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT"
-echo "== character shadow models (.kg1 next to the S3C files) and per-area room indexes"
-$PY "$ROOT/tools/sh2conv/shadows.py" "$DATA" "$OUT"
-$PY "$ROOT/tools/sh2conv/areaindex.py" "$OUT"
+# Each step leaves a stamp in $OUT/.steps when it finishes, so running the same command again after a
+# failure picks up at the step that stopped. FRESH=1 starts over. The stamps are removed at the end.
+STEPS="$OUT/.steps"
+[ "${FRESH:-0}" = 1 ] && rm -rf "$STEPS"
+mkdir -p "$STEPS"
+step() {   # step <id> <title>: false (skip) when <id> finished in an earlier run
+	if [ -f "$STEPS/$1" ]; then echo "== $2 (already done, skipped)"; return 1; fi
+	echo "== $2"
+}
+if step rooms "rooms (geometry, textures)"; then
+	$PY "$ROOT/tools/sh2conv/convert.py" "$DATA" "$OUT"
+	$PY "$ROOT/tools/sh2conv/convert.py" "$DATA" "$OUT" --bg bg2
+	touch "$STEPS/rooms"
+fi
+if step collision "collision"; then
+	$PY "$ROOT/tools/sh2conv/collision.py" "$DATA" "$OUT"
+	$PY "$ROOT/tools/sh2conv/collision.py" "$DATA" "$OUT" --bg bg2
+	touch "$STEPS/collision"
+fi
+if step james "James"; then
+	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" jms hll_jms.mdl jms_basic1.anm
+	# animation clips inside jms_basic1 (frame ranges, loop flag)
+	printf 'idle 0 50 1\nwalk 51 91 1\nrun 92 170 1\n' > "$OUT/chr/jms/clips.txt"
+	touch "$STEPS/james"
+fi
+if step characters "enemies and weapons (Lying Figure, Mannequin, wooden plank, James' plank moves)"; then
+	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" jms hll_jms.mdl jms_basic1.anm jms_wpkaku.anm jms_wpnone.anm \
+		jms_wphand.anm jms_wpshot.anm jms_wprifl.anm
+	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" scu scu.mdl scu.anm
+	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" mkn mkn.mdl mkn.anm
+	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" wp wp_kakuzai.mdl
+	for c in "nse nse.mdl nse.anm" "xoo xoo.mdl xoo.anm" "tyu tyu.mdl tyu.anm" "red red.mdl red.anm" \
+	         "mar lll_mar.mdl lll_mar.anm" "pap pap.mdl pap.anm" "oni oni.mdl oni.anm" "bos bos.mdl bos.anm" \
+	         "arm arm.mdl arm.anm" "ike ike.mdl ike.anm" "edi lll_edi.mdl lll_edi.anm" \
+	         "wp wp_handgun.mdl" "wp wp_shotgun.mdl" "wp wp_riflgun.mdl"; do
+		$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" $c
+	done
+	# Mary's moths (camera-facing quads with the PC's wing-beat texture) and the creeper nests
+	$PY "$ROOT/tools/sh2conv/moths.py" "$DATA" "$OUT"
+	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" item ty2.mdl
+	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" item ty3.mdl
+	# Maria as the Born From a Wish player: her models live in data/chr2, which chr.py reads through a
+	# folder of links laid out as chr/xmar
+	X=$(mktemp -d); mkdir -p "$X/chr/xmar"
+	for f in lxx_mar.mdl xmar_wpnone.anm xmar_wpcolt.anm xmar_wpknif.anm; do ln -s "$DATA/chr2/mar/$f" "$X/chr/xmar/"; done
+	for f in wp_colt.mdl wp_chinanife.mdl; do ln -s "$DATA/chr2/wp/$f" "$X/chr/xmar/"; done
+	$PY "$ROOT/tools/sh2conv/chr.py" "$X" "$OUT" xmar lxx_mar.mdl xmar_wpnone.anm xmar_wpcolt.anm xmar_wpknif.anm
+	$PY "$ROOT/tools/sh2conv/chr.py" "$X" "$OUT" xmar wp_colt.mdl
+	$PY "$ROOT/tools/sh2conv/chr.py" "$X" "$OUT" xmar wp_chinanife.mdl
+	rm -rf "$X"
+	touch "$STEPS/characters"
+fi
+if step events "stage events and messages"; then
+	$PY "$ROOT/tools/sh2conv/events.py" --exe "$GAME/sh2pc.exe" --data "$DATA" --out "$OUT/events"
+	$PY "$ROOT/tools/sh2conv/events_pack.py" "$DATA" "$OUT"
+	$PY "$ROOT/tools/sh2conv/enemies_pack.py" "$OUT"
+	touch "$STEPS/events"
+fi
+if step lighting "room lighting and fog (DrawEnvData records in the exe)"; then
+	$PY "$ROOT/tools/sh2conv/lighting.py" --exe "$GAME/sh2pc.exe" --pack "$OUT"
+	touch "$STEPS/lighting"
+fi
+if step fog "fog particle layer (.fcl areas, fog texture)"; then
+	$PY "$ROOT/tools/sh2conv/fog.py" "$DATA" "$OUT"
+	touch "$STEPS/fog"
+fi
+if step ui "title art"; then
+	$PY "$ROOT/tools/sh2conv/ui.py" --exe "$GAME/sh2pc.exe" "$DATA" "$OUT"
+	touch "$STEPS/ui"
+fi
+if step pics "stills for the stage programs (data/pic)"; then
+	$PY "$ROOT/tools/sh2conv/pics.py" "$DATA" "$OUT" --exe "$GAME/sh2pc.exe"
+	touch "$STEPS/pics"
+fi
+if step maps "maps and memos"; then
+	$PY "$ROOT/tools/sh2conv/maps.py" "$DATA" "$OUT" --exe "$GAME/sh2pc.exe"
+	touch "$STEPS/maps"
+fi
+if step music "music"; then
+	mkdir -p "$OUT/sound"
+	cp -R "$DATA/sound/adx" "$OUT/sound/"
+	touch "$STEPS/music"
+fi
+if step movies "movies (MPEG-1 + MP2 for movie.c; needs ffmpeg)"; then
+	$PY "$ROOT/tools/sh2conv/movies.py" --data "$DATA" --out "$OUT"
+	touch "$STEPS/movies"
+fi
+if step sound "sound effects, footstep materials, per-stage BGM tables"; then
+	$PY "$ROOT/tools/sh2conv/sound.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT/sound"
+	touch "$STEPS/sound"
+fi
+if step demos "cutscenes (scripts, motions, the characters they need, voices from voice.afs)"; then
+	$PY "$ROOT/tools/sh2conv/demos.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT"
+	touch "$STEPS/demos"
+fi
+if step shadows "character shadow models (.kg1 next to the S3C files) and per-area room indexes"; then
+	$PY "$ROOT/tools/sh2conv/shadows.py" "$DATA" "$OUT"
+	$PY "$ROOT/tools/sh2conv/areaindex.py" "$OUT"
+	touch "$STEPS/shadows"
+fi
+rm -rf "$STEPS"
 echo "done: $OUT"
