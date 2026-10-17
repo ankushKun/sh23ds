@@ -18,6 +18,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"   # the packer image's Python (Debian bookworm)
+      - name: No game data, firmware or build outputs in the repository
+        run: tools/check_repo.sh
       - name: Byte-compile every converter
         run: python -m py_compile tools/sh2conv/*.py tools/*.py
 

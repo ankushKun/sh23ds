@@ -294,7 +294,7 @@ The notes for each part live next to the code:
 | [tools/sh2conv/EVENTS.md](tools/sh2conv/EVENTS.md), [LIGHTING.md](tools/sh2conv/LIGHTING.md) | event and lighting data formats |
 
 > [!CAUTION]
-> Never commit anything that comes from the game: no exe bytes, no extracted assets, no converted pack, no Ghidra databases or decompiler output. `.gitignore` covers the usual places, so check `git status` before every commit anyway.
+> Never commit anything that comes from the game: no exe bytes, no extracted assets, no converted pack, no Ghidra databases or decompiler output. `.gitignore` covers the usual places, `tools/install_hooks.sh` adds a pre-commit hook that refuses them, and CI runs the same check (`tools/check_repo.sh`).
 
 ## 🗺️ Status
 
