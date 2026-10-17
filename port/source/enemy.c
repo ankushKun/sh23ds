@@ -1113,6 +1113,15 @@ static void scu_damage(Enemy* e, const EnPlayer* p, float dt)
 		reduce_hp(e);
 	if (!e->anim_end)
 		return;
+	if (e->kind == EN_KIND_SCU && e->type == 0x40) {
+		// 0x4c6614: the first monster (status 16, EvProgFirstMonsterStart) dies when it is
+		// knocked down and raises flag 41 (FLAGW_32 |= 0x200), which runs EvProgFirstMonsterCorpse
+		ev_flag_set(41, true);
+		pose(e, A_LIE + e->lie);
+		e->hp = 0.0f;
+		go(e, SCU_DYING);
+		return;
+	}
 	go(e, SCU_DOWN);
 }
 
@@ -1412,6 +1421,8 @@ static void scu_dying(Enemy* e)
 		e->attacking = false;
 		e->vx = e->vz = 0.0f;
 		pose(e, A_LIE + e->lie);
+		if (e->kind == EN_KIND_SCU && e->type == 0x40)
+			ev_flag_set(41, true);       // the first monster, however it went down (0x4c6614)
 		mark_killed(e);
 		e->dead_flag = true;
 		e->slv = 1;
@@ -5314,8 +5325,11 @@ static void ike_init(Enemy* e, int status)
 
 // Enemies the stage programs create (FUN_0048fd40 / CharaCreate after their demos) while the story
 // flags say they are there; removed again when the flags move on (CharaRemove / CharaDelete).
-typedef struct { s8 stage; s16 on, off; u8 model, status; float x, y, z, yaw; } Script;
+typedef struct { s8 stage; s16 on, off; u8 model, status; float x, y, z, yaw; s16 list_id; } Script;
 static const Script SCRIPTS[] = {
+	// EvProgFirstMonsterStart 0x59da20: after the scene the tunnel's Enemy_List figure (id 4) is made
+	// again with status 16 (0x48fd40); its death marks id 4 killed and sets flag 41
+	{ 5, 518, 43, MDL_SCU, 16, 47239.109f, 0.0f, 51215.223f, -2.7488914f, 4 },
 	{ 12, 143, 146, MDL_RED, 6, 99846.148f, -2202.74f, -100531.953f, -1.374f },     // EvProgApartBoss 0x596220
 	{ 21, 201, 203, MDL_RED, 15, 18800.0f, 0.0f, -23600.0f, -1.5707964f },         // EvProgTriheadEntry 0x58cea0
 	{ 22, 521, 210, MDL_IKE, 0, -140000.0f, -1650.0f, -19450.0f, 3.142f },          // EvProgLauraDeceive3rd 0x58b750
@@ -5338,17 +5352,42 @@ static const Script SCRIPTS[] = {
 };
 #define SCRIPT_ID(i) (-2 - (i))
 
+// A scripted enemy that stands for an Enemy_List row and is still lying there dead.
+static bool e_dying_present(int id)
+{
+	for (int k = 0; k < ENEMY_MAX; k++)
+		if (s_en[k].used && s_en[k].list_id == id)
+			return true;
+	return false;
+}
+
+// The row is replaced by a scripted enemy once that one's flag is set (the PC deletes the row's
+// character and creates it again, e.g. 0x53a350 + 0x48fd40 in EvProgFirstMonsterStart).
+static bool script_replaces(int stage, int id)
+{
+	for (u32 i = 0; i < sizeof SCRIPTS / sizeof SCRIPTS[0]; i++)
+		if (SCRIPTS[i].list_id == id && SCRIPTS[i].stage == stage && ev_flag(SCRIPTS[i].on))
+			return true;
+	return false;
+}
+
 static void script_spawn(void)
 {
 	int first_oni = -1;
 	for (u32 i = 0; i < sizeof SCRIPTS / sizeof SCRIPTS[0]; i++) {
 		const Script* c = &SCRIPTS[i];
-		bool want = s_stage == c->stage && ev_flag(c->on) && !ev_flag(c->off);
+		int sid = c->list_id ? c->list_id : SCRIPT_ID((int)i);
+		bool want = s_stage == c->stage && ev_flag(c->on) && !ev_flag(c->off) &&
+		            !(c->list_id && (s_killed[sid >> 5] >> (sid & 31) & 1) && !e_dying_present(sid));
 		int have = -1, free_slot = -1;
 		for (int k = 0; k < ENEMY_MAX; k++) {
-			if (s_en[k].used && s_en[k].list_id == SCRIPT_ID((int)i)) have = k;
+			if (s_en[k].used && s_en[k].list_id == sid && (c->list_id == 0 || s_en[k].status == c->status)) have = k;
 			if (!s_en[k].used && free_slot < 0) free_slot = k;
 		}
+		if (want && c->list_id)
+			for (int k = 0; k < ENEMY_MAX; k++)
+				if (s_en[k].used && s_en[k].list_id == sid && k != have)
+					s_en[k].used = false;      // the row's own character goes (0x53a350)
 		if (have >= 0) {
 			if (!want) s_en[have].used = false;
 			else if (s_en[have].kind == EN_KIND_ONI && s_en[have].type == 2) {
@@ -5362,14 +5401,15 @@ static void script_spawn(void)
 			continue;
 		}
 		float fy;
-		if (!want || free_slot < 0 || !s_col || !col_floor(s_col, c->x, c->z, c->y, 3000.0f, &fy) || !load_model(c->model))
+		// (a Flesh Lip hangs up to 3200 above its floor: the third of EvProgLauraDeceive3rd 0x58b750)
+		if (!want || free_slot < 0 || !s_col || !col_floor(s_col, c->x, c->z, c->y, c->model == MDL_IKE ? 6000.0f : 3000.0f, &fy) || !load_model(c->model))
 			continue;
 		Enemy* e = &s_en[free_slot];
 		memset(e, 0, sizeof *e);
 		e->used = true;
 		e->kind = model_kind(c->model);
 		e->model = c->model;
-		e->list_id = SCRIPT_ID((int)i);   // scripted: never in the killed bits
+		e->list_id = sid;                 // scripted: never in the killed bits, unless it stands for a list row
 		e->status = c->status;
 		e->x = c->x, e->y = c->model == MDL_IKE ? c->y : fy, e->z = c->z;   // Flesh Lips hang
 		e->yaw = c->yaw;
@@ -5474,6 +5514,15 @@ static void scu_init(Enemy* e, int status)
 	case 7: e->type |= 0x10; e->mlv = SCU_CRAWL; break;
 	case 8: e->type |= 0x18; e->mlv = SCU_WAITCAR; anim_set(e, A_LIE); size_lying(e, true); break;
 	case 0x12: e->type |= 0x20; e->type |= 0x10; e->mlv = SCU_CRAWL; break;
+	case 15:
+		// 0x4c48f4: under event control (the first monster in the tunnel before its scene), the
+		// event loop motion, health 1
+		e->ctrl = 4;
+		anim_set(e, 31);
+		set_hp(e, 1.0f, 1.0f);
+		return;
+	case 16: e->type = 0x40; scale = 0.8f; break;       // 0x4c4944: dies the first time it is knocked down
+	case 17: e->type = 0x41; e->ctrl = 4; return;        // 0x4c4950
 	default: break;
 	}
 	set_hp(e, scale * vitality[s_diff], scale * endurance[s_diff]);
@@ -5614,7 +5663,7 @@ static void spawn_list(int stage, const Collision* col)
 			continue;
 		if (id >= 0 && id < MAX_LIST && (s_killed[id >> 5] >> (id & 31) & 1))
 			continue;
-		if (!condition_ok(l->cond))
+		if (!condition_ok(l->cond) || (id >= 0 && script_replaces(stage, id)))
 			continue;
 		int slot = -1;
 		bool present = false;

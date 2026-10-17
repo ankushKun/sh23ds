@@ -140,6 +140,65 @@ mipmaps); `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `debug.txt` optional (re
   (`stagemdl.c`) with the lobby music box and its part animation during the tune (0x57b5c0)
 
 
+## Playthrough test (critical path)
+
+`port/source/playtest.c` plays the game from scripts of `pt` lines in `debug.txt` (see the README's
+debug table): it stands James at each event's trigger and presses A or uses the event's item, closes
+messages, answers questions, skips scenes, plays puzzles with scripted buttons, fights with `kill`,
+`attack` and button mashing in holds, saves and loads, and checks flags, items, stages and the
+endings seen, logging every flag, item, room, message and program change to `ptlog.txt`. With
+`pt fast 1` the game draws nothing, which makes a chapter take seconds instead of minutes in Azahar.
+The scripts and the runner live in the playtest copy (`.playtest/scripts`, `.playtest/run_all.sh`):
+ten chapters from New Game to the hotel's last door (each loads the save the previous one made),
+the six endings of James' game from that door or earlier saves, and Born From a Wish from the title.
+
+Checked in Azahar on 2026-10-18 (normal levels): every chapter, Leave, Maria, In Water, Rebirth, Dog,
+UFO (with its hospital and lake steps) and Born From a Wish pass. What the test found and fixed:
+
+* The first Lying Figure (stage 5): after EvProgFirstMonsterStart the PC makes the tunnel's figure
+  again with status 16 (0x48fd40), which dies the first time it is knocked down and sets flag 41
+  (0x4c6614); without it the corpse scene, flag 43 and the tunnel's doors never came. The list row
+  (status 15) stands still under event control until then (0x4c48f4).
+* The safe in Blue Creek turned the wrong way: right turns the dial down, as the wallet's ">>" says
+  (0x5971a0).
+* Combining items was missing (hair and needle for the elevator key in the hospital, the rings, the
+  tablets, the horseshoe with the lighter and the wax doll): R in the item list marks items, A uses
+  them together; the PC's table (0x891858) gives the result id, which is used like an item
+  (0x49ea00), and ItemLose of a result takes its parts (0x49e4e0).
+* The third Flesh Lip of the hospital fight hangs 3200 above the floor and was never spawned (the
+  floor search reached 3000), so the fight ended with two.
+* The stages' room and per-frame code (Stage_Data +0x1c / +0x20) set flags the story needs, and only
+  the hotel 2F weight check was ported. `prog_stagefn.c` adds the ones that matter: the well wall at
+  the bottom of the hole (stage 30: James' blows that strike the room take 250 points off it, flag
+  267; without it the wall could not be broken), the lift in the labyrinth's first room (stage 34:
+  flags 313 and 314 after the ride; without them the room could not be left), the corridor before
+  the hotel's last door (stage 44: flags 623 and 624 after 3.5 and 80 more seconds there, which
+  count for the endings), Maria lying down in the day room S3 (stage 20: she stops following, flags
+  188 and 629), and the small ones in stages 16, 35 and 56.
+* The ending decision read the endings seen as 0; it uses the clear data now, as the PC does.
+
+Known differences from the PC that are left:
+
+* The test stands James at each trigger instead of walking there, so collision and routes between
+  triggers are covered only by the door autotest and by hand. In particular the labyrinth's cube
+  room (stage 34): the PC's room code (0x582bd0) turns models and flags 325 / 326 with the rings,
+  the port keeps the room's collision as it is; not checked by walking.
+* Fights in the test use large hits (`kill`), not the player's weapons; holds are broken by mashing
+  A and B. The bosses all die or end their fights that way, but their difficulty is not compared.
+* Puzzle answers are set with debug keys before the test plays them (the inputs are the real ones).
+* The other stage room and per-frame functions are not ported. Their flag changes, none of which an
+  event or program of the critical path waits for: stage 5's init (map marks 1496, 1497, 1526), 9
+  (552), 11 (547), 12 (149, 526), 14's init (flag 15 and marks 1533, 1534) and 15's init (clears 15),
+  15 (530, 161), 22 (216), 28 (551), 31 (648, 649), 32 (clears 288 and 290), 34's room code (325, 326,
+  328, 653), 36 (365), 39 (549, 2070), 41's room code (541), 49's init (45, 168) and 55 (729). Their
+  models, lights and sounds are not ported either.
+* The corridor's voice (60120) is not converted, so the port is silent there; Maria is not drawn
+  lying in S3 (the PC's character 0x106); the labyrinth lift's models do not move.
+* "There's no use for just this." (item message 17) for items that do not combine is a guess at the
+  PC's message (0x9445f4 = 3).
+* The scripted Maria escort, the "near / far from Maria" counters and the damage counters are not
+  representative in the test (James is moved, not walked), so the ending tests set those counters.
+
 ## Not done yet
 
 1. The music box's three figure boxes on the seats (kinds 0x718..0x71a) do not turn; its part motions are

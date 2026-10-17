@@ -923,12 +923,14 @@ static int s44_egg_hole(Prog* p)
 // 0x576660: the ending decision at the last door. Four scores: the Rebirth items (74..77 all held
 // gives 621), and the rest weigh flags and the ending counters (prog_score_*) into 618, 619 or
 // 620, which the stage's auto doors turn into stages 48 (Leave), 49 (Maria), 50 (In Water) and 51
-// (Rebirth). The comparison order is the PC's; the clear data bits (0x1dbeb84) are 0 on a first
-// game.
+// (Rebirth). The comparison order is the PC's; the endings seen (0x1dbeb84) come from the clear
+// data, 0 on a first game.
 static int s44_ending_decision(Prog* p)
 {
 	(void)p;
-	const u8 seen = 0;                  // PC 0x1dbeb84: endings seen before
+	u8 clear[3];
+	prog_clear_get(clear);
+	const u8 seen = clear[1];           // PC 0x1dbeb84: endings seen before (the clear data)
 	const float* dmg = p_damage_stats();
 	int books = ev_have_item(74) + ev_have_item(75) + ev_have_item(76) + ev_have_item(77);
 	int c = p_flag(655) ? 4 : 5;        // uVar6

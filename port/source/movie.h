@@ -34,5 +34,6 @@ bool movie_play(const char* name);
 // Debug: log per-frame decode and conversion times to <pack>/movie_log.txt, and convert YUV to RGB on
 // the CPU instead of Y2R (for emulators without Y2R; real hardware should keep Y2R).
 void movie_debug(bool log, bool cpu_convert);
+void movie_skip_all(bool on);        // the playtest driver: movie_play returns at once
 
 const char* movie_status(void);

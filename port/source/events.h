@@ -50,10 +50,24 @@ bool ev_update(const EvPlayer* p, EvAction* out);
 int ev_warp_count(void);
 bool ev_warp_get(int k, EvAction* out);
 
+// Playtest driver (playtest.c): event i of the current stage as data, to stand where it triggers.
+typedef struct {
+	int kind, item, shape, npts, result, prog;   // cond >> 28, cond item, shape, rslt0 >> 28, ev_prog index
+	bool enabled, any_height, needs_light;      // enabled: its flag test passes now
+	float y, pts[8][2];
+	char map[8];                                 // the room the trigger is in ("" when the record has none)
+} EvInfo;
+bool ev_info(int i, EvInfo* out);
+
 bool ev_flag(int n);
 void ev_flag_set(int n, bool v);
 bool ev_have_item(int item);
 int ev_item_count(int item);
+// Item combinations (PC 0x891858 / 0x49e900): the result id for up to three items (0 unused), 0 if
+// they do not combine; whether James has a result's parts; ItemLose of an item or a result's parts.
+int ev_combine(int a, int b, int c);
+bool ev_combo_owned(int item);
+void ev_take_item(int item);
 void ev_give_item(int item, int n);
 // ItemGet's amount for one pickup of the item (ammo boxes times the Bullet Adjust option, 1..3)
 int ev_item_get_amount(int item);

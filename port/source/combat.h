@@ -76,6 +76,9 @@ void combat_set_equipped(bool on);
 bool combat_equip_item(int item);
 bool combat_owns_item(int item);
 const char* combat_weapon_line(void);   // weapon and rounds, for the help screen
-bool combat_dead(void);                  // true once the death animation has finished
+bool combat_dead(void);
+// The ap of an attack of James' that struck the room (a wall) during the last frame, 0 if none, and
+// the item of the weapon (PC 0x544fd0 and the equipped weapon 0x1f7d409, for the stage code).
+float combat_wall_hit(int* weapon_item);                  // true once the death animation has finished
 EnPlayer combat_enplayer(const CombatBody* b, bool light);
 const char* combat_status(void);         // one line for the debug HUD

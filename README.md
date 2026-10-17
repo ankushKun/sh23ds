@@ -223,6 +223,7 @@ A text file at `sdmc:/3ds/sh23ds/debug.txt` changes how the game starts, one set
 | `perflog 1` / `memlog 1` / `memtest <n>` | frame time breakdown, memory use, a memory stress test |
 | `streamsync 1` | load streamed tiles on the main thread, to compare with the worker |
 | `autotest warps <first> <count>` | load every door and warp destination in turn and log the result |
+| `pt <command>` | a playtest script line: `ev <n>`, `use <item>`, `combine <a> <b>`, `press <buttons>`, `answer <k>`, `kill`, `attack`, `expect flag <n> <0\|1>`, `save` / `load <name>`, `fast 1` and more, logged to `ptlog.txt` (see [`playtest.c`](port/source/playtest.c)) |
 | `rendermode <n>` / `batch <n>` / `freeze 1` / `ambient <percent>` | renderer experiments |
 
 ### In an emulator

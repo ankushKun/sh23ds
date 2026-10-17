@@ -40,6 +40,7 @@
 #include "game/view/sh2cam.h"
 #include "map.h"
 #include "movie.h"
+#include "playtest.h"
 #include "prog.h"
 #include "room.h"
 #include "skin_shbin.h"
@@ -128,6 +129,7 @@ static bool s_debug_hud, s_hud_shown;
 #define SAVE_PATH PACK_DIR "/save.dat"
 static void* s_fadequad;         // linear memory, 6 ROOM_VERTEX_SIZE vertices
 static char s_panel[512];        // stage program panel (choices, puzzles), empty when none
+static bool s_pt_shot, s_pt_quit;   // playtest driver: dump this frame, leave the main loop
 static int s_use_item;           // item chosen with "use" in the inventory, for the next event check
 static int s_riddle = 1, s_action = 2;   // new game levels (debug.txt "riddle" / "action")
 static char s_spawn_map[8];      // debug.txt "spawn"
@@ -636,6 +638,7 @@ static void show_message(const char* text)
 {
 	text = ev_msg_expand(text);      // ff e0..ff e3 inserted values, ff f6 dropped
 	s_msg_page = text && *text ? text : NULL;
+	playtest_message(s_msg_page);
 	s_msg_dirty = true;
 }
 
@@ -786,6 +789,7 @@ static void memtest_step(u32 frame)
 
 static bool s_inv_open;
 static int s_inv_sel;
+static int s_inv_mark[2];        // items marked with R to combine with the next one (0 = none)
 static bool s_inv_dirty;
 
 static int inv_list(int* items, int max)
@@ -805,6 +809,7 @@ static bool inventory_update(u32 down)
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 			s_inv_open = true;
 			s_inv_sel = 0;
+			s_inv_mark[0] = s_inv_mark[1] = 0;
 			s_inv_dirty = true;
 		}
 		return false;
@@ -828,11 +833,32 @@ static bool inventory_update(u32 down)
 		prog_score_examine(items[s_inv_sel]);
 		show_message(ev_item_desc(items[s_inv_sel]));
 	}
+	if (n && (down & KEY_R)) {
+		// "Combine" (PC item screen 0x46a790): R marks up to two items, A then uses them together
+		int it = items[s_inv_sel];
+		if (s_inv_mark[0] == it || s_inv_mark[1] == it)
+			s_inv_mark[s_inv_mark[0] == it ? 0 : 1] = 0;
+		else if (!s_inv_mark[0] || !s_inv_mark[1])
+			s_inv_mark[s_inv_mark[0] ? 1 : 0] = it;
+		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
+		s_inv_dirty = true;
+	}
 	if (n && (down & KEY_A)) {
-		// "Use": the next event check gets the item (trigger kinds 5, 6, 10)
+		// "Use": the next event check gets the item (trigger kinds 5, 6, 10); a combination is used
+		// as its result item (0x49ea00 runs the event check with it)
+		int it = items[s_inv_sel], m0 = s_inv_mark[0] == it ? 0 : s_inv_mark[0], m1 = s_inv_mark[1] == it ? 0 : s_inv_mark[1];
 		s_inv_open = false;
 		s_inv_dirty = true;
-		s_use_item = items[s_inv_sel];
+		s_inv_mark[0] = s_inv_mark[1] = 0;
+		if (m0 || m1) {
+			int combo = ev_combine(it, m0, m1);
+			if (combo)
+				s_use_item = combo;
+			else
+				show_message(ev_item_message(17));     // "There's no use for just this."
+		} else {
+			s_use_item = it;
+		}
 	}
 	return true;
 }
@@ -882,10 +908,11 @@ static void inventory_draw(void)
 		char* nl = strchr(line, '\n');
 		if (nl)
 			*nl = 0;
-		printf("\x1b[%d;2H%c %-28.28s x%-3d", 20 + i - first, i == s_inv_sel ? '>' : ' ', line,
+		printf("\x1b[%d;1H%c%c %-28.28s x%-3d", 20 + i - first,
+		       s_inv_mark[0] == items[i] || s_inv_mark[1] == items[i] ? '+' : ' ', i == s_inv_sel ? '>' : ' ', line,
 		       ev_item_count(items[i]));
 	}
-	printf("\x1b[29;6HA: use  X: examine  Y/B: close");
+	printf("\x1b[29;1HA: use  X: examine  R: combine  Y/B: close");
 }
 
 static void events_update(u32 down)
@@ -3320,6 +3347,56 @@ static void autotest_frame(u32* down, u32* held)
 	s_at_frame = -1;
 }
 
+// ---------------------------------------------------------------- playtest driver (debug.txt "pt" lines)
+
+static bool pt_floor(float x, float z, float y_ref, float max_step, float* y)
+{
+	return s_have_col && col_floor(&s_col, x, z, y_ref, max_step, y);
+}
+
+static void pt_warp(int stage, const char* map, const float pos[3], float yaw)
+{
+	memset(&s_warp, 0, sizeof s_warp);
+	s_warp.kind = EV_WARP;
+	s_warp.stage = stage;
+	snprintf(s_warp.map, sizeof s_warp.map, "%s", map);
+	memcpy(s_warp.pos, pos, sizeof s_warp.pos);
+	s_warp.facing = yaw;
+	s_warp_pending = true;
+	warp_prefetch(s_warp.map, s_warp.stage);
+}
+
+static void pt_use_item(int item) { s_use_item = item; }
+static void pt_new_game(int wish) { if (wish) new_game_wish(); else new_game(); }
+static void pt_shot(void) { s_pt_shot = true; }
+static void pt_quit(void) { s_pt_quit = true; }
+static int pt_inv_index(int item)
+{
+	int items[64], n = inv_list(items, 64);
+	for (int i = 0; i < n; i++)
+		if (items[i] == item)
+			return i;
+	return -1;
+}
+
+static const PtHost s_pt_host = {
+	host_player_set, pt_floor, pt_warp, pt_use_item, save_game, continue_game, pt_new_game, pt_shot, pt_quit,
+	pt_inv_index,
+};
+
+static void pt_frame(u32* down, u32* held, float dt)
+{
+	PtState st = {
+		.state = s_results ? PT_RESULTS : s_state == ST_TITLE ? PT_TITLE : s_state == ST_GAME ? PT_GAME : PT_OTHER,
+		.stage = ev_stage(), .map = s_nrooms ? s_rooms[s_room] : "", .pos = { s_px, s_py, s_pz }, .yaw = s_yaw,
+		.loading = s_warp_pending || s_arrival || s_fade > 0.02f, .message = s_msg_page != NULL,
+		.save_prompt = s_save_prompt, .panel = s_panel[0] != 0, .picture = s_pic_shown, .inv = s_inv_open,
+		.paused = s_paused, .screens = screens_open(), .prog = prog_running(), .prog_locked = prog_player_locked(),
+		.demo = demo_active(), .hp = combat_hp(), .dead = combat_dead(),
+	};
+	playtest_frame(&st, down, held, dt);
+}
+
 int main(void)
 {
 	bool isNew3ds = false;
@@ -3356,7 +3433,7 @@ int main(void)
 		char line[128], key[32];
 		int val;
 		while (fgets(line, sizeof line, dbg)) {
-			if (sscanf(line, "%31s", key) != 1)
+			if (sscanf(line, "%31s", key) != 1 || playtest_line(line))
 				continue;
 			if (!strcmp(key, "spawn")) {
 				// spawn <map> <x> <y> <z> <yaw degrees> <camera mode>: start in player mode at a pose
@@ -3428,6 +3505,8 @@ int main(void)
 		enemy_set_difficulty(s_action);
 	}
 	prog_init(&s_prog_host);
+	playtest_init(&s_pt_host);
+	movie_skip_all(playtest_active());
 	list_areas();
 	for (int i = 0; i < s_nareas; i++)
 		if (!strcmp(s_areas[i], "ap"))
@@ -3501,6 +3580,9 @@ int main(void)
 		if (s_autotest)
 			autotest_frame(&down, &held);
 		touchui_input(&down, &held);
+		pt_frame(&down, &held, dt);
+		if (s_pt_quit)
+			break;
 		touchui_debug(s_state == ST_VIEWER || s_debug_hud);
 		if (s_state != ST_TITLE) {
 			touchui_menu_close(TOUI_TITLE);
@@ -3598,6 +3680,7 @@ int main(void)
 		circlePosition cp, cs;
 		hidCircleRead(&cp);
 		hidCstickRead(&cs);
+		playtest_pad(&cp);
 		if (s_autotest)
 			cp.dx = cp.dy = cs.dx = cs.dy = 0;
 		fade_update(dt);
@@ -3611,7 +3694,7 @@ int main(void)
 			// the map screen or the memo list has the buttons; the game waits
 		} else if (s_cam.mode == CAM_PLAYER) {
 			if (!save_prompt_update(down) && !message_update(down) && !s_warp_pending) {
-				prog_stage_tick(ev_stage());
+				prog_stage_tick(ev_stage(), dt);
 				prog_score_frame(dt, combat_hp() / JAMES_HP_MAX, maria_distance());
 				{
 					// 0x5396e0: walking and running distance (running is the faster stride)
@@ -3738,6 +3821,8 @@ int main(void)
 		if (s_render_mode == 3) {
 			draw_texture_test(&ortho);
 			calls = 1;
+		} else if (playtest_fast() && !s_pt_shot) {
+			calls = 0;               // playtest "fast 1": nothing drawn, the emulator's GPU idles
 		} else {
 			use_world_program();
 			C3D_LightEnvBind(&s_lenv);
@@ -3778,6 +3863,11 @@ int main(void)
 		for (int i = 0; i < s_ndump; i++)
 			if (s_dump_frames[i] == frame)
 				dump_frame(top, frame);
+		if (s_pt_shot) {
+			s_pt_shot = false;
+			dump_frame(top, frame);
+			playtest_log("shot frame_%lu.bmp", (unsigned long)frame);
+		}
 
 		bool hud = s_state == ST_VIEWER || s_debug_hud;
 		if ((frame++ % 30) == 0 && !hud && s_hud_shown) {

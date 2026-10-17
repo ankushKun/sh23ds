@@ -31,6 +31,7 @@ extern const ProgStage prog_prison_stages[];    // stages 28..37 (prog_prison.c)
 extern const ProgStage prog_hotel_stages[];     // stages 38..52 (prog_hotel.c)
 extern const ProgStage prog_wish_stages[];      // stages 53..58 (prog_wish.c)
 void prog_hotel_tick(int stage);
+void prog_stagefn_tick(int stage, float dt);      // prog_stagefn.c: the stages' room and per-frame code
 // prog_overlay.c: the sprites the PC draws over puzzle stills
 void prog_overlay_init(const ProgHost* host);
 void prog_overlay_picture(const char* pic);     // a still went up (NULL: down)

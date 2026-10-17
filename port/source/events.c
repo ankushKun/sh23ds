@@ -73,7 +73,54 @@ void ev_give_item(int item, int n)
 		s_items_held[item] = s_items_held[item] + n > 255 ? 255 : s_items_held[item] + n;
 }
 
-static void take_item(int item) { if (item > 0 && item < 256) s_items_held[item] = 0; }
+// The item screen's combinations (PC table at 0x891858, looked up by 0x49e900 with the up to three
+// chosen items sorted, an unused slot 0): the result is "used" like an item (0x49ea00 runs the event
+// check with it), and ItemLose of a result (0x49e4e0 cases 0x56..0x60) takes its parts away. The
+// prison's horseshoe, lighter and wax doll pairs (93..95) keep their parts.
+static const struct { u8 a, b, c, result; } COMBOS[] = {
+	{ 0, 35, 36, 86 }, { 0, 53, 54, 87 }, { 0, 56, 57, 88 }, { 0, 59, 60, 89 }, { 0, 59, 61, 90 },
+	{ 0, 60, 61, 91 }, { 59, 60, 61, 92 }, { 0, 62, 63, 93 }, { 0, 62, 64, 94 }, { 0, 63, 64, 95 },
+	{ 62, 63, 64, 96 },
+};
+
+int ev_combine(int a, int b, int c)
+{
+	int v[3] = { a, b, c };
+	for (int i = 0; i < 2; i++)
+		for (int j = 0; j < 2 - i; j++)
+			if (v[j] > v[j + 1]) { int t = v[j]; v[j] = v[j + 1]; v[j + 1] = t; }
+	if (!v[1])
+		return 0;                    // 0x49e92c: two items at least
+	for (u32 i = 0; i < sizeof COMBOS / sizeof COMBOS[0]; i++)
+		if (COMBOS[i].a == v[0] && COMBOS[i].b == v[1] && COMBOS[i].c == v[2])
+			return COMBOS[i].result;
+	return 0;
+}
+
+bool ev_combo_owned(int item)
+{
+	for (u32 i = 0; i < sizeof COMBOS / sizeof COMBOS[0]; i++)
+		if (COMBOS[i].result == item)
+			return (!COMBOS[i].a || ev_have_item(COMBOS[i].a)) && ev_have_item(COMBOS[i].b) && ev_have_item(COMBOS[i].c);
+	return false;
+}
+
+static void take_item(int item)
+{
+	if (item >= 86 && item <= 96) {
+		for (u32 i = 0; i < sizeof COMBOS / sizeof COMBOS[0]; i++)
+			if (COMBOS[i].result == item && (item < 93 || item > 95)) {
+				s_items_held[COMBOS[i].a] = 0;
+				s_items_held[COMBOS[i].b] = 0;
+				s_items_held[COMBOS[i].c] = 0;
+			}
+		s_items_held[0] = 0;
+		return;
+	}
+	if (item > 0 && item < 256) s_items_held[item] = 0;
+}
+
+void ev_take_item(int item) { take_item(item); }
 
 // Item n is named by item_msg 18 + 2n and described by 19 + 2n (the table lines up exactly with
 // the pickups: 1 health drink, 5 handgun bullets, 7 shotgun shells, 9 rifle shells, ...).
@@ -549,6 +596,28 @@ bool ev_warp_get(int k, EvAction* out)
 		return true;
 	}
 	return false;
+}
+
+bool ev_info(int i, EvInfo* out)
+{
+	if (i < 0 || (u32)i >= s_nev)
+		return false;
+	const EvRec* e = &s_ev[i];
+	memset(out, 0, sizeof *out);
+	out->kind = e->cond >> 28;
+	out->item = (e->cond >> 4) & 0xff;
+	out->needs_light = (e->cond & 4) != 0;
+	out->shape = e->shape;
+	out->npts = e->npts > 8 ? 8 : e->npts;
+	out->result = e->rslt0 >> 28;
+	out->prog = (e->rslt1 >> 14) & 0x7f;
+	out->enabled = flags_pass(e->flag);
+	out->any_height = e->any_height;
+	out->y = e->y;
+	memcpy(out->pts, e->pts, sizeof out->pts);
+	memcpy(out->map, e->trig_map, sizeof out->map);
+	out->map[7] = 0;
+	return true;
 }
 
 static bool exec(int i, const EvRec* e, EvAction* out)

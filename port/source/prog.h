@@ -192,6 +192,7 @@ bool prog_player_locked(void);
 // game stays in event mode (the program has not finished).
 bool prog_update(u32 down, u32 held, float dt);
 void prog_abort(void);
+int prog_choice_waiting(void);         // a choice is up: how many answers (0 none), for playtest.c
 
 // Called by the program helpers; the engine hook decides what to show. True when finished.
 bool prog_demo_request(int id);
@@ -209,8 +210,9 @@ void prog_debug_line(const char* line);
 const char* prog_debug_status(void);
 
 // Per-frame stage code the programs depend on (the PC's Stage_Data per-frame functions): call it
-// every frame while no program runs. Today only the hotel 2F weight check (flag 400).
-void prog_stage_tick(int stage);
+// every frame. The hotel 2F weight check (flag 400, while no program runs) and the labyrinth lift
+// (stage 34, flags 313 / 314).
+void prog_stage_tick(int stage, float dt);
 
 // The ending score (counters the PC keeps for 0x576660, the hotel's ending decision). Call
 // prog_score_frame every game frame: hp is James' health as a part of his maximum, maria_dist the

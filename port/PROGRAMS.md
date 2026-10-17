@@ -71,9 +71,12 @@ The helpers in `prog.c` are the PC's `event_sub.c` functions:
 | `game_end(ending)` | an ending's last program ran (PC 0x48d7e0 with the ending's bit: 1 Leave, 2 Maria, 4 In Water, 8 Rebirth, 0x10 Dog, 0x20 UFO, 0x40 Born From a Wish, 0 = backed out of Born From a Wish); main.c goes back to the title once the program has returned |
 | `damage(fraction)` | hurts James by a part of his maximum health (`combat_damage_james`, the hotel fire) |
 
-`prog_stage_tick(stage)` is called every game frame for the stages' own per-frame code that the
-programs depend on; today that is the hotel 2F (stage 41): the weight check of the employee
-elevator (0x57a4a0, flags 400 and 401) and the trunk's drums (EvStageInit 0x57a340).
+`prog_stage_tick(stage, dt)` is called every game frame for the stages' own room and per-frame code
+(Stage_Data +0x1c and +0x20) that the programs depend on: the hotel 2F (stage 41) weight check of
+the employee elevator (0x57a4a0, flags 400 and 401) and the trunk's drums (EvStageInit 0x57a340),
+and in `prog_stagefn.c` the well wall (stage 30), the labyrinth lift (34), the corridor before the
+last door (44), Maria in the day room (20) and the small room functions of stages 16, 35 and 56
+(see STATUS.md, "Playthrough test").
 
 ## Pictures
 
@@ -351,18 +354,30 @@ items / 20 (0x539970, at most 15). The bits are saved with the program state (by
 
 After the results of one of James' endings the PC says "Save clear data." (message 0x1a in yellow,
 centred) and a button opens its save screen (cases 3..5); Born From a Wish goes straight back to the
-title. `clearsave.c` does the same with the port's one save slot, in the PC's save screen look
-(0x453fc0 / 0x4537b0): James' picture (`data/menu/mc/savebg.tbn2`, converted by `ui.py` to
-`pack/ui/savebg.t3x`) over the whole screen, "SILENT HILL 2 Save Files" at (36, 110), the file row
-from y 150 and the questions in yellow, with the PC's own texts (`m_card_x_msg_e.mes` as
-`pack/events/mcard.msg`: "Save to new file.", "Game Result", "Do you wish to overwrite?", "Save
-completed."). It lists what the slot holds,
-asks before writing over a saved game or other clear data, and writes a clear data save
-(`save.dat` version 5: the program state with the results counters, the clear data's three bytes
-and a clear mark, no place to start from). Continue on such a save does what the PC's load does
+title. `clearsave.c` does the same and then opens the save screen (below) in its clear data mode,
+which writes a clear data save (version 5 and up: the program state with the results counters, the
+clear data's three bytes and a clear mark, no place to start from) into the file chosen. Continue on such a save does what the PC's load does
 (0x402d00 case 10): the save's clear data joins the system's (the levels and endings added, the
 higher clear count, written to `clear.dat`) and the New Game level screens open, so FlagInit gives
 the New Game+ items and endings from it. Version 2 to 4 saves still load.
+
+### Save files
+
+The PC's save and load screens (0x453fc0, drawn by 0x4537b0) list the save folder's files five to
+a page (rows from y 151 in steps of 40) over James' picture (`data/menu/mc/savebg.tbn2`; Maria's
+`savebg2.tbn2` in Born From a Wish, converted by `ui.py`), with "SILENT HILL 2 Save Files" at (36,
+110) and the PC's texts from `m_card_x_msg_e.mes` (`pack/events/mcard.msg`). `savescreen.c` draws
+the same on the top screen for ten files (two pages): each row has its number, the place it was
+saved at (the save point's id, `rslt1 >> 14`, names it: "Hospital office", "Motel", ...; clear
+data shows "Game Result"), the play time and "Number of Saves", the chosen file in yellow, "Save
+to new file." or "No file data." for an empty one. A save point opens it straight away (the PC's
+0x4551d0, after the point's first message); a used file asks "Do you wish to overwrite?", then
+"Save completed." Continue on the title opens it as the load screen, starting on the file with the
+most play time. The touch screen lists the files with Save / Load and Back, and the questions with
+Yes / No; the D-pad picks a file, L, R and left / right turn the page.
+
+File 1 is `save.dat`, so a save from before is file 1; files 2..10 are `save2.dat` .. `save10.dat`.
+Version 6 adds the save point's id (0xff for older files, which show their room instead).
 
 The bottom screen keeps its text version. `debug.txt` `results 1` (or `results 2` for Born From a
 Wish) opens the screen right after start, and `itemget <id>` (up to eight) runs ItemGet before it.
@@ -421,8 +436,9 @@ screen and its text below. The item screen turns the selected item's model the w
 menu does (`itemview.c`, the skinning shader under its own light): the PC gives item i the model
 of kind 0x892640[i] from the model table at 0x88d4f8 or, for the drinks, kits and rounds, the
 table at 0x88d2b8; `tools/sh2conv/stagemodels.py` converts them (70 items have one) and writes
-`pack/events/itemmdl.txt`. Mark (R) is the PC's way of choosing items to use together, whose
-combining the playthrough batch ports in main.c. The pause menu has Music and Sound volumes
+`pack/events/itemmdl.txt`. Mark (R) chooses up to two items to use together with the chosen one
+(main.c's combining, PC 0x46a790 and 0x49e900); the marked items show a "+" and the Use button
+reads Combine while any are marked. The pause menu has Music and Sound volumes
 (0..10, `options.txt` `musicvol`, `soundvol`): music on channel 0, the cutscene voices and the
 sound effects (`audio_set_gains`, `sfx_set_gain`).
 
@@ -437,7 +453,11 @@ quality) go into the pause menu's rows in `pause_draw` once `profile.h` is in th
 ## Item use and item names
 
 Trigger kinds 5 and 6 (use an item from the inventory) and the "use" half of kind 10 now work: A
-in the item list uses the item (X examines). If no event takes it, James says item message 16, "It
+in the item list uses the item (X examines). R marks up to two items to combine with the one A then
+uses: the PC's table (0x891858, looked up by 0x49e900) turns them into a result id (86..96: the two
+hospital keys, the hair and needle, the two rings, the tablets, the horseshoe with the lighter and
+the wax doll), which is used like an item (0x49ea00), and an event that takes it removes its parts
+(ItemLose 0x49e4e0); items that do not combine say item message 17. If no event takes it, James says item message 16, "It
 looks like I can't use that here.", like the PC. This is how the clock key, the canned juice and
 the three coins are used.
 
@@ -1071,7 +1091,10 @@ be read statically. The programs are reconstructed from their events and the sta
 
 `debug.txt` on the SD takes, besides `spawn`: `flag <n> <0|1>`, `item <id> <count>`,
 `riddle <0..3>`, `action <0..3>`, `clock <minutes>` (time on the 208 clock),
-`safe <a> <b> <c> <d>` (the safe code as the wallet shows it) and `box <code> <symbols>` (the
+`safe <a> <b> <c> <d>` (the safe code as the wallet shows it), `panel <a> <b> <c>` (the lit panels
+of the delusion 3 lock, 0..8), `hangman <v>` (corpse k's crime is (v / 6^k) % 6, 5 innocent),
+`drums <a> <b> <c> <d>` (the hotel trunk's drums, 0..7), `score <pc address> <value>` (an ending
+counter at 0x1f7d9c0..0x1f7d9dc), `puzzle <offset> <byte>` (0x1f7da60 + offset) and `box <code> <symbols>` (the
 hospital box's button code and wall symbols, four digits 1..9 each; the wheels are set to match).
 They apply after `spawn`. `stage <n>` gives the spawn its stage when the map belongs to several
 (th01 is stage 17 for James and 53 in Born From a Wish), `wish` sets up the Born From a Wish flags
@@ -1191,10 +1214,9 @@ case, collision and a floor under James. What stood out:
   against the pictures.
 * Stages 57 and 58 are reconstructed (see above); if the decrypted code is ever available, check
   which message the two look events in ma77 should give.
-* The port has one save slot, so the clear data save goes to `save.dat` (after asking when a game
-  is saved there). The save screen has the PC's picture, title and texts but not its file list
-  details (the save icons `si_*.xbx`, place names, play time per file) nor the memory unit pages.
-  The results' fade in and out is not done. Messages on the top screen
+* The save screen has the PC's picture, texts and file rows but not the save icons (`si_*.xbx`, the
+  difficulty pictures), the delete option nor the memory unit pages, and it has ten files where
+  the PC lists as many as the disk holds. The results' fade in and out is not done. Messages on the top screen
   all use the default place since the pack's message text has lost the PC's position words, and
   the full-width and accented characters of other languages are not in the pack's text either.
 * The quiz in the otherworld 3F (0x589820) reads its questions from the still; the buttons are

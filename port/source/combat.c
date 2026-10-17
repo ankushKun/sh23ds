@@ -178,6 +178,10 @@ static float s_frame;
 static bool s_end;
 static const AttackInfo* s_atk;
 static bool s_hit_any, s_fired, s_reloaded;
+// 0x544d43: the ap of James' attack that struck the room instead of a character this frame (PC
+// 0x1d82478, read by stage code through 0x544fd0: the well wall at the bottom of the hole)
+static float s_wall_ap, s_wall_ap_next;
+static bool s_swing_wall;
 static bool s_hit[ENEMY_MAX];
 static bool s_combo_req;
 static const AttackInfo* s_stomp_atk;   // ATK_KICK or ATK_STOMP while M_STOMP
@@ -673,6 +677,15 @@ static void swing_hits(const CombatBody* b)
 	to_world(b, s_tip, t);
 	float fx = sinf(*b->yaw), fz = cosf(*b->yaw);
 	float rx = fz, rz = -fx;                       // James' right
+	if (!s_hit_any && !s_swing_wall && s_col) {
+		// the weapon's far end inside a wall: the blow strikes the room
+		float ex = t[0], ez = t[2];
+		col_clamp_ray(s_col, *b->x, *b->z, &ex, &ez, t[1]);
+		if (hypotf(ex - t[0], ez - t[2]) > 1.0f) {
+			s_swing_wall = true;
+			s_wall_ap_next = s_atk->ap;
+		}
+	}
 	for (int i = 0; i < enemy_count(); i++) {
 		Enemy* e = enemy_get(i);
 		if (!enemy_alive(e) || s_hit[i])
@@ -699,6 +712,7 @@ static void start_swing(const CombatBody* b, bool combo, bool heavy)
 	Enemy* t = find_target(b, &ang, 4000.0f);
 	memset(s_hit, 0, sizeof s_hit);
 	s_hit_any = false;
+	s_swing_wall = false;
 	s_combo_req = false;
 	// heavy: the plank's attack 14 (request 4); a downed target also gets it (port choice, as a
 	// level swing passes over a body on the floor)
@@ -807,6 +821,8 @@ static void fire(const CombatBody* b)
 		ray_enemy(o, d, w->atk.min_range > 0.0f ? w->atk.min_range : 0.0f, wall, &e);
 		if (e)
 			enemy_damage(e, w->atk.id, w->atk.ap, w->atk.sp, d[0], d[2]);
+		else if (wall < w->atk.max_range)
+			s_wall_ap_next = w->atk.ap;     // the shot went into the wall
 	}
 	ev_give_item(w->item, -1);
 	sfx_play(w->snd_shot, 1.0f, 0.0f);
@@ -835,6 +851,13 @@ static void start_stomp(bool stomp)
 	s_stomp_atk = stomp ? &ATK_STOMP : &ATK_KICK;
 	memset(s_hit, 0, sizeof s_hit);
 	play(stomp ? &J_STOMP : &J_KICK);
+}
+
+float combat_wall_hit(int* weapon_item)
+{
+	if (weapon_item)
+		*weapon_item = WEAPONS[s_weapon].item;
+	return s_wall_ap;
 }
 
 void combat_set_options(bool hold_to_stomp, bool swap_light_heavy)
@@ -925,6 +948,8 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	recover_update(dt);
 	*held_out = held;
 	s_col = col;
+	s_wall_ap = s_wall_ap_next;      // the last frame's wall hit, for the stage code (0x544f4c clears it)
+	s_wall_ap_next = 0.0f;
 	if (!s_ok)
 		return false;
 	player_sync();

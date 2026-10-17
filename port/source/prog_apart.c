@@ -684,8 +684,10 @@ static int s11_open_safe(Prog* p)
 		// fallthrough
 	case 8:
 		if (!p_flag(108)) {
-			if (p->down & (KEY_DLEFT | KEY_CPAD_LEFT)) safe_step(-1);
-			if (p->down & (KEY_DRIGHT | KEY_CPAD_RIGHT)) safe_step(1);
+			// 0x5971a0: right (stick x > 0 or key 0x5000009) turns the dial down, left turns it up, as
+			// the wallet's ">>" (right) and "<<" (left) say
+			if (p->down & (KEY_DRIGHT | KEY_CPAD_RIGHT)) safe_step(-1);
+			if (p->down & (KEY_DLEFT | KEY_CPAD_LEFT)) safe_step(1);
 		}
 		{
 			char buf[160];

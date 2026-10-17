@@ -693,8 +693,13 @@ static void print_stats(void)
 	printf("\x1b[28;2HA / START: skip");
 }
 
+static bool s_skip_all;
+void movie_skip_all(bool on) { s_skip_all = on; }
+
 bool movie_play(const char* name)
 {
+	if (s_skip_all)
+		return true;                 // playtest.c: movies count as watched
 	if (!movie_start(name))
 		return false;
 	// The title's game start sound (main.c) belongs to the title: when New Game goes straight into

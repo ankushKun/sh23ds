@@ -11,6 +11,8 @@
 //     --sys DIR / --save DIR  system and save directories (default ./lr3ds_sys, ./lr3ds_save)
 //     --log                 print core log messages
 //     --wav path.wav        write the core's audio output (16-bit stereo)
+//     --stop-on FILE:TEXT   end the run early once the host file FILE contains TEXT (checked every
+//                           60 frames; the playtest driver writes "# end" to its log on the SD)
 //     --gl                  give the core an offscreen OpenGL 4.1 core context (CGL) so it can use its
 //                           hardware renderer (also pass --opt citra_graphics_api=OpenGL)
 // Buttons: A B X Y L R ZL ZR START SELECT UP DOWN LEFT RIGHT
@@ -369,6 +371,20 @@ static uint32_t parse_buttons(const char *s)
 
 #define SYM(name) do { *(void **)&name = dlsym(h, #name); if (!name) { fprintf(stderr, "missing %s\n", #name); return 1; } } while (0)
 
+static char stop_file[1024], stop_text[128];
+
+// --stop-on: whether the file holds the text (the SD is a host folder, so the game's log is readable)
+static bool file_has(const char *path, const char *text)
+{
+	FILE *f = fopen(path, "rb");
+	if (!f) return false;
+	static char buf[1 << 20];
+	size_t n = fread(buf, 1, sizeof buf - 1, f);
+	fclose(f);
+	buf[n] = 0;
+	return strstr(buf, text) != NULL;
+}
+
 int main(int argc, char **argv)
 {
 	setvbuf(stdout, NULL, _IOLBF, 0);
@@ -404,6 +420,10 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "--log")) show_log = true;
 		else if (!strcmp(argv[i], "--gl")) use_gl = true;
 		else if (!strcmp(argv[i], "--wav") && i + 1 < argc) { wav_f = fopen(argv[++i], "wb"); if (wav_f) fseek(wav_f, 44, SEEK_SET); }
+		else if (!strcmp(argv[i], "--stop-on") && i + 1 < argc) {
+			char *c = strrchr(argv[++i], ':');
+			if (c) { snprintf(stop_file, sizeof stop_file, "%.*s", (int)(c - argv[i]), argv[i]); snprintf(stop_text, sizeof stop_text, "%s", c + 1); }
+		}
 		else if (!strcmp(argv[i], "--sys") && i + 1 < argc) snprintf(sys_dir, sizeof sys_dir, "%s", argv[++i]);
 		else if (!strcmp(argv[i], "--save") && i + 1 < argc) snprintf(save_dir, sizeof save_dir, "%s", argv[++i]);
 	}
@@ -462,8 +482,14 @@ int main(int argc, char **argv)
 		if (hw.context_reset) hw.context_reset();
 	}
 
-	for (frame_no = 0; frame_no < frames; frame_no++)
+	for (frame_no = 0; frame_no < frames; frame_no++) {
 		retro_run();
+		if (stop_file[0] && frame_no % 60 == 59 && file_has(stop_file, stop_text)) {
+			printf("[stop] %s has \"%s\" at frame %u\n", stop_file, stop_text, frame_no + 1);
+			frames = frame_no + 1;
+			break;
+		}
+	}
 	printf("[done] %u frames, last frame %ux%u\n", frames, last_w, last_h);
 	wav_close();
 	retro_unload_game();

@@ -176,10 +176,11 @@ void prog_state_set(const void* buf)
 	s_running = false;
 }
 
-void prog_stage_tick(int stage)
+void prog_stage_tick(int stage, float dt)
 {
 	if (!s_running)
 		prog_hotel_tick(stage);
+	prog_stagefn_tick(stage, dt);
 }
 
 void prog_debug_line(const char* line)
@@ -209,6 +210,20 @@ void prog_debug_line(const char* line)
 	if (sscanf(line, "trunk %d", &a) == 1)  // hotel trunk word 0..18 (flags 406..410)
 		for (int i = 0; i < 5; i++)
 			ev_flag_set(406 + i, a >> i & 1);
+	if (sscanf(line, "panel %d %d %d", &a, &b, &c) == 3) {   // delusion 3 panel lock: the lit panels in order, 0..8
+		s_puzzle[PZ_PANEL] = (u8)a, s_puzzle[PZ_PANEL + 1] = (u8)b, s_puzzle[PZ_PANEL + 2] = (u8)c;
+	}
+	float fv;
+	if (sscanf(line, "score %x %f", &a, &fv) == 2 && a >= 0x1f7d9c0 && a <= 0x1f7d9dc)   // an ending counter
+		*(float*)p_flag_bytes(a) = fv;
+	if (sscanf(line, "puzzle %x %d", &a, &b) == 2 && a >= 0 && a < (int)sizeof s_puzzle)   // 0x1f7da60 + a
+		s_puzzle[a] = (u8)b;
+	if (sscanf(line, "drums %d %d %d %d", &a, &b, &c, &d) == 4) {   // hotel trunk: the four drums (0..7)
+		s_puzzle[0x1c] = (u8)a, s_puzzle[0x1d] = (u8)b, s_puzzle[0x1e] = (u8)c, s_puzzle[0x1f] = (u8)d;
+		ev_flag_set(405, true);
+	}
+	if (sscanf(line, "hangman %d", &a) == 1)   // labyrinth hangman: corpse k's crime is (v / 6^k) % 6, 5 innocent
+		*(u16*)(s_puzzle + PZ_HANGMAN) = (u16)a;
 	if (sscanf(line, "safe %d %d %d %d", &a, &b, &c, &d) == 4) {
 		s_puzzle[0] = (u8)(a - 1), s_puzzle[1] = (u8)(b - 1), s_puzzle[2] = (u8)(c - 1), s_puzzle[3] = (u8)(d - 1);
 		memset(s_puzzle + PZ_SAFE_PROG, 0xff, 4);
@@ -391,8 +406,12 @@ void prog_abort(void)
 	p_picture_hide();
 }
 
+static int s_choice_n;               // answers of the choice waiting last frame (playtest.c)
+int prog_choice_waiting(void) { return s_running ? s_choice_n : 0; }
+
 bool prog_update(u32 down, u32 held, float dt)
 {
+	s_choice_n = 0;
 	if (!s_running)
 		return false;
 	s_p.down = down;
@@ -661,6 +680,7 @@ int p_choice(Prog* p, int msg, const char* const* labels, int n)
 		p->sub = 2;
 		// fallthrough
 	case 2:
+		s_choice_n = n;
 		if (p->down & (KEY_DLEFT | KEY_DUP))
 			p->answer = (p->answer + n - 1) % n;
 		if (p->down & (KEY_DRIGHT | KEY_DDOWN))
@@ -710,6 +730,10 @@ void p_item_get_now(int item)
 // ItemLose (0x49e4e0): counted items lose one, everything else is gone.
 void p_item_lose(int item)
 {
+	if (item >= 86 && item <= 96) {
+		ev_take_item(item);          // a combination: its parts (cases 0x56..0x60)
+		return;
+	}
 	int n = ev_item_count(item);
 	if (n <= 0)
 		return;
