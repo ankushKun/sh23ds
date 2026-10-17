@@ -1,0 +1,76 @@
+# Game files: never commit
+Silent Hill 2/
+Silent*Hill*2*/
+*.exe
+*.dll
+*.bik
+*.afs
+*.adx
+*.aix
+*.map
+*.mdl
+*.tex
+*.tbn2
+
+# Ghidra projects and analysis output (contain program bytes)
+*.gpr
+*.rep/
+ghproj/
+out/
+decomp.c
+
+# Python / OS
+__pycache__/
+.venv/
+*.pyc
+.DS_Store
+texture_census.json
+
+# Converted game data (derived from the user's copy, never commit)
+pack/
+port/build/
+*.t3x
+*.s3m
+.lr3ds/
+
+# Raw decompiler output from the user's exe (local only)
+decomp/
+.packtest/
+.packtest.log
+.enemytest/
+.sfxtest/
+
+# Stage program agent workspace
+.progtest/
+
+# FMV agent workspace
+.fmvtest/
+.demotest/
+.demos.log
+
+# Enhanced Edition fixes agent workspace
+.eetest/
+.smoke.log
+.build.log
+.azdesk/
+
+# Build outputs (CI builds and releases them)
+dist/
+port/*.3dsx
+port/*.3ds
+port/*.cia
+port/*.elf
+port/*.smdh
+tools/lr3ds/lr3ds
+
+# Local tooling, logs and merge leftovers
+.claude/
+.npmrc
+.merge_bak/
+.siteshots/
+*.orig
+*.rej
+*.log
+reference/
+.packer-out/
+.citest/

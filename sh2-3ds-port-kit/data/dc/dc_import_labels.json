@@ -1,0 +1,1546 @@
+{
+ "version": "dc",
+ "md5": "f3f5360298b6d0f6f2e09cf24a0925d1",
+ "globals": [
+  {
+   "addr": "0x408f0c",
+   "name": "Imp_timeGetTime",
+   "source": "jmp [original IAT] thunk -> WINMM.DLL!timeGetTime"
+  },
+  {
+   "addr": "0x43d52a",
+   "name": "Imp_DirectInput8Create",
+   "source": "jmp [original IAT] thunk -> DINPUT8.DLL!DirectInput8Create"
+  },
+  {
+   "addr": "0x43d530",
+   "name": "Imp_ExitThread",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!ExitThread"
+  },
+  {
+   "addr": "0x43d536",
+   "name": "Imp_Sleep",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!Sleep"
+  },
+  {
+   "addr": "0x43d53c",
+   "name": "Imp_GlobalMemoryStatus",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!GlobalMemoryStatus"
+  },
+  {
+   "addr": "0x43d542",
+   "name": "Imp_CloseHandle",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!CloseHandle"
+  },
+  {
+   "addr": "0x43d548",
+   "name": "Imp_CreateMutexA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!CreateMutexA"
+  },
+  {
+   "addr": "0x43d54e",
+   "name": "Imp_GetDriveTypeA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!GetDriveTypeA"
+  },
+  {
+   "addr": "0x43d554",
+   "name": "Imp_LoadLibraryA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!LoadLibraryA"
+  },
+  {
+   "addr": "0x43d55a",
+   "name": "Imp_GetProcAddress",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!GetProcAddress"
+  },
+  {
+   "addr": "0x43d560",
+   "name": "Imp_GetModuleHandleA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!GetModuleHandleA"
+  },
+  {
+   "addr": "0x43d566",
+   "name": "Imp_WriteFile",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!WriteFile"
+  },
+  {
+   "addr": "0x43d56c",
+   "name": "Imp_GetLastError",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!GetLastError"
+  },
+  {
+   "addr": "0x43d572",
+   "name": "Imp_GetFileSize",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!GetFileSize"
+  },
+  {
+   "addr": "0x43d578",
+   "name": "Imp_MapViewOfFile",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!MapViewOfFile"
+  },
+  {
+   "addr": "0x43d57e",
+   "name": "Imp_CreateFileMappingA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!CreateFileMappingA"
+  },
+  {
+   "addr": "0x43d584",
+   "name": "Imp_CreateFileA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!CreateFileA"
+  },
+  {
+   "addr": "0x43d58a",
+   "name": "Imp_CreateFileA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!CreateFileA"
+  },
+  {
+   "addr": "0x43d590",
+   "name": "Imp_WideCharToMultiByte",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!WideCharToMultiByte"
+  },
+  {
+   "addr": "0x43d596",
+   "name": "Imp_GetVersionExA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!GetVersionExA"
+  },
+  {
+   "addr": "0x43d59c",
+   "name": "Imp_UnmapViewOfFile",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!UnmapViewOfFile"
+  },
+  {
+   "addr": "0x43d5a2",
+   "name": "Imp_LockResource",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!LockResource"
+  },
+  {
+   "addr": "0x43d5a8",
+   "name": "Imp_LoadResource",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!LoadResource"
+  },
+  {
+   "addr": "0x43d5ae",
+   "name": "Imp_SizeofResource",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!SizeofResource"
+  },
+  {
+   "addr": "0x43d5b4",
+   "name": "Imp_FindResourceA",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!FindResourceA"
+  },
+  {
+   "addr": "0x43d5ba",
+   "name": "Imp_FindResourceW",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!FindResourceW"
+  },
+  {
+   "addr": "0x43d5c0",
+   "name": "Imp_IsProcessorFeaturePresent",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!IsProcessorFeaturePresent"
+  },
+  {
+   "addr": "0x43d5c6",
+   "name": "Imp_UpdateWindow",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!UpdateWindow"
+  },
+  {
+   "addr": "0x43d5cc",
+   "name": "Imp_ShowWindow",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!ShowWindow"
+  },
+  {
+   "addr": "0x43d5d2",
+   "name": "Imp_CreateWindowExA",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!CreateWindowExA"
+  },
+  {
+   "addr": "0x43d5d8",
+   "name": "Imp_DefWindowProcA",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!DefWindowProcA"
+  },
+  {
+   "addr": "0x43d5de",
+   "name": "Imp_SendMessageA",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!SendMessageA"
+  },
+  {
+   "addr": "0x43d5e4",
+   "name": "Imp_PostQuitMessage",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!PostQuitMessage"
+  },
+  {
+   "addr": "0x43d5ea",
+   "name": "Imp_EndPaint",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!EndPaint"
+  },
+  {
+   "addr": "0x43d5f0",
+   "name": "Imp_BeginPaint",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!BeginPaint"
+  },
+  {
+   "addr": "0x43d5f6",
+   "name": "Imp_DispatchMessageA",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!DispatchMessageA"
+  },
+  {
+   "addr": "0x43d5fc",
+   "name": "Imp_TranslateMessage",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!TranslateMessage"
+  },
+  {
+   "addr": "0x43d602",
+   "name": "Imp_PeekMessageA",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!PeekMessageA"
+  },
+  {
+   "addr": "0x43d608",
+   "name": "Imp_RegisterClassExA",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!RegisterClassExA"
+  },
+  {
+   "addr": "0x43d60e",
+   "name": "Imp_LoadCursorA",
+   "source": "jmp [original IAT] thunk -> USER32.DLL!LoadCursorA"
+  },
+  {
+   "addr": "0x43d614",
+   "name": "Imp_DeleteObject",
+   "source": "jmp [original IAT] thunk -> GDI32.DLL!DeleteObject"
+  },
+  {
+   "addr": "0x43d61a",
+   "name": "Imp_RegCloseKey",
+   "source": "jmp [original IAT] thunk -> ADVAPI32.DLL!RegCloseKey"
+  },
+  {
+   "addr": "0x43d620",
+   "name": "Imp_RegQueryValueExA",
+   "source": "jmp [original IAT] thunk -> ADVAPI32.DLL!RegQueryValueExA"
+  },
+  {
+   "addr": "0x43d626",
+   "name": "Imp_RegOpenKeyA",
+   "source": "jmp [original IAT] thunk -> ADVAPI32.DLL!RegOpenKeyA"
+  },
+  {
+   "addr": "0x43d630",
+   "name": "Imp_InterlockedExchange",
+   "source": "jmp [original IAT] thunk -> KERNEL32.DLL!InterlockedExchange"
+  },
+  {
+   "addr": "0x447efc",
+   "name": "Imp_srand",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!srand"
+  },
+  {
+   "addr": "0x4485dc",
+   "name": "Imp_srand",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!srand"
+  },
+  {
+   "addr": "0x449d47",
+   "name": "Imp_free",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!free"
+  },
+  {
+   "addr": "0x490e9e",
+   "name": "Imp_free",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!free"
+  },
+  {
+   "addr": "0x4f4f60",
+   "name": "Imp_aligned_malloc",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!_aligned_malloc"
+  },
+  {
+   "addr": "0x4f4f70",
+   "name": "Imp_aligned_free",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!_aligned_free"
+  },
+  {
+   "addr": "0x4f7450",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x4f8023",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x5b82cf",
+   "name": "Imp_free",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!free"
+  },
+  {
+   "addr": "0x5b8310",
+   "name": "Imp_strnicmp",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!_strnicmp"
+  },
+  {
+   "addr": "0x6253e3",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625403",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625423",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x62542c",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625443",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625463",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x62546c",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625483",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x62548c",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x6254a3",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x6254ac",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x6254c3",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x6254cc",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x6254e3",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x6254ec",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625523",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x62552c",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625543",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x62554c",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x6255e3",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x6257b3",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x6257bc",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x6257d3",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x6257dc",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x625847",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x625863",
+   "name": "Imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x62586c",
+   "name": "Imp_1exception__UAE_XZ",
+   "source": "jmp [original IAT] thunk -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x56e386",
+   "name": "stub_floor",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> MSVCR70.DLL!floor"
+  },
+  {
+   "addr": "0x56e38c",
+   "name": "stub_CIfmod",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> MSVCR70.DLL!_CIfmod"
+  },
+  {
+   "addr": "0x56e392",
+   "name": "stub_CIpow",
+   "source": "SecuROM stub, 7 aligned v1.0 sites -> MSVCR70.DLL!_CIpow"
+  },
+  {
+   "addr": "0x56e39e",
+   "name": "stub_sprintf",
+   "source": "SecuROM stub, 3 aligned v1.0 sites -> MSVCR70.DLL!sprintf"
+  },
+  {
+   "addr": "0x56e3a4",
+   "name": "stub_free",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> MSVCR70.DLL!free"
+  },
+  {
+   "addr": "0x56e3aa",
+   "name": "stub_malloc",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> MSVCR70.DLL!malloc"
+  },
+  {
+   "addr": "0x56e6d0",
+   "name": "stub_operator_delete",
+   "source": "SecuROM stub, 80 aligned v1.0 sites -> MSVCR70.DLL!operator_delete"
+  },
+  {
+   "addr": "0x56e7a6",
+   "name": "stub_operator_new",
+   "source": "SecuROM stub, 99 aligned v1.0 sites -> MSVCR70.DLL!operator_new"
+  },
+  {
+   "addr": "0x56e814",
+   "name": "stub_setjmp3",
+   "source": "SecuROM stub, 3 aligned v1.0 sites -> MSVCR70.DLL!setjmp3"
+  },
+  {
+   "addr": "0x56e81a",
+   "name": "stub_isdigit",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> MSVCR70.DLL!isdigit"
+  },
+  {
+   "addr": "0x56e820",
+   "name": "stub_isspace",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> MSVCR70.DLL!isspace"
+  },
+  {
+   "addr": "0x56e826",
+   "name": "stub_ftol",
+   "source": "SecuROM stub, 15 aligned v1.0 sites -> MSVCR70.DLL!ftol"
+  },
+  {
+   "addr": "0x56e89e",
+   "name": "stub_calloc",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> MSVCR70.DLL!calloc"
+  },
+  {
+   "addr": "0x56e8e0",
+   "name": "stub_vsprintf",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> MSVCR70.DLL!vsprintf"
+  },
+  {
+   "addr": "0x56e94e",
+   "name": "stub_operator_delete",
+   "source": "SecuROM stub, 5 aligned v1.0 sites -> MSVCR70.DLL!operator_delete[]"
+  },
+  {
+   "addr": "0x56e95a",
+   "name": "stub_strncpy",
+   "source": "SecuROM stub, 9 aligned v1.0 sites -> MSVCR70.DLL!strncpy"
+  },
+  {
+   "addr": "0x56e960",
+   "name": "stub_strncmp",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> MSVCR70.DLL!strncmp"
+  },
+  {
+   "addr": "0x56e972",
+   "name": "stub_CxxThrowException",
+   "source": "SecuROM stub, 10 aligned v1.0 sites -> MSVCR70.DLL!_CxxThrowException"
+  },
+  {
+   "addr": "0x56eab0",
+   "name": "stub_strtoul",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> MSVCR70.DLL!strtoul"
+  },
+  {
+   "addr": "0x56eac2",
+   "name": "stub_operator_new",
+   "source": "SecuROM stub, 3 aligned v1.0 sites -> MSVCR70.DLL!operator_new[]"
+  },
+  {
+   "addr": "0x56eb14",
+   "name": "stub_strncat",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> MSVCR70.DLL!strncat"
+  },
+  {
+   "addr": "0x56ed00",
+   "name": "stub_Direct3DCreate8",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> D3D8.DLL!Direct3DCreate8"
+  },
+  {
+   "addr": "0x56ed06",
+   "name": "stub_DirectSoundCreate",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> DSOUND.DLL!DirectSoundCreate"
+  },
+  {
+   "addr": "0x5707c0",
+   "name": "stub_BinkSetSoundOnOff_8",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> BINKW32.DLL!_BinkSetSoundOnOff@8"
+  },
+  {
+   "addr": "0x5707c6",
+   "name": "stub_BinkOpen_8",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> BINKW32.DLL!_BinkOpen@8"
+  },
+  {
+   "addr": "0x5707cc",
+   "name": "stub_BinkSetSoundTrack_8",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> BINKW32.DLL!_BinkSetSoundTrack@8"
+  },
+  {
+   "addr": "0x5707d2",
+   "name": "stub_BinkSetSoundSystem_8",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> BINKW32.DLL!_BinkSetSoundSystem@8"
+  },
+  {
+   "addr": "0x5707de",
+   "name": "stub_BinkClose_4",
+   "source": "SecuROM stub, 3 aligned v1.0 sites -> BINKW32.DLL!_BinkClose@4"
+  },
+  {
+   "addr": "0x5707e4",
+   "name": "stub_BinkCopyToBuffer_28",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> BINKW32.DLL!_BinkCopyToBuffer@28"
+  },
+  {
+   "addr": "0x5707ea",
+   "name": "stub_BinkNextFrame_4",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> BINKW32.DLL!_BinkNextFrame@4"
+  },
+  {
+   "addr": "0x5707f0",
+   "name": "stub_BinkDoFrame_4",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> BINKW32.DLL!_BinkDoFrame@4"
+  },
+  {
+   "addr": "0x5707f6",
+   "name": "stub_BinkWait_4",
+   "source": "SecuROM stub, 1 aligned v1.0 sites -> BINKW32.DLL!_BinkWait@4"
+  },
+  {
+   "addr": "0x5707fc",
+   "name": "stub_BinkPause_8",
+   "source": "SecuROM stub, 2 aligned v1.0 sites -> BINKW32.DLL!_BinkPause@8"
+  },
+  {
+   "addr": "0x24a96a4",
+   "name": "__imp_RegQueryValueExA",
+   "source": "original import descriptor -> ADVAPI32.DLL!RegQueryValueExA"
+  },
+  {
+   "addr": "0x24a96a8",
+   "name": "__imp_RegOpenKeyA",
+   "source": "original import descriptor -> ADVAPI32.DLL!RegOpenKeyA"
+  },
+  {
+   "addr": "0x24a96ac",
+   "name": "__imp_RegCloseKey",
+   "source": "original import descriptor -> ADVAPI32.DLL!RegCloseKey"
+  },
+  {
+   "addr": "0x24a96dc",
+   "name": "__imp_DirectInput8Create",
+   "source": "original import descriptor -> DINPUT8.DLL!DirectInput8Create"
+  },
+  {
+   "addr": "0x24a970c",
+   "name": "__imp_DirectSoundCreate",
+   "source": "original import descriptor -> DSOUND.DLL!DirectSoundCreate"
+  },
+  {
+   "addr": "0x24a973c",
+   "name": "__imp_DeleteObject",
+   "source": "original import descriptor -> GDI32.DLL!DeleteObject"
+  },
+  {
+   "addr": "0x24a976c",
+   "name": "__imp_LoadLibraryA",
+   "source": "original import descriptor -> KERNEL32.DLL!LoadLibraryA"
+  },
+  {
+   "addr": "0x24a9770",
+   "name": "__imp_GetProcAddress",
+   "source": "original import descriptor -> KERNEL32.DLL!GetProcAddress"
+  },
+  {
+   "addr": "0x24a9774",
+   "name": "__imp_GetModuleHandleA",
+   "source": "original import descriptor -> KERNEL32.DLL!GetModuleHandleA"
+  },
+  {
+   "addr": "0x24a9778",
+   "name": "__imp_WriteFile",
+   "source": "original import descriptor -> KERNEL32.DLL!WriteFile"
+  },
+  {
+   "addr": "0x24a977c",
+   "name": "__imp_GetLastError",
+   "source": "original import descriptor -> KERNEL32.DLL!GetLastError"
+  },
+  {
+   "addr": "0x24a9780",
+   "name": "__imp_GetFileSize",
+   "source": "original import descriptor -> KERNEL32.DLL!GetFileSize"
+  },
+  {
+   "addr": "0x24a9784",
+   "name": "__imp_MapViewOfFile",
+   "source": "original import descriptor -> KERNEL32.DLL!MapViewOfFile"
+  },
+  {
+   "addr": "0x24a9788",
+   "name": "__imp_CreateFileMappingA",
+   "source": "original import descriptor -> KERNEL32.DLL!CreateFileMappingA"
+  },
+  {
+   "addr": "0x24a978c",
+   "name": "__imp_CreateFileA",
+   "source": "original import descriptor -> KERNEL32.DLL!CreateFileA"
+  },
+  {
+   "addr": "0x24a9790",
+   "name": "__imp_CreateFileA",
+   "source": "original import descriptor -> KERNEL32.DLL!CreateFileA"
+  },
+  {
+   "addr": "0x24a9794",
+   "name": "__imp_WideCharToMultiByte",
+   "source": "original import descriptor -> KERNEL32.DLL!WideCharToMultiByte"
+  },
+  {
+   "addr": "0x24a9798",
+   "name": "__imp_GetVersionExA",
+   "source": "original import descriptor -> KERNEL32.DLL!GetVersionExA"
+  },
+  {
+   "addr": "0x24a979c",
+   "name": "__imp_UnmapViewOfFile",
+   "source": "original import descriptor -> KERNEL32.DLL!UnmapViewOfFile"
+  },
+  {
+   "addr": "0x24a97a0",
+   "name": "__imp_LockResource",
+   "source": "original import descriptor -> KERNEL32.DLL!LockResource"
+  },
+  {
+   "addr": "0x24a97a4",
+   "name": "__imp_LoadResource",
+   "source": "original import descriptor -> KERNEL32.DLL!LoadResource"
+  },
+  {
+   "addr": "0x24a97a8",
+   "name": "__imp_SizeofResource",
+   "source": "original import descriptor -> KERNEL32.DLL!SizeofResource"
+  },
+  {
+   "addr": "0x24a97ac",
+   "name": "__imp_FindResourceA",
+   "source": "original import descriptor -> KERNEL32.DLL!FindResourceA"
+  },
+  {
+   "addr": "0x24a97b0",
+   "name": "__imp_GetDriveTypeA",
+   "source": "original import descriptor -> KERNEL32.DLL!GetDriveTypeA"
+  },
+  {
+   "addr": "0x24a97b4",
+   "name": "__imp_IsProcessorFeaturePresent",
+   "source": "original import descriptor -> KERNEL32.DLL!IsProcessorFeaturePresent"
+  },
+  {
+   "addr": "0x24a97b8",
+   "name": "__imp_GetCurrentProcessId",
+   "source": "original import descriptor -> KERNEL32.DLL!GetCurrentProcessId"
+  },
+  {
+   "addr": "0x24a97bc",
+   "name": "__imp_GetCurrentThreadId",
+   "source": "original import descriptor -> KERNEL32.DLL!GetCurrentThreadId"
+  },
+  {
+   "addr": "0x24a97c0",
+   "name": "__imp_GetTickCount",
+   "source": "original import descriptor -> KERNEL32.DLL!GetTickCount"
+  },
+  {
+   "addr": "0x24a97c4",
+   "name": "__imp_GetStartupInfoA",
+   "source": "original import descriptor -> KERNEL32.DLL!GetStartupInfoA"
+  },
+  {
+   "addr": "0x24a97c8",
+   "name": "__imp_ExitProcess",
+   "source": "original import descriptor -> KERNEL32.DLL!ExitProcess"
+  },
+  {
+   "addr": "0x24a97cc",
+   "name": "__imp_lstrcmpiA",
+   "source": "original import descriptor -> KERNEL32.DLL!lstrcmpiA"
+  },
+  {
+   "addr": "0x24a97d0",
+   "name": "__imp_HeapFree",
+   "source": "original import descriptor -> KERNEL32.DLL!HeapFree"
+  },
+  {
+   "addr": "0x24a97d4",
+   "name": "__imp_HeapDestroy",
+   "source": "original import descriptor -> KERNEL32.DLL!HeapDestroy"
+  },
+  {
+   "addr": "0x24a97d8",
+   "name": "__imp_HeapCreate",
+   "source": "original import descriptor -> KERNEL32.DLL!HeapCreate"
+  },
+  {
+   "addr": "0x24a97dc",
+   "name": "__imp_HeapAlloc",
+   "source": "original import descriptor -> KERNEL32.DLL!HeapAlloc"
+  },
+  {
+   "addr": "0x24a97e0",
+   "name": "__imp_CloseHandle",
+   "source": "original import descriptor -> KERNEL32.DLL!CloseHandle"
+  },
+  {
+   "addr": "0x24a97e4",
+   "name": "__imp_GetFullPathNameA",
+   "source": "original import descriptor -> KERNEL32.DLL!GetFullPathNameA"
+  },
+  {
+   "addr": "0x24a97e8",
+   "name": "__imp_lstrlenA",
+   "source": "original import descriptor -> KERNEL32.DLL!lstrlenA"
+  },
+  {
+   "addr": "0x24a97ec",
+   "name": "__imp_GetExitCodeThread",
+   "source": "original import descriptor -> KERNEL32.DLL!GetExitCodeThread"
+  },
+  {
+   "addr": "0x24a97f0",
+   "name": "__imp_CreateMutexA",
+   "source": "original import descriptor -> KERNEL32.DLL!CreateMutexA"
+  },
+  {
+   "addr": "0x24a97f4",
+   "name": "__imp_FindResourceW",
+   "source": "original import descriptor -> KERNEL32.DLL!FindResourceW"
+  },
+  {
+   "addr": "0x24a97f8",
+   "name": "__imp_GlobalMemoryStatus",
+   "source": "original import descriptor -> KERNEL32.DLL!GlobalMemoryStatus"
+  },
+  {
+   "addr": "0x24a97fc",
+   "name": "__imp_Sleep",
+   "source": "original import descriptor -> KERNEL32.DLL!Sleep"
+  },
+  {
+   "addr": "0x24a9800",
+   "name": "__imp_ExitThread",
+   "source": "original import descriptor -> KERNEL32.DLL!ExitThread"
+  },
+  {
+   "addr": "0x24a9804",
+   "name": "__imp_GetSystemTimeAsFileTime",
+   "source": "original import descriptor -> KERNEL32.DLL!GetSystemTimeAsFileTime"
+  },
+  {
+   "addr": "0x24a9808",
+   "name": "__imp_SystemTimeToFileTime",
+   "source": "original import descriptor -> KERNEL32.DLL!SystemTimeToFileTime"
+  },
+  {
+   "addr": "0x24a980c",
+   "name": "__imp_CopyFileA",
+   "source": "original import descriptor -> KERNEL32.DLL!CopyFileA"
+  },
+  {
+   "addr": "0x24a9810",
+   "name": "__imp_WaitForSingleObject",
+   "source": "original import descriptor -> KERNEL32.DLL!WaitForSingleObject"
+  },
+  {
+   "addr": "0x24a9814",
+   "name": "__imp_ReleaseMutex",
+   "source": "original import descriptor -> KERNEL32.DLL!ReleaseMutex"
+  },
+  {
+   "addr": "0x24a9818",
+   "name": "__imp_FindFirstFileA",
+   "source": "original import descriptor -> KERNEL32.DLL!FindFirstFileA"
+  },
+  {
+   "addr": "0x24a981c",
+   "name": "__imp_FindNextFileA",
+   "source": "original import descriptor -> KERNEL32.DLL!FindNextFileA"
+  },
+  {
+   "addr": "0x24a9820",
+   "name": "__imp_FindClose",
+   "source": "original import descriptor -> KERNEL32.DLL!FindClose"
+  },
+  {
+   "addr": "0x24a9824",
+   "name": "__imp_GetOverlappedResult",
+   "source": "original import descriptor -> KERNEL32.DLL!GetOverlappedResult"
+  },
+  {
+   "addr": "0x24a9828",
+   "name": "__imp_SetFileAttributesA",
+   "source": "original import descriptor -> KERNEL32.DLL!SetFileAttributesA"
+  },
+  {
+   "addr": "0x24a982c",
+   "name": "__imp_CloseHandle",
+   "source": "original import descriptor -> KERNEL32.DLL!CloseHandle"
+  },
+  {
+   "addr": "0x24a9830",
+   "name": "__imp_GetLocalTime",
+   "source": "original import descriptor -> KERNEL32.DLL!GetLocalTime"
+  },
+  {
+   "addr": "0x24a9834",
+   "name": "__imp_DeleteFileA",
+   "source": "original import descriptor -> KERNEL32.DLL!DeleteFileA"
+  },
+  {
+   "addr": "0x24a9838",
+   "name": "__imp_OutputDebugStringA",
+   "source": "original import descriptor -> KERNEL32.DLL!OutputDebugStringA"
+  },
+  {
+   "addr": "0x24a983c",
+   "name": "__imp_GetThreadLocale",
+   "source": "original import descriptor -> KERNEL32.DLL!GetThreadLocale"
+  },
+  {
+   "addr": "0x24a9840",
+   "name": "__imp_GetLocaleInfoA",
+   "source": "original import descriptor -> KERNEL32.DLL!GetLocaleInfoA"
+  },
+  {
+   "addr": "0x24a9844",
+   "name": "__imp_GetACP",
+   "source": "original import descriptor -> KERNEL32.DLL!GetACP"
+  },
+  {
+   "addr": "0x24a9848",
+   "name": "__imp_InterlockedExchange",
+   "source": "original import descriptor -> KERNEL32.DLL!InterlockedExchange"
+  },
+  {
+   "addr": "0x24a984c",
+   "name": "__imp_ReadFile",
+   "source": "original import descriptor -> KERNEL32.DLL!ReadFile"
+  },
+  {
+   "addr": "0x24a9850",
+   "name": "__imp_MultiByteToWideChar",
+   "source": "original import descriptor -> KERNEL32.DLL!MultiByteToWideChar"
+  },
+  {
+   "addr": "0x24a9854",
+   "name": "__imp_CreateDirectoryA",
+   "source": "original import descriptor -> KERNEL32.DLL!CreateDirectoryA"
+  },
+  {
+   "addr": "0x24a9858",
+   "name": "__imp_RemoveDirectoryA",
+   "source": "original import descriptor -> KERNEL32.DLL!RemoveDirectoryA"
+  },
+  {
+   "addr": "0x24a985c",
+   "name": "__imp_FileTimeToSystemTime",
+   "source": "original import descriptor -> KERNEL32.DLL!FileTimeToSystemTime"
+  },
+  {
+   "addr": "0x24a9860",
+   "name": "__imp_FileTimeToLocalFileTime",
+   "source": "original import descriptor -> KERNEL32.DLL!FileTimeToLocalFileTime"
+  },
+  {
+   "addr": "0x24a9864",
+   "name": "__imp_CreateEventA",
+   "source": "original import descriptor -> KERNEL32.DLL!CreateEventA"
+  },
+  {
+   "addr": "0x24a9868",
+   "name": "__imp_QueryPerformanceCounter",
+   "source": "original import descriptor -> KERNEL32.DLL!QueryPerformanceCounter"
+  },
+  {
+   "addr": "0x24a986c",
+   "name": "__imp_QueryPerformanceFrequency",
+   "source": "original import descriptor -> KERNEL32.DLL!QueryPerformanceFrequency"
+  },
+  {
+   "addr": "0x24a9870",
+   "name": "__imp_GetUserDefaultLangID",
+   "source": "original import descriptor -> KERNEL32.DLL!GetUserDefaultLangID"
+  },
+  {
+   "addr": "0x24a9874",
+   "name": "__imp_ResumeThread",
+   "source": "original import descriptor -> KERNEL32.DLL!ResumeThread"
+  },
+  {
+   "addr": "0x24a9878",
+   "name": "__imp_SetThreadPriority",
+   "source": "original import descriptor -> KERNEL32.DLL!SetThreadPriority"
+  },
+  {
+   "addr": "0x24a987c",
+   "name": "__imp_SetFilePointer",
+   "source": "original import descriptor -> KERNEL32.DLL!SetFilePointer"
+  },
+  {
+   "addr": "0x24a9880",
+   "name": "__imp_lstrcpyA",
+   "source": "original import descriptor -> KERNEL32.DLL!lstrcpyA"
+  },
+  {
+   "addr": "0x24a9884",
+   "name": "__imp_GetThreadPriority",
+   "source": "original import descriptor -> KERNEL32.DLL!GetThreadPriority"
+  },
+  {
+   "addr": "0x24a9888",
+   "name": "__imp_GetCurrentThread",
+   "source": "original import descriptor -> KERNEL32.DLL!GetCurrentThread"
+  },
+  {
+   "addr": "0x24a988c",
+   "name": "__imp_lstrcatA",
+   "source": "original import descriptor -> KERNEL32.DLL!lstrcatA"
+  },
+  {
+   "addr": "0x24a9890",
+   "name": "__imp_SuspendThread",
+   "source": "original import descriptor -> KERNEL32.DLL!SuspendThread"
+  },
+  {
+   "addr": "0x24a9894",
+   "name": "__imp_PulseEvent",
+   "source": "original import descriptor -> KERNEL32.DLL!PulseEvent"
+  },
+  {
+   "addr": "0x24a9898",
+   "name": "__imp_SetThreadPriorityBoost",
+   "source": "original import descriptor -> KERNEL32.DLL!SetThreadPriorityBoost"
+  },
+  {
+   "addr": "0x24a989c",
+   "name": "__imp_CreateThread",
+   "source": "original import descriptor -> KERNEL32.DLL!CreateThread"
+  },
+  {
+   "addr": "0x24a9908",
+   "name": "__imp_0__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_PBD_Z",
+   "source": "original import descriptor -> MSVCP70.DLL!??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@PBD@Z"
+  },
+  {
+   "addr": "0x24a990c",
+   "name": "__imp_1__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_XZ",
+   "source": "original import descriptor -> MSVCP70.DLL!??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ"
+  },
+  {
+   "addr": "0x24a9910",
+   "name": "__imp_0__basic_string_DU__char_traits_D_std__V__allocator_D_2__std__QAE_ABV01__Z",
+   "source": "original import descriptor -> MSVCP70.DLL!??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@ABV01@@Z"
+  },
+  {
+   "addr": "0x24a9914",
+   "name": "__imp_Mstd__YA_NABV__basic_string_DU__char_traits_D_std__V__allocator_D_2__0_0_Z",
+   "source": "original import descriptor -> MSVCP70.DLL!??Mstd@@YA_NABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@0@Z"
+  },
+  {
+   "addr": "0x24a9944",
+   "name": "__imp_fputs",
+   "source": "original import descriptor -> MSVCR70.DLL!fputs"
+  },
+  {
+   "addr": "0x24a9948",
+   "name": "__imp_fprintf",
+   "source": "original import descriptor -> MSVCR70.DLL!fprintf"
+  },
+  {
+   "addr": "0x24a994c",
+   "name": "__imp_strtoul",
+   "source": "original import descriptor -> MSVCR70.DLL!strtoul"
+  },
+  {
+   "addr": "0x24a9950",
+   "name": "__imp_strtok",
+   "source": "original import descriptor -> MSVCR70.DLL!strtok"
+  },
+  {
+   "addr": "0x24a9954",
+   "name": "__imp_fgets",
+   "source": "original import descriptor -> MSVCR70.DLL!fgets"
+  },
+  {
+   "addr": "0x24a9958",
+   "name": "__imp_U_YAPAXI_Z",
+   "source": "original import descriptor -> MSVCR70.DLL!??_U@YAPAXI@Z"
+  },
+  {
+   "addr": "0x24a995c",
+   "name": "__imp_ceil",
+   "source": "original import descriptor -> MSVCR70.DLL!ceil"
+  },
+  {
+   "addr": "0x24a9960",
+   "name": "__imp_puts",
+   "source": "original import descriptor -> MSVCR70.DLL!puts"
+  },
+  {
+   "addr": "0x24a9964",
+   "name": "__imp_strncat",
+   "source": "original import descriptor -> MSVCR70.DLL!strncat"
+  },
+  {
+   "addr": "0x24a9968",
+   "name": "__imp_strnicmp",
+   "source": "original import descriptor -> MSVCR70.DLL!_strnicmp"
+  },
+  {
+   "addr": "0x24a996c",
+   "name": "__imp_c_exit",
+   "source": "original import descriptor -> MSVCR70.DLL!_c_exit"
+  },
+  {
+   "addr": "0x24a9970",
+   "name": "__imp_exit",
+   "source": "original import descriptor -> MSVCR70.DLL!_exit"
+  },
+  {
+   "addr": "0x24a9974",
+   "name": "__imp_XcptFilter",
+   "source": "original import descriptor -> MSVCR70.DLL!_XcptFilter"
+  },
+  {
+   "addr": "0x24a9978",
+   "name": "__imp_cexit",
+   "source": "original import descriptor -> MSVCR70.DLL!_cexit"
+  },
+  {
+   "addr": "0x24a997c",
+   "name": "__imp_aligned_free",
+   "source": "original import descriptor -> MSVCR70.DLL!_aligned_free"
+  },
+  {
+   "addr": "0x24a9980",
+   "name": "__imp_amsg_exit",
+   "source": "original import descriptor -> MSVCR70.DLL!_amsg_exit"
+  },
+  {
+   "addr": "0x24a9984",
+   "name": "__imp_getmainargs",
+   "source": "original import descriptor -> MSVCR70.DLL!__getmainargs"
+  },
+  {
+   "addr": "0x24a9988",
+   "name": "__imp_initterm",
+   "source": "original import descriptor -> MSVCR70.DLL!_initterm"
+  },
+  {
+   "addr": "0x24a998c",
+   "name": "__imp_setusermatherr",
+   "source": "original import descriptor -> MSVCR70.DLL!__setusermatherr"
+  },
+  {
+   "addr": "0x24a9990",
+   "name": "__imp_adjust_fdiv",
+   "source": "original import descriptor -> MSVCR70.DLL!_adjust_fdiv"
+  },
+  {
+   "addr": "0x24a9994",
+   "name": "__imp_p__commode",
+   "source": "original import descriptor -> MSVCR70.DLL!__p__commode"
+  },
+  {
+   "addr": "0x24a9998",
+   "name": "__imp_strtoul",
+   "source": "original import descriptor -> MSVCR70.DLL!strtoul"
+  },
+  {
+   "addr": "0x24a999c",
+   "name": "__imp_set_app_type",
+   "source": "original import descriptor -> MSVCR70.DLL!__set_app_type"
+  },
+  {
+   "addr": "0x24a99a0",
+   "name": "__imp_terminate__YAXXZ",
+   "source": "original import descriptor -> MSVCR70.DLL!?terminate@@YAXXZ"
+  },
+  {
+   "addr": "0x24a99a4",
+   "name": "__imp_dllonexit",
+   "source": "original import descriptor -> MSVCR70.DLL!__dllonexit"
+  },
+  {
+   "addr": "0x24a99a8",
+   "name": "__imp_onexit",
+   "source": "original import descriptor -> MSVCR70.DLL!_onexit"
+  },
+  {
+   "addr": "0x24a99ac",
+   "name": "__imp_1type_info__UAE_XZ",
+   "source": "original import descriptor -> MSVCR70.DLL!??1type_info@@UAE@XZ"
+  },
+  {
+   "addr": "0x24a99b0",
+   "name": "__imp_except_handler3",
+   "source": "original import descriptor -> MSVCR70.DLL!_except_handler3"
+  },
+  {
+   "addr": "0x24a99b4",
+   "name": "__imp_puts",
+   "source": "original import descriptor -> MSVCR70.DLL!puts"
+  },
+  {
+   "addr": "0x24a99b8",
+   "name": "__imp_aligned_malloc",
+   "source": "original import descriptor -> MSVCR70.DLL!_aligned_malloc"
+  },
+  {
+   "addr": "0x24a99bc",
+   "name": "__imp_CIasin",
+   "source": "original import descriptor -> MSVCR70.DLL!_CIasin"
+  },
+  {
+   "addr": "0x24a99c0",
+   "name": "__imp_0exception__QAE_ABV0__Z",
+   "source": "original import descriptor -> MSVCR70.DLL!??0exception@@QAE@ABV0@@Z"
+  },
+  {
+   "addr": "0x24a99c4",
+   "name": "__imp_acmdln",
+   "source": "original import descriptor -> MSVCR70.DLL!_acmdln"
+  },
+  {
+   "addr": "0x24a99c8",
+   "name": "__imp_CxxThrowException",
+   "source": "original import descriptor -> MSVCR70.DLL!_CxxThrowException"
+  },
+  {
+   "addr": "0x24a99cc",
+   "name": "__imp_0exception__QAE_XZ",
+   "source": "original import descriptor -> MSVCR70.DLL!??0exception@@QAE@XZ"
+  },
+  {
+   "addr": "0x24a99d0",
+   "name": "__imp_1exception__UAE_XZ",
+   "source": "original import descriptor -> MSVCR70.DLL!??1exception@@UAE@XZ"
+  },
+  {
+   "addr": "0x24a99d4",
+   "name": "__imp_strncmp",
+   "source": "original import descriptor -> MSVCR70.DLL!strncmp"
+  },
+  {
+   "addr": "0x24a99d8",
+   "name": "__imp_strncpy",
+   "source": "original import descriptor -> MSVCR70.DLL!strncpy"
+  },
+  {
+   "addr": "0x24a99dc",
+   "name": "__imp_V_YAXPAX_Z",
+   "source": "original import descriptor -> MSVCR70.DLL!??_V@YAXPAX@Z"
+  },
+  {
+   "addr": "0x24a99e0",
+   "name": "__imp_wcslen",
+   "source": "original import descriptor -> MSVCR70.DLL!wcslen"
+  },
+  {
+   "addr": "0x24a99e4",
+   "name": "__imp_iswascii",
+   "source": "original import descriptor -> MSVCR70.DLL!iswascii"
+  },
+  {
+   "addr": "0x24a99e8",
+   "name": "__imp_strstr",
+   "source": "original import descriptor -> MSVCR70.DLL!strstr"
+  },
+  {
+   "addr": "0x24a99ec",
+   "name": "__imp_set_app_type",
+   "source": "original import descriptor -> MSVCR70.DLL!__set_app_type"
+  },
+  {
+   "addr": "0x24a99f0",
+   "name": "__imp_qsort",
+   "source": "original import descriptor -> MSVCR70.DLL!qsort"
+  },
+  {
+   "addr": "0x24a99f4",
+   "name": "__imp_fseek",
+   "source": "original import descriptor -> MSVCR70.DLL!fseek"
+  },
+  {
+   "addr": "0x24a99f8",
+   "name": "__imp_ftell",
+   "source": "original import descriptor -> MSVCR70.DLL!ftell"
+  },
+  {
+   "addr": "0x24a99fc",
+   "name": "__imp_srand",
+   "source": "original import descriptor -> MSVCR70.DLL!srand"
+  },
+  {
+   "addr": "0x24a9a00",
+   "name": "__imp_vsprintf",
+   "source": "original import descriptor -> MSVCR70.DLL!vsprintf"
+  },
+  {
+   "addr": "0x24a9a04",
+   "name": "__imp_fread",
+   "source": "original import descriptor -> MSVCR70.DLL!fread"
+  },
+  {
+   "addr": "0x24a9a08",
+   "name": "__imp_fwrite",
+   "source": "original import descriptor -> MSVCR70.DLL!fwrite"
+  },
+  {
+   "addr": "0x24a9a0c",
+   "name": "__imp_fclose",
+   "source": "original import descriptor -> MSVCR70.DLL!fclose"
+  },
+  {
+   "addr": "0x24a9a10",
+   "name": "__imp_calloc",
+   "source": "original import descriptor -> MSVCR70.DLL!calloc"
+  },
+  {
+   "addr": "0x24a9a14",
+   "name": "__imp_finite",
+   "source": "original import descriptor -> MSVCR70.DLL!_finite"
+  },
+  {
+   "addr": "0x24a9a18",
+   "name": "__imp_ftol",
+   "source": "original import descriptor -> MSVCR70.DLL!_ftol"
+  },
+  {
+   "addr": "0x24a9a1c",
+   "name": "__imp_isspace",
+   "source": "original import descriptor -> MSVCR70.DLL!isspace"
+  },
+  {
+   "addr": "0x24a9a20",
+   "name": "__imp_isdigit",
+   "source": "original import descriptor -> MSVCR70.DLL!isdigit"
+  },
+  {
+   "addr": "0x24a9a24",
+   "name": "__imp_ftol",
+   "source": "original import descriptor -> MSVCR70.DLL!_ftol"
+  },
+  {
+   "addr": "0x24a9a28",
+   "name": "__imp_longjmp",
+   "source": "original import descriptor -> MSVCR70.DLL!longjmp"
+  },
+  {
+   "addr": "0x24a9a2c",
+   "name": "__imp_2_YAPAXI_Z",
+   "source": "original import descriptor -> MSVCR70.DLL!??2@YAPAXI@Z"
+  },
+  {
+   "addr": "0x24a9a30",
+   "name": "__imp_3_YAXPAX_Z",
+   "source": "original import descriptor -> MSVCR70.DLL!??3@YAXPAX@Z"
+  },
+  {
+   "addr": "0x24a9a34",
+   "name": "__imp_CxxFrameHandler",
+   "source": "original import descriptor -> MSVCR70.DLL!__CxxFrameHandler"
+  },
+  {
+   "addr": "0x24a9a38",
+   "name": "__imp_fopen",
+   "source": "original import descriptor -> MSVCR70.DLL!fopen"
+  },
+  {
+   "addr": "0x24a9a3c",
+   "name": "__imp_exit",
+   "source": "original import descriptor -> MSVCR70.DLL!exit"
+  },
+  {
+   "addr": "0x24a9a40",
+   "name": "__imp_malloc",
+   "source": "original import descriptor -> MSVCR70.DLL!malloc"
+  },
+  {
+   "addr": "0x24a9a44",
+   "name": "__imp_free",
+   "source": "original import descriptor -> MSVCR70.DLL!free"
+  },
+  {
+   "addr": "0x24a9a48",
+   "name": "__imp_sprintf",
+   "source": "original import descriptor -> MSVCR70.DLL!sprintf"
+  },
+  {
+   "addr": "0x24a9a4c",
+   "name": "__imp_printf",
+   "source": "original import descriptor -> MSVCR70.DLL!printf"
+  },
+  {
+   "addr": "0x24a9a50",
+   "name": "__imp_CIpow",
+   "source": "original import descriptor -> MSVCR70.DLL!_CIpow"
+  },
+  {
+   "addr": "0x24a9a54",
+   "name": "__imp_CIfmod",
+   "source": "original import descriptor -> MSVCR70.DLL!_CIfmod"
+  },
+  {
+   "addr": "0x24a9a58",
+   "name": "__imp_floor",
+   "source": "original import descriptor -> MSVCR70.DLL!floor"
+  },
+  {
+   "addr": "0x24a9a5c",
+   "name": "__imp_CIacos",
+   "source": "original import descriptor -> MSVCR70.DLL!_CIacos"
+  },
+  {
+   "addr": "0x24a9a60",
+   "name": "__imp_stricmp",
+   "source": "original import descriptor -> MSVCR70.DLL!_stricmp"
+  },
+  {
+   "addr": "0x24a9a64",
+   "name": "__imp_security_error_handler",
+   "source": "original import descriptor -> MSVCR70.DLL!__security_error_handler"
+  },
+  {
+   "addr": "0x24a9acc",
+   "name": "__imp_LoadCursorA",
+   "source": "original import descriptor -> USER32.DLL!LoadCursorA"
+  },
+  {
+   "addr": "0x24a9ad0",
+   "name": "__imp_wsprintfA",
+   "source": "original import descriptor -> USER32.DLL!wsprintfA"
+  },
+  {
+   "addr": "0x24a9ad4",
+   "name": "__imp_MessageBoxA",
+   "source": "original import descriptor -> USER32.DLL!MessageBoxA"
+  },
+  {
+   "addr": "0x24a9ad8",
+   "name": "__imp_RegisterClassExA",
+   "source": "original import descriptor -> USER32.DLL!RegisterClassExA"
+  },
+  {
+   "addr": "0x24a9adc",
+   "name": "__imp_UpdateWindow",
+   "source": "original import descriptor -> USER32.DLL!UpdateWindow"
+  },
+  {
+   "addr": "0x24a9ae0",
+   "name": "__imp_ShowWindow",
+   "source": "original import descriptor -> USER32.DLL!ShowWindow"
+  },
+  {
+   "addr": "0x24a9ae4",
+   "name": "__imp_CreateWindowExA",
+   "source": "original import descriptor -> USER32.DLL!CreateWindowExA"
+  },
+  {
+   "addr": "0x24a9ae8",
+   "name": "__imp_DefWindowProcA",
+   "source": "original import descriptor -> USER32.DLL!DefWindowProcA"
+  },
+  {
+   "addr": "0x24a9aec",
+   "name": "__imp_SendMessageA",
+   "source": "original import descriptor -> USER32.DLL!SendMessageA"
+  },
+  {
+   "addr": "0x24a9af0",
+   "name": "__imp_PostQuitMessage",
+   "source": "original import descriptor -> USER32.DLL!PostQuitMessage"
+  },
+  {
+   "addr": "0x24a9af4",
+   "name": "__imp_EndPaint",
+   "source": "original import descriptor -> USER32.DLL!EndPaint"
+  },
+  {
+   "addr": "0x24a9af8",
+   "name": "__imp_BeginPaint",
+   "source": "original import descriptor -> USER32.DLL!BeginPaint"
+  },
+  {
+   "addr": "0x24a9afc",
+   "name": "__imp_DispatchMessageA",
+   "source": "original import descriptor -> USER32.DLL!DispatchMessageA"
+  },
+  {
+   "addr": "0x24a9b00",
+   "name": "__imp_TranslateMessage",
+   "source": "original import descriptor -> USER32.DLL!TranslateMessage"
+  },
+  {
+   "addr": "0x24a9b04",
+   "name": "__imp_PeekMessageA",
+   "source": "original import descriptor -> USER32.DLL!PeekMessageA"
+  },
+  {
+   "addr": "0x24a9b40",
+   "name": "__imp_timeSetEvent",
+   "source": "original import descriptor -> WINMM.DLL!timeSetEvent"
+  },
+  {
+   "addr": "0x24a9b44",
+   "name": "__imp_timeKillEvent",
+   "source": "original import descriptor -> WINMM.DLL!timeKillEvent"
+  },
+  {
+   "addr": "0x24a9b48",
+   "name": "__imp_timeGetTime",
+   "source": "original import descriptor -> WINMM.DLL!timeGetTime"
+  },
+  {
+   "addr": "0x24a9b4c",
+   "name": "__imp_timeBeginPeriod",
+   "source": "original import descriptor -> WINMM.DLL!timeBeginPeriod"
+  },
+  {
+   "addr": "0x24a9b50",
+   "name": "__imp_timeEndPeriod",
+   "source": "original import descriptor -> WINMM.DLL!timeEndPeriod"
+  },
+  {
+   "addr": "0x24a9b84",
+   "name": "__imp_BinkCopyToBuffer_28",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkCopyToBuffer@28"
+  },
+  {
+   "addr": "0x24a9b88",
+   "name": "__imp_BinkPause_8",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkPause@8"
+  },
+  {
+   "addr": "0x24a9b8c",
+   "name": "__imp_BinkSetSoundOnOff_8",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkSetSoundOnOff@8"
+  },
+  {
+   "addr": "0x24a9b90",
+   "name": "__imp_BinkOpen_8",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkOpen@8"
+  },
+  {
+   "addr": "0x24a9b94",
+   "name": "__imp_BinkSetSoundTrack_8",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkSetSoundTrack@8"
+  },
+  {
+   "addr": "0x24a9b98",
+   "name": "__imp_BinkSetSoundSystem_8",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkSetSoundSystem@8"
+  },
+  {
+   "addr": "0x24a9b9c",
+   "name": "__imp_BinkOpenDirectSound_4",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkOpenDirectSound@4"
+  },
+  {
+   "addr": "0x24a9ba0",
+   "name": "__imp_BinkClose_4",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkClose@4"
+  },
+  {
+   "addr": "0x24a9ba4",
+   "name": "__imp_BinkNextFrame_4",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkNextFrame@4"
+  },
+  {
+   "addr": "0x24a9ba8",
+   "name": "__imp_BinkDoFrame_4",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkDoFrame@4"
+  },
+  {
+   "addr": "0x24a9bac",
+   "name": "__imp_BinkWait_4",
+   "source": "original import descriptor -> BINKW32.DLL!_BinkWait@4"
+  },
+  {
+   "addr": "0x24a9be4",
+   "name": "__imp_Direct3DCreate8",
+   "source": "original import descriptor -> D3D8.DLL!Direct3DCreate8"
+  },
+  {
+   "addr": "0x24a9c14",
+   "name": "__imp_CoInitialize",
+   "source": "original import descriptor -> OLE32.DLL!CoInitialize"
+  }
+ ]
+}

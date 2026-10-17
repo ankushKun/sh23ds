@@ -1,0 +1,98 @@
+; World geometry: position, texcoord, vertex colour (raw u8) and normal (raw s8).
+;
+; Lit per vertex the way the PC map shaders do it (LIGHTING.md): three directional lights, then
+;   colour = min(gain * (lit + amb) + vgain * vertex_colour + base, 1)
+; where per material mode
+;   1, 2, 6: gain = 2 * material colour, amb = c19, vgain = 0, base = 0
+;   4:       gain = 2 * c20, amb = c21, vgain = 2 * c22, base = 0   (baked colour is added)
+;   0:       gain = vgain = 0, base = 1                              (full bright)
+; The view vector and normal quaternion are still output for the fragment-light flashlight.
+
+.fvec projection[4], modelView[4]
+.fvec lightDir[3], lightCol[3]   ; lightDir points towards the light (minus the travel direction)
+.fvec amb, gain, vgain, base
+
+.constf consts(0.0, 1.0, 0.00392156862745, 0.5)
+.alias  zeros  consts.xxxx
+.alias  ones   consts.yyyy
+.alias  inv255 consts.zzzz
+.alias  half   consts.wwww
+
+.out outpos position
+.out outtc0 texcoord0
+.out outclr color
+.out outview view
+.out outnq normalquat
+
+.alias inpos v0
+.alias intex v1
+.alias inclr v2
+.alias innrm v3
+
+.proc main
+	mov r0.xyz, inpos
+	mov r0.w,   ones
+
+	dp4 r1.x, modelView[0], r0
+	dp4 r1.y, modelView[1], r0
+	dp4 r1.z, modelView[2], r0
+	dp4 r1.w, modelView[3], r0
+	mov outview, -r1
+
+	dp4 outpos.x, projection[0], r1
+	dp4 outpos.y, projection[1], r1
+	dp4 outpos.z, projection[2], r1
+	dp4 outpos.w, projection[3], r1
+
+	; SH2 UVs have a top-left origin; citro3d textures are stored bottom-up
+	mov r2, intex
+	add r2.y, ones, -r2
+	mov outtc0, r2
+
+	; world-space normal, normalised (the s8 scale cancels out)
+	dp3 r6.x, innrm, innrm
+	rsq r6.x, r6.x
+	mul r2.xyz, innrm, r6.x
+
+	; three directional lights: sum of max(N.L, 0) * colour
+	dp3 r3.x, lightDir[0], r2
+	max r3.x, zeros, r3.x
+	mul r4, lightCol[0], r3.xxxx
+	dp3 r3.x, lightDir[1], r2
+	max r3.x, zeros, r3.x
+	mad r4, r3.xxxx, lightCol[1], r4
+	dp3 r3.x, lightDir[2], r2
+	max r3.x, zeros, r3.x
+	mad r4, r3.xxxx, lightCol[2], r4
+
+	add r4, amb, r4
+	mul r4, gain, r4
+	mul r5, inv255, inclr
+	mad r4, r5, vgain, r4
+	add r4, base, r4
+	min r4, ones, r4
+	mov r4.w, r5.w
+	mov outclr, r4
+
+	; normal to view space for the fragment flashlight
+	dp3 r14.x, modelView[0], r2
+	dp3 r14.y, modelView[1], r2
+	dp3 r14.z, modelView[2], r2
+	dp3 r6.x, r14, r14
+	rsq r6.x, r6.x
+	mul r14.xyz, r14.xyz, r6.x
+
+	; quaternion rotating +Z onto the normal
+	mov r0, consts.yxxx
+	add r4, ones, r14.z
+	mul r4, half, r4
+	cmp zeros, ge, ge, r4.x
+	rsq r4, r4.x
+	mul r5, half, r14
+	jmpc cmp.x, degenerate
+	rcp r0.z, r4.x
+	mul r0.xy, r5, r4
+degenerate:
+	mov outnq, r0
+	end
+.end

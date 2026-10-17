@@ -1,0 +1,407 @@
+{
+ "version": "v10",
+ "md5": "37caa31bdb473d9019be2491bd8dc914",
+ "globals": [
+  {
+   "addr": "0x94e064",
+   "name": "gCutscenePos",
+   "source": "SH2EE GetCutscenePosPointer"
+  },
+  {
+   "addr": "0x1f7a7b8",
+   "name": "gCutsceneTimer",
+   "source": "SH2EE GetCutsceneTimerPointer"
+  },
+  {
+   "addr": "0x1f80fc0",
+   "name": "gCameraFOV",
+   "source": "SH2EE GetCameraFOVPointer"
+  },
+  {
+   "addr": "0x1fb101c",
+   "name": "gJamesPosX",
+   "source": "SH2EE GetJamesPosXPointer"
+  },
+  {
+   "addr": "0x89ff82",
+   "name": "gFlashLightRender",
+   "source": "SH2EE GetFlashLightRenderPointer"
+  },
+  {
+   "addr": "0x1f7a7e0",
+   "name": "gFlashLightAcquired",
+   "source": "SH2EE GetFlashLightAcquiredPointer"
+  },
+  {
+   "addr": "0x1dbc00c",
+   "name": "gChapterID",
+   "source": "SH2EE GetChapterIDPointer"
+  },
+  {
+   "addr": "0xa33588",
+   "name": "gSpecializedLight2",
+   "source": "SH2EE GetSpecializedLight2Pointer"
+  },
+  {
+   "addr": "0x1f7a806",
+   "name": "gFlashlightSwitch",
+   "source": "SH2EE GetFlashlightSwitchPointer"
+  },
+  {
+   "addr": "0x942ab0",
+   "name": "gFlashlightBrightness",
+   "source": "SH2EE GetFlashlightBrightnessPointer"
+  },
+  {
+   "addr": "0x942bf0",
+   "name": "gFlashlightAvailable",
+   "source": "SH2EE GetFlashlightAvailablePointer"
+  },
+  {
+   "addr": "0x1fb7d28",
+   "name": "gFlashlightDir",
+   "source": "SH2EE GetFlashlightDirPointer"
+  },
+  {
+   "addr": "0x932178",
+   "name": "gEventIndex",
+   "source": "SH2EE GetEventIndexPointer"
+  },
+  {
+   "addr": "0x932174",
+   "name": "gMenuEvent",
+   "source": "SH2EE GetMenuEventPointer"
+  },
+  {
+   "addr": "0x1f7d490",
+   "name": "gTransitionState",
+   "source": "SH2EE GetTransitionStatePointer"
+  },
+  {
+   "addr": "0x1f81240",
+   "name": "gInGameCameraPosY",
+   "source": "SH2EE GetInGameCameraPosYPointer"
+  },
+  {
+   "addr": "0x9423c0",
+   "name": "gInventoryStatus",
+   "source": "SH2EE GetInventoryStatusPointer"
+  },
+  {
+   "addr": "0x932694",
+   "name": "gLoadingScreen",
+   "source": "SH2EE GetLoadingScreenPointer"
+  },
+  {
+   "addr": "0xa33364",
+   "name": "gFPSCounter",
+   "source": "SH2EE GetFPSCounterPointer"
+  },
+  {
+   "addr": "0x1dbbf90",
+   "name": "gShootingKills",
+   "source": "SH2EE GetShootingKillsPointer"
+  },
+  {
+   "addr": "0x1dbbf92",
+   "name": "gMeleeKills",
+   "source": "SH2EE GetMeleeKillsPointer"
+  },
+  {
+   "addr": "0x1dbbfa4",
+   "name": "gBoatMaxSpeed",
+   "source": "SH2EE GetBoatMaxSpeedPointer"
+  },
+  {
+   "addr": "0x1dbbff4",
+   "name": "gActionDifficulty",
+   "source": "SH2EE GetActionDifficultyPointer"
+  },
+  {
+   "addr": "0x1dbbff5",
+   "name": "gRiddleDifficulty",
+   "source": "SH2EE GetRiddleDifficultyPointer"
+  },
+  {
+   "addr": "0x1dbbf8a",
+   "name": "gNumberOfSaves",
+   "source": "SH2EE GetNumberOfSavesPointer"
+  },
+  {
+   "addr": "0x1dbbf94",
+   "name": "gInGameTime",
+   "source": "SH2EE GetInGameTimePointer"
+  },
+  {
+   "addr": "0x1dbbf98",
+   "name": "gWalkingDistance",
+   "source": "SH2EE GetWalkingDistancePointer"
+  },
+  {
+   "addr": "0x1dbbf9c",
+   "name": "gRunningDistance",
+   "source": "SH2EE GetRunningDistancePointer"
+  },
+  {
+   "addr": "0x1dbbf8e",
+   "name": "gItemsCollected",
+   "source": "SH2EE GetItemsCollectedPointer"
+  },
+  {
+   "addr": "0x1dbbfa8",
+   "name": "gDamagePointsTaken",
+   "source": "SH2EE GetDamagePointsTakenPointer"
+  },
+  {
+   "addr": "0x1dbbf88",
+   "name": "gSecretItemsCollected",
+   "source": "SH2EE GetSecretItemsCollectedPointer"
+  },
+  {
+   "addr": "0x1dbbfa0",
+   "name": "gBoatStageTime",
+   "source": "SH2EE GetBoatStageTimePointer"
+  },
+  {
+   "addr": "0x94135c",
+   "name": "gMouseVerticalPosition",
+   "source": "SH2EE GetMouseVerticalPositionPointer"
+  },
+  {
+   "addr": "0x941358",
+   "name": "gMouseHorizontalPosition",
+   "source": "SH2EE GetMouseHorizontalPositionPointer"
+  },
+  {
+   "addr": "0x1f811e9",
+   "name": "gSearchViewFlag",
+   "source": "SH2EE GetSearchViewFlagPointer"
+  },
+  {
+   "addr": "0x94cc58",
+   "name": "gEnableInput",
+   "source": "SH2EE GetEnableInputPointer"
+  },
+  {
+   "addr": "0x1dbc008",
+   "name": "gControlType",
+   "source": "SH2EE GetControlTypePointer"
+  },
+  {
+   "addr": "0x1dbc002",
+   "name": "gRunOption",
+   "source": "SH2EE GetRunOptionPointer"
+  },
+  {
+   "addr": "0x1d7f350",
+   "name": "gTalkShowHostState",
+   "source": "SH2EE GetTalkShowHostStatePointer"
+  },
+  {
+   "addr": "0x1d9f4b2",
+   "name": "gBoatFlag",
+   "source": "SH2EE GetBoatFlagPointer"
+  },
+  {
+   "addr": "0x932038",
+   "name": "gIsWritingQuicksave",
+   "source": "SH2EE GetIsWritingQuicksavePointer"
+  },
+  {
+   "addr": "0x93203c",
+   "name": "gTextAddr",
+   "source": "SH2EE GetTextAddrPointer"
+  },
+  {
+   "addr": "0x7f3e10",
+   "name": "gLowHealthIndicatorFlashSpeed",
+   "source": "SH2EE GetLowHealthIndicatorFlashSpeedPointer"
+  },
+  {
+   "addr": "0x89c1a4",
+   "name": "gWaterLevelLoweringSteps",
+   "source": "SH2EE GetWaterLevelLoweringStepsPointer"
+  },
+  {
+   "addr": "0x932d48",
+   "name": "gFrametime",
+   "source": "SH2EE GetFrametimePointer"
+  },
+  {
+   "addr": "0x1f5f55c",
+   "name": "gClearText",
+   "source": "SH2EE GetClearTextPointer"
+  },
+  {
+   "addr": "0x9326b0",
+   "name": "gPauseMenuQuitIndex",
+   "source": "SH2EE GetPauseMenuQuitIndexPointer"
+  },
+  {
+   "addr": "0x932030",
+   "name": "gQuitSubmenuFlag",
+   "source": "SH2EE GetQuitSubmenuFlagPointer"
+  },
+  {
+   "addr": "0x941365",
+   "name": "gMousePointerVisibleFlag",
+   "source": "SH2EE GetMousePointerVisibleFlagPointer"
+  },
+  {
+   "addr": "0x94d8b0",
+   "name": "gMemoListIndex",
+   "source": "SH2EE GetMemoListIndexPointer"
+  },
+  {
+   "addr": "0x94d8ac",
+   "name": "gMemoListHitbox",
+   "source": "SH2EE GetMemoListHitboxPointer"
+  },
+  {
+   "addr": "0x1f7a9e0",
+   "name": "gMemoInventory",
+   "source": "SH2EE GetMemoInventoryPointer"
+  },
+  {
+   "addr": "0x88c378",
+   "name": "gMemoCountIndex",
+   "source": "SH2EE GetMemoCountIndexPointer"
+  },
+  {
+   "addr": "0x932180",
+   "name": "gReadingMemoFlag",
+   "source": "SH2EE GetReadingMemoFlagPointer"
+  },
+  {
+   "addr": "0x1f7a960",
+   "name": "gPuzzleCursorHorizontalPos",
+   "source": "SH2EE GetPuzzleCursorHorizontalPosPointer"
+  },
+  {
+   "addr": "0x1f7a830",
+   "name": "gPuzzleCursorVerticalPos",
+   "source": "SH2EE GetPuzzleCursorVerticalPosPointer"
+  },
+  {
+   "addr": "0x941600",
+   "name": "gOptionsPage",
+   "source": "SH2EE GetOptionsPagePointer"
+  },
+  {
+   "addr": "0xa33484",
+   "name": "gInternalVerticalRes",
+   "source": "SH2EE GetInternalVerticalResPointer"
+  },
+  {
+   "addr": "0x941780",
+   "name": "gHardwareSoundEnabled",
+   "source": "SH2EE GetHardwareSoundEnabledPointer"
+  },
+  {
+   "addr": "0x1db8408",
+   "name": "gKeyBinds",
+   "source": "SH2EE GetKeyBindsPointer"
+  },
+  {
+   "addr": "0x9415a4",
+   "name": "gControlOptionsSelectedOption",
+   "source": "SH2EE GetControlOptionsSelectedOptionPointer"
+  },
+  {
+   "addr": "0x94178c",
+   "name": "gControlOptionsIsToStopScrolling",
+   "source": "SH2EE GetControlOptionsIsToStopScrollingPointer"
+  },
+  {
+   "addr": "0x1f7d83c",
+   "name": "gWeaponRender",
+   "source": "SH2EE GetWeaponRenderPointer"
+  },
+  {
+   "addr": "0x1fb810c",
+   "name": "gWeaponHandGrip",
+   "source": "SH2EE GetWeaponHandGripPointer"
+  },
+  {
+   "addr": "0x1f7a9e0",
+   "name": "gGameFlag",
+   "source": "SH2EE GetGameFlagPointer"
+  },
+  {
+   "addr": "0x93216c",
+   "name": "g_hWnd",
+   "source": "decomp"
+  },
+  {
+   "addr": "0x9321a8",
+   "name": "g_pDirectInput8",
+   "source": "decomp"
+  },
+  {
+   "addr": "0xa32890",
+   "name": "g_pD3D8",
+   "source": "decomp"
+  },
+  {
+   "addr": "0xa32894",
+   "name": "g_pD3DDevice8",
+   "source": "decomp"
+  },
+  {
+   "addr": "0xa32898",
+   "name": "g_D3DPresentParams",
+   "source": "decomp"
+  },
+  {
+   "addr": "0x1d7e820",
+   "name": "g_pDirectSound",
+   "source": "decomp"
+  }
+ ],
+ "functions": [
+  {
+   "addr": "0x4063b0",
+   "name": "Win_CreateWindowAndDInput"
+  },
+  {
+   "addr": "0x4f6310",
+   "name": "Gfx_CreateD3D8"
+  },
+  {
+   "addr": "0x4f6380",
+   "name": "Gfx_CreateDevice"
+  },
+  {
+   "addr": "0x4f5db0",
+   "name": "Gfx_EnumAdapterModes"
+  },
+  {
+   "addr": "0x514f10",
+   "name": "Snd_Init_DSound_ADX"
+  },
+  {
+   "addr": "0x44a370",
+   "name": "File_StartLoaderThread"
+  },
+  {
+   "addr": "0x44a200",
+   "name": "File_LoaderThreadProc"
+  },
+  {
+   "addr": "0x518b60",
+   "name": "Snd_StartThread"
+  },
+  {
+   "addr": "0x43d5b0",
+   "name": "Movie_BinkPlay"
+  },
+  {
+   "addr": "0x44a0b0",
+   "name": "File_GetSize"
+  },
+  {
+   "addr": "0x55fd70",
+   "name": "Snd_StartAudioTimer"
+  }
+ ]
+}

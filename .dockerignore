@@ -1,0 +1,7 @@
+# Only the packer needs a build context from the repo root; keep game data and packs out of it
+*
+!VERSION
+!tools/make_pack.sh
+!tools/sh2conv
+!tools/packer
+**/__pycache__

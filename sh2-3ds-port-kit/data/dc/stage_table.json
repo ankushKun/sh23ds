@@ -1,0 +1,466 @@
+[
+ {
+  "id": 1,
+  "ps2_enum": "Stg_tgs_trial",
+  "addr": "0x8f18a0",
+  "glb_crd": 10,
+  "ev_list": "0x8eb200",
+  "ev_pos": "0x8ead18"
+ },
+ {
+  "id": 2,
+  "ps2_enum": "Stg_toilet",
+  "addr": "0x8eab50",
+  "glb_crd": 6,
+  "ev_list": "0x8ea9b8",
+  "ev_pos": "0x8ea8f0"
+ },
+ {
+  "id": 3,
+  "ps2_enum": "Stg_observation",
+  "addr": "0x8ea718",
+  "glb_crd": 5,
+  "ev_list": "0x8ea618",
+  "ev_pos": "0x8ea590"
+ },
+ {
+  "id": 4,
+  "ps2_enum": "Stg_forest",
+  "addr": "0x8ea208",
+  "glb_crd": 1,
+  "ev_list": "0x8e9cc8",
+  "ev_pos": "0x8e9b58"
+ },
+ {
+  "id": 5,
+  "ps2_enum": "Stg_town_east",
+  "addr": "0x8e97b0",
+  "glb_crd": 2,
+  "ev_list": "0x8e6bb8",
+  "ev_pos": "0x8e68a8"
+ },
+ {
+  "id": 6,
+  "ps2_enum": "Stg_apart_e1f",
+  "addr": "0x8e65d0",
+  "glb_crd": 9,
+  "ev_list": "0x8e61a0",
+  "ev_pos": "0x8e6060"
+ },
+ {
+  "id": 7,
+  "ps2_enum": "Stg_apart_e2f",
+  "addr": "0x8e5a58",
+  "glb_crd": 9,
+  "ev_list": "0x8e4788",
+  "ev_pos": "0x8e43a8"
+ },
+ {
+  "id": 8,
+  "ps2_enum": "Stg_apart_e3fw",
+  "addr": "0x8e41a8",
+  "glb_crd": 9,
+  "ev_list": "0x8e3f60",
+  "ev_pos": "0x8e3e88"
+ },
+ {
+  "id": 9,
+  "ps2_enum": "Stg_apart_e3fe",
+  "addr": "0x8e3ac0",
+  "glb_crd": 9,
+  "ev_list": "0x8e3728",
+  "ev_pos": "0x8e35c8"
+ },
+ {
+  "id": 10,
+  "ps2_enum": "Stg_apart_w1f",
+  "addr": "0x8e30f8",
+  "glb_crd": 9,
+  "ev_list": "0x8e2a98",
+  "ev_pos": "0x8e2908"
+ },
+ {
+  "id": 11,
+  "ps2_enum": "Stg_apart_w2f",
+  "addr": "0x8e2708",
+  "glb_crd": 9,
+  "ev_list": "0x8e2350",
+  "ev_pos": "0x8e2188"
+ },
+ {
+  "id": 12,
+  "ps2_enum": "Stg_apart_stair",
+  "addr": "0x8e1f08",
+  "glb_crd": 9,
+  "ev_list": "0x8e1ad8",
+  "ev_pos": "0x8e18e8"
+ },
+ {
+  "id": 13,
+  "ps2_enum": "Stg_apart_out",
+  "addr": "0x8e1698",
+  "glb_crd": 2,
+  "ev_list": "0x8e1490",
+  "ev_pos": "0x8e13d0"
+ },
+ {
+  "id": 14,
+  "ps2_enum": "Stg_town_west",
+  "addr": "0x8e08f0",
+  "glb_crd": 3,
+  "ev_list": "0x8de068",
+  "ev_pos": "0x8ddcf8"
+ },
+ {
+  "id": 15,
+  "ps2_enum": "Stg_bowling",
+  "addr": "0x8dd888",
+  "glb_crd": 7,
+  "ev_list": "0x8dd690",
+  "ev_pos": "0x8dd5e0"
+ },
+ {
+  "id": 16,
+  "ps2_enum": "Stg_to_heaven",
+  "addr": "0x8dd380",
+  "glb_crd": 3,
+  "ev_list": "0x8dd2e8",
+  "ev_pos": "0x8dd298"
+ },
+ {
+  "id": 17,
+  "ps2_enum": "Stg_heaven_night",
+  "addr": "0x8dd238",
+  "glb_crd": 8,
+  "ev_list": "0x8dd058",
+  "ev_pos": "0x8dcf60"
+ },
+ {
+  "id": 18,
+  "ps2_enum": "Stg_hospital_1f_f",
+  "addr": "0x8dcd48",
+  "glb_crd": 10,
+  "ev_list": "0x8dc700",
+  "ev_pos": "0x8dc3f0"
+ },
+ {
+  "id": 19,
+  "ps2_enum": "Stg_hospital_2f_f",
+  "addr": "0x8dc180",
+  "glb_crd": 10,
+  "ev_list": "0x8dbc08",
+  "ev_pos": "0x8db990"
+ },
+ {
+  "id": 20,
+  "ps2_enum": "Stg_hospital_3f_f",
+  "addr": "0x8db288",
+  "glb_crd": 10,
+  "ev_list": "0x8daca0",
+  "ev_pos": "0x8daa30"
+ },
+ {
+  "id": 21,
+  "ps2_enum": "Stg_hospital_rf_f",
+  "addr": "0x8da7d0",
+  "glb_crd": 10,
+  "ev_list": "0x8da2c0",
+  "ev_pos": "0x8da1a0"
+ },
+ {
+  "id": 22,
+  "ps2_enum": "Stg_hospital_1fw_b",
+  "addr": "0x8d9d68",
+  "glb_crd": 10,
+  "ev_list": "0x8d9ae8",
+  "ev_pos": "0x8d99b8"
+ },
+ {
+  "id": 23,
+  "ps2_enum": "Stg_hospital_1fe_b",
+  "addr": "0x8d9798",
+  "glb_crd": 10,
+  "ev_list": "0x8d9510",
+  "ev_pos": "0x8d9398"
+ },
+ {
+  "id": 24,
+  "ps2_enum": "Stg_hospital_2f_b",
+  "addr": "0x8d9218",
+  "glb_crd": 10,
+  "ev_list": "0x8d8f08",
+  "ev_pos": "0x8d8df8"
+ },
+ {
+  "id": 25,
+  "ps2_enum": "Stg_hospital_3f_b",
+  "addr": "0x8d8ca8",
+  "glb_crd": 10,
+  "ev_list": "0x8d8788",
+  "ev_pos": "0x8d8588"
+ },
+ {
+  "id": 26,
+  "ps2_enum": "Stg_hospital_bf_b",
+  "addr": "0x8d8130",
+  "glb_crd": 10,
+  "ev_list": "0x8d7bf0",
+  "ev_pos": "0x8d7a88"
+ },
+ {
+  "id": 27,
+  "ps2_enum": "Stg_hospital_pass",
+  "addr": "0x8d7870",
+  "glb_crd": 10,
+  "ev_list": "0x8d7750",
+  "ev_pos": "0x8d76d0"
+ },
+ {
+  "id": 28,
+  "ps2_enum": "Stg_society",
+  "addr": "0x8d7620",
+  "glb_crd": 11,
+  "ev_list": "0x8d74a0",
+  "ev_pos": "0x8d73b0"
+ },
+ {
+  "id": 29,
+  "ps2_enum": "Stg_delusion_2",
+  "addr": "0x8d7318",
+  "glb_crd": 11,
+  "ev_list": "0x8d7188",
+  "ev_pos": "0x8d70b8"
+ },
+ {
+  "id": 30,
+  "ps2_enum": "Stg_delusion_3",
+  "addr": "0x8d6ed8",
+  "glb_crd": 11,
+  "ev_list": "0x8d6678",
+  "ev_pos": "0x8d6508"
+ },
+ {
+  "id": 31,
+  "ps2_enum": "Stg_prison_n",
+  "addr": "0x8d61e8",
+  "glb_crd": 11,
+  "ev_list": "0x8d5958",
+  "ev_pos": "0x8d55c8"
+ },
+ {
+  "id": 32,
+  "ps2_enum": "Stg_prison_s",
+  "addr": "0x8d5408",
+  "glb_crd": 11,
+  "ev_list": "0x8d4da8",
+  "ev_pos": "0x8d4b00"
+ },
+ {
+  "id": 33,
+  "ps2_enum": "Stg_prison_bf",
+  "addr": "0x8d4918",
+  "glb_crd": 11,
+  "ev_list": "0x8d4658",
+  "ev_pos": "0x8d4520"
+ },
+ {
+  "id": 34,
+  "ps2_enum": "Stg_labyrinth_w",
+  "addr": "0x8d4140",
+  "glb_crd": 11,
+  "ev_list": "0x8d3618",
+  "ev_pos": "0x8d33a8"
+ },
+ {
+  "id": 35,
+  "ps2_enum": "Stg_labyrinth_e",
+  "addr": "0x8d2f00",
+  "glb_crd": 11,
+  "ev_list": "0x8d2600",
+  "ev_pos": "0x8d2268"
+ },
+ {
+  "id": 36,
+  "ps2_enum": "Stg_labyrinth_n",
+  "addr": "0x8d1fa8",
+  "glb_crd": 11,
+  "ev_list": "0x8d0560",
+  "ev_pos": "0x8d0220"
+ },
+ {
+  "id": 37,
+  "ps2_enum": "Stg_eddie_boss",
+  "addr": "0x8cfcc8",
+  "glb_crd": 11,
+  "ev_list": "0x8cf938",
+  "ev_pos": "0x8cf8e0"
+ },
+ {
+  "id": 38,
+  "ps2_enum": "Stg_lake",
+  "addr": "0x8cf618",
+  "glb_crd": 4,
+  "ev_list": "0x8cf4c8",
+  "ev_pos": "0x8cf408"
+ },
+ {
+  "id": 39,
+  "ps2_enum": "Stg_hotel_bf_f",
+  "addr": "0x8cf310",
+  "glb_crd": 12,
+  "ev_list": "0x8ceeb8",
+  "ev_pos": "0x8ced10"
+ },
+ {
+  "id": 40,
+  "ps2_enum": "Stg_hotel_1f_f",
+  "addr": "0x8ce9c8",
+  "glb_crd": 12,
+  "ev_list": "0x8cddf8",
+  "ev_pos": "0x8cd890"
+ },
+ {
+  "id": 41,
+  "ps2_enum": "Stg_hotel_2f_f",
+  "addr": "0x8cd0a0",
+  "glb_crd": 12,
+  "ev_list": "0x8cc748",
+  "ev_pos": "0x8cc440"
+ },
+ {
+  "id": 42,
+  "ps2_enum": "Stg_hotel_3f_f",
+  "addr": "0x8cbe78",
+  "glb_crd": 12,
+  "ev_list": "0x8cbbc0",
+  "ev_pos": "0x8cbae8"
+ },
+ {
+  "id": 43,
+  "ps2_enum": "Stg_hotel_bf_b",
+  "addr": "0x8cb8f0",
+  "glb_crd": 13,
+  "ev_list": "0x8cb550",
+  "ev_pos": "0x8cb400"
+ },
+ {
+  "id": 44,
+  "ps2_enum": "Stg_hotel_1f_b",
+  "addr": "0x8caec8",
+  "glb_crd": 13,
+  "ev_list": "0x8ca9f8",
+  "ev_pos": "0x8ca818"
+ },
+ {
+  "id": 45,
+  "ps2_enum": "Stg_hotel_2f_b",
+  "addr": "0x8ca668",
+  "glb_crd": 13,
+  "ev_list": "0x8ca280",
+  "ev_pos": "0x8ca030"
+ },
+ {
+  "id": 46,
+  "ps2_enum": "Stg_hotel_3f_b",
+  "addr": "0x8c9ed0",
+  "glb_crd": 13,
+  "ev_list": "0x8c9dc8",
+  "ev_pos": "0x8c9d40"
+ },
+ {
+  "id": 47,
+  "ps2_enum": "Stg_hotel_fire",
+  "addr": "0x8c9a58",
+  "glb_crd": 13,
+  "ev_list": "0x8c9990",
+  "ev_pos": "0x8c9950"
+ },
+ {
+  "id": 48,
+  "ps2_enum": "Stg_end_recovery",
+  "addr": "0x7b3d80",
+  "glb_crd": 13,
+  "ev_list": "0x7b3580",
+  "ev_pos": "0x7b34f8"
+ },
+ {
+  "id": 49,
+  "ps2_enum": "Stg_end_maria",
+  "addr": "0x7b4a58",
+  "glb_crd": 13,
+  "ev_list": "0x7b4290",
+  "ev_pos": "0x7b4210"
+ },
+ {
+  "id": 50,
+  "ps2_enum": "Stg_end_suicide",
+  "addr": "0x7b3058",
+  "glb_crd": 13,
+  "ev_list": "0x7b2868",
+  "ev_pos": "0x7b27e8"
+ },
+ {
+  "id": 51,
+  "ps2_enum": "Stg_end_rebirth",
+  "addr": "0x8c9610",
+  "glb_crd": 13,
+  "ev_list": "0x8c8e48",
+  "ev_pos": "0x8c8dc8"
+ },
+ {
+  "id": 52,
+  "ps2_enum": "Stg_end_dog",
+  "addr": "0x8c8c18",
+  "glb_crd": 14,
+  "ev_list": "0x8c8bec",
+  "ev_pos": "0x8c8be0"
+ },
+ {
+  "id": 53,
+  "ps2_enum": "?53",
+  "addr": "0x8c8ab0",
+  "glb_crd": 8,
+  "ev_list": "0x8c88a8",
+  "ev_pos": "0x8c8810"
+ },
+ {
+  "id": 54,
+  "ps2_enum": "?54",
+  "addr": "0x8c8640",
+  "glb_crd": 3,
+  "ev_list": "0x8c77a0",
+  "ev_pos": "0x8c76e8"
+ },
+ {
+  "id": 55,
+  "ps2_enum": "?55",
+  "addr": "0x8c7218",
+  "glb_crd": 16,
+  "ev_list": "0x8c67d0",
+  "ev_pos": "0x8c6470"
+ },
+ {
+  "id": 56,
+  "ps2_enum": "?56",
+  "addr": "0x8c6140",
+  "glb_crd": 16,
+  "ev_list": "0x8c5a90",
+  "ev_pos": "0x8c5780"
+ },
+ {
+  "id": 57,
+  "ps2_enum": "?57",
+  "addr": "0x8c5648",
+  "glb_crd": 16,
+  "ev_list": "0x8c5360",
+  "ev_pos": "0x8c5278"
+ },
+ {
+  "id": 58,
+  "ps2_enum": "?58",
+  "addr": "0x8c5130",
+  "glb_crd": 9,
+  "ev_list": "0x8c4cf0",
+  "ev_pos": "0x8c4af8"
+ }
+]

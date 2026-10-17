@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  converters:
+    name: Converters compile
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"   # the packer image's Python (Debian bookworm)
+      - name: Byte-compile every converter
+        run: python -m py_compile tools/sh2conv/*.py tools/*.py
+
+  build:
+    name: 3DSX and CIA
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with the pinned devkitARM image
+        run: ./port/build.sh
+      - name: Package the CIA and checksums
+        run: ./port/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sh23ds-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [converters, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sh23ds-${{ github.sha }}
+          path: dist
+
+      - name: Check that the tag matches VERSION
+        run: |
+          expected="v$(tr -d '[:space:]' < VERSION)"
+          if [ "${GITHUB_REF_NAME}" != "${expected}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match VERSION (${expected})." >&2
+            exit 1
+          fi
+
+      - name: Verify checksums
+        run: cd dist && sha256sum -c sh23ds.sha256
+
+      # Published at once so releases/latest/download/... (the website's QR code) points at it.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/sh23ds.cia dist/sh23ds.3dsx dist/sh23ds.sha256 \
+            --title "sh23ds ${GITHUB_REF_NAME}" \
+            --notes-file .github/release-notes.md

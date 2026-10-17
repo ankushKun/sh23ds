@@ -1,0 +1,1359 @@
+site	function	kind	import	method
+0x401a8a	0x401a80	dispatch	MSVCR70.DLL!floor	pass1_same_offset
+0x401ab8	0x401ab0	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x401ad8	?	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x401b74	?	dispatch		unresolved
+0x401b81	?	dispatch		unresolved
+0x402e37	0x402d00	dispatch	MSVCR70.DLL!printf	pass2_order_aligned
+0x40387d	?	dispatch		unresolved
+0x40395a	?	dispatch		unresolved
+0x40399a	?	dispatch		unresolved
+0x403a97	?	dispatch		unresolved
+0x403c8d	?	dispatch		unresolved
+0x405ecc	0x405e90	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x405edb	0x405e90	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x405ef2	0x405e90	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x40613f	0x405e90	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4063e7	?	dispatch	USER32.DLL!CreateWindowExA	pass3_anchor_offset
+0x406425	?	dispatch	USER32.DLL!ShowWindow	pass3_anchor_offset
+0x406432	?	dispatch	USER32.DLL!UpdateWindow	pass3_anchor_offset
+0x406494	0x406460	dispatch	USER32.DLL!BeginPaint	pass1_same_offset
+0x4064a0	0x406460	dispatch	USER32.DLL!EndPaint	pass1_same_offset
+0x4064be	0x406460	dispatch	USER32.DLL!PostQuitMessage	pass1_same_offset
+0x406516	0x406460	dispatch	USER32.DLL!SendMessageA	pass1_same_offset
+0x40653d	0x406460	dispatch	USER32.DLL!DefWindowProcA	pass1_same_offset
+0x406651	0x406630	dispatch	KERNEL32.DLL!GlobalMemoryStatus	pass1_same_offset
+0x406682	0x406630	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4069a8	0x406970	dispatch	USER32.DLL!LoadCursorA	pass1_same_offset
+0x4069cf	0x406970	dispatch	USER32.DLL!RegisterClassExA	pass1_same_offset
+0x406a2d	?	dispatch	KERNEL32.DLL!CreateMutexA	pass3_anchor_offset
+0x406a50	?	dispatch	KERNEL32.DLL!CloseHandle	pass3_anchor_offset
+0x407cc6	?	dispatch		unresolved
+0x407d1a	?	dispatch		unresolved
+0x408199	0x4080c0	dispatch	MSVCR70.DLL!exit	pass2_order_aligned
+0x408345	0x408340	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x408862	0x408830	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x40899f	0x4088d0	dispatch		unresolved
+0x408aec	0x4088d0	dispatch		unresolved
+0x408c60	0x408ba0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x408da3	?	dispatch		unresolved
+0x409a62	0x409a3c	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x409a7a	0x409a3c	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x409aad	0x409a87	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x409ac5	0x409a87	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x409b48	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a19f	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40a20e	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a25b	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40a5d9	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a606	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a62e	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a656	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a683	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a696	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40a6a9	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40abfe	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40ac06	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40ac0e	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40ac16	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40ac1e	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40ac26	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40ac2e	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40b1b0	0x40b102	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40b1ee	0x40b102	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40b23a	0x40b102	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40b25d	0x40b102	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40b29a	0x40b102	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40b2e1	0x40b102	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40b435	0x40b102	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40b463	0x40b102	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40b835	0x40b7e0	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40b9d0	0x40b7e0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40cba2	0x40cb91	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40cbb6	0x40cb91	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40cbcc	0x40cb91	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40cbe2	0x40cb91	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40cbfa	0x40cbea	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40cc17	0x40cc06	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40cc2b	0x40cc06	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40d012	0x40ccc9	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40d12a	0x40ccc9	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40d607	0x40d3df	dispatch	KERNEL32.DLL!WriteFile	pass1_same_offset
+0x40d672	0x40d3df	dispatch	KERNEL32.DLL!WriteFile	pass1_same_offset
+0x40d691	0x40d3df	dispatch	KERNEL32.DLL!WriteFile	pass1_same_offset
+0x40d6b1	0x40d3df	dispatch	KERNEL32.DLL!WriteFile	pass1_same_offset
+0x40d764	0x40d725	stub	MSVCR70.DLL!setjmp3	via stub 0x56e814
+0x40d874	0x40d725	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40db39	0x40d995	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40dd14	0x40d995	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40debc	0x40de3c	stub	MSVCR70.DLL!isspace	via stub 0x56e820
+0x40def3	0x40de3c	stub	MSVCR70.DLL!isspace	via stub 0x56e820
+0x40df01	0x40de3c	stub	MSVCR70.DLL!isdigit	via stub 0x56e81a
+0x40dfc6	0x40de3c	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40e17c	0x40e112	stub	MSVCR70.DLL!setjmp3	via stub 0x56e814
+0x40e420	0x40e112	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40e43b	0x40e112	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40e524	0x40e112	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x40e535	0x40e112	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x40e568	0x40e112	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40e699	0x40e112	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40e87d	0x40e6a8	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40e8be	0x40e6a8	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40ea65	0x40e9e9	dispatch	KERNEL32.DLL!WriteFile	pass1_same_offset
+0x40ed4d	0x40ec91	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40ee47	0x40ec91	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40eeee	0x40ec91	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f071	0x40ef8a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f084	0x40ef8a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f196	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f23e	0x40f19d	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x40f256	0x40f19d	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40f2fb	0x40f19d	stub	MSVCR70.DLL!floor	via stub 0x56e386
+0x40f302	0x40f19d	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x40f480	0x40f45a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f48d	0x40f45a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f499	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f58e	0x40f4a6	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40f5e6	0x40f4a6	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40f6be	0x40f4a6	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x40f8e2	0x40f4a6	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f8ea	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f8f2	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f8fa	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x40f901	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x410cd2	0x410c81	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x410d54	0x410c81	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x410de2	0x410d72	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x410e34	0x410d72	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x410e6d	0x410d72	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x410f54	0x410d72	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x410f5c	0x410d72	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x410fa4	0x410f74	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x410ff3	0x410f74	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41102a	0x410f74	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411158	0x410f74	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411160	0x410f74	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411326	0x411178	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41137d	0x411178	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4113b6	0x411178	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x411552	0x411178	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41155d	0x411178	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411672	0x41159b	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4116cb	0x41159b	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41171f	0x41159b	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x411a0b	0x41159b	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411a16	0x41159b	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411a3a	0x411a2d	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x411ab8	0x411a2d	stub	MSVCR70.DLL!floor	via stub 0x56e386
+0x411bcc	0x411b2d	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x411c1a	0x411b2d	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x411ee2	0x411b2d	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411eea	0x411b2d	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411ef2	0x411b2d	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411efa	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x411fe6	0x411f13	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x412034	0x411f13	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41260b	0x411f13	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x412613	0x411f13	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41261b	0x411f13	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x412623	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41262b	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x412705	0x412644	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41275d	0x412644	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x412824	0x412644	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4129af	0x412644	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4129b7	0x412644	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4129bf	0x412644	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4129c6	0x412644	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x413319	0x41330d	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41372f	0x4136df	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x413755	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x413760	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4137c0	0x41377f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x413835	0x41377f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x413b58	0x41377f	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x413e17	0x413e07	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x413e4a	0x413e23	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x416ff7	0x416f76	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41707e	0x41706e	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4170bb	0x4170ab	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4170f8	0x4170e8	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417321	0x417311	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41735e	0x41734e	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41739b	0x41738b	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4176a9	0x417699	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4176e6	0x4176d6	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417723	0x417713	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417760	0x417750	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41779d	0x41778d	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417867	0x417857	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417913	0x417903	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417b42	0x417b32	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417b7f	0x417b6f	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417bbc	0x417bac	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417bf9	0x417be9	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417c15	0x417c05	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417c52	0x417c42	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417d90	0x417d80	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417dcd	0x417dbd	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417e0a	0x417dfa	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417e47	0x417e37	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417e84	0x417e74	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417ec1	0x417eb1	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417efe	0x417eee	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417f3b	0x417f2b	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417f78	0x417f68	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x417fc5	0x417f89	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41825e	0x41824e	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41829b	0x41828b	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4182d8	0x4182c8	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x418311	0x418301	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41834a	0x41833a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x418383	0x418373	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4183bc	0x4183ac	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4183f5	0x4183e5	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x418431	0x418406	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4184cd	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4184f4	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41851e	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418548	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418572	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41859c	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4185c6	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4185f0	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41861a	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418644	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41866e	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418698	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4186c2	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4186ec	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41874d	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418777	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4187a1	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4187cb	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4187f5	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41881f	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418849	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418893	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4188bd	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4188e7	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418911	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x41893b	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418965	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4189d1	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4189fb	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418a25	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418a4f	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418a79	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418aa3	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418aef	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418b12	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418b35	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418b58	0x41847f	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x418beb	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x418c07	0x418bf7	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x418c28	0x418c18	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x41d1ac	0x41d17b	dispatch	KERNEL32.DLL!GetVersionExA	pass1_same_offset
+0x41d20e	0x41d17b	dispatch	KERNEL32.DLL!CreateFileW	pass1_same_offset
+0x41d229	0x41d17b	dispatch	KERNEL32.DLL!CreateFileA	pass1_same_offset
+0x41d23d	0x41d17b	dispatch	KERNEL32.DLL!CreateFileMappingA	pass1_same_offset
+0x41d251	0x41d17b	dispatch	KERNEL32.DLL!MapViewOfFile	pass1_same_offset
+0x41d261	0x41d17b	dispatch	KERNEL32.DLL!GetFileSize	pass1_same_offset
+0x41d26f	0x41d17b	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x41d2c1	0x41d28b	dispatch	KERNEL32.DLL!GetVersionExA	pass1_same_offset
+0x41d318	0x41d28b	dispatch	KERNEL32.DLL!CreateFileW	pass1_same_offset
+0x41d32c	0x41d28b	dispatch	KERNEL32.DLL!CreateFileA	pass1_same_offset
+0x41d339	0x41d28b	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x41d361	0x41d355	dispatch	KERNEL32.DLL!UnmapViewOfFile	pass1_same_offset
+0x41d3b5	0x41d3ae	dispatch	GDI32.DLL!DeleteObject	pass1_same_offset
+0x41d3c6	0x41d3bc	dispatch	GDI32.DLL!DeleteObject	pass1_same_offset
+0x41d428	0x41d3db	dispatch	KERNEL32.DLL!SizeofResource	pass1_same_offset
+0x41d439	0x41d3db	dispatch	KERNEL32.DLL!LoadResource	pass1_same_offset
+0x41d446	0x41d3db	dispatch	KERNEL32.DLL!LockResource	pass1_same_offset
+0x41d453	0x41d3db	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x41dc90	0x41dc79	dispatch	ADVAPI32.DLL!RegOpenKeyA	pass1_same_offset
+0x41dcae	0x41dc79	dispatch	ADVAPI32.DLL!RegQueryValueExA	pass1_same_offset
+0x41dcb9	0x41dc79	dispatch	ADVAPI32.DLL!RegCloseKey	pass1_same_offset
+0x41dd0f	0x41dcfa	dispatch	ADVAPI32.DLL!RegOpenKeyA	pass1_same_offset
+0x41dd37	0x41dcfa	dispatch	ADVAPI32.DLL!RegQueryValueExA	pass1_same_offset
+0x41dd4f	0x41dcfa	dispatch	ADVAPI32.DLL!RegCloseKey	pass1_same_offset
+0x41dd62	0x41dcfa	dispatch	ADVAPI32.DLL!RegCloseKey	pass1_same_offset
+0x41de97	0x41de70	dispatch	KERNEL32.DLL!GetVersionExA	pass1_same_offset
+0x41df0d	0x41de70	dispatch	KERNEL32.DLL!IsProcessorFeaturePresent	pass1_same_offset
+0x41f7c6	?	stub	MSVCR70.DLL!sprintf	via stub 0x56e39e
+0x41f7de	?	stub	MSVCR70.DLL!sprintf	via stub 0x56e39e
+0x41f98f	0x41f978	stub	MSVCR70.DLL!setjmp3	via stub 0x56e814
+0x421f70	0x421ef4	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x421f81	0x421ef4	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x4220c9	0x421ef4	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x4220d1	0x421ef4	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x4221ba	0x421ef4	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x4221cb	0x421ef4	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x426bcb	0x426bb1	stub	MSVCR70.DLL!malloc	via stub 0x56e3aa
+0x426c13	0x426c00	stub	MSVCR70.DLL!malloc	via stub 0x56e3aa
+0x426c48	0x426c36	stub	MSVCR70.DLL!free	via stub 0x56e3a4
+0x4280d1	0x4280cd	stub	MSVCR70.DLL!malloc	via stub 0x56e3aa
+0x4280dc	0x4280d8	stub	MSVCR70.DLL!free	via stub 0x56e3a4
+0x4280e7	0x4280e3	stub	MSVCR70.DLL!malloc	via stub 0x56e3aa
+0x4280f2	0x4280ee	stub	MSVCR70.DLL!free	via stub 0x56e3a4
+0x4384d8	0x4384d0	stub	MSVCR70.DLL!calloc	via stub 0x56e89e
+0x4384e4	?	stub	MSVCR70.DLL!free	via stub 0x56e3a4
+0x438d85	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x438d9f	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x438dbd	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x438dd9	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x438df4	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x438e0d	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x438e29	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x438e45	0x438a93	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x43d653	?	dispatch		unresolved
+0x43d666	?	dispatch		unresolved
+0x43d695	?	dispatch		unresolved
+0x43d6f6	?	dispatch		unresolved
+0x43d71a	?	dispatch		unresolved
+0x43d7af	0x43d770	stub	BINKW32.DLL!_BinkSetSoundSystem@8	via stub 0x5707d2
+0x43d9c9	0x43d770	stub	BINKW32.DLL!_BinkSetSoundTrack@8	via stub 0x5707cc
+0x43d9ee	0x43d770	stub	BINKW32.DLL!_BinkOpen@8	via stub 0x5707c6
+0x43da60	0x43d770	stub	BINKW32.DLL!_BinkOpen@8	via stub 0x5707c6
+0x43da85	0x43d770	dispatch	MSVCR70.DLL!exit	pass1_same_offset
+0x43da9c	0x43d770	stub	BINKW32.DLL!_BinkSetSoundOnOff@8	via stub 0x5707c0
+0x43dcfa	0x43dcf0	stub	BINKW32.DLL!_BinkClose@4	via stub 0x5707de
+0x43df70	0x43ded0	stub	BINKW32.DLL!_BinkPause@8	via stub 0x5707fc
+0x43df9f	0x43ded0	dispatch	KERNEL32.DLL!Sleep	pass1_same_offset
+0x43dff3	0x43ded0	stub	BINKW32.DLL!_BinkPause@8	via stub 0x5707fc
+0x43dfff	0x43ded0	stub	BINKW32.DLL!_BinkWait@4	via stub 0x5707f6
+0x43e0c0	0x43ded0	stub	BINKW32.DLL!_BinkDoFrame@4	via stub 0x5707f0
+0x43e0de	0x43ded0	stub	BINKW32.DLL!_BinkNextFrame@4	via stub 0x5707ea
+0x43e14b	0x43ded0	stub	BINKW32.DLL!_BinkCopyToBuffer@28	via stub 0x5707e4
+0x43e6aa	0x43ded0	dispatch	MSVCR70.DLL!exit	pass1_same_offset
+0x43e6bd	0x43ded0	stub	BINKW32.DLL!_BinkClose@4	via stub 0x5707de
+0x43e6ea	0x43ded0	dispatch	MSVCR70.DLL!exit	pass1_same_offset
+0x43e708	0x43ded0	stub	BINKW32.DLL!_BinkClose@4	via stub 0x5707de
+0x43e7d6	?	dispatch		unresolved
+0x43e7ef	?	dispatch		unresolved
+0x43e7f6	?	dispatch		unresolved
+0x43e8b8	0x43e810	dispatch	MSVCR70.DLL!fwrite	pass1_same_offset
+0x43e8bf	0x43e810	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x43e957	0x43e930	dispatch	MSVCR70.DLL!fread	pass1_same_offset
+0x43e95e	0x43e930	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x441f74	0x441e80	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x444a43	0x4449f0	dispatch	KERNEL32.DLL!OutputDebugStringA	pass3_anchor_offset
+0x444abc	0x444a70	dispatch	KERNEL32.DLL!OutputDebugStringA	pass3_anchor_offset
+0x444af5	0x444a70	dispatch		unresolved
+0x444d28	0x444b20	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x44513b	0x445030	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x4452e1	0x445220	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x446b77	0x446b50	dispatch	MSVCR70.DLL!vsprintf	pass1_same_offset
+0x447938	0x447910	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x448434	0x448420	dispatch	MSVCR70.DLL!floor	pass1_same_offset
+0x448a7e	?	dispatch		unresolved
+0x448aab	?	dispatch		unresolved
+0x448abb	?	dispatch		unresolved
+0x448b41	?	dispatch		unresolved
+0x448b7d	?	dispatch		unresolved
+0x448b98	?	dispatch		unresolved
+0x448bb9	?	dispatch		unresolved
+0x448bc7	?	dispatch		unresolved
+0x448e90	?	dispatch		unresolved
+0x448ef3	0x448ea0	dispatch	KERNEL32.DLL!DeleteFileA	pass2_order_aligned
+0x449189	0x449150	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x4491dd	0x449150	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x449509	0x449500	dispatch	KERNEL32.DLL!GetLocalTime	pass1_same_offset
+0x449792	0x449720	dispatch	KERNEL32.DLL!DeleteFileA	pass1_same_offset
+0x44979c	0x449720	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x4497ac	0x449720	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x44983c	0x449820	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4498c8	0x4498c0	dispatch	KERNEL32.DLL!SetFileAttributesA	pass1_same_offset
+0x4498d7	0x4498c0	dispatch	KERNEL32.DLL!DeleteFileA	pass1_same_offset
+0x4498f5	0x4498c0	dispatch	KERNEL32.DLL!DeleteFileA	pass1_same_offset
+0x449906	0x4498c0	dispatch	MSVCR70.DLL!_strnicmp	pass1_same_offset
+0x449964	0x449940	dispatch	KERNEL32.DLL!GetOverlappedResult	pass1_same_offset
+0x449982	0x449940	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x4499b0	0x449940	dispatch	KERNEL32.DLL!DeleteFileA	pass1_same_offset
+0x449aa9	0x449a60	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x449b30	0x449a60	dispatch	KERNEL32.DLL!FindNextFileA	pass1_same_offset
+0x449b3b	0x449a60	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x449bf7	0x449b90	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x449c5c	0x449b90	dispatch	MSVCR70.DLL!qsort	pass1_same_offset
+0x449ca7	0x449b90	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x449ea9	?	dispatch		unresolved
+0x449f48	0x449ec0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x44a116	0x44a0e0	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x44a12a	0x44a0e0	dispatch	KERNEL32.DLL!ReleaseMutex	pass1_same_offset
+0x44a1bc	0x44a140	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x44a1d3	0x44a140	dispatch	MSVCR70.DLL!fseek	pass1_same_offset
+0x44a1e6	0x44a140	dispatch	MSVCR70.DLL!fread	pass1_same_offset
+0x44a1f4	0x44a140	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x44a225	0x44a140	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x44a296	0x44a250	dispatch	KERNEL32.DLL!CreateFileA	pass1_same_offset
+0x44a2c3	0x44a250	dispatch	KERNEL32.DLL!GetFileSize	pass1_same_offset
+0x44a2cc	0x44a250	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x44a350	0x44a300	dispatch	KERNEL32.DLL!CopyFileA	pass1_same_offset
+0x44a3ac	0x44a3a0	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x44a3b2	0x44a3a0	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x44a497	0x44a3a0	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x44a4a8	0x44a3a0	dispatch	KERNEL32.DLL!Sleep	pass1_same_offset
+0x44a4e0	0x44a3a0	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x44a507	0x44a3a0	dispatch	KERNEL32.DLL!Sleep	pass1_same_offset
+0x44a54a	0x44a510	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x44a560	0x44a510	dispatch	MSVCR70.DLL!_beginthread	pass1_same_offset
+0x44a5a8	?	dispatch		unresolved
+0x44a5b5	?	dispatch		unresolved
+0x44a629	0x44a5c0	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x44a636	0x44a5c0	dispatch	KERNEL32.DLL!ReleaseMutex	pass1_same_offset
+0x44a688	0x44a650	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x44a694	0x44a650	dispatch	KERNEL32.DLL!ReleaseMutex	pass1_same_offset
+0x44a70d	0x44a6b0	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x44a71a	0x44a6b0	dispatch	KERNEL32.DLL!ReleaseMutex	pass1_same_offset
+0x44afe8	?	dispatch		unresolved
+0x44aff8	?	dispatch		unresolved
+0x44b09f	0x44b080	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x44b0cb	0x44b0b0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x44b222	0x44b1f0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x44b260	0x44b250	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x44b56a	0x44b470	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x44b58b	0x44b580	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x44b624	0x44b5f0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x44b6f4	0x44b6c0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x44bbc0	0x44bbc0	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x44bbee	?	dispatch		unresolved
+0x44bc73	?	dispatch		unresolved
+0x44bdb0	0x44bcc0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x44be42	0x44bcc0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x44cafb	0x44ca20	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x44ce9d	0x44ce90	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x44e065	0x44e030	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x44f391	0x44f000	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x44fc21	0x44f4d0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x44fe10	0x44fd70	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x4515ed	0x451510	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x451b6f	0x451ab0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x451e00	0x451ab0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x452226	0x452040	dispatch	KERNEL32.DLL!GetLocalTime	pass1_same_offset
+0x452236	0x452040	dispatch	KERNEL32.DLL!SystemTimeToFileTime	pass1_same_offset
+0x4522ca	0x452040	dispatch	KERNEL32.DLL!GetLocalTime	pass1_same_offset
+0x4522da	0x452040	dispatch	KERNEL32.DLL!SystemTimeToFileTime	pass1_same_offset
+0x4525cd	0x452560	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x4526f8	0x452560	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x4529ee	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452a7b	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452ab6	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452b65	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452be2	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452d26	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452d90	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452e82	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x452ec0	0x452890	dispatch	MSVCR70.DLL!sprintf	pass3_anchor_offset
+0x453137	0x4530a0	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x4532d0	0x4530a0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4532f9	0x4530a0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x453312	0x4530a0	dispatch	WINMM.DLL!timeGetTime	pass1_same_offset
+0x455e13	0x455d30	dispatch	KERNEL32.DLL!SystemTimeToFileTime	pass1_same_offset
+0x45602b	0x456000	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x456057	0x456000	dispatch	KERNEL32.DLL!DeleteFileA	pass1_same_offset
+0x4560eb	0x4560c0	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x456126	0x4560c0	dispatch	KERNEL32.DLL!CreateFileA	pass1_same_offset
+0x456171	0x4560c0	dispatch	KERNEL32.DLL!GetFileSize	pass1_same_offset
+0x456183	0x4560c0	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x45623e	?	dispatch		unresolved
+0x456287	0x456260	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4562c6	0x456260	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x45636b	0x456340	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x4563a6	0x456340	dispatch	KERNEL32.DLL!CreateFileA	pass1_same_offset
+0x456437	0x456420	dispatch	KERNEL32.DLL!WriteFile	pass1_same_offset
+0x4564b6	?	dispatch		unresolved
+0x45650b	0x4564e0	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x456546	0x4564e0	dispatch	KERNEL32.DLL!CreateFileA	pass1_same_offset
+0x456591	0x4564e0	dispatch	KERNEL32.DLL!GetFileSize	pass1_same_offset
+0x4565d2	0x4565c0	dispatch	KERNEL32.DLL!ReadFile	pass1_same_offset
+0x4565e7	0x4565c0	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x456656	?	dispatch		unresolved
+0x4566b7	0x456680	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4566fa	0x456680	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4567bf	0x456790	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x4567d5	0x456790	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x45682a	0x456790	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x456874	0x456850	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x4568c9	0x456850	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x4568fb	0x4568f0	dispatch	MSVCR70.DLL!wcslen	pass1_same_offset
+0x456917	0x4568f0	dispatch	MSVCR70.DLL!iswascii	pass1_same_offset
+0x456977	?	dispatch		unresolved
+0x456a5c	0x456a10	dispatch	KERNEL32.DLL!MultiByteToWideChar	pass1_same_offset
+0x456a79	0x456a10	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x456a9c	0x456a10	dispatch	KERNEL32.DLL!CreateDirectoryA	pass1_same_offset
+0x456aa8	0x456a10	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x456b41	0x456ad0	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x456bdf	0x456b70	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x456c53	0x456c00	dispatch	KERNEL32.DLL!MultiByteToWideChar	pass1_same_offset
+0x456c87	0x456c00	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x456cc4	0x456c00	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x456cd0	0x456c00	dispatch	KERNEL32.DLL!FindNextFileA	pass1_same_offset
+0x456d0b	0x456c00	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x456d17	0x456c00	dispatch	KERNEL32.DLL!FindNextFileA	pass1_same_offset
+0x456d22	0x456c00	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x456d43	0x456c00	dispatch	KERNEL32.DLL!RemoveDirectoryA	pass1_same_offset
+0x456d4d	0x456c00	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x456dfd	?	dispatch		unresolved
+0x456ec4	0x456e60	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x456eda	0x456e60	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x456f16	0x456e60	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x456fbd	0x456f40	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x456fe1	0x456f40	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x45701c	0x456f40	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x457032	0x456f40	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x457046	0x456f40	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x457107	0x456f40	dispatch	KERNEL32.DLL!FindNextFileA	pass1_same_offset
+0x45711a	0x456f40	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x45717a	0x457140	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4571ad	0x457140	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4571fc	0x457140	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x457212	0x457140	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x4572a8	0x457140	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x4572db	0x457140	dispatch	KERNEL32.DLL!FindNextFileA	pass1_same_offset
+0x4572ee	0x457140	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x45733f	0x457310	dispatch	KERNEL32.DLL!GetDiskFreeSpaceExA	pass1_same_offset
+0x4573f5	0x4573d0	dispatch	KERNEL32.DLL!CreateDirectoryA	pass1_same_offset
+0x4573ff	0x4573d0	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x457a4c	0x457a30	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x457a7d	0x457a30	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x458524	0x4584c0	dispatch	MSVCR70.DLL!wcslen	pass1_same_offset
+0x45856e	0x4584c0	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x459474	0x459320	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x459604	0x4595e0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x45969e	0x459680	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4598c9	?	dispatch		unresolved
+0x459975	0x459930	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e
+0x459ee0	0x459e60	dispatch	MSVCR70.DLL!floor	pass1_same_offset
+0x459f36	0x459e60	dispatch	MSVCR70.DLL!floor	pass1_same_offset
+0x459f5b	0x459e60	dispatch	MSVCR70.DLL!floor	pass1_same_offset
+0x45a6ae	0x45a650	dispatch	KERNEL32.DLL!CreateEventA	pass1_same_offset
+0x45a71f	0x45a650	dispatch	USER32.DLL!LoadCursorA	pass1_same_offset
+0x45aab0	0x45aa80	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x45aacd	0x45aa80	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x45aba3	0x45ab30	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x45ac19	0x45abe0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x45ac36	0x45abe0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x45b2cc	0x45b250	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x45b84d	0x45b840	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e
+0x45b88d	0x45b880	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e
+0x462707	0x461600	dispatch	MSVCR70.DLL!sprintf	pass2_order_aligned
+0x464c34	0x4630c0	dispatch		unresolved
+0x46f96e	0x46f180	dispatch	MSVCR70.DLL!srand	pass1_same_offset
+0x4761a7	0x4761a0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x47620a	0x476200	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x476def	?	dispatch		unresolved
+0x47d2ad	0x47d240	dispatch	MSVCR70.DLL!calloc	pass1_same_offset
+0x47d33b	0x47d2f0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x47d98b	0x47d920	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x47d9ca	0x47d920	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x47e37f	0x47e370	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x47e401	0x47e3a0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x47e452	0x47e3a0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x480d63	0x480d30	dispatch	MSVCR70.DLL!vsprintf	pass1_same_offset
+0x480f67	0x480ea0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48c9e8	0x48c9d0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48e9f5	0x48e520	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48ea11	0x48e520	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48ec40	0x48eac0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48f557	0x48f4b0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48fa4d	0x48f9d0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48fbdb	0x48fb40	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48ff08	0x48fed0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x48ffcb	0x48fed0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x49004a	0x48fed0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x490e6a	0x490e60	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x491055	0x491030	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4919dc	?	dispatch		unresolved
+0x491aaa	0x491a30	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x491aeb	0x491a30	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x491bdb	0x491b40	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x491c3a	0x491b40	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x491ca4	0x491b40	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x491d08	0x491b40	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x491d9a	0x491b40	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x491f3b	0x491ea0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4920ea	0x491ea0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4922c6	0x492180	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4922f4	0x492180	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x492486	0x492180	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4926ce	0x492580	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x492711	0x492580	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x492754	0x492580	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x492797	0x492580	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x49293c	0x492870	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x492962	0x492870	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x492a9f	0x492a50	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x492b07	0x492a50	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x492fe6	0x492f70	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4930c8	0x492f70	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4932d4	0x493260	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x49338c	0x493260	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x493740	0x493430	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4954ec	0x495370	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x495f96	0x495f60	dispatch	MSVCR70.DLL!printf	pass2_order_aligned
+0x496048	0x496020	dispatch	MSVCR70.DLL!printf	pass2_order_aligned
+0x4960b8	0x4960a0	dispatch	MSVCR70.DLL!printf	pass2_order_aligned
+0x4969a4	0x496970	dispatch		unresolved
+0x4973eb	?	dispatch		unresolved
+0x4974ba	?	dispatch		unresolved
+0x4974e7	?	dispatch		unresolved
+0x497509	?	dispatch		unresolved
+0x49752b	?	dispatch		unresolved
+0x49753b	?	dispatch		unresolved
+0x49799d	?	dispatch		unresolved
+0x497b86	?	dispatch		unresolved
+0x497f8e	?	dispatch		unresolved
+0x4982ce	?	dispatch		unresolved
+0x498332	?	dispatch		unresolved
+0x498b8a	0x498b70	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x49e70b	0x49e6a0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x49f4c3	?	dispatch	MSVCR70.DLL!qsort	pass3_anchor_offset
+0x4a0b96	0x4a0b30	dispatch	MSVCR70.DLL!strncmp	pass1_same_offset
+0x4a0bb2	0x4a0b30	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4a0ca8	0x4a0b30	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4a0cc0	0x4a0b30	dispatch	MSVCR70.DLL!strncpy	pass1_same_offset
+0x4a0de7	0x4a0b30	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4a1d24	0x4a1c80	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4a2201	0x4a21e0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4aa743	0x4aa5e0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4c8093	0x4c8070	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4c80e9	0x4c8070	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4c882e	?	dispatch		unresolved
+0x4c8883	?	dispatch		unresolved
+0x4c88f5	0x4c88f0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4c8915	0x4c8910	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4c895d	0x4c8950	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4c89fd	0x4c89e0	dispatch	exception!exception	pass1_same_offset
+0x4c8a19	0x4c89e0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4c8a6e	0x4c8a40	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4c8a7e	0x4c8a40	dispatch	exception!~exception	pass1_same_offset
+0x4c8ac0	0x4c8ab0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c8b00	0x4c8af0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c8b50	0x4c8b40	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c8d05	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c8e1b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4c90cb	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4c9190	0x4c9170	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c91c2	0x4c91c0	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4c9231	0x4c9200	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4c9243	0x4c9200	dispatch	exception!exception	pass1_same_offset
+0x4c925f	0x4c9200	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4c927c	0x4c9200	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4c9499	0x4c9200	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c94f3	0x4c94d0	dispatch	exception!exception	pass1_same_offset
+0x4c950e	0x4c94d0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4c9552	0x4c9550	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4c968d	0x4c9660	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4c969f	0x4c9660	dispatch	exception!exception	pass1_same_offset
+0x4c96bb	0x4c9660	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4c96d8	0x4c9660	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4c99b1	0x4c9950	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c9b0b	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c9beb	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4c9c1b	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4cda7b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4cda9a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4cf0fb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4cf11a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d026b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d028a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d58cb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d58ea	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d67db	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d67fa	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d7f8b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4d7faa	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4db35b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4db37a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4dc10b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4dc12a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e0ceb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e0d0a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e0f7f	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e0fa7	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e1031	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e1059	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e1156	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e117e	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e18ab	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e18ca	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e2e0b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e2e2a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e353b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e355a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e3bdb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e3bfa	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e415b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e417a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e464b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e466a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e4d1b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e4d3a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e54ab	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e54ca	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e5c1b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e5c3a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e63eb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e640a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e6b5b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e6b7a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e726b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e728a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e77bb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e77da	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e80fb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e811a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8362	?	dispatch		unresolved
+0x4e881b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e883a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e89c6	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e89ee	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8a78	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8aa0	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8b9f	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8bc7	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8dab	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8dca	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8f56	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e8f7e	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e9008	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e9030	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e912f	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e9157	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e938b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e93aa	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e97cb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4e97ea	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea04b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea06a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea1f6	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea21e	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea2a8	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea2d0	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea3cf	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea3f7	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea66b	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ea68a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eaecb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eaeea	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb076	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb09e	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb128	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb150	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb24f	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb277	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb3eb	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4eb40a	?	stub	MSVCR70.DLL!_CIfmod	via stub 0x56e38c
+0x4ee49e	0x4ee470	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4ee53e	0x4ee510	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4eeb16	?	dispatch		unresolved
+0x4eec30	0x4eec20	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4eec41	0x4eec20	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4eec77	0x4eec20	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4ef64c	0x4ef640	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4ef660	0x4ef640	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4ef775	0x4ef640	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4ef855	0x4ef790	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4f1427	0x4f1420	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4f143b	0x4f1420	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4f184d	0x4f1820	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4f1b12	0x4f1970	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4f1bf9	?	dispatch	MSVCR70.DLL!printf	pass3_anchor_offset
+0x4f1c21	?	dispatch	MSVCR70.DLL!printf	pass3_anchor_offset
+0x4f279a	0x4f2790	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4f27ae	0x4f2790	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4f2afc	?	dispatch	MSVCR70.DLL!printf	pass3_anchor_offset
+0x4f355b	0x4f3550	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x4f356b	0x4f3550	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x4f36c8	0x4f36b0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4f3738	0x4f3720	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4f39c5	?	dispatch		unresolved
+0x4f3a1a	?	dispatch		unresolved
+0x4f5a92	0x4f5a60	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x4f5e3e	0x4f5a60	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x4f5e94	0x4f5e80	stub	D3D8.DLL!Direct3DCreate8	via stub 0x56ed00
+0x4f67f5	0x4f67f0	dispatch	KERNEL32.DLL!QueryPerformanceFrequency	pass1_same_offset
+0x4f6800	0x4f67f0	dispatch	KERNEL32.DLL!QueryPerformanceCounter	pass1_same_offset
+0x4f6a6e	?	dispatch		unresolved
+0x4f6b4b	0x4f6ae0	dispatch	KERNEL32.DLL!GlobalMemoryStatus	pass1_same_offset
+0x4f6bf2	0x4f6b80	dispatch		unresolved
+0x4f6c09	0x4f6b80	dispatch		unresolved
+0x4f6c20	0x4f6b80	dispatch		unresolved
+0x4f6c37	0x4f6b80	dispatch		unresolved
+0x4f6c4e	0x4f6b80	dispatch		unresolved
+0x4f6cc0	0x4f6cc0	dispatch		unresolved
+0x4f712b	0x4f7120	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x4f7147	0x4f7120	dispatch	MSVCR70.DLL!fprintf	pass1_same_offset
+0x4f714e	0x4f7120	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x4f716b	0x4f7160	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x4f7180	0x4f7160	dispatch	MSVCR70.DLL!fprintf	pass1_same_offset
+0x4f7187	0x4f7160	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x4f71ab	0x4f71a0	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x4f728b	0x4f71a0	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x4f72ab	0x4f72a0	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x4f736b	0x4f72a0	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x4f7485	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f74c1	0x4f74a0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f74d3	0x4f74a0	dispatch	exception!exception	pass3_anchor_offset
+0x4f74ef	0x4f74a0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f750c	0x4f74a0	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f75d5	0x4f75d0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f7715	0x4f7710	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f77b8	?	dispatch		unresolved
+0x4f7841	0x4f7820	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f7853	0x4f7820	dispatch	exception!exception	pass3_anchor_offset
+0x4f786f	0x4f7820	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f788c	0x4f7820	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f7911	0x4f78f0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f7923	0x4f78f0	dispatch	exception!exception	pass3_anchor_offset
+0x4f793f	0x4f78f0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f795c	0x4f78f0	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f7985	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f7a01	0x4f79e0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f7a13	0x4f79e0	dispatch	exception!exception	pass3_anchor_offset
+0x4f7a2f	0x4f79e0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x4f7a4c	0x4f79e0	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f7b35	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f7bca	?	dispatch		unresolved
+0x4f7be5	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f7dc9	?	dispatch		unresolved
+0x4f7ecc	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f7eec	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f7f0b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f7f2b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f7f9b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f7feb	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f83bc	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f8409	0x4f83d0	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f85fc	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f864b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f869b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f89eb	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f8a4b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f8a83	?	dispatch		unresolved
+0x4f8b10	0x4f8b00	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f8e79	0x4f8e40	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f8edb	0x4f8ea0	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f8f3b	0x4f8f00	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f8fe5	0x4f8fe0	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f9052	0x4f9050	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f90b3	0x4f9090	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f90ec	0x4f9090	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4f911b	0x4f9117	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9127	?	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f94bd	0x4f9490	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4f94cf	0x4f9490	dispatch	exception!exception	pass1_same_offset
+0x4f94eb	0x4f9490	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4f9508	0x4f9490	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f96b1	0x4f9680	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4f96c3	0x4f9680	dispatch	exception!exception	pass1_same_offset
+0x4f96df	0x4f9680	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4f96fc	0x4f9680	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f991b	0x4f9680	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4f9926	0x4f9680	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9acb	0x4f9ac0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9b3b	0x4f9b30	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9c37	0x4f9c10	dispatch	std!operator<	pass1_same_offset
+0x4f9c9d	0x4f9c10	dispatch	std!operator<	pass1_same_offset
+0x4f9d17	0x4f9cf0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9d3b	0x4f9d30	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9dec	0x4f9de0	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4f9ee2	0x4f9e00	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4f9f6d	0x4f9e00	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9f9d	0x4f9f99	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4f9fa9	?	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fa0bb	0x4fa0b0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa0eb	0x4fa0e0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa134	0x4fa110	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fa163	0x4fa110	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fa23c	0x4fa230	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fa281	0x4fa250	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa345	0x4fa250	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa46c	0x4fa390	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4fa4f7	0x4fa390	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa527	0x4fa523	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa533	?	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fa68b	0x4fa680	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa86b	0x4fa840	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fa87e	0x4fa840	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fa8ab	0x4fa840	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fa8c6	0x4fa840	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fa91e	0x4fa910	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fa981	0x4fa950	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4faa45	0x4fa950	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fab6b	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fad00	0x4facf0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fad9b	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4faeab	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4faf7c	0x4faf63	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fafa1	0x4faf63	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fb02c	0x4fb013	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fb051	0x4fb013	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fb0d7	0x4fb0bd	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fb0fc	0x4fb0bd	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fb40f	0x4fb2c0	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4fb4bd	0x4fb2c0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fb4f1	0x4fb4e0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fb4fd	?	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fb5c3	0x4fb5a2	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fb641	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fb708	0x4fb6e0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fb7ca	0x4fb7be	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fba58	0x4fb900	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fbb6c	0x4fbb50	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fbb8e	0x4fbb50	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fbd50	0x4fbd40	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fbecb	0x4fbeac	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fbf6b	0x4fbf4c	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fc068	0x4fc049	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fc1b8	0x4fc190	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fc2aa	0x4fc29e	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fc3ca	0x4fc2b0	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4fc478	0x4fc2b0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fc4ac	0x4fc49b	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fc4b8	?	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fc57e	0x4fc55d	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fc78e	0x4fc780	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fc918	0x4fc7c0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fc9fe	0x4fc9f0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fca7e	0x4fca70	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fcb70	0x4fcb60	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fcba6	0x4fcb80	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x4fcc13	0x4fcc0f	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fcc1f	?	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fcc6d	0x4fcc40	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fcc7f	0x4fcc40	dispatch	exception!exception	pass1_same_offset
+0x4fcc9b	0x4fcc40	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fccb8	0x4fcc40	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fce64	0x4fce30	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fce76	0x4fce30	dispatch	exception!exception	pass1_same_offset
+0x4fce92	0x4fce30	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fceaf	0x4fce30	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x4fd1db	0x4fce30	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fd30a	0x4fd2e0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fd3d1	0x4fd330	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fd5d5	0x4fd4f0	dispatch	MSVCR70.DLL!strtoul	pass1_same_offset
+0x4fd928	0x4fd4f0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fd95b	0x4fd4f0	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass1_same_offset
+0x4fd97b	0x4fd4f0	dispatch	MSVCR70.DLL!strtoul	pass1_same_offset
+0x4fd9db	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fda17	0x4fd9f0	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x4fda61	0x4fd9f0	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x4fdae8	0x4fdac0	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x4fdb4a	0x4fdac0	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x4fdbbb	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fdbeb	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x4fddfc	0x4fddf0	dispatch	MSVCR70.DLL!fopen	pass2_order_aligned
+0x4fde0d	0x4fddf0	dispatch	MSVCR70.DLL!fclose	pass2_order_aligned
+0x4fdecc	0x4fdec0	dispatch	MSVCR70.DLL!fopen	pass2_order_aligned
+0x4fdedd	0x4fdec0	dispatch	MSVCR70.DLL!fclose	pass2_order_aligned
+0x4fe2e1	0x4fe290	dispatch	MSVCR70.DLL!vsprintf	pass1_same_offset
+0x4fe2fb	0x4fe290	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x4fe310	0x4fe290	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x504203	0x5041a0	stub	MSVCR70.DLL!operator_new[]	via stub 0x56eac2
+0x504266	0x504220	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e
+0x5055b1	0x505590	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x5055c3	0x505590	dispatch	exception!exception	pass3_anchor_offset
+0x5055df	0x505590	dispatch	basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>	pass3_anchor_offset
+0x5055fc	0x505590	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x505625	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x5056ab	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x5057b5	0x505750	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5057c6	0x505750	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x50588b	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x5059b8	?	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x505c94	0x505b80	stub	MSVCR70.DLL!operator_new	via stub 0x56e7a6
+0x505d29	0x505b80	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x505d5c	0x505d58	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x505d68	?	stub	MSVCR70.DLL!_CxxThrowException	via stub 0x56e972
+0x505efb	0x505ef0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x505f2b	0x505f20	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x506008	?	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e
+0x506022	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x506039	?	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x50607d	0x506050	stub	MSVCR70.DLL!operator_new[]	via stub 0x56eac2
+0x5061ce	0x506050	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e
+0x5063e0	0x5061f0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x506582	0x5061f0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5065bf	0x5061f0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x506697	0x5061f0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x5066fb	0x5061f0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x506771	?	dispatch		unresolved
+0x5068f6	0x5068b0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x5069ea	0x5068b0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x506a0b	0x5068b0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x506d0b	0x506cd0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x506d26	0x506cd0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x50742d	?	dispatch		unresolved
+0x507466	?	dispatch		unresolved
+0x50752c	0x507470	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x50758d	0x507470	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5076ea	0x507650	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x507723	0x507650	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5077d5	?	dispatch		unresolved
+0x5079c6	0x507930	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x509c78	?	dispatch		unresolved
+0x50c5fc	0x50c540	dispatch	MSVCR70.DLL!qsort	pass1_same_offset
+0x50cd65	0x50ccb0	dispatch	MSVCR70.DLL!qsort	pass1_same_offset
+0x50f18a	0x50f150	stub	MSVCR70.DLL!operator_new[]	via stub 0x56eac2
+0x50f476	0x50f150	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e
+0x50f5cb	0x50f530	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x50f61e	0x50f530	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x511add	0x511ab0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x511b04	0x511ab0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5124d4	0x512480	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5125cc	0x512530	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x512670	0x512530	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x512a11	0x512970	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x512f17	0x512f10	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x512f77	0x512f10	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x512fb6	0x512fb0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5132fc	0x513210	dispatch	MSVCR70.DLL!free	pass2_order_aligned
+0x5133da	0x513210	dispatch	MSVCR70.DLL!free	pass2_order_aligned
+0x51352d	0x513210	dispatch	MSVCR70.DLL!free	pass2_order_aligned
+0x514b95	0x514b60	stub	DSOUND.DLL!DirectSoundCreate	via stub 0x56ed06
+0x514ba3	0x514b60	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x514bcf	0x514b60	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x514bd8	0x514b60	dispatch	OLE32.DLL!CoInitialize	pass1_same_offset
+0x514eb9	0x514d60	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x514f1b	0x514d60	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x516362	0x516080	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x516458	0x516080	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x516b75	0x516ae0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x516eb5	0x516e90	dispatch	KERNEL32.DLL!FindFirstFileA	pass1_same_offset
+0x516ec3	0x516e90	dispatch	KERNEL32.DLL!FindClose	pass1_same_offset
+0x516ef3	?	dispatch		unresolved
+0x516f1d	0x516f00	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x517036	0x516f00	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5171e3	0x517150	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5186c8	?	dispatch		unresolved
+0x51872a	?	dispatch	KERNEL32.DLL!QueryPerformanceFrequency	pass3_anchor_offset
+0x5187b9	0x5187b0	dispatch	MSVCR70.DLL!_beginthread	pass1_same_offset
+0x518add	0x5187e0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51956b	?	dispatch		unresolved
+0x519c18	0x519ae0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x519dec	0x519d70	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51a211	0x51a1d0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51b9cc	0x51b5a0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51bdc9	0x51bd50	dispatch	MSVCR70.DLL!ceil	pass1_same_offset
+0x51c4e2	0x51c230	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51c7b4	0x51c710	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51c886	0x51c850	dispatch	MSVCR70.DLL!ceil	pass1_same_offset
+0x51d836	0x51d220	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51d9bd	0x51d850	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51dbe5	0x51d9e0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51e3c8	0x51e280	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51ee7c	0x51ed10	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51f0db	0x51eea0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51f544	0x51f300	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x51f6fe	0x51f660	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x522e7a	0x522de0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x522ea9	0x522e90	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5230d4	0x5230b0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x523493	0x523280	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x525010	0x524f70	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x52512a	0x525030	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5278f3	0x5278c0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5280ba	0x527e60	dispatch	MSVCR70.DLL!printf	pass2_order_aligned
+0x5377b9	0x5377a0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5384b1	0x538470	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x538a85	0x538920	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x539154	0x539140	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x53a303	0x53a270	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5544e7	?	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x5570cb	0x5569b0	dispatch	MSVCR70.DLL!printf	pass1_same_offset
+0x558e94	?	dispatch	MSVCR70.DLL!printf	pass3_anchor_offset
+0x558fc8	?	dispatch	MSVCR70.DLL!printf	pass3_anchor_offset
+0x55a4b9	0x55a300	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x55ab5f	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x55ac2a	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x55aea0	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x55b29d	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x55b3be	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x55c0a1	?	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55c2aa	?	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55c54c	?	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55c65e	0x55c5c0	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55cbd0	?	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55d845	0x55d7a0	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55d878	0x55d7a0	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55d94f	0x55d8a0	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55d98e	0x55d8a0	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55dc7b	?	dispatch	KERNEL32.DLL!GetCurrentThread	pass3_anchor_offset
+0x55dc84	?	dispatch	KERNEL32.DLL!GetThreadPriority	pass3_anchor_offset
+0x55dc93	?	dispatch	KERNEL32.DLL!SetThreadPriority	pass3_anchor_offset
+0x55dca6	?	dispatch	KERNEL32.DLL!ResumeThread	pass3_anchor_offset
+0x55dcce	?	dispatch	KERNEL32.DLL!GetCurrentThread	pass3_anchor_offset
+0x55dcdc	?	dispatch	KERNEL32.DLL!SuspendThread	pass3_anchor_offset
+0x55dcea	?	dispatch	KERNEL32.DLL!SetThreadPriority	pass3_anchor_offset
+0x55ddac	?	dispatch	KERNEL32.DLL!ExitThread	pass3_anchor_offset
+0x55de1d	?	dispatch	KERNEL32.DLL!ExitThread	pass3_anchor_offset
+0x55debf	?	dispatch	KERNEL32.DLL!ExitThread	pass3_anchor_offset
+0x55df3c	?	dispatch	KERNEL32.DLL!QueryPerformanceCounter	pass3_anchor_offset
+0x55dff6	?	dispatch	WINMM.DLL!timeKillEvent	pass3_anchor_offset
+0x55dffe	?	dispatch	WINMM.DLL!timeEndPeriod	pass3_anchor_offset
+0x55e00f	?	dispatch	WINMM.DLL!timeBeginPeriod	pass3_anchor_offset
+0x55e021	?	dispatch	WINMM.DLL!timeSetEvent	pass3_anchor_offset
+0x55e03f	?	dispatch	KERNEL32.DLL!PulseEvent	pass3_anchor_offset
+0x55e097	0x55e050	dispatch	KERNEL32.DLL!QueryPerformanceFrequency	pass1_same_offset
+0x55e0b6	0x55e050	dispatch	KERNEL32.DLL!QueryPerformanceCounter	pass1_same_offset
+0x55e0e1	0x55e050	dispatch	KERNEL32.DLL!CreateEventA	pass1_same_offset
+0x55e0f7	0x55e050	dispatch	WINMM.DLL!timeBeginPeriod	pass1_same_offset
+0x55e107	0x55e050	dispatch	WINMM.DLL!timeSetEvent	pass1_same_offset
+0x55e224	0x55e050	dispatch	KERNEL32.DLL!GetVersionExA	pass1_same_offset
+0x55e2a8	0x55e2a0	dispatch	KERNEL32.DLL!WaitForSingleObject	pass1_same_offset
+0x55e318	0x55e2b0	dispatch		unresolved
+0x55e370	0x55e2b0	dispatch		unresolved
+0x55e3d8	0x55e2b0	dispatch		unresolved
+0x55e410	0x55e2b0	dispatch		unresolved
+0x55e4a0	?	dispatch	KERNEL32.DLL!ExitThread	pass3_anchor_offset
+0x55e4e7	0x55e4b0	dispatch	KERNEL32.DLL!CreateThread	pass1_same_offset
+0x55e4f5	0x55e4b0	dispatch	KERNEL32.DLL!SetThreadPriority	pass1_same_offset
+0x55e508	0x55e4b0	dispatch	KERNEL32.DLL!GetVersionExA	pass1_same_offset
+0x55e51e	0x55e4b0	dispatch	KERNEL32.DLL!SetThreadPriorityBoost	pass1_same_offset
+0x55e52b	0x55e4b0	dispatch	KERNEL32.DLL!ResumeThread	pass1_same_offset
+0x55e595	0x55e540	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x55e60f	?	dispatch		unresolved
+0x55e622	?	dispatch		unresolved
+0x55e636	?	dispatch		unresolved
+0x55e6a6	?	dispatch		unresolved
+0x55e6af	?	dispatch		unresolved
+0x55e95f	0x55e950	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55e99f	0x55e990	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x55e9b3	0x55e990	stub	MSVCR70.DLL!strncat	via stub 0x56eb14
+0x55ea7d	0x55ea50	stub	MSVCR70.DLL!strncat	via stub 0x56eb14
+0x55fa5c	0x55f9e0	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x5612e1	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x562caf	0x562bd0	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x562cb7	0x562bd0	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5637b5	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5637cb	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x563e75	?	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x563ef1	?	stub	MSVCR70.DLL!strncmp	via stub 0x56e960
+0x563f05	?	stub	MSVCR70.DLL!strncmp	via stub 0x56e960
+0x564037	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x564074	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56409e	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5640ad	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56424d	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56425f	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5642d4	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5642e6	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x564328	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x564337	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x564347	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x564356	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56450f	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56458f	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5645d7	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5645e6	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5645f6	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x564605	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x5652d0	0x5652b0	stub	MSVCR70.DLL!strncmp	via stub 0x56e960
+0x565375	?	stub	MSVCR70.DLL!strncmp	via stub 0x56e960
+0x565423	0x565410	stub	MSVCR70.DLL!strncmp	via stub 0x56e960
+0x565be2	?	stub	MSVCR70.DLL!strncmp	via stub 0x56e960
+0x565e94	?	stub	MSVCR70.DLL!strncmp	via stub 0x56e960
+0x566702	0x5666c0	stub	MSVCR70.DLL!sprintf	via stub 0x56e39e
+0x56677b	0x566750	dispatch	KERNEL32.DLL!GetFullPathNameA	pass1_same_offset
+0x566786	0x566750	dispatch	KERNEL32.DLL!lstrlenA	pass1_same_offset
+0x5667f8	0x5667c0	dispatch	KERNEL32.DLL!GetVersionExA	pass1_same_offset
+0x566883	0x566870	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x56689c	0x566870	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x5668a4	0x566870	dispatch	KERNEL32.DLL!lstrcatA	pass1_same_offset
+0x5668c8	0x566870	dispatch	KERNEL32.DLL!lstrcatA	pass1_same_offset
+0x5668dd	0x566870	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x5668e5	0x566870	dispatch	KERNEL32.DLL!lstrcatA	pass1_same_offset
+0x5668f3	0x566870	dispatch	KERNEL32.DLL!lstrcatA	pass1_same_offset
+0x56693e	0x566910	dispatch	KERNEL32.DLL!QueryPerformanceFrequency	pass1_same_offset
+0x5669a5	0x566910	dispatch	KERNEL32.DLL!QueryPerformanceFrequency	pass1_same_offset
+0x566a81	0x566a60	dispatch	KERNEL32.DLL!GetOverlappedResult	pass1_same_offset
+0x566a8b	0x566a60	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x566ae2	0x566a60	dispatch	USER32.DLL!wsprintfA	pass1_same_offset
+0x566cc1	0x566c70	dispatch	KERNEL32.DLL!ReadFile	pass1_same_offset
+0x566cd5	0x566c70	dispatch	KERNEL32.DLL!SetFilePointer	pass1_same_offset
+0x566cea	0x566c70	dispatch	KERNEL32.DLL!ReadFile	pass1_same_offset
+0x566d28	0x566c70	dispatch	KERNEL32.DLL!GetLastError	pass1_same_offset
+0x566d8f	0x566c70	dispatch	USER32.DLL!wsprintfA	pass1_same_offset
+0x566f70	0x566f60	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x566fc4	0x566f60	dispatch	KERNEL32.DLL!CreateEventA	pass1_same_offset
+0x566fdd	0x566fd0	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x567098	?	dispatch	KERNEL32.DLL!lstrcpyA	pass3_anchor_offset
+0x567661	0x567630	dispatch	KERNEL32.DLL!CreateFileA	pass2_order_aligned
+0x56766e	0x567630	dispatch	KERNEL32.DLL!GetLastError	pass2_order_aligned
+0x567680	0x567630	dispatch	USER32.DLL!wsprintfA	pass2_order_aligned
+0x5676bd	0x5676b0	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x5676ec	?	dispatch		unresolved
+0x567702	?	dispatch		unresolved
+0x567729	?	dispatch		unresolved
+0x567757	0x567750	dispatch	KERNEL32.DLL!GetFileSize	pass1_same_offset
+0x5677d2	0x5677b0	stub	MSVCR70.DLL!sprintf	via stub 0x56e39e
+0x5677f7	0x5677b0	stub	MSVCR70.DLL!sprintf	via stub 0x56e39e
+0x567817	0x5677b0	stub	MSVCR70.DLL!strtoul	via stub 0x56eab0
+0x56783f	0x5677b0	stub	MSVCR70.DLL!strtoul	via stub 0x56eab0
+0x567e5e	0x567e50	dispatch	KERNEL32.DLL!lstrlenA	pass1_same_offset
+0x567f39	0x567ef0	dispatch	KERNEL32.DLL!GetVersionExA	pass1_same_offset
+0x567ff8	0x567fc0	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x568020	0x567fc0	dispatch	KERNEL32.DLL!lstrlenA	pass1_same_offset
+0x568132	0x568070	dispatch	KERNEL32.DLL!lstrlenA	pass1_same_offset
+0x5681e8	?	dispatch		unresolved
+0x568296	0x568280	dispatch	KERNEL32.DLL!HeapCreate	pass1_same_offset
+0x5682bd	0x568280	dispatch	KERNEL32.DLL!HeapAlloc	pass1_same_offset
+0x56837c	0x568370	dispatch	KERNEL32.DLL!CloseHandle	pass1_same_offset
+0x5683cf	0x5683a0	dispatch	KERNEL32.DLL!HeapFree	pass1_same_offset
+0x5683d6	0x5683a0	dispatch	KERNEL32.DLL!HeapDestroy	pass1_same_offset
+0x568425	0x568420	dispatch	KERNEL32.DLL!lstrlenA	pass1_same_offset
+0x5684bb	?	dispatch	KERNEL32.DLL!CreateFileA	pass3_anchor_offset
+0x568550	?	dispatch	KERNEL32.DLL!lstrcpyA	pass3_anchor_offset
+0x568575	?	dispatch	USER32.DLL!wsprintfA	pass3_anchor_offset
+0x568787	0x568700	dispatch	KERNEL32.DLL!lstrcmpiA	pass1_same_offset
+0x568988	?	dispatch		unresolved
+0x5689ab	?	dispatch		unresolved
+0x568a3d	?	dispatch		unresolved
+0x568a74	?	dispatch		unresolved
+0x568c5a	?	dispatch		unresolved
+0x568d1e	0x568d00	stub	MSVCR70.DLL!vsprintf	via stub 0x56e8e0
+0x568d5f	0x568d50	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x568d9f	?	stub	MSVCR70.DLL!strncpy	via stub 0x56e95a
+0x568db3	?	stub	MSVCR70.DLL!strncat	via stub 0x56eb14
+0x568e6d	?	stub	MSVCR70.DLL!strncat	via stub 0x56eb14
+0x56997f	0x569970	stub	MSVCR70.DLL!vsprintf	via stub 0x56e8e0
+0x56a433	0x56a3f0	stub	MSVCR70.DLL!sprintf	via stub 0x56e39e
+0x56ac0f	0x56ac00	stub	MSVCR70.DLL!vsprintf	via stub 0x56e8e0
+0x56adfc	?	dispatch		unresolved
+0x56aec3	?	dispatch		unresolved
+0x56b213	?	dispatch		unresolved
+0x56b38f	?	dispatch		unresolved
+0x56b4c6	?	dispatch		unresolved
+0x56bbed	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56bc27	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56bc88	?	stub	MSVCR70.DLL!ftol	via stub 0x56e826
+0x56bdb8	?	dispatch	KERNEL32.DLL!QueryPerformanceFrequency	pass3_anchor_offset
+0x56bdcb	?	dispatch	KERNEL32.DLL!QueryPerformanceCounter	pass3_anchor_offset
+0x56be30	0x56be30	dispatch	KERNEL32.DLL!GetCurrentThread	pass1_same_offset
+0x56be37	0x56be30	dispatch	KERNEL32.DLL!GetThreadPriority	pass1_same_offset
+0x56bef4	0x56bec0	dispatch	KERNEL32.DLL!lstrcpyA	pass1_same_offset
+0x56beff	0x56bec0	dispatch	KERNEL32.DLL!lstrlenA	pass1_same_offset
+0x56bf77	0x56bf40	dispatch	KERNEL32.DLL!FindFirstFileA	pass3_anchor_offset
+0x57a3c2	?	dispatch	MSVCR70.DLL!printf	pass3_anchor_offset
+0x594b23	?	dispatch	MSVCR70.DLL!malloc	pass3_anchor_offset
+0x594bd4	?	dispatch	MSVCR70.DLL!free	pass3_anchor_offset
+0x5a9c5a	0x5a9be0	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5a9d5f	0x5a9ce0	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5a9e5f	0x5a9de0	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5a9f59	0x5a9ee0	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5aa030	0x5a9fd0	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5aa0f8	0x5aa080	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5aa1e9	0x5aa170	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5aa2ef	0x5aa270	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5aa3dd	0x5aa370	dispatch	KERNEL32.DLL!OutputDebugStringA	pass1_same_offset
+0x5aee1b	0x5aee10	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x5aee5f	0x5aee10	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x5aef52	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5aef74	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5aef92	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5aefb0	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5aefd1	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5aefef	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5af010	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5af03d	0x5aef30	dispatch	MSVCR70.DLL!sprintf	pass1_same_offset
+0x5af073	0x5af050	dispatch		unresolved
+0x5af09a	0x5af050	dispatch		unresolved
+0x5af0b0	0x5af050	dispatch		unresolved
+0x5af0c6	0x5af050	dispatch		unresolved
+0x5af0dc	0x5af050	dispatch		unresolved
+0x5af0f2	0x5af050	dispatch		unresolved
+0x5af17b	0x5af170	dispatch	MSVCR70.DLL!fopen	pass1_same_offset
+0x5af1bf	0x5af170	dispatch	MSVCR70.DLL!fclose	pass1_same_offset
+0x5af5bd	0x5af580	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x5af5f8	0x5af5e0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5b4507	?	dispatch	MSVCR70.DLL!malloc	pass3_anchor_offset
+0x5b4638	?	dispatch	MSVCR70.DLL!free	pass3_anchor_offset
+0x5b4797	?	dispatch		unresolved
+0x5b47d5	0x5b47b0	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x5b47e5	0x5b47b0	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5b4949	0x5b4900	dispatch	MSVCR70.DLL!free	pass1_same_offset
+0x5b53b3	0x5b4f10	dispatch	MSVCR70.DLL!qsort	pass1_same_offset
+0x5b549d	0x5b4f10	dispatch	MSVCR70.DLL!qsort	pass1_same_offset
+0x5b6154	0x5b60b0	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x5b6220	0x5b61c0	stub	MSVCR70.DLL!_CIpow	via stub 0x56e392
+0x5b736b	?	dispatch		unresolved
+0x5b7382	?	dispatch		unresolved
+0x5b7389	?	dispatch		unresolved
+0x5b7392	?	dispatch		unresolved
+0x5b73ab	?	dispatch		unresolved
+0x5b73d4	?	dispatch		unresolved
+0x5b73f2	?	dispatch		unresolved
+0x5b73f9	?	dispatch		unresolved
+0x5b7428	?	dispatch		unresolved
+0x5b743e	?	dispatch		unresolved
+0x5b7451	?	dispatch		unresolved
+0x5b7458	?	dispatch		unresolved
+0x5b8268	0x5b8250	dispatch	MSVCR70.DLL!malloc	pass1_same_offset
+0x625012	0x62500f	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62501c	0x625019	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625026	0x625023	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625030	0x62502d	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625073	0x625070	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62507d	0x62507a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625087	0x625084	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62509b	0x625098	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6250af	0x6250ac	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6250b9	0x6250b6	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6250cd	0x6250ca	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6250d7	0x6250d4	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6250eb	0x6250e8	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6250f5	0x6250f2	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6250ff	0x6250fc	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625113	0x625110	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62511d	0x62511a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625127	0x625124	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62513b	0x625138	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625145	0x625142	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625159	0x625156	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625163	0x625160	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625177	0x625174	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625181	0x62517e	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62518b	0x625188	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6251b1	0x6251ae	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6251c5	0x6251c2	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6251e1	0x6251de	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6251f5	0x6251f2	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62521b	0x625218	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625225	0x625222	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62522f	0x62522c	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625239	0x625236	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625243	0x625240	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62524d	0x62524a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625257	0x625254	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625261	0x62525e	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62526b	0x625268	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625275	0x625272	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62527f	0x62527c	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625289	0x625286	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625293	0x625290	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62529d	0x62529a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252a7	0x6252a4	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252b1	0x6252ae	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252bb	0x6252b8	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252c5	0x6252c2	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252cf	0x6252cc	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252d9	0x6252d6	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252e3	0x6252e0	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252ed	0x6252ea	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x6252f7	0x6252f4	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625301	0x6252fe	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62530b	0x625308	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625315	0x625312	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62531f	0x62531c	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625329	0x625326	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625333	0x625330	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62533d	0x62533a	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625347	0x625344	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625351	0x62534e	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62535b	0x625358	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625365	0x625362	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x62536f	0x62536c	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625379	0x625376	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625383	0x625380	stub	MSVCR70.DLL!operator_delete	via stub 0x56e6d0
+0x625894	0x625890	stub	MSVCR70.DLL!operator_delete[]	via stub 0x56e94e

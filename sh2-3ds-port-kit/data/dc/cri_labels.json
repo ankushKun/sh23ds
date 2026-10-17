@@ -1,0 +1,86 @@
+{
+ "version": "dc",
+ "md5": "f3f5360298b6d0f6f2e09cf24a0925d1",
+ "globals": [
+  {
+   "addr": "0x55d710",
+   "name": "ADXF_GetNumReadSct",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55c730",
+   "name": "ADXF_GetPtStat",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55d730",
+   "name": "ADXF_GetStat",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55ce30",
+   "name": "ADXF_Open",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55d260",
+   "name": "ADXF_ReadNw32",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55d3a0",
+   "name": "ADXF_Stop",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55d440",
+   "name": "ADXF_StopNw",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55f880",
+   "name": "LSC_Create",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x55bf70",
+   "name": "adxf_ChkPrmPt",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x567930",
+   "name": "mfCiOpen",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x567a80",
+   "name": "mfCiReqRd",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x5677b0",
+   "name": "mfci_get_adr_size",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x566eb0",
+   "name": "wxCiGetFileSize",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x566ff0",
+   "name": "wxCiOpen",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x5671f0",
+   "name": "wxCiReqRd",
+   "source": "CRI error string names its function"
+  },
+  {
+   "addr": "0x568480",
+   "name": "wxfic_cache_file",
+   "source": "CRI error string names its function"
+  }
+ ]
+}

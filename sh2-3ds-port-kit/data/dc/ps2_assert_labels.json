@@ -1,0 +1,156 @@
+{
+ "version": "dc",
+ "md5": "f3f5360298b6d0f6f2e09cf24a0925d1",
+ "globals": [
+  {
+   "addr": "0x48c9d0",
+   "name": "RadioNoise",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/event.c:2154->RadioNoise"
+  },
+  {
+   "addr": "0x48e520",
+   "name": "EventCheckLookLine",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/event.c:917->EventCheckLookLine; Event/event.c:929->EventCheckLookLine"
+  },
+  {
+   "addr": "0x48eac0",
+   "name": "EventCheckLook",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/event.c:767->EventCheckLook"
+  },
+  {
+   "addr": "0x48f4b0",
+   "name": "CharaAdminBackLoadEnemy",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/chara_admin.c:959->CharaAdminBackLoadEnemy"
+  },
+  {
+   "addr": "0x48fb40",
+   "name": "CharaAdminPlayableDisplay",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/chara_admin.c:923->CharaAdminPlayableDisplay"
+  },
+  {
+   "addr": "0x492180",
+   "name": "CharaDataDeleteAll",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/chara_data_load.c:1599->CharaDataDeleteAll; Event/chara_data_load.c:2240->?0"
+  },
+  {
+   "addr": "0x492f70",
+   "name": "CharaDataLoadRoom",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/chara_data_load.c:791->CharaDataLoadRoom; Event/chara_data_load.c:819->CharaDataLoadRoom"
+  },
+  {
+   "addr": "0x493260",
+   "name": "CharaDataLoadExec",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/chara_data_load.c:892->CharaDataLoadExec; Event/chara_data_load.c:914->CharaDataLoadExec"
+  },
+  {
+   "addr": "0x496020",
+   "name": "titleExit",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/title.c:1942->titleExit"
+  },
+  {
+   "addr": "0x4976b0",
+   "name": "titleBattleSelect",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/title.c:1363->titleBattleSelect"
+  },
+  {
+   "addr": "0x497bb0",
+   "name": "titleFadeOutNewGame",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/title.c:1845->titleFadeOutNewGame"
+  },
+  {
+   "addr": "0x498b70",
+   "name": "MemoSelectBarDraw",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/memo.c:537->MemoSelectBarDraw"
+  },
+  {
+   "addr": "0x49e6a0",
+   "name": "ItemEventCheck",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/item.c:315->ItemEventCheck"
+  },
+  {
+   "addr": "0x4a21e0",
+   "name": "EvSubPictureDisplay",
+   "source": "PS2 beta DWARF line range of the assert(s): Event/event_sub.c:442->EvSubPictureDisplay"
+  },
+  {
+   "addr": "0x4aa5e0",
+   "name": "enTransID",
+   "source": "PS2 beta DWARF line range of the assert(s): Enemy/en_common.c:423->enTransID"
+  },
+  {
+   "addr": "0x516ae0",
+   "name": "SeCallPosDistanceF",
+   "source": "PS2 beta DWARF line range of the assert(s): sound/sh_sound.c:438->SeCallPosDistanceF"
+  },
+  {
+   "addr": "0x5187e0",
+   "name": "sndGetSoundAryByCharaPos",
+   "source": "PS2 beta DWARF line range of the assert(s): sound/snd_select.c:279->sndGetSoundAryByCharaPos"
+  },
+  {
+   "addr": "0x519ae0",
+   "name": "vcRetSelfViewEffectRate",
+   "source": "PS2 beta DWARF line range of the assert(s): view/vc_main.c:1284->vcRetSelfViewEffectRate"
+  },
+  {
+   "addr": "0x519d70",
+   "name": "vcPreSetDataInVC_WORK",
+   "source": "PS2 beta DWARF line range of the assert(s): view/vc_main.c:1422->vcPreSetDataInVC_WORK"
+  },
+  {
+   "addr": "0x51b5a0",
+   "name": "vcAdjTgtMvVecYByCurNearRoad",
+   "source": "PS2 beta DWARF line range of the assert(s): view/vc_main.c:4109->vcAdjTgtMvVecYByCurNearRoad"
+  },
+  {
+   "addr": "0x51c230",
+   "name": "vcAdjCamOfsAngByCharaInScreen",
+   "source": "PS2 beta DWARF line range of the assert(s): view/vc_main.c:4942->vcAdjCamOfsAngByCharaInScreen"
+  },
+  {
+   "addr": "0x51e280",
+   "name": "vcFlipFromCamExclusionArea",
+   "source": "PS2 beta DWARF line range of the assert(s): view/vc_main.c:4328->vcFlipFromCamExclusionArea"
+  },
+  {
+   "addr": "0x51eea0",
+   "name": "vcAutoRenewalCamTgtPos",
+   "source": "PS2 beta DWARF line range of the assert(s): view/vc_main.c:3191->vcAutoRenewalCamTgtPos"
+  },
+  {
+   "addr": "0x51f660",
+   "name": "vcExecCamera",
+   "source": "PS2 beta DWARF line range of the assert(s): view/vc_main.c:873->vcExecCamera"
+  },
+  {
+   "addr": "0x522e90",
+   "name": "clBattleCheckExec",
+   "source": "PS2 beta DWARF line range of the assert(s): Collision/cl_main.c:1807->clBattleCheckExec"
+  },
+  {
+   "addr": "0x5230b0",
+   "name": "clSetThrustBattleResult",
+   "source": "PS2 beta DWARF line range of the assert(s): Collision/cl_main.c:2072->clSetThrustBattleResult"
+  },
+  {
+   "addr": "0x525030",
+   "name": "clMakeWallHitCollectVector",
+   "source": "PS2 beta DWARF line range of the assert(s): Collision/cl_main.c:1309->clMakeWallHitCollectVector"
+  },
+  {
+   "addr": "0x5278c0",
+   "name": "clSetCharaHitColumn",
+   "source": "PS2 beta DWARF line range of the assert(s): Collision/cl_main.c:686->clSetCharaHitColumn"
+  },
+  {
+   "addr": "0x538470",
+   "name": "shCharacterPlayingExecAnimeOne",
+   "source": "PS2 beta DWARF line range of the assert(s): Chacter/m3_sc.c:1509->shCharacterPlayingExecAnimeOne"
+  },
+  {
+   "addr": "0x53a270",
+   "name": "shCharacter_Manage_Create",
+   "source": "PS2 beta DWARF line range of the assert(s): Chacter/sh2_character_manage.c:134->shCharacter_Manage_Create"
+  }
+ ]
+}

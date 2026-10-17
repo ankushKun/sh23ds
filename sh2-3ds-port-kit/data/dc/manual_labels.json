@@ -1,0 +1,86 @@
+{
+ "version": "dc",
+ "md5": "f3f5360298b6d0f6f2e09cf24a0925d1",
+ "globals": [
+  {
+   "addr": "0x41df24",
+   "name": "D3DX_InitPSGP",
+   "source": "reads registry DisableD3DXPSGP, tests CPU features 7/10/6, fills the 57-entry math table at 0x7af8e0 (REA ev_2a517d4a)"
+  },
+  {
+   "addr": "0x41dc79",
+   "name": "D3DX_ReadRegistryDword",
+   "source": "called as (4, \"DisableD3DXPSGP\", &value, 4) by D3DX_InitPSGP; references Software\\Microsoft\\Direct3D"
+  },
+  {
+   "addr": "0x41de70",
+   "name": "D3DX_HasCpuFeature",
+   "source": "called with 7, 10, 6 (IsProcessorFeaturePresent codes: 3DNow!, SSE2, SSE) by D3DX_InitPSGP"
+  },
+  {
+   "addr": "0x425b90",
+   "name": "D3DX_PSGP_SetSSE",
+   "source": "chosen for feature 6 (SSE); stores SSE routines 0x42dce0.. into the table (REA ev_affe92c6)"
+  },
+  {
+   "addr": "0x425ca0",
+   "name": "D3DX_PSGP_SetSSE2",
+   "source": "chosen for feature 10 (SSE2) by D3DX_InitPSGP"
+  },
+  {
+   "addr": "0x425e85",
+   "name": "D3DX_PSGP_Set3DNow",
+   "source": "chosen for feature 7 (3DNow!); stores 3DNow! routines 0x430e69.. into the table"
+  },
+  {
+   "addr": "0x7af8e0",
+   "name": "g_D3DXPSGPTable",
+   "source": "57 math function pointers used by D3DX at runtime"
+  },
+  {
+   "addr": "0x7af9c8",
+   "name": "g_D3DXPSGPTableDefault",
+   "source": "x87 defaults copied into g_D3DXPSGPTable by D3DX_InitPSGP"
+  },
+  {
+   "addr": "0x631908",
+   "name": "jpeg_std_message_table",
+   "source": "IJG libjpeg 6a message table; first entry \"Bogus message code %d\""
+  },
+  {
+   "addr": "0x42d247",
+   "name": "jpeg_select_ncolors",
+   "source": "IJG jquant1.c select_ncolors: iroot loop over out_color_components (+0x64) vs desired_number_of_colors (+0x54), ERREXIT 0x37 (REA ev_671a119a)"
+  },
+  {
+   "addr": "0x41f7f9",
+   "name": "jpeg_std_error",
+   "source": "IJG jerror.c jpeg_std_error: sets the 5 error methods, message table 0x631908, last_jpeg_message 0x77 (REA ev_492c978b)"
+  },
+  {
+   "addr": "0x41f6e8",
+   "name": "jpeg_error_exit",
+   "source": "stored by jpeg_std_error in jpeg_error_mgr method order"
+  },
+  {
+   "addr": "0x41f720",
+   "name": "jpeg_emit_message",
+   "source": "stored by jpeg_std_error in jpeg_error_mgr method order"
+  },
+  {
+   "addr": "0x41f703",
+   "name": "jpeg_output_message",
+   "source": "stored by jpeg_std_error in jpeg_error_mgr method order"
+  },
+  {
+   "addr": "0x41f751",
+   "name": "jpeg_format_message",
+   "source": "stored by jpeg_std_error in jpeg_error_mgr method order"
+  },
+  {
+   "addr": "0x41f7e8",
+   "name": "jpeg_reset_error_mgr",
+   "source": "stored by jpeg_std_error in jpeg_error_mgr method order"
+  }
+ ]
+}

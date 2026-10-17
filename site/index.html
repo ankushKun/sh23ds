@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>sh23ds · Silent Hill 2 on the New Nintendo 3DS</title>
+  <meta name="description" content="A native New 3DS port of Silent Hill 2, the 2001 PC Director's Cut, with the Enhanced Edition fixes built in. Runs on your own copy of the game.">
+  <meta name="theme-color" content="#070d13">
+  <link rel="canonical" href="https://ankush.one/sh23ds/">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icon-64.png" sizes="64x64" type="image/png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="sh23ds · Silent Hill 2 on the New Nintendo 3DS">
+  <meta property="og:description" content="A native port of the PC Director's Cut for the New 3DS. Bring your own copy of the game.">
+  <meta property="og:url" content="https://ankush.one/sh23ds/">
+  <meta property="og:image" content="https://ankush.one/sh23ds/assets/banner.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="fonts/cormorant-garamond.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/barlow-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="fonts.css">
+  <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.add("js")</script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the content</a>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-gh" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></symbol>
+    <symbol id="i-down" viewBox="0 0 16 16"><path fill="none" stroke="currentColor" stroke-width="1.4" d="M8 2v9m-4-4 4 4 4-4M3 14h10"/></symbol>
+    <symbol id="i-mark" viewBox="0 0 16 16"><path fill="#c4453a" d="M2.2 1.6 14.1 2.3l-.4 12.1-11.9-.5Z"/></symbol>
+  </svg>
+
+  <header class="nav" data-nav>
+    <div class="wrap nav-inner">
+      <a class="brand" href="#top"><svg class="brand-mark" aria-hidden="true"><use href="#i-mark"/></svg>sh23ds</a>
+      <nav aria-label="Sections">
+        <ul class="nav-links">
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#status">Status</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#data">Game data</a></li>
+          <li><a href="#develop">Develop</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </nav>
+      <a class="nav-gh" href="https://github.com/ankushKun/sh23ds" aria-label="sh23ds on GitHub"><svg aria-hidden="true"><use href="#i-gh"/></svg></a>
+      <details class="nav-menu">
+        <summary>Menu</summary>
+        <ul>
+          <li><a href="#overview">Overview</a></li>
+          <li><a href="#status">Status</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a href="#data">Game data</a></li>
+          <li><a href="#develop">Develop</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds">GitHub</a></li>
+        </ul>
+      </details>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="hero" id="top">
+      <div class="fog" aria-hidden="true"><div class="fog-layer a"></div><div class="fog-layer b"></div></div>
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <span class="label">sh23ds <b>/</b> <span data-version>v0.1.0</span> development build</span>
+          <h1 class="hero-title">Silent<br>Hill 2</h1>
+          <p class="hero-sub">on the New Nintendo 3DS</p>
+          <p class="lead">A native port of the 2001 PC Director's Cut, rebuilt to run on the console's own processor and GPU, with the Enhanced Edition's fixes built in. You bring your copy of the game, and sh23ds turns it into something the 3DS can carry.</p>
+          <div class="actions">
+            <a class="button" href="#install">Install</a>
+            <a class="button button-quiet" href="https://github.com/ankushKun/sh23ds"><svg aria-hidden="true"><use href="#i-gh"/></svg>Source on GitHub</a>
+          </div>
+          <ul class="hero-meta">
+            <li>New 3DS family</li>
+            <li>Luma3DS</li>
+            <li>No game files included</li>
+          </ul>
+        </div>
+
+        <div class="hero-device device reveal" data-tilt>
+          <div class="device-stage">
+            <!-- A real New Nintendo 3DS (photo: PantheraLeo1359531, CC BY 4.0), darkened, with its screens
+                 replaced by screenshots of the port. The matrices come from 3dsFM's screen-map. -->
+            <img class="device-photo" src="assets/new-3ds-angled.png" width="1356" height="1177" alt="A New Nintendo 3DS running Silent Hill 2: James stands at the observation deck railing above Toluca Lake, with the game's help screen on the touch screen." decoding="async" fetchpriority="high">
+            <div class="screen screen-top" aria-hidden="true"><img src="assets/shots/deck-top.jpg" width="400" height="240" alt=""></div>
+            <div class="screen screen-bottom" aria-hidden="true"><img src="assets/shots/deck-bottom.jpg" width="320" height="240" alt=""></div>
+          </div>
+          <div class="device-fog" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="epigraph" aria-label="Epigraph">
+      <blockquote class="wrap reveal">
+        <p>“In my restless dreams,<br> I see that town. Silent Hill.”</p>
+        <footer>Mary’s letter</footer>
+      </blockquote>
+    </section>
+
+    <section id="overview">
+      <div class="wrap">
+        <span class="label">01 <b>/</b> Overview</span>
+        <div class="section-head reveal"><h2>A new engine, the same town</h2></div>
+        <div class="overview-grid">
+          <div class="reveal">
+            <p class="lead">sh23ds is not an emulator. It's a new engine for Silent Hill 2, written in C for the New 3DS, that rebuilds the game from a study of the PC executable: the rooms and their camera roads, the lighting and the fog, the events and puzzles, the enemies, the cutscenes and every ending.</p>
+            <p class="lead">The game's own data does the rest. A converter reads your copy of the PC release and writes it out in formats the 3DS GPU understands, and the port reads them from the SD card. Nothing from the game is in this project or its downloads.</p>
+          </div>
+          <dl class="numbers reveal">
+            <div><dt>17</dt><dd>areas, from the town to the labyrinth</dd></div>
+            <div><dt>570</dt><dd>doors and warps, all loaded by a test</dd></div>
+            <div><dt>128</dt><dd>in-engine cutscenes</dd></div>
+            <div><dt>6</dt><dd>endings, plus Born From a Wish</dd></div>
+          </dl>
+        </div>
+
+        <ul class="features">
+          <li class="reveal"><span class="num">i.</span><h3>Fog, dark and the flashlight</h3><p>Each room's lighting record from the PC exe, three lights per vertex, the PC's fog curve and its drifting fog layer, and the flashlight as a per-pixel spotlight. Dark rooms stay dark.</p></li>
+          <li class="reveal"><span class="num">ii.</span><h3>The PC camera</h3><p>The camera module, ported function by function, follows the same camera roads through every room, with the chase, fixed and scripted cameras of the original.</p></li>
+          <li class="reveal"><span class="num">iii.</span><h3>The whole game</h3><p>Puzzles, keys, elevators, questions, the endings and their score, the results screen, New Game+, and Born From a Wish with Maria as the player.</p></li>
+          <li class="reveal"><span class="num">iv.</span><h3>Enemies and bosses</h3><p>Lying Figures, Mannequins, nurses, creepers on floors, walls and ceilings, Pyramid Head, the Abstract Daddy, Eddie, the Flesh Lips and Mary, with the PC's damage values.</p></li>
+          <li class="reveal"><span class="num">v.</span><h3>Scenes and sound</h3><p>Every cutscene with its cameras, motion, faces, lights, voices and subtitles, the movies on the console, and the ADX music mixed layer by layer as on the PC.</p></li>
+          <li class="reveal"><span class="num">vi.</span><h3>Enhanced Edition fixes</h3><p>The PS2 flashlight, the lighting and fog record fixes, draw distance, the script fixes, hold-to-stomp and more, all on by default. <a href="https://github.com/ankushKun/sh23ds/blob/main/port/EE_FIXES.md">The full list</a>.</p></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="screens" aria-labelledby="screens-title">
+      <div class="wrap">
+        <span class="label">02 <b>/</b> Screens</span>
+        <div class="section-head reveal"><h2 id="screens-title">From the console’s screens</h2></div>
+        <ul class="gallery">
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/deck-top.jpg" data-bottom="assets/shots/deck-bottom.jpg" data-caption="The observation deck"><img src="assets/shots/deck-top.jpg" width="400" height="240" alt="James at the observation deck railing, Toluca Lake lost in fog below." loading="lazy"><span class="cap">The observation deck</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/town-top.jpg" data-bottom="assets/shots/town-bottom.jpg" data-caption="South Vale"><img src="assets/shots/town-top.jpg" width="400" height="240" alt="A street in South Vale in thick fog." loading="lazy"><span class="cap">South Vale</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/apartments-top.jpg" data-bottom="assets/shots/apartments-bottom.jpg" data-caption="Wood Side Apartments"><img src="assets/shots/apartments-top.jpg" width="400" height="240" alt="A corridor of Wood Side Apartments lit only by the flashlight." loading="lazy"><span class="cap">Wood Side Apartments</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/hospital-top.jpg" data-bottom="assets/shots/hospital-bottom.jpg" data-caption="Brookhaven Hospital"><img src="assets/shots/hospital-top.jpg" width="400" height="240" alt="A ward of Brookhaven Hospital." loading="lazy"><span class="cap">Brookhaven Hospital</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/pyramid-top.jpg" data-bottom="assets/shots/pyramid-bottom.jpg" data-caption="Pyramid Head"><img src="assets/shots/pyramid-top.jpg" width="400" height="240" alt="Pyramid Head facing James." loading="lazy"><span class="cap">Pyramid Head</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/maria-top.jpg" data-bottom="assets/shots/maria-bottom.jpg" data-caption="Maria"><img src="assets/shots/maria-top.jpg" width="400" height="240" alt="Maria in a cutscene." loading="lazy"><span class="cap">Maria</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/hotel-top.jpg" data-bottom="assets/shots/hotel-bottom.jpg" data-caption="The Lakeview Hotel"><img src="assets/shots/hotel-top.jpg" width="400" height="240" alt="The lobby of the Lakeview Hotel." loading="lazy"><span class="cap">The Lakeview Hotel</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/wish-top.jpg" data-bottom="assets/shots/wish-bottom.jpg" data-caption="Born From a Wish"><img src="assets/shots/wish-top.jpg" width="400" height="240" alt="Maria in the mansion in Born From a Wish." loading="lazy"><span class="cap">Born From a Wish</span></button></li>
+          <li class="reveal"><button class="shot" type="button" data-top="assets/shots/title-top.jpg" data-bottom="assets/shots/title-bottom.jpg" data-caption="The title screen"><img src="assets/shots/title-top.jpg" width="400" height="240" alt="The Director's Cut title screen." loading="lazy"><span class="cap">The title screen</span></button></li>
+        </ul>
+        <p class="gallery-note">Captured from the port running in the Azahar emulator at the console’s native 400 × 240. Select a shot to see both screens.</p>
+      </div>
+    </section>
+
+    <dialog class="viewer" data-viewer aria-label="Screenshot">
+      <div class="viewer-screens">
+        <img class="viewer-top" src="" width="400" height="240" alt="" data-viewer-top>
+        <img class="viewer-bottom" src="" width="320" height="240" alt="" data-viewer-bottom>
+      </div>
+      <div class="viewer-bar"><span data-viewer-caption></span><button class="viewer-close" type="button" data-viewer-close>Close</button></div>
+    </dialog>
+
+    <section id="status">
+      <div class="wrap">
+        <span class="label">03 <b>/</b> Status</span>
+        <div class="section-head reveal"><h2>Where it stands</h2></div>
+        <div class="status-grid">
+          <div class="reveal">
+            <h3>Working in Azahar</h3>
+            <ul class="checklist">
+              <li>The game from the prologue to every ending, and Born From a Wish</li>
+              <li>Saves, clear data and New Game+</li>
+              <li>All 17 areas, every door and warp, the open town streamed tile by tile</li>
+              <li>The PC camera, lighting, fog and flashlight</li>
+              <li>Every enemy and boss, melee and firearms</li>
+              <li>Cutscenes, movies, music, sound effects and voices</li>
+              <li>Maps, memos, puzzles and the results screen</li>
+            </ul>
+          </div>
+          <div class="reveal">
+            <h3>Still to do</h3>
+            <ul class="checklist todo">
+              <li>A full test pass on a real New 3DS</li>
+              <li>Character shadows</li>
+              <li>Creepers that climb round corners, as on the PC</li>
+              <li>The music box’s figure boxes</li>
+              <li>The fog layer’s wall test and blow points</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout reveal">
+          <span class="label">Development build</span>
+          <p>Every part of the game has been tested in the Azahar emulator, but sh23ds hasn’t been run through on a console yet, so expect rough edges on real hardware. <a href="https://github.com/ankushKun/sh23ds/blob/main/port/STATUS.md">STATUS.md</a> has the details, and reports from consoles are very welcome in <a href="https://github.com/ankushKun/sh23ds/issues">Issues</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="wrap">
+        <span class="label">04 <b>/</b> Install</span>
+        <div class="section-head reveal"><h2>Add it to your 3DS</h2></div>
+        <div class="install-grid">
+          <div class="reveal">
+            <ul class="needs">
+              <li><span>Console</span><p>A New Nintendo 3DS, New 3DS XL or New 2DS XL. The original models don’t have the speed or memory.</p></li>
+              <li><span>Firmware</span><p>Luma3DS with FBI or the Homebrew Launcher. Not set up yet? Follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a> first.</p></li>
+              <li><span>The game</span><p>Your own copy of <em>Silent Hill 2</em> for PC, Director’s Cut, unmodified.</p></li>
+              <li><span>Space</span><p>About 1.4 GB free on the SD card, and a computer with Docker.</p></li>
+            </ul>
+            <ol class="steps">
+              <li><h3>Build the game data</h3><p>Run the packer on your <code>Silent Hill 2</code> folder, as shown <a href="#data">below</a>. You get a folder called <code>3ds</code>.</p></li>
+              <li><h3>Copy it to the SD card</h3><p>Put that <code>3ds</code> folder at the root of the card. It merges with the one already there and adds <code>3ds/sh23ds/</code>.</p></li>
+              <li><h3>Dump the DSP firmware</h3><p>Run <a href="https://github.com/zoogie/DSP1/releases">DSP1</a> once if you never have. It writes <code>3ds/dspfirm.cdc</code>, and without it the game plays in silence.</p></li>
+              <li><h3>Install the app</h3><p>Scan the code with FBI, or download the file and install it yourself. Then start <em>Silent Hill 2</em> from the HOME Menu.</p></li>
+            </ol>
+          </div>
+
+          <div class="tabs reveal" data-tabs>
+            <div class="tablist" role="tablist" aria-label="How to install">
+              <button type="button" role="tab" id="tab-cia" aria-controls="panel-cia" aria-selected="true">HOME Menu (CIA)</button>
+              <button type="button" role="tab" id="tab-3dsx" aria-controls="panel-3dsx" aria-selected="false" tabindex="-1">Homebrew (3DSX)</button>
+            </div>
+            <div class="tabpanel" role="tabpanel" id="panel-cia" aria-labelledby="tab-cia">
+              <h3 class="tabpanel-title">HOME Menu app (CIA)</h3>
+              <div class="fbi">
+                <img class="qr" src="qr/install-cia.svg" width="168" height="168" alt="QR code that installs the latest sh23ds.cia with FBI">
+                <ol>
+                  <li>Open <strong>FBI</strong> on your 3DS.</li>
+                  <li>Choose <strong>Remote Install</strong>, then <strong>Scan QR Code</strong>.</li>
+                  <li>Point the camera at this code and confirm.</li>
+                </ol>
+              </div>
+              <div class="downloads">
+                <a class="button" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.cia"><svg aria-hidden="true"><use href="#i-down"/></svg>sh23ds.cia <span class="size" data-size="sh23ds.cia"></span></a>
+              </div>
+              <p class="fine">Recommended. The CIA asks the system for the 804 MHz clock, the L2 cache and the 124 MB memory mode the port is made for.</p>
+            </div>
+            <div class="tabpanel" role="tabpanel" id="panel-3dsx" aria-labelledby="tab-3dsx" hidden>
+              <h3 class="tabpanel-title">Homebrew Launcher (3DSX)</h3>
+              <div class="fbi">
+                <img class="qr" src="qr/download-3dsx.svg" width="168" height="168" alt="QR code that downloads the latest sh23ds.3dsx">
+                <ol>
+                  <li>Download <strong>sh23ds.3dsx</strong>.</li>
+                  <li>Copy it to <strong>sdmc:/3ds/</strong> on the SD card.</li>
+                  <li>Start it from the <strong>Homebrew Launcher</strong>.</li>
+                </ol>
+              </div>
+              <div class="downloads">
+                <a class="button" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.3dsx"><svg aria-hidden="true"><use href="#i-down"/></svg>sh23ds.3dsx <span class="size" data-size="sh23ds.3dsx"></span></a>
+              </div>
+              <p class="fine">The 3DSX runs at whatever clock and memory mode the launcher was started with, so the CIA is the better choice on a console.</p>
+            </div>
+          </div>
+        </div>
+        <p class="fine reveal">Checksums are in <a href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.sha256">sh23ds.sha256</a>. Older versions are on the <a href="https://github.com/ankushKun/sh23ds/releases">releases page</a>.</p>
+      </div>
+    </section>
+
+    <section id="data">
+      <div class="wrap">
+        <span class="label">05 <b>/</b> Game data</span>
+        <div class="section-head reveal"><h2>Your copy, converted</h2></div>
+        <div class="data-grid">
+          <div class="reveal">
+            <p class="lead">The packer reads your <code>Silent Hill 2</code> folder, the one with <code>sh2pc.exe</code> and <code>data</code>, and converts every room, texture, character, event, picture, sound and movie into the formats the port reads. It never changes the game folder.</p>
+            <p class="lead">It runs in a container with everything it needs, so Docker is the only thing to install. The image holds the converters from this project and nothing from the game.</p>
+            <dl class="facts">
+              <div><dt>~1 h</dt><dd>on a laptop, mostly textures</dd></div>
+              <div><dt>1.4 GB</dt><dd>written for the SD card</dd></div>
+              <div><dt>1</dt><dd>exe it accepts, checked by MD5</dd></div>
+            </dl>
+          </div>
+
+          <div class="reveal">
+            <div class="tabs" data-tabs>
+              <div class="tablist" role="tablist" aria-label="Your computer">
+                <button type="button" role="tab" id="tab-unix" aria-controls="panel-unix" aria-selected="true">macOS · Linux</button>
+                <button type="button" role="tab" id="tab-win" aria-controls="panel-win" aria-selected="false" tabindex="-1">Windows</button>
+                <button type="button" role="tab" id="tab-src" aria-controls="panel-src" aria-selected="false" tabindex="-1">From a clone</button>
+              </div>
+              <div class="tabpanel" role="tabpanel" id="panel-unix" aria-labelledby="tab-unix">
+                <h3 class="tabpanel-title">macOS and Linux</h3>
+                <div class="code"><pre><code><span class="p">$ </span>mkdir sd
+<span class="p">$ </span>docker run --rm \
+    -v "/path/to/Silent Hill 2:/game:ro" \
+    -v "$PWD/sd:/out" \
+    ghcr.io/ankushkun/sh23ds-packer</code></pre></div>
+                <ul class="notes">
+                  <li>On Linux, add <code>--user "$(id -u):$(id -g)"</code> after <code>--rm</code> so the files are yours.</li>
+                  <li>With Colima on macOS, keep the game and the output folder inside your home folder.</li>
+                </ul>
+              </div>
+              <div class="tabpanel" role="tabpanel" id="panel-win" aria-labelledby="tab-win" hidden>
+                <h3 class="tabpanel-title">Windows (PowerShell)</h3>
+                <div class="code"><pre><code><span class="p">PS> </span>mkdir sd
+<span class="p">PS> </span>docker run --rm `
+    -v "C:\Games\Silent Hill 2:/game:ro" `
+    -v "${PWD}\sd:/out" `
+    ghcr.io/ankushkun/sh23ds-packer</code></pre></div>
+                <ul class="notes">
+                  <li>Use Docker Desktop with the WSL 2 backend, and put your game’s folder in the first <code>-v</code>.</li>
+                </ul>
+              </div>
+              <div class="tabpanel" role="tabpanel" id="panel-src" aria-labelledby="tab-src" hidden>
+                <h3 class="tabpanel-title">From a clone</h3>
+                <div class="code"><pre><code><span class="c"># the same image, built from the source</span>
+<span class="p">$ </span>git clone https://github.com/ankushKun/sh23ds
+<span class="p">$ </span>cd sh23ds
+<span class="p">$ </span>docker build -f tools/packer/Dockerfile -t sh23ds-packer .
+<span class="p">$ </span>docker run --rm -v "/path/to/Silent Hill 2:/game:ro" \
+    -v "$PWD/sd:/out" sh23ds-packer
+
+<span class="c"># or without Docker: Python 3.11+ (numpy, Pillow, pefile),</span>
+<span class="c"># ffmpeg and devkitPro's tex3ds on your PATH</span>
+<span class="p">$ </span>tools/make_pack.sh "/path/to/Silent Hill 2"</code></pre></div>
+              </div>
+            </div>
+
+            <div class="code tree"><pre><code>sd/3ds/sh23ds/       <span class="c">copy sd/3ds to the root of the card</span>
+├── bg/              <span class="c">rooms, textures, collision, camera roads</span>
+├── chr/             <span class="c">characters and their motions</span>
+├── demo/            <span class="c">cutscenes</span>
+├── events/  map/  pic/
+├── movie/           <span class="c">the FMVs as MPEG-1</span>
+├── sound/           <span class="c">music, effects, voices</span>
+└── ui/  lighting.txt  chrlight.txt</code></pre></div>
+          </div>
+        </div>
+        <div class="callout quiet reveal">
+          <span class="label">Which copy works</span>
+          <p>The packer accepts the retail Director’s Cut <code>sh2pc.exe</code> (MD5 <code>f3f5360298b6d0f6f2e09cf24a0925d1</code>) and stops on anything else, because the converters read tables at fixed places in that exe. If you installed the Enhanced Edition on your PC copy, point the packer at a clean install instead: its fixes are already in the port.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="controls" aria-labelledby="controls-title">
+      <div class="wrap">
+        <span class="label">06 <b>/</b> Controls</span>
+        <div class="section-head reveal"><h2 id="controls-title">In your hands</h2></div>
+        <dl class="controls reveal">
+          <div><dt>Circle Pad</dt><dd>Walk and turn, or walk where you point with the 2D type</dd></div>
+          <div><dt><kbd>B</kbd> hold</dt><dd>Run, or toggle it with the Run option</dd></div>
+          <div><dt><kbd>A</kbd></dt><dd>Check, open, pick up, next message, skip a movie</dd></div>
+          <div><dt><kbd>R</kbd> + <kbd>A</kbd></dt><dd>Ready the weapon and attack, stomp a downed enemy</dd></div>
+          <div><dt><kbd>L</kbd></dt><dd>Next weapon</dd></div>
+          <div><dt><kbd>X</kbd></dt><dd>Flashlight on and off</dd></div>
+          <div><dt><kbd>Y</kbd></dt><dd>Items</dd></div>
+          <div><dt>D-Pad</dt><dd>Brightness, 1 to 7</dd></div>
+          <div><dt>Touch screen</dt><dd>The map</dd></div>
+          <div><dt><kbd>START</kbd></dt><dd>Pause: map, memos and options</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section id="develop">
+      <div class="wrap">
+        <span class="label">07 <b>/</b> Develop</span>
+        <div class="section-head reveal"><h2>Build it, break it, fix it</h2></div>
+        <div class="two-col">
+          <div class="reveal">
+            <h3>Build from source</h3>
+            <p>Everything builds in containers with pinned images, so Docker is all you need.</p>
+            <div class="code"><pre><code><span class="p">$ </span>git clone https://github.com/ankushKun/sh23ds
+<span class="p">$ </span>cd sh23ds
+<span class="p">$ </span>./port/build.sh     <span class="c"># devkitARM: port/sh23ds.3dsx</span>
+<span class="p">$ </span>./port/package.sh   <span class="c"># makerom: sh23ds.cia, then dist/</span></code></pre></div>
+            <p class="fine">Pushing a tag that matches <code>VERSION</code> builds, checks and publishes the release and the packer image.</p>
+
+            <h3 class="subhead">Test without a console</h3>
+            <p>The port runs in <a href="https://azahar-emu.org/">Azahar</a> with the system set to New 3DS and the game data in its virtual SD card. On macOS, <code>tools/lr3ds</code> runs builds headlessly in Azahar’s libretro core with scripted buttons and screenshots, and <code>tools/lr3ds/smoke.sh</code> walks eleven scenes from the title to a save point.</p>
+          </div>
+          <div class="reveal">
+            <h3>The debug file</h3>
+            <p>Lines in <code>sdmc:/3ds/sh23ds/debug.txt</code> change how the game starts. Delete the file to play normally.</p>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th scope="col">Line</th><th scope="col">Does</th></tr></thead>
+                <tbody>
+                  <tr><td><code>spawn er01 -19250 0 21250 90 2</code></td><td>start in a room as James</td></tr>
+                  <tr><td><code>flag 32 1</code>, <code>item 1 2</code></td><td>set a flag, give an item first</td></tr>
+                  <tr><td><code>enemy 202 x z yaw</code></td><td>place an extra enemy</td></tr>
+                  <tr><td><code>demo first_toilet 300</code></td><td>play a cutscene from that point</td></tr>
+                  <tr><td><code>debughud 1</code></td><td>the readout on the bottom screen</td></tr>
+                  <tr><td><code>dumpframe 600</code></td><td>save that frame as a picture</td></tr>
+                  <tr><td><code>perflog 1</code>, <code>memlog 1</code></td><td>frame times and memory use</td></tr>
+                  <tr><td><code>autotest warps</code></td><td>load every door in the game in turn</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="fine">The full list is in the <a href="https://github.com/ankushKun/sh23ds#-debugging">README</a>.</p>
+          </div>
+        </div>
+
+        <ul class="docs reveal">
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/STATUS.md"><b>Status</b><span>What works and how each part was tested</span></a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/PROGRAMS.md"><b>Programs</b><span>Stage scripts, puzzles, endings</span></a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/ENEMIES.md"><b>Enemies</b><span>Enemies, bosses and combat</span></a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/EE_FIXES.md"><b>EE fixes</b><span>Every Enhanced Edition option</span></a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/CUTSCENES.md"><b>Cutscenes</b><span>The scene player and its data</span></a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/SOUND.md"><b>Sound</b><span>Music, effects and voices</span></a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/PERFORMANCE.md"><b>Performance</b><span>Frame budget, streaming, memory</span></a></li>
+          <li><a href="https://github.com/ankushKun/sh23ds/blob/main/docs/RESEARCH.md"><b>Research</b><span>How the exe was mapped</span></a></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="wrap">
+        <span class="label">08 <b>/</b> FAQ</span>
+        <div class="section-head reveal"><h2>Questions</h2></div>
+        <div class="faq reveal">
+          <details>
+            <summary>Where do I get the game files?</summary>
+            <p>From your own copy of the PC game. This project doesn’t host, link to or share game files, and requests for them in Issues will be closed.</p>
+          </details>
+          <details>
+            <summary>Does it run on an original 3DS or 2DS?</summary>
+            <p>No. The port relies on the New 3DS’s faster clock, its L2 cache and its extra memory. Without them the game wouldn’t fit, let alone keep up.</p>
+          </details>
+          <details>
+            <summary>Can I use the v1.0 release, or a copy with the Enhanced Edition?</summary>
+            <p>Not yet. The converters read data at fixed places in the Director’s Cut exe, so the packer only accepts that build. The Enhanced Edition’s fixes are already part of the port.</p>
+          </details>
+          <details>
+            <summary>Why does building the data take so long?</summary>
+            <p>Most of the time goes into compressing thousands of textures to ETC1 with mipmaps at the encoder’s highest quality, which keeps the console’s memory and bandwidth free for everything else. You only do it once.</p>
+          </details>
+          <details>
+            <summary>Where are my saves?</summary>
+            <p>In <code>sdmc:/3ds/sh23ds/save.dat</code>, with your options in <code>options.txt</code> next to it. Back them up before you replace the game data folder.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <a class="brand" href="#top"><svg class="brand-mark" aria-hidden="true"><use href="#i-mark"/></svg>sh23ds</a>
+          <p>Silent Hill 2 for the New Nintendo 3DS. Free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>.</p>
+        </div>
+        <div>
+          <h3>Project</h3>
+          <ul>
+            <li><a href="https://github.com/ankushKun/sh23ds">Source code</a></li>
+            <li><a href="https://github.com/ankushKun/sh23ds/releases">Releases</a></li>
+            <li><a href="https://github.com/ankushKun/sh23ds/issues">Report a problem</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Built on</h3>
+          <ul>
+            <li><a href="https://github.com/elishacloud/Silent-Hill-2-Enhancements">Silent Hill 2: Enhanced Edition</a></li>
+            <li><a href="https://devkitpro.org/">devkitPro</a>, libctru and citro3d</li>
+            <li><a href="https://github.com/phoboslab/pl_mpeg">pl_mpeg</a> and <a href="https://azahar-emu.org/">Azahar</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="legal">A fan project, not affiliated with or endorsed by Konami or Nintendo. <em>Silent Hill</em> is a trademark of Konami Digital Entertainment, and Nintendo 3DS is a trademark of Nintendo. sh23ds, its releases and its packer image contain no game code or assets, and playing requires a legally obtained copy of the PC game. Screenshots show the port running the author’s own copy. Console photo: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>), cropped and darkened, with the screens replaced. Fonts: Cormorant Garamond, Barlow, Questrial and JetBrains Mono (SIL OFL).</p>
+    </div>
+  </footer>
+</body>
+</html>

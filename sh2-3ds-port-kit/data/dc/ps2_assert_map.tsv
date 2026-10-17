@@ -1,0 +1,64 @@
+pc_function	pc_name	status	ps2_name	asserts
+0x48c9d0	FUN_0048c9d0	ok	RadioNoise	Event/event.c:2154->RadioNoise
+0x48e520	FUN_0048e520	ok	EventCheckLookLine	Event/event.c:917->EventCheckLookLine; Event/event.c:929->EventCheckLookLine
+0x48eac0	FUN_0048eac0	ok	EventCheckLook	Event/event.c:767->EventCheckLook
+0x48f4b0	FUN_0048f4b0	ok	CharaAdminBackLoadEnemy	Event/chara_admin.c:959->CharaAdminBackLoadEnemy
+0x48f9d0	FUN_0048f9d0	none		Event/chara_admin.c:1210->?0
+0x48fb40	FUN_0048fb40	ok	CharaAdminPlayableDisplay	Event/chara_admin.c:923->CharaAdminPlayableDisplay
+0x48fed0	FUN_0048fed0	ambiguous	ConnectCharaWorkReset ConnectCharaWorkWeapon	Event/chara_admin.c:149->ConnectCharaWorkWeapon; Event/chara_admin.c:165->ConnectCharaWorkReset; Event/chara_admin.c:174->ConnectCharaWorkReset
+0x491a30	FUN_00491a30	none		Event/chara_data_load.c:2240->?0
+0x491b40	FUN_00491b40	none		Event/chara_data_load.c:2240->?0
+0x491ea0	FUN_00491ea0	none		Event/chara_data_load.c:2240->?0
+0x492180	FUN_00492180	ok	CharaDataDeleteAll	Event/chara_data_load.c:1599->CharaDataDeleteAll; Event/chara_data_load.c:2240->?0
+0x492a50	FUN_00492a50	none		Event/chara_data_load.c:1879->?0; Event/chara_data_load.c:1890->?0
+0x492f70	FUN_00492f70	ok	CharaDataLoadRoom	Event/chara_data_load.c:791->CharaDataLoadRoom; Event/chara_data_load.c:819->CharaDataLoadRoom
+0x493260	FUN_00493260	ok	CharaDataLoadExec	Event/chara_data_load.c:892->CharaDataLoadExec; Event/chara_data_load.c:914->CharaDataLoadExec
+0x493430	FUN_00493430	none		Event/chara_data_load.c:1012->?0
+0x495370	FUN_00495370	none		Event/stg_overlay.c:299->?0
+0x495f60	FUN_00495f60	none		Event/title.c:1712->?0
+0x496020	FUN_00496020	ok	titleExit	Event/title.c:1942->titleExit
+0x4960a0	FUN_004960a0	ok	titleDrawMainMenu	Event/title.c:2145->titleDrawMainMenu
+0x496970	FUN_00496970	none		Event/title.c:3588->?0
+0x4976b0	FUN_004976b0	ok	titleBattleSelect	Event/title.c:1363->titleBattleSelect
+0x4979c0	FUN_004979c0	none		Event/title.c:1660->?0
+0x497bb0	FUN_00497bb0	ok	titleFadeOutNewGame	Event/title.c:1845->titleFadeOutNewGame
+0x497fc0	FUN_00497fc0	ok	titleDrawMainMenu	Event/title.c:2145->titleDrawMainMenu; Event/title.c:2083->titleDrawMainMenu
+0x498b70	FUN_00498b70	ok	MemoSelectBarDraw	Event/memo.c:537->MemoSelectBarDraw
+0x49e6a0	FUN_0049e6a0	ok	ItemEventCheck	Event/item.c:315->ItemEventCheck
+0x4a21e0	FUN_004a21e0	ok	EvSubPictureDisplay	Event/event_sub.c:442->EvSubPictureDisplay
+0x4aa5e0	FUN_004aa5e0	ok	enTransID	Enemy/en_common.c:423->enTransID
+0x4eec20	FUN_004eec20	none		Effect/ef_common.cpp:1301->?0
+0x4ef640	FUN_004ef640	none		Effect/ef_common.cpp:1346->?0
+0x4ef790	FUN_004ef790	none		Effect/ef_common.cpp:1552->?0
+0x516080	FUN_00516080	none		sound/sh_sound.c:1640->?0; sound/sh_sound.c:1656->?0
+0x516ae0	FUN_00516ae0	ok	SeCallPosDistanceF	sound/sh_sound.c:438->SeCallPosDistanceF
+0x5187e0	FUN_005187e0	ok	sndGetSoundAryByCharaPos	sound/snd_select.c:279->sndGetSoundAryByCharaPos
+0x519ae0	FUN_00519ae0	ok	vcRetSelfViewEffectRate	view/vc_main.c:1284->vcRetSelfViewEffectRate
+0x519d70	FUN_00519d70	ok	vcPreSetDataInVC_WORK	view/vc_main.c:1422->vcPreSetDataInVC_WORK
+0x51a1d0	FUN_0051a1d0	ok	vcAutoRenewalWatchTgtPosAndAngZ	view/vc_main.c:2396->vcAutoRenewalWatchTgtPosAndAngZ
+0x51b5a0	FUN_0051b5a0	ok	vcAdjTgtMvVecYByCurNearRoad	view/vc_main.c:4109->vcAdjTgtMvVecYByCurNearRoad
+0x51c230	FUN_0051c230	ok	vcAdjCamOfsAngByCharaInScreen	view/vc_main.c:4942->vcAdjCamOfsAngByCharaInScreen
+0x51c710	FUN_0051c710	none		view/vc_main.c:5193->?0
+0x51d220	FUN_0051d220	none		view/vc_main.c:1960->?0
+0x51d850	FUN_0051d850	none		view/vc_main.c:2338->?0
+0x51d9e0	FUN_0051d9e0	none		view/vc_main.c:2584->?0
+0x51e280	FUN_0051e280	ok	vcFlipFromCamExclusionArea	view/vc_main.c:4328->vcFlipFromCamExclusionArea
+0x51ed10	FUN_0051ed10	ok	vcAutoRenewalWatchTgtPosAndAngZ	view/vc_main.c:2445->vcAutoRenewalWatchTgtPosAndAngZ
+0x51eea0	FUN_0051eea0	ok	vcAutoRenewalCamTgtPos	view/vc_main.c:3191->vcAutoRenewalCamTgtPos
+0x51f300	FUN_0051f300	none		view/vc_main.c:2118->?0
+0x51f660	FUN_0051f660	ok	vcExecCamera	view/vc_main.c:873->vcExecCamera
+0x522de0	FUN_00522de0	none		Collision/cl_main.c:1736->?0
+0x522e90	FUN_00522e90	ok	clBattleCheckExec	Collision/cl_main.c:1807->clBattleCheckExec
+0x5230b0	FUN_005230b0	ok	clSetThrustBattleResult	Collision/cl_main.c:2072->clSetThrustBattleResult
+0x523280	FUN_00523280	none		Collision/cl_main.c:2147->?0
+0x524f70	FUN_00524f70	none		Collision/cl_main.c:1266->?0
+0x525030	FUN_00525030	ok	clMakeWallHitCollectVector	Collision/cl_main.c:1309->clMakeWallHitCollectVector
+0x5278c0	FUN_005278c0	ok	clSetCharaHitColumn	Collision/cl_main.c:686->clSetCharaHitColumn
+0x527e60	FUN_00527e60	ambiguous	clMakeWallHitCollectVector clModifiedBattleData clSetCharaHitColumn clSetThrustBattleResult	Collision/cl_main.c:2072->clSetThrustBattleResult; Collision/cl_main.c:2147->?0; Collision/cl_main.c:1266->?0; Collision/cl_main.c:1309->clMakeWallHitCollectVector; Collision/cl_main.c:686->clSetCharaHitColumn; Collision/cl_main.c:1947->clModifiedBattleData
+0x5377a0	FUN_005377a0	none		Chacter/m3_sc.c:487->?0
+0x538470	FUN_00538470	ok	shCharacterPlayingExecAnimeOne	Chacter/m3_sc.c:1509->shCharacterPlayingExecAnimeOne
+0x538920	FUN_00538920	none		Chacter/m3_sc.c:2091->?0
+0x53a270	FUN_0053a270	ok	shCharacter_Manage_Create	Chacter/sh2_character_manage.c:134->shCharacter_Manage_Create
+0x5569b0	FUN_005569b0	none		Chacter/m3_play_common.c:851->?0
+0x558bd0	FUN_00558bd0	none		Chacter/m3_play_common.c:2693->?0
+0x558fa0	FUN_00558fa0	none		Chacter/m3_play_common.c:2739->?0
