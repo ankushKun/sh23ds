@@ -890,12 +890,18 @@ static void inventory_draw(void)
 			if (ev_item_count(items[i]) > 1)
 				snprintf(rowtext[i] + strlen(rowtext[i]), sizeof rowtext[i] - strlen(rowtext[i]), "   x%d",
 				         ev_item_count(items[i]));
+			if (s_inv_mark[0] == items[i] || s_inv_mark[1] == items[i]) {    // marked to combine
+				memmove(rowtext[i] + 2, rowtext[i], sizeof rowtext[i] - 2);
+				rowtext[i][0] = '+', rowtext[i][1] = ' ';
+				rowtext[i][sizeof rowtext[i] - 1] = 0;
+			}
 			rows[i] = rowtext[i];
 		}
-		// Mark is R, the PC's way of choosing items to use together (the item screen's combining)
-		static const TouiButton b[4] = { { "Use", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Close", KEY_B } };
+		// Mark is R (up to two items); with items marked A uses them together with the chosen one
+		static const TouiButton use[4] = { { "Use", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Close", KEY_B } };
+		static const TouiButton join[4] = { { "Combine", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Close", KEY_B } };
 		touchui_menu_items(items, k);
-		touchui_menu(TOUI_ITEMS, "Items", rows, k, &s_inv_sel, b, 4);
+		touchui_menu(TOUI_ITEMS, "Items", rows, k, &s_inv_sel, s_inv_mark[0] || s_inv_mark[1] ? join : use, 4);
 	}
 	printf("\x1b[18;1H---------------- Items -----------------");
 	if (!n)
