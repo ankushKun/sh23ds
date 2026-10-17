@@ -30,6 +30,7 @@
 #include "font.h"
 #include "clearsave.h"
 #include "stagemdl.h"
+#include "touchui.h"
 #include "chrlight.h"
 #include "shadow.h"
 #include "areaidx.h"
@@ -84,6 +85,7 @@ static int s_autotest;                // debug.txt "autotest" (autotest_frame)
 static int s_debug_itemget[8], s_debug_nitemget;   // debug.txt "itemget <id>": ItemGet before "results"
 static int s_debug_results;           // debug.txt "results 1": the results screen right after start (2: Born From a Wish)
 static bool s_msg_top;                // options.txt "messagestop": messages and subtitles on the top screen
+static int s_vol_music = 10, s_vol_sound = 10;   // options.txt "musicvol", "soundvol": 0..10
 static char s_status[160];
 static int s_render_mode;   // 0 textured, 1 flat color per group, 2 vertex color only, 3 texture test
 static int s_only_batch = -1;   // debug: draw just this batch
@@ -809,10 +811,31 @@ static void inventory_draw(void)
 		printf("\x1b[%d;1H%40s", r, "");
 	if (!s_inv_open) {
 		s_msg_dirty = true;      // give the message box its rows back
+		touchui_menu_close(TOUI_ITEMS);
 		return;
 	}
 	int items[64];
 	int n = inv_list(items, 64);
+	{
+		static char rowtext[24][48];
+		const char* rows[24];
+		int k = n < 24 ? n : 24;
+		for (int i = 0; i < k; i++) {
+			const char* name = ev_item_name(items[i]);
+			snprintf(rowtext[i], sizeof rowtext[i], "%s", name ? name : "?");
+			char* nl = strchr(rowtext[i], '\n');
+			if (nl)
+				*nl = 0;
+			if (ev_item_count(items[i]) > 1)
+				snprintf(rowtext[i] + strlen(rowtext[i]), sizeof rowtext[i] - strlen(rowtext[i]), "   x%d",
+				         ev_item_count(items[i]));
+			rows[i] = rowtext[i];
+		}
+		// Mark is R, the PC's way of choosing items to use together (the item screen's combining)
+		static const TouiButton b[4] = { { "Use", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Close", KEY_B } };
+		touchui_menu_items(items, k);
+		touchui_menu(TOUI_ITEMS, "Items", rows, k, &s_inv_sel, b, 4);
+	}
 	printf("\x1b[18;1H---------------- Items -----------------");
 	if (!n)
 		printf("\x1b[20;3H(nothing)");
@@ -2021,6 +2044,18 @@ static void memo_panel(const int* list, int n)
 	snprintf(buf + k, sizeof buf - k, "\n   D-pad: choose  A: read  B: close");
 	host_panel(buf);
 	s_memo_dirty = false;
+	{
+		static char titles[64][48];
+		const char* rows[64];
+		for (int i = 0; i < n && i < 64; i++) {
+			snprintf(titles[i], sizeof titles[i], "%s", memo_title(list[i]) ? memo_title(list[i]) : "?");
+			for (char* c = titles[i]; *c; c++)
+				if (*c == '\n' || *c == '\f') *c = ' ';
+			rows[i] = titles[i];
+		}
+		static const TouiButton b[2] = { { "Read", KEY_A }, { "Close", KEY_B } };
+		touchui_menu(TOUI_MEMOS, n ? "Memos" : "Memos: none yet", rows, n < 64 ? n : 64, &s_memo_sel, b, 2);
+	}
 }
 
 static void open_memos(void)
@@ -2033,6 +2068,8 @@ static void open_memos(void)
 
 static void close_memos(void)
 {
+	touchui_menu_close(TOUI_MEMOS);
+	touchui_box(NULL, NULL, 0);
 	s_memo_open = false;
 	host_picture(NULL);
 	host_panel(NULL);
@@ -2058,6 +2095,7 @@ static bool memo_update(u32 down)
 		s_memo_view = 0;
 		s_memo_dirty = true;
 		host_picture("etc_p_memo");
+		touchui_box(NULL, NULL, 0);
 		return true;
 	}
 	if (down & (KEY_B | KEY_START)) {
@@ -2072,12 +2110,15 @@ static bool memo_update(u32 down)
 	}
 	if (n && (down & KEY_A)) {
 		s_memo_cur = list[s_memo_sel % n];
+		touchui_menu_close(TOUI_MEMOS);
 		const char* pic = memo_picture(s_memo_cur, 0);
 		host_picture(pic ? pic : "etc_p_memo");
 		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 		if (memo_kind(s_memo_cur) != 1 && pic) {
 			s_memo_view = 1;
 			host_panel("\n   A: next");
+			static const TouiButton next[1] = { { "Next", KEY_A } };
+			touchui_box(memo_title(s_memo_cur), next, 1);
 		} else {
 			host_panel(NULL);
 			show_message(memo_text(s_memo_cur));
@@ -2095,6 +2136,9 @@ static bool memo_update(u32 down)
 static bool screens_update(u32 down, u32 held, const circlePosition* cp, float dt)
 {
 	prog_overlay_memo(s_memo_open && s_memo_view != 0 ? s_memo_cur : -1);   // 0x49a210 (prog_overlay.c)
+	touchui_map(map_is_open());      // the map screen's buttons on the touch screen
+	touchui_map_readable(!s_env.dark || (s_flash_on && ev_have_item(18) && !ev_flag(272) && !ev_flag(625)) ||
+	                     bgm_room_id(ev_glb_crd(), s_px, s_pz) == 0xaa);   // as open_map
 	if (!screens_open()) {
 		bool free = !prog_running() && !s_inv_open && !s_msg_page && !s_save_prompt && !s_warp_pending;
 		if (free && (down & KEY_TOUCH))
@@ -2239,7 +2283,11 @@ static void results_print(void)
 	consoleClear();
 	printf("\x1b[1;1H---------------- Result ----------------");
 	int row = 3;
-#define LINE(label, ...) do { printf("\x1b[%d;2H%-27s", row, (label) ? (label) : ""); printf(__VA_ARGS__); row++; } while (0)
+	static char sum[1400];          // the same lines for the touch screen
+	int sn = 0;
+#define LINE(label, ...) do { printf("\x1b[%d;2H%-27s", row, (label) ? (label) : ""); printf(__VA_ARGS__); row++; \
+		sn += snprintf(sum + sn, sizeof sum - sn, "%s   ", (label) ? (label) : ""); \
+		sn += snprintf(sum + sn, sizeof sum - sn, __VA_ARGS__); sn += snprintf(sum + sn, sizeof sum - sn, "\n"); } while (0)
 	LINE(m(1), "%s", m(action_msg[r.action & 3]) ? m(action_msg[r.action & 3]) : "");
 	LINE(m(2), "%s", m(riddle_msg[r.riddle & 3]) ? m(riddle_msg[r.riddle & 3]) : "");
 	int e = r.ending == 1 ? 7 : r.ending == 2 ? 8 : r.ending == 4 ? 9 : r.ending == 8 ? 10 : r.ending == 0x10 ? 11 :
@@ -2275,6 +2323,8 @@ static void results_print(void)
 	}
 #undef LINE
 	printf("\x1b[29;12H%s", "A: continue");
+	static const TouiButton cont[1] = { { "Continue", KEY_A } };
+	touchui_box(sum, cont, 1);
 	s_results_dirty = false;
 }
 
@@ -2618,6 +2668,8 @@ static void new_game_wish(void)
 
 static void enter_title(void)
 {
+	touchui_box(NULL, NULL, 0);
+	touchui_panel("");
 	map_close();
 	s_memo_open = false;
 	s_state = ST_TITLE;
@@ -2744,6 +2796,8 @@ static void options_load(void)
 		if (!strcmp(key, "cutscenefov")) s_cutscene_fov = val != 0;
 		if (!strcmp(key, "bulletadjust")) ev_set_bullet_adjust(val);
 		if (!strcmp(key, "messagestop")) s_msg_top = val != 0;
+		if (!strcmp(key, "musicvol")) s_vol_music = val < 0 ? 0 : val > 10 ? 10 : val;
+		if (!strcmp(key, "soundvol")) s_vol_sound = val < 0 ? 0 : val > 10 ? 10 : val;
 	}
 	fclose(f);
 }
@@ -2754,6 +2808,8 @@ static void options_apply(void)
 	sh2cam_set_ps2_speed(s_ps2_camera);
 	demo_set_reduce_fov(s_cutscene_fov);
 	env_set_ps2_flashlight(s_ps2_flash);
+	audio_set_gains(s_vol_music / 10.0f, s_vol_sound / 10.0f);
+	sfx_set_gain(s_vol_sound / 10.0f);
 }
 
 static void options_save(void)
@@ -2766,6 +2822,7 @@ static void options_save(void)
 	fprintf(f, "holdstomp %d\nswapattack %d\nps2camera %d\ncutscenefov %d\n", s_hold_stomp, s_swap_attack,
 	        s_ps2_camera, s_cutscene_fov);
 	fprintf(f, "bulletadjust %d\nmessagestop %d\n", ev_bullet_adjust(), s_msg_top);
+	fprintf(f, "musicvol %d\nsoundvol %d\n", s_vol_music, s_vol_sound);
 	fclose(f);
 }
 
@@ -2838,6 +2895,12 @@ static bool title_levels(u32 down)
 	printf("\x1b[17;7H%c Riddle level  < %-8s >", sel == 1 ? '>' : ' ', r);
 	printf("\x1b[19;7H%c Start                    ", sel == 2 ? '>' : ' ');
 	printf("\x1b[27;2HD-pad: choose, change  A: go  B: back");
+	char ra[40], rr[40];
+	snprintf(ra, sizeof ra, "Action level   < %s >", action[s_action & 3]);
+	snprintf(rr, sizeof rr, "Riddle level   < %s >", r);
+	const char* rows[3] = { ra, rr, "Start" };
+	static const TouiButton back[1] = { { "Back", KEY_B } };
+	touchui_menu(TOUI_LEVELS, s_title_sub == 2 ? "Born From a Wish" : "New Game", rows, 3, &sel, back, 1);
 	return true;
 }
 
@@ -2886,6 +2949,8 @@ static bool title_update(u32 down)
 	printf("\x1b[11;10HDirector's Cut  (3DS)");
 	for (int i = 0; i < N; i++)
 		printf("\x1b[%d;9H%s %-22s", 15 + i * 2, i == s_menu ? ">" : " ", items[i]);
+	touchui_menu_close(TOUI_LEVELS);
+	touchui_menu(TOUI_TITLE, "SILENT HILL 2", items, N, &s_menu, NULL, 0);
 	u8 clear[3];
 	prog_clear_get(clear);
 	if (clear[1]) {
@@ -2919,19 +2984,26 @@ static void pause_draw(void)
 		printf("\x1b[%d;1H%40s", r, "");
 	if (!s_paused) {
 		s_msg_dirty = true;
+		touchui_menu_close(TOUI_PAUSE);
 		return;
 	}
-	char bright[32], controls[32], runmode[32], flash[32], msgs[32];
+	char bright[32], controls[32], runmode[32], flash[32], msgs[32], music[32], sound[32];
 	snprintf(bright, sizeof bright, "Brightness  < %d >", s_bright);
 	snprintf(controls, sizeof controls, "Controls    %s", s_controls ? "2D (camera)" : "3D (tank)");
 	snprintf(runmode, sizeof runmode, "Run         %s", s_toggle_run ? "toggle B" : "hold B");
 	snprintf(flash, sizeof flash, "Flashlight  %s", s_ps2_flash ? "PS2 (soft)" : "PC (bright)");
 	snprintf(msgs, sizeof msgs, "Messages    %s", s_msg_top ? "top screen" : "bottom screen");
-	const char* items[] = { "Resume", "Map", "Memos", bright, controls, runmode, flash, msgs, "Quit to title" };
+	snprintf(music, sizeof music, "Music       < %d >", s_vol_music);
+	snprintf(sound, sizeof sound, "Sound       < %d >", s_vol_sound);
+	// the Old 3DS profile's rows (hardware, control layout, quality) go before "Quit to title"
+	// once profile.h is in the tree; touchui shows whatever rows are here
+	const char* items[] = { "Resume", "Map", "Memos", bright, controls, runmode, flash, msgs, music, sound, "Quit to title" };
 	printf("\x1b[18;1H---------------- Pause -----------------");
-	for (int i = 0; i < 9; i++)
+	for (int i = 0; i < 11; i++)
 		printf("\x1b[%d;6H%c %s", 19 + i * 1, i == s_pause_sel ? '>' : ' ', items[i]);
 	printf("\x1b[29;3HA: select  left/right: change  B: back");
+	static const TouiButton back[1] = { { "Back", KEY_B } };
+	touchui_menu(TOUI_PAUSE, "Pause", items, 11, &s_pause_sel, back, 1);
 }
 
 // Returns true while the game is paused (the caller skips the game update).
@@ -2955,7 +3027,7 @@ static bool pause_update(u32 down)
 		return true;
 	}
 	if (down & (KEY_DUP | KEY_DDOWN)) {
-		s_pause_sel = (s_pause_sel + (down & KEY_DDOWN ? 1 : 8)) % 9;
+		s_pause_sel = (s_pause_sel + (down & KEY_DDOWN ? 1 : 10)) % 11;
 		s_pause_dirty = true;
 		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
 	}
@@ -3001,9 +3073,17 @@ static bool pause_update(u32 down)
 		s_pause_dirty = true;
 		options_save();
 	}
-	if (s_pause_sel >= 3 && s_pause_sel <= 7 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A)))
+	if ((s_pause_sel == 8 || s_pause_sel == 9) && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
+		int* v = s_pause_sel == 8 ? &s_vol_music : &s_vol_sound;
+		*v += down & KEY_DLEFT ? -1 : 1;
+		*v = *v < 0 ? 10 : *v > 10 ? 0 : *v;
+		options_apply();
+		s_pause_dirty = true;
+		options_save();
+	}
+	if (s_pause_sel >= 3 && s_pause_sel <= 9 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A)))
 		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
-	if (s_pause_sel == 8 && (down & KEY_A)) {
+	if (s_pause_sel == 10 && (down & KEY_A)) {
 		s_paused = false;
 		enter_title();
 	}
@@ -3207,6 +3287,7 @@ int main(void)
 	C3D_RenderTargetSetOutput(top, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 	setup_pipeline();
 	movie_init(top);
+	touchui_init();                  // the touch screen is drawn from here on (touchui.c)
 
 	C3D_Mtx proj;
 	Mtx_PerspTilt(&proj, C3D_AngleFromDegrees(60.0f), C3D_AspectRatioTop, 20.0f, 100000.0f, false);
@@ -3367,12 +3448,19 @@ int main(void)
 		u32 down = hidKeysDown(), held = hidKeysHeld();
 		if (s_autotest)
 			autotest_frame(&down, &held);
+		touchui_input(&down, &held);
+		touchui_debug(s_state == ST_VIEWER || s_debug_hud);
+		if (s_state != ST_TITLE) {
+			touchui_menu_close(TOUI_TITLE);
+			touchui_menu_close(TOUI_LEVELS);
+		}
 		if (s_results && results_update(down)) {
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
 			results_draw_top();
 			font_flush();
+			touchui_frame();
 			C3D_FrameEnd(0);
 			continue;
 		}
@@ -3393,6 +3481,7 @@ int main(void)
 			C3D_FrameDrawOn(top);
 			if (s_state == ST_TITLE)
 				draw_title(&ortho, bright);
+			touchui_frame();
 			C3D_FrameEnd(0);
 			continue;            // the button that left the title is not seen by the game
 		}
@@ -3443,7 +3532,7 @@ int main(void)
 			s_env_dirty = true;
 			options_save();
 		}
-		if (!viewer && (down & KEY_SELECT)) {
+		if (!viewer && (down & KEY_SELECT) && touchui_select()) {     // SELECT twice: the debug page
 			s_debug_hud = !s_debug_hud;
 			for (int r = 1; r < 18; r++)
 				printf("\x1b[%d;1H%40s", r, "");
@@ -3628,6 +3717,7 @@ int main(void)
 			draw_top_text();
 			font_flush();
 		}
+		touchui_frame();
 		C3D_FrameEnd(0);
 		perf_frame_end(s_nrooms ? s_rooms[s_room] : "-");
 		for (int i = 0; i < s_ndump; i++)
@@ -3705,12 +3795,23 @@ int main(void)
 						putchar(*c);
 				}
 				printf("\x1b[29;27HSTART: skip");
+				static const TouiButton skip[1] = { { "Skip", KEY_START } };
+				touchui_box(s_msg_top && font_ready() ? "" : (sub ? sub : ""), skip, 1);
 			}
+		} else if (s_sub_serial != -1) {
+			s_sub_serial = -1;               // the scene is over: the box below gets the screen back
+			s_msg_dirty = true;
+			touchui_box(NULL, NULL, 0);
 		} else if (s_msg_dirty && !s_inv_open && !s_paused) {
 			// message box on the lower half of the bottom screen (rows 18..29)
 			s_msg_dirty = false;
 			for (int r = 18; r < 30; r++)
 				printf("\x1b[%d;1H%40s", r, "");
+			static const TouiButton save[2] = { { "Save", KEY_A }, { "Cancel", KEY_B } };
+			touchui_box(s_save_prompt ? "Do you want to save the game?" :
+			            s_msg_page ? (s_msg_top && font_ready() ? "" : s_msg_page) : NULL,
+			            save, s_save_prompt ? 2 : 0);
+			touchui_panel(!s_save_prompt && !s_msg_page ? s_panel : "");
 			if (s_save_prompt) {
 				printf("\x1b[18;1H----------------------------------------");
 				printf("\x1b[20;3HDo you want to save the game?");

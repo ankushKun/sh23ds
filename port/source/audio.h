@@ -11,6 +11,8 @@ void audio_exit(void);
 // Starts a music stream (loops at the ADX loop points when present). Returns false if unreadable.
 // AIX layer 0 starts at full volume and the others silent.
 bool audio_play_music(const char* path, float volume);
+// The options' volumes, 0..1: music (channel 0) and the cutscene voices (channel 1).
+void audio_set_gains(float music, float voice);
 bool audio_play_layers(const char* path, float volume);     // same, every layer silent
 void audio_stop_music(void);
 

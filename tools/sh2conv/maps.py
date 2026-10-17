@@ -6,7 +6,9 @@
 Writes pack/map/:
   <name>.t3x   the maps (data/pic/map/*.tex and add/mapboldwin.tex, 1024x1024 DXT, squeezed to
                1024x512 RGB565 as the PC stretches them over its 4:3 screen) and the marker sheets
-               (*mark*.tex, add/mapmark.tex, RGBA4 at their own size)
+               (*mark*.tex, add/mapmark.tex, RGBA4 at their own size). With the Image Enhancement
+               Pack (ee.py) its 5464x4096 maps are the source, and its 4x marker sheets are
+               brought back to the original sheets' sizes.
   map.dat      the PC's tables (see below), read from sh2pc.exe
 and pack/events/memo.msg from memo_x_msg_e.mes, the memo list's titles and texts.
 
@@ -38,6 +40,7 @@ from convert import encode_textures  # noqa: E402
 from events import DEFAULT_EXE, Exe  # noqa: E402
 from events_pack import write_msg  # noqa: E402
 import sh2mes  # noqa: E402
+import ee  # noqa: E402
 from ui import load_tex  # noqa: E402
 
 ROOMS = 0xd6
@@ -127,11 +130,14 @@ def main():
     textures = write_dat(exe, os.path.join(pack, 'map', 'map.dat'))
     jobs = {'rgb565': [], 'rgba4': []}
     for t in textures:
-        img = load_tex(os.path.join(data, 'pic', t + '.tex'))
+        src = os.path.join(data, 'pic', t + '.tex')
+        img = load_tex(src)
         name = os.path.basename(t)
         png = f'map/{name}.png'
         if 'mark' in name or name.endswith('mk'):
-            img.convert('RGBA').save(os.path.join(pack, png))
+            # map.dat's marker rectangles are in the original sheet's texels: a larger sheet from
+            # the Image Enhancement Pack goes back to that size
+            ee.like_original(img.convert('RGBA'), src).save(os.path.join(pack, png))
             jobs['rgba4'].append((png, f'map/{name}.t3x', True))
         else:
             img.convert('RGB').resize((1024, 512), Image.LANCZOS).save(os.path.join(pack, png))

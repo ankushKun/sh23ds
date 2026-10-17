@@ -8,6 +8,12 @@
 # output folder must then be under your home folder). The packer image (tools/packer) bundles all of it.
 # Copy the result to the SD card as sdmc:/3ds/sh23ds/ (the png/ folders and *.json files are not
 # needed on the card). Real consoles also need sdmc:/3ds/dspfirm.cdc (dump it with DSP1) for sound.
+#
+# Silent Hill 2: Enhanced Edition: when the game folder has the EE's sh2e folder (its Essential Files,
+# Image, FMV and Audio Enhancement Packs), every converter reads the files there in place of data/'s,
+# file by file, as the EE does in the PC game (tools/sh2conv/ee.py, EE_PACKS.md). SH2EE=0 ignores the
+# folder, SH2EE_SKIP=images,fmv,audio,essentials leaves out a part. The files used are listed in
+# ee_used.txt in the output folder. Build into an empty folder after adding or removing packs.
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 GAME=${1:?usage: make_pack.sh <Silent Hill 2 folder> [out dir]}
@@ -26,6 +32,8 @@ if [ "$SUM" != "f3f5360298b6d0f6f2e09cf24a0925d1" ]; then
 fi
 
 mkdir -p "$OUT"
+$PY "$ROOT/tools/sh2conv/ee.py" report "$DATA"
+export SH2EE_LOG="$OUT/ee_used.txt"
 # Each step leaves a stamp in $OUT/.steps when it finishes, so running the same command again after a
 # failure picks up at the step that stopped. FRESH=1 starts over. The stamps are removed at the end.
 STEPS="$OUT/.steps"
@@ -105,8 +113,9 @@ if step maps "maps and memos"; then
 	touch "$STEPS/maps"
 fi
 if step music "music"; then
-	mkdir -p "$OUT/sound"
-	cp -R "$DATA/sound/adx" "$OUT/sound/"
+	# the BGM (the Audio Enhancement Pack's when there); voice/ is left out: the cutscene voices are
+	# taken from voice.afs by the demos step and the effects in it by the sound step
+	$PY "$ROOT/tools/sh2conv/ee.py" copytree "$DATA" sound/adx "$OUT/sound/adx" voice
 	touch "$STEPS/music"
 fi
 if step movies "movies (MPEG-1 + MP2 for movie.c; needs ffmpeg)"; then
@@ -121,10 +130,18 @@ if step demos "cutscenes (scripts, motions, the characters they need, voices fro
 	$PY "$ROOT/tools/sh2conv/demos.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT"
 	touch "$STEPS/demos"
 fi
+if step stagemodels "stage-placed models (cars, furniture, props, puzzle objects)"; then
+	$PY "$ROOT/tools/sh2conv/stagemodels.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT" --events "$OUT/events/events.json"
+	touch "$STEPS/stagemodels"
+fi
 if step shadows "character shadow models (.kg1 next to the S3C files) and per-area room indexes"; then
 	$PY "$ROOT/tools/sh2conv/shadows.py" "$DATA" "$OUT"
 	$PY "$ROOT/tools/sh2conv/areaindex.py" "$OUT"
 	touch "$STEPS/shadows"
 fi
 rm -rf "$STEPS"
+if [ -s "$SH2EE_LOG" ]; then
+	sort -u "$SH2EE_LOG" -o "$SH2EE_LOG"
+	echo "Enhanced Edition files used: $(wc -l < "$SH2EE_LOG" | tr -d ' ') (see $SH2EE_LOG)"
+fi
 echo "done: $OUT"

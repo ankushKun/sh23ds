@@ -25,7 +25,8 @@ What this writes
   <out>/demo/demos.txt       key, PlayInfo address, program, script, frames, characters, voice
   <out>/chr/<folder>/<model>.s3c + tex/   models the scenes need (chr.py's S3C v2; models that are
                              already in the pack, like James' hll_jms, are reused)
-  <out>/sound/voice/<n>.adx  voice.afs file n (the scene's stream_no - 60000), copied as is
+  <out>/sound/voice/<n>.adx  voice.afs file n (the scene's stream_no - 60000), copied as is (a
+                            WAV from the Audio Enhancement Pack's voice.afs is encoded to ADX)
 
 DEM1 (little-endian)
   char[4] "DEM1", u32 version (2), s32 demo_no, u32 total_frames, u32 n_chars, u32 n_anim, u32 n_msgs,
@@ -72,10 +73,11 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import ee  # noqa: E402
 import sh2mdl  # noqa: E402
 from chr import convert_model  # noqa: E402
 from convert import encode_textures, pow2_floor  # noqa: E402
-from sound import Exe, afs_files  # noqa: E402
+from sound import Exe, afs_files, wav_to_adx  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 DEFAULT_DATA = os.path.join(ROOT, 'Silent Hill 2', 'data')
@@ -92,9 +94,6 @@ DEMO_BUFFER = 0x1dbec40          # where the stage programs load a script (FUN_0
 # and the matching above keeps the best fit, so the others are written here as well under their
 # own names. The music box (0x57c470) loads org_b for the right order and org_a for any other.
 EXTRA_SCRIPTS = {0x8cea6c: ['demo/org/org_a.dds']}
-# Models the stages place in their rooms that port/source/stagemdl.c draws (folder, model): the
-# hotel lobby's music box (stage 40, kind 0x524), whose parts 0x57b5c0 turns while it plays.
-STAGE_MODELS = [('item', 'org')]
 ANIM_INFO = 0x891908             # DramaDemo_AnimInfo[79]: name[32], kind, id, start, end
 ANIM_INFO_COUNT = 84            # the PS2 beta has 79; the DC adds Born From a Wish's props
 
@@ -376,7 +375,7 @@ _anm_cache = {}
 
 def anm_bytes(path):
     if path not in _anm_cache:
-        _anm_cache[path] = open(path, 'rb').read()
+        _anm_cache[path] = ee.read(path)
     return _anm_cache[path]
 
 
@@ -475,7 +474,7 @@ def model_for(data, name, dc=False):
 
 def cluster_file(m, mdl_path, src, out_path):
     """The model's face clusters as S3K (see the top of this file) for the S3C vertex order src."""
-    d = open(mdl_path, 'rb').read()
+    d = ee.read(mdl_path)                            # the file load_mdl read (ee.py)
     B = 64
     u = lambda o: struct.unpack_from('<I', d, B + o)[0]   # noqa: E731
     n_nodes, n_clusters, n_maps = u(0x44), u(0x4c), u(0x98)
@@ -781,21 +780,30 @@ def copy_voice(afs, data, out, voice, no_voices):
     if voice < 0 or no_voices:
         return 0.0, afs
     if afs is None:
-        afs = afs_files(os.path.join(data, 'sound', 'adx', 'voice', 'voice.afs'))
+        afs = afs_files(ee.file(os.path.join(data, 'sound', 'adx', 'voice', 'voice.afs')))
     f, toc = afs
     if voice >= len(toc):
         return 0.0, afs
     o, n = toc[voice]
     f.seek(o)
     blob = f.read(n)
+    if blob[:4] == b'RIFF':
+        # the Audio Enhancement Pack's voice.afs holds most lines as PCM WAV (the looping ones stay
+        # ADX); the port streams ADX, so they are encoded to it here
+        blob = wav_to_adx(blob)
     rate, samples = struct.unpack('>II', blob[8:16])
     voice_dir = os.path.join(out, 'sound', 'voice')
     os.makedirs(voice_dir, exist_ok=True)
     dst = os.path.join(voice_dir, '%d.adx' % voice)
-    if not os.path.exists(dst) or os.path.getsize(dst) != n:
+    if not os.path.exists(dst) or os.path.getsize(dst) != len(blob):
         with open(dst, 'wb') as g:
             g.write(blob)
     return samples / rate * 30.0, afs
+
+
+def read_script(path):
+    d = open(path, 'rb').read()
+    return d, parse_dds(d)
 
 
 def times_list(exe, addr, limit):
@@ -831,9 +839,8 @@ def main():
     scripts = {}
     for demo_dir in ('demo', 'demo2'):
         for path in sorted(glob.glob(os.path.join(a.data, demo_dir, '*', '*.dds'))):
-            d = open(path, 'rb').read()
-            try:
-                scripts[os.path.normpath(path)] = (d, parse_dds(d))
+            try:                                     # Essential Files fixes a few scripts (ee.py)
+                scripts[os.path.normpath(path)] = ee.load(path, read_script)
             except (ValueError, IndexError, struct.error) as e:
                 print('skip %s: %s' % (path, e))
 
@@ -941,12 +948,6 @@ def main():
             voice, pi['stream_start'], pi['msg_start'], len(msgs), size // 1024)
         index.append(line)
         print(line)
-
-    for folder, model in STAGE_MODELS:
-        if a.no_models or (only and model not in only):
-            continue
-        convert_model_files(a.out, folder, model, os.path.join(a.data, 'chr', folder, model + '.mdl'), a.max_tex)
-        print('stage model %s/%s' % (folder, model))
 
     # voice and subtitles without a script (SubtitlesExec): voice_<program>.voc
     for fn, times, msg, stream in voice_sequences(exe, programs):

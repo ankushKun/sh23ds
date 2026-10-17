@@ -176,6 +176,62 @@ float font_width(int font, const char* s)
 	return best;
 }
 
+C3D_Tex* font_texture(void) { return s_ready ? &s_tex : NULL; }
+float font_line_px(int font) { return s_font[font & 1].cell_h * 0.46875f; }
+float font_width_px(int font, const char* s) { return font_width(font, s) * 0.625f; }
+
+int font_layout_px(int font, float x, float y, const char* s, int align, u32 top, u32 bottom, FontVert* out, int max)
+{
+	if (!s_ready || !s)
+		return 0;
+	font &= 1;
+	int n = 0;
+	u16 line[128];
+	while (*s) {
+		int k = 0;
+		for (; *s && *s != '\n'; s++) {
+			u8 c = (u8)*s;
+			if (c >= 0x20 && k < (int)(sizeof line / sizeof *line))
+				line[k++] = (u16)(c - 0x20);
+		}
+		float pen = x;
+		if (align == FONT_CENTER)
+			pen -= line_width(font, line, k) * 0.625f * 0.5f;
+		else if (align == FONT_RIGHT)
+			pen -= line_width(font, line, k) * 0.625f;
+		for (int i = 0; i < k; i++) {
+			const Glyph* g = glyph(font, line[i]);
+			if (g && g->w && n + 6 <= max) {
+				float x0 = floorf(pen + 0.625f + 0.5f), y0 = floorf(y + 0.5f);
+				float x1 = x0 + g->w, y1 = y0 + g->h;
+				float u0 = g->x / (float)s_tex.width, v0 = g->y / (float)s_tex.height;
+				float u1 = (g->x + g->w) / (float)s_tex.width, v1 = (g->y + g->h) / (float)s_tex.height;
+				FontVert a = { x0, y0, u0, v0, top }, b = { x1, y0, u1, v0, top };
+				FontVert c = { x0, y1, u0, v1, bottom }, d = { x1, y1, u1, v1, bottom };
+				FontVert* v = &out[n];
+				v[0] = a, v[1] = c, v[2] = d, v[3] = a, v[4] = d, v[5] = b;
+				n += 6;
+			}
+			pen += advance(font, line[i]) * 0.625f;
+		}
+		if (*s == '\n')
+			s++;
+		y += s_font[font].cell_h * 0.46875f;
+	}
+	return n;
+}
+
+void font_image(C3D_Tex* tex, float x0, float y0, float x1, float y1, u32 rgba)
+{
+	if (!s_draw || !tex)
+		return;
+	float a0 = 200.0f + (x0 - 256.0f) * 0.625f, b0 = 120.0f + (y0 - 256.0f) * 0.46875f;
+	float a1 = 200.0f + (x1 - 256.0f) * 0.625f, b1 = 120.0f + (y1 - 256.0f) * 0.46875f;
+	FontVert tl = { a0, b0, 0, 0, rgba }, tr = { a1, b0, 1, 0, rgba }, bl = { a0, b1, 0, 1, rgba }, br = { a1, b1, 1, 1, rgba };
+	const FontVert v[6] = { tl, bl, br, tl, br, tr };
+	s_draw(tex, v, 6);
+}
+
 void font_flush(void)
 {
 	if (s_nverts && s_draw)

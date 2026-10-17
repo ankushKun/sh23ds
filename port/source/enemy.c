@@ -2195,10 +2195,10 @@ static void nse_init(Enemy* e, int status, bool tough)
 // by steps), it heads straight down when it is more than 2000 above James, and a status 3 one,
 // within 100 of the floor, steps off onto it (100 out from the wall, facing away from it) and goes
 // on as a floor creeper. A ceiling creeper (status 4, 0x4b00f0) runs about upside down at its
-// height, turning now and then. A blow knocks either one off (state 7 sub 0xff): it falls at 1500
-// units a second, lands on its back and is stunned as usual, a floor creeper from then on. The
-// port's wall is one straight segment (the PC follows the room's mesh), so at the segment's ends
-// and the wall's top it turns back.
+// height, turning now and then and away from the room's edges. A blow knocks either one off
+// (state 7 sub 0xff): it falls at 1500 units a second, lands on its back and is stunned as usual, a
+// floor creeper from then on. The port's walls are the collision's vertical segments: a creeper
+// crosses from one to the next at inside and outside corners (see "climbing over the room's walls").
 
 static float tyu_speed(void)                   // 0x4ad9e0: units per second
 {
@@ -2366,42 +2366,183 @@ static void tyu_fall(Enemy* e)
 	e->hb = 0.0f;
 }
 
+// ---- climbing over the room's walls
+//
+// The port's room mesh for walls is the collision's vertical segments, so a creeper's place on a wall
+// is a segment, a distance along it and a height; its heading h is in the wall's plane (0 straight
+// down, pi straight up, positive towards the segment's tangent t = (nz, -nx)). At a segment's end it
+// carries on onto a segment that meets it there and spans its height: round an inside corner onto
+// the next wall, or round an outside corner (a pillar) onto its other face. The top of a wall, the
+// floor and a segment end with nothing beyond are obstacles.
+
+typedef struct { int seg; float s, y, nx, nz, h; } WallPos;
+
+static void wall_axes(const WallSeg* w, float* ux, float* uz, float* len)
+{
+	*len = hypotf(w->x1 - w->x0, w->z1 - w->z0);
+	*ux = (w->x1 - w->x0) / *len, *uz = (w->z1 - w->z0) / *len;
+}
+
+// A wall segment other than `seg` with an end within 60 of (px, pz) that spans height y. The
+// creeper leaves `seg` going along (dx, dz); fills the new segment's distance at that end, its
+// direction away from the corner and the inward normal: for an inside corner (the new wall turns
+// towards the creeper's side) the one facing back the way it came, for an outside corner the one
+// facing the way it was going.
+static int wall_next(int seg, float px, float pz, float y, float dx, float dz, float onx, float onz,
+                     float* s0, float* bx, float* bz, float* nx, float* nz)
+{
+	for (u32 i = 0; i < s_col->n_walls; i++) {
+		if ((int)i == seg) continue;
+		const WallSeg* w = &s_col->walls[i];
+		if (y < w->y_top + 50.0f || y > w->y_bottom - 50.0f) continue;
+		float len, ux, uz;
+		wall_axes(w, &ux, &uz, &len);
+		if (len < 50.0f) continue;
+		int at = hypotf(w->x0 - px, w->z0 - pz) < 60.0f ? 0 : hypotf(w->x1 - px, w->z1 - pz) < 60.0f ? 1 : -1;
+		if (at < 0) continue;
+		float ex = at == 0 ? ux : -ux, ez = at == 0 ? uz : -uz;          // away from the corner
+		if (fabsf(ex * dx + ez * dz) > 0.98f) continue;                  // straight on: the same wall
+		float cx = -ez, cz = ex;                                         // a normal of the new segment
+		bool inside = ex * onx + ez * onz > 0.0f;
+		float want = inside ? -(cx * dx + cz * dz) : (cx * dx + cz * dz);
+		if (want < 0.0f) cx = -cx, cz = -cz;
+		*s0 = at == 0 ? 0.0f : len, *bx = ex, *bz = ez, *nx = cx, *nz = cz;
+		return (int)i;
+	}
+	return -1;
+}
+
+// Moves a wall position by `dist` along heading h (the horizontal part along the segments, the
+// vertical part in y). False if it meets an obstacle; *floor is set when that was the floor.
+static bool wall_move(WallPos* w, float dist, bool* floor)
+{
+	*floor = false;
+	const WallSeg* g = &s_col->walls[w->seg];
+	float len, ux, uz;
+	wall_axes(g, &ux, &uz, &len);
+	float tx = w->nz, tz = -w->nx;
+	float m = sinf(w->h) * dist, dir = tx * ux + tz * uz >= 0.0f ? 1.0f : -1.0f;
+	float ny = w->y + cosf(w->h) * dist;
+	if (ny < g->y_top + 100.0f) return false;
+	if (ny > g->y_bottom - 60.0f) { *floor = true; return false; }
+	float ns = w->s + m * dir;
+	if (ns >= 0.0f && ns <= len) { w->s = ns, w->y = ny; return true; }
+	// past the end: onto the wall that meets this one there
+	float px = ns < 0.0f ? g->x0 : g->x1, pz = ns < 0.0f ? g->z0 : g->z1;
+	float over = ns < 0.0f ? -ns : ns - len;
+	float gx = (m >= 0.0f ? tx : -tx), gz = (m >= 0.0f ? tz : -tz);   // the way it was going
+	float s0, bx, bz, nx, nz;
+	int next = wall_next(w->seg, px, pz, ny, gx, gz, w->nx, w->nz, &s0, &bx, &bz, &nx, &nz);
+	if (next < 0) return false;
+	const WallSeg* b = &s_col->walls[next];
+	float blen, bux, buz;
+	wall_axes(b, &bux, &buz, &blen);
+	w->seg = next;
+	w->s = s0 == 0.0f ? fminf(over, blen) : fmaxf(blen - over, 0.0f);
+	w->y = ny;
+	w->nx = nx, w->nz = nz;
+	// keep going away from the corner: the heading's side against the new tangent
+	float ntx = nz, ntz = -nx;
+	if ((ntx * bx + ntz * bz) * (m >= 0.0f ? 1.0f : -1.0f) < 0.0f) w->h = -w->h;
+	return true;
+}
+
+// 0x4aa8b0 for a wall: walks the heading `len` ahead in 50-unit steps; the distance to the first
+// obstacle, or -1 when the way is clear. *floor tells whether the obstacle was the floor.
+static float wall_probe(const WallPos* from, float h, float len, bool* floor)
+{
+	WallPos w = *from;
+	w.h = h;
+	*floor = false;
+	for (float d = 50.0f; d <= len; d += 50.0f)
+		if (!wall_move(&w, 50.0f, floor)) return d - 50.0f;
+	return -1.0f;
+}
+
+static void wall_place(Enemy* e, const WallPos* w)
+{
+	const WallSeg* g = &s_col->walls[w->seg];
+	float len, ux, uz;
+	wall_axes(g, &ux, &uz, &len);
+	e->ival = w->seg;
+	e->x = g->x0 + ux * w->s + w->nx * 20.0f, e->z = g->z0 + uz * w->s + w->nz * 20.0f, e->y = w->y;
+	e->aux[0] = atan2f(w->nx, w->nz);
+	e->aux[1] = wrap(w->h);
+	e->yaw = e->aux[0];
+}
+
 static void tyu_on_wall(Enemy* e, const EnPlayer* p, float dt)          // 0x4aff00
 {
 	e->vx = e->vz = 0.0f, e->hb = 0.0f;
 	if (check_damage(e)) { tyu_fall(e); return; }
 	if (!s_col || e->ival < 0 || e->ival >= (int)s_col->n_walls) { tyu_fall(e); return; }
-	const WallSeg* w = &s_col->walls[e->ival];
-	float a = e->aux[0], nx = sinf(a), nz = cosf(a), tx = nz, tz = -nx;
-	float len = hypotf(w->x1 - w->x0, w->z1 - w->z0), ux = (w->x1 - w->x0) / len, uz = (w->z1 - w->z0) / len;
-	float sx = (e->x - nx * 20.0f - w->x0) * ux + (e->z - nz * 20.0f - w->z0) * uz;   // along the segment
-	float floor_y = floor_below(e->x + nx * 100.0f, e->z + nz * 100.0f, w->y_bottom);
-	if (e->slv == 0) { anim_set(e, 1); e->aux[2] = 0.0f; e->slv = 1; }
-	// the heading turns now and then; straight down when James is far below or it is a climber down
-	e->aux[2] -= dt;
-	if (e->aux[2] <= 0.0f) { e->aux[1] += (rnd() - 0.5f) * PI * 0.6f; e->aux[2] = 0.7f + rnd() * 1.5f; }
-	if (e->type == 3 || e->y < p->y - 2000.0f) approach_angle(&e->aux[1], 0.0f, 0.0873f * dt * 60.0f);
-	float h = e->aux[1], v = tyu_speed();
-	float dir = tx * ux + tz * uz >= 0.0f ? 1.0f : -1.0f;      // the heading's side against the segment
-	float ns = sx + sinf(h) * v * dt * dir, ny = e->y + cosf(h) * v * dt;
-	if (ns < 100.0f || ns > len - 100.0f) { e->aux[1] = -h; ns = sx; }          // the segment's end
-	if (ny < w->y_top + 150.0f) { e->aux[1] = PI - h; ny = e->y; }               // the top of the wall
-	if (ny > floor_y - 100.0f) {
-		if (e->type == 3) {
-			// steps off onto the floor, facing away from the wall
-			e->x += nx * 80.0f, e->z += nz * 80.0f, e->y = floor_y;
-			e->yaw = e->path_angle = e->mark_angle = a;
-			e->type = 2;
-			go_raw(e, TYU_WANDER);
-			return;
-		}
-		e->aux[1] = PI - h;
-		ny = e->y;
+	const WallSeg* g = &s_col->walls[e->ival];
+	float len, ux, uz;
+	wall_axes(g, &ux, &uz, &len);
+	WallPos w = { e->ival, 0.0f, e->y, sinf(e->aux[0]), cosf(e->aux[0]), e->aux[1] };
+	w.s = (e->x - w.nx * 20.0f - g->x0) * ux + (e->z - w.nz * 20.0f - g->z0) * uz;
+	if (e->slv == 0) { anim_set(e, 1); e->aux[3] = w.h; e->cnt = 0; e->cnt_max = 0; e->slv = 1; }
+	// 0x4ad3a0: the probe 500 ahead. Clear: keep the heading. Blocked at d: try 15 degrees either
+	// side (probing d + 50), widening by 15 each time up to 75, and turn round when none is clear;
+	// the heading turns to the chosen one 5 degrees a tick while the obstacle is 250 or more away,
+	// at once when it is nearer, and within 100 of it the creeper heads straight down (up, when the
+	// obstacle is the floor).
+	const float step = 0.2617994f;
+	bool floor;
+	float d = wall_probe(&w, w.h, 500.0f, &floor);
+	float target = e->aux[3];
+	if (d < 0.0f) {
+		e->cnt = 0, e->cnt_max = 0;
+		target = w.h;
+	} else if (e->cnt == 255) {
+		if (fabsf(wrap(target - w.h)) < step) e->cnt = 1;
+	} else {
+		int n = e->cnt < 1 ? 1 : e->cnt;
+		bool f2;
+		float base = w.h;
+		if (wall_probe(&w, base + n * step, d + 50.0f, &f2) < 0.0f) { target = base + n * step; e->cnt = 1; }
+		else if (wall_probe(&w, base - n * step, d + 50.0f, &f2) < 0.0f) { target = base - n * step; e->cnt = 1; }
+		else if (n + 1 > 5) { target = base + PI; e->cnt = 255; }
+		else e->cnt = (u8)(n + 1);
 	}
-	e->x = w->x0 + ux * ns + nx * 20.0f, e->z = w->z0 + uz * ns + nz * 20.0f, e->y = ny;
-	e->aux[1] = wrap(e->aux[1]);
-	e->yaw = a;
+	// heading straight down when James is far below, or for a creeper on its way to the floor
+	if (e->type == 3 || e->y < p->y - 2000.0f) {
+		bool f3;
+		if (wall_probe(&w, 0.0f, 300.0f, &f3) < 0.0f || f3) target = 0.0f;
+	}
+	if (d < 0.0f || d >= 250.0f) approach_angle(&w.h, target, 0.0873f * dt * 60.0f);
+	else {
+		w.h = target;
+		if (d < 100.0f) w.h = target = floor ? PI : 0.0f;
+	}
+	e->aux[3] = wrap(target);
+	// on the floor's edge a climber down steps off
+	if (e->type == 3 && e->y > g->y_bottom - 160.0f) {
+		float fy = floor_below(e->x + w.nx * 100.0f, e->z + w.nz * 100.0f, g->y_bottom);
+		e->x += w.nx * 80.0f, e->z += w.nz * 80.0f, e->y = fy;
+		e->yaw = e->path_angle = e->mark_angle = atan2f(w.nx, w.nz);
+		e->type = 2;
+		go_raw(e, TYU_WANDER);
+		return;
+	}
+	bool f4;
+	float v = tyu_speed() * dt;
+	WallPos moved = w;
+	if (!wall_move(&moved, v, &f4)) moved = w;            // blocked this tick: turn on the spot
+	wall_place(e, &moved);
 	e->rate = 1.0f;
+}
+
+// 0x4b00f0: on the ceiling it runs ahead, now and then (0.01 a tick) turning by up to 60 degrees.
+// The point 500 ahead must still have a floor under it and no wall on the way (the PC's walk
+// 0x4aa960); when it has not the creeper turns 15 degrees at a time until it has.
+static bool ceiling_clear(const Enemy* e, float yaw)
+{
+	float tx = e->x + sinf(yaw) * 500.0f, tz = e->z + cosf(yaw) * 500.0f, fy;
+	if (!col_floor(s_col, tx, tz, e->y + 2500.0f, 3000.0f, &fy)) return false;
+	float cx = tx, cz = tz;
+	col_clamp_ray(s_col, e->x, e->z, &cx, &cz, e->y + 50.0f);
+	return hypotf(cx - tx, cz - tz) < 1.0f;
 }
 
 static void tyu_on_ceiling(Enemy* e, const EnPlayer* p, float dt)       // 0x4b00f0
@@ -2410,15 +2551,17 @@ static void tyu_on_ceiling(Enemy* e, const EnPlayer* p, float dt)       // 0x4b0
 	e->vx = e->vz = 0.0f, e->hb = 0.0f;
 	if (check_damage(e)) { tyu_fall(e); return; }
 	if (e->slv == 0) { anim_set(e, 1); e->slv = 1; }
-	// a new heading now and then (0.003 a tick, up to about 60 degrees)
-	if (rnd() < 0.003f * dt * 60.0f) e->yaw = wrap(e->yaw + (rnd() - 0.5f) * 2.0f);
-	float v = tyu_speed();
-	float nx = e->x + sinf(e->yaw) * v * dt, nz = e->z + cosf(e->yaw) * v * dt, fy;
-	if (s_col) {
-		col_push(s_col, &nx, &nz, e->y, 150.0f, e->size);
-		if (!col_floor(s_col, nx, nz, e->y + 2500.0f, 3000.0f, &fy)) { e->yaw = wrap(e->yaw + PI); return; }
+	if (rnd() < 0.01f * dt * 60.0f) e->yaw = wrap(e->yaw + rnd() * 1.0471976f);
+	if (s_col && !ceiling_clear(e, e->yaw)) {
+		for (int n = 1; n <= 12; n++) {
+			float a = wrap(e->yaw + ((n & 1) ? 1.0f : -1.0f) * ((n + 1) / 2) * 0.2617994f);
+			if (ceiling_clear(e, a)) { e->yaw = a; break; }
+			if (n == 12) e->yaw = wrap(e->yaw + PI);
+		}
 	}
-	if (hypotf(nx - e->x, nz - e->z) < v * dt * 0.3f) e->yaw = wrap(e->yaw + PI * (0.5f + rnd()));
+	float v = tyu_speed();
+	float nx = e->x + sinf(e->yaw) * v * dt, nz = e->z + cosf(e->yaw) * v * dt;
+	if (s_col) col_push(s_col, &nx, &nz, e->y, 150.0f, e->size);
 	e->x = nx, e->z = nz;
 	e->rate = 1.0f;
 }

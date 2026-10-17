@@ -78,3 +78,10 @@ reference/
 # Agent workspaces
 .playtest/
 .assetstest/
+
+# Every hidden folder at the top level is a local workspace (agent test copies, virtual SD cards, merge
+# backups). Only these hidden files and folders belong in the repository.
+/.*
+!/.github/
+!/.gitignore
+!/.dockerignore

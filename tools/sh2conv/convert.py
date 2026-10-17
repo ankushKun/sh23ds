@@ -20,6 +20,9 @@ S3M v2 (little-endian):
             normals come from the map where its vertex section has them, otherwise from
             area-weighted face normals of the batch
   index     u16, relative to the batch's first_vertex
+
+The .map and .cam files are the Enhanced Edition's where the player has its Essential Files (ee.py);
+their textures go through the same size cap as the originals'.
 """
 import argparse
 import os
@@ -32,6 +35,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ee  # noqa: E402
 import sh2map  # noqa: E402
 
 GROUP = {'opaque': 0, 'transparent': 1, 'decal': 2}
@@ -123,8 +127,9 @@ def local_tex3ds():
 
 def encode_textures(jobs, pack_root, fmt=None, mipmaps=True):
     """jobs: list of (png path relative to pack_root, t3x path relative, has_alpha). fmt overrides the
-    ETC1 / ETC1A4 choice (any tex3ds format name). The jobs are split over one shell script per CPU core
-    that run side by side, since each tex3ds call uses a single core."""
+    ETC1 / ETC1A4 choice (any tex3ds format name). The jobs are split over one subshell per CPU core
+    that run side by side, since each tex3ds call uses a single core. The script goes to sh on stdin:
+    a container on a macOS shared folder doesn't always see a file written just before it starts."""
     if not jobs:
         return
     mip = '-m lanczos' if mipmaps else ''
@@ -133,31 +138,32 @@ def encode_textures(jobs, pack_root, fmt=None, mipmaps=True):
         f = fmt or ('etc1a4' if alpha else 'etc1')
         cmds.append(f'tex3ds -f {f} -q high {mip} -z none -o "{t3x}" "{png}"')
     n = max(1, min(os.cpu_count() or 1, len(cmds)))
-    base = f'_encode_{os.getpid()}_{id(jobs)}'      # unique: converters may run side by side
-    scripts = [f'{base}_{i}.sh' for i in range(n)]
-    for i, name in enumerate(scripts):
-        with open(os.path.join(pack_root, name), 'w') as f:
-            f.write('set -e\n' + '\n'.join(cmds[i::n]) + '\n')
-    main = f'{base}.sh'
-    lines = [f'sh {name} & p{i}=$!' for i, name in enumerate(scripts)] + ['st=0']
-    lines += [f'wait $p{i} || st=1' for i in range(n)] + ['exit $st']
-    with open(os.path.join(pack_root, main), 'w') as f:
-        f.write('\n'.join(lines) + '\n')
-    try:
-        local = local_tex3ds()
-        if local:     # devkitPro installed on this machine, or the packer image
-            env = dict(os.environ, PATH=os.path.dirname(local) + os.pathsep + os.environ.get('PATH', ''))
-            subprocess.run(['sh', main], cwd=pack_root, env=env, check=True)
-        else:
-            subprocess.run(['docker', 'run', '--rm', '-v', f'{os.path.abspath(pack_root)}:/pack', '-w', '/pack',
-                            '--user', f'{os.getuid()}:{os.getgid()}', '-e', 'PATH=/opt/devkitpro/tools/bin:/usr/bin:/bin',
-                            DOCKER_IMAGE, 'sh', main], check=True)
-    finally:
-        for name in scripts + [main]:
-            try:
-                os.remove(os.path.join(pack_root, name))
-            except OSError:
-                pass
+    lines = []
+    for i in range(n):
+        lines.append('( set -e')
+        lines += cmds[i::n]
+        lines.append(f') & p{i}=$!')
+    lines.append('st=0')
+    lines += [f'wait $p{i} || st=1' for i in range(n)]
+    lines.append('exit $st')
+    script = ('\n'.join(lines) + '\n').encode()
+    local = local_tex3ds()
+    if local:     # devkitPro installed on this machine, or the packer image
+        env = dict(os.environ, PATH=os.path.dirname(local) + os.pathsep + os.environ.get('PATH', ''))
+        cmd, cwd = ['sh', '-s'], pack_root
+    else:
+        env, cwd = None, None
+        cmd = ['docker', 'run', '--rm', '-i', '-v', f'{os.path.abspath(pack_root)}:/pack', '-w', '/pack',
+               '--user', f'{os.getuid()}:{os.getgid()}', '-e', 'PATH=/opt/devkitpro/tools/bin:/usr/bin:/bin',
+               DOCKER_IMAGE, 'sh', '-s']
+    for attempt in (1, 2):   # the second try covers a shared folder that was slow to show new PNGs
+        r = subprocess.run(cmd, input=script, cwd=cwd, env=env)
+        if r.returncode == 0:
+            return
+        if attempt == 1:
+            import time
+            time.sleep(2)
+    raise subprocess.CalledProcessError(r.returncode, cmd)
 
 
 def convert_area(data_dir, pack_root, area, max_tex, rooms_filter, bg='bg'):
@@ -196,13 +202,13 @@ def convert_area(data_dir, pack_root, area, max_tex, rooms_filter, bg='bg'):
     for r in rooms:
         cam = os.path.join(src, f'{r}.cam')     # camera roads, used as-is by the camera port
         if os.path.exists(cam):
-            shutil.copyfile(cam, os.path.join(out, f'{r}.cam'))
+            shutil.copyfile(ee.file(cam), os.path.join(out, f'{r}.cam'))
         v, t = write_s3m(os.path.join(out, f'{r}.s3m'), maps[r], tex_alpha)
         tot_v += v
         tot_t += t
     gb = os.path.join(src, f'{area}GB.cam')   # area-wide camera roads of the open areas
     if os.path.exists(gb):
-        shutil.copyfile(gb, os.path.join(out, f'{area}GB.cam'))
+        shutil.copyfile(ee.file(gb), os.path.join(out, f'{area}GB.cam'))
     listed = rooms
     if rooms_filter:     # a partial run keeps the rooms already converted in the list
         old = os.path.join(out, 'rooms.txt')

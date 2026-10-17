@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+import ee
 from sh2map import decode_dxt
 
 TEX_KIND = {0: 1, 1: 3, 2: 3, 3: 5, 4: 5}
@@ -80,6 +81,11 @@ def _strip_groups(strip, starts, total):
 
 
 def load_mdl(path):
+    """A .mdl file; the Enhanced Edition's version when the player has it (ee.py)."""
+    return ee.load(path, _load_mdl)
+
+
+def _load_mdl(path):
     d = open(path, 'rb').read()
     no_tex = d[0]
     _, tex_count, tex_ofs, _, mdl_ofs = struct.unpack_from('<IIIII', d, 4)
@@ -198,7 +204,7 @@ def _f16(h):
 
 def load_anm(path, model):
     """Returns a list of frames; each frame is a list (per bone) of (rot_xyz or None, trans or None)."""
-    d = open(path, 'rb').read()
+    d = ee.read(path)
     n = model.bone_count
     per_frame = (n + 7) & ~7
     roots = model.parents == 255

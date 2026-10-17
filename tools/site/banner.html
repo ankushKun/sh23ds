@@ -1,48 +1,50 @@
 <!doctype html>
 <!-- The social image and README banner (site/assets/banner.jpg), rendered at 1200 x 630 by
-     tools/site/render_banner.js. Uses the site's own fonts, photo and hero screenshot. -->
-<html lang="en">
+     tools/site/render_banner.sh from the site's own fonts, stylesheet, console photo and screenshots. -->
+<html lang="en" class="js">
 <head>
 <meta charset="utf-8">
 <link rel="stylesheet" href="../../site/fonts.css">
-<link rel="stylesheet" href="../../site/styles.css">
+<link rel="stylesheet" href="../../site/site.css">
 <style>
   html, body { width: 1200px; height: 630px; overflow: hidden; }
-  body::after { opacity: 0.06; }
-  .card { position: relative; width: 1200px; height: 630px; overflow: hidden; isolation: isolate;
-    background: radial-gradient(90% 90% at 75% 30%, rgba(42, 64, 84, .6), transparent 62%), var(--bg); }
-  .card .fog-layer { animation: none; }
-  .card .fog-layer.b { transform: translateX(-380px); }
-  .bcopy { position: absolute; left: 72px; top: 118px; z-index: 3; }
-  .bcopy .label { margin-bottom: 22px; }
-  .title { margin: 0; color: var(--white); font: 600 104px/.92 var(--display); letter-spacing: .035em;
-    text-transform: uppercase; font-variant-numeric: lining-nums; text-shadow: 0 0 40px rgba(180,200,215,.18); }
-  .sub { margin: 16px 0 0; color: var(--text-2); font: italic 500 34px/1.1 var(--display); }
-  .foot { position: absolute; left: 72px; bottom: 58px; z-index: 3; display: flex; gap: 22px; align-items: center;
-    color: var(--text-3); font: 400 13px/1 var(--label); letter-spacing: .2em; text-transform: uppercase; }
-  .foot i { width: 4px; height: 4px; background: var(--red); }
-  .dev { position: absolute; right: -20px; top: 56px; width: 640px; z-index: 2; }
-  .dev .screen { display: block; }
-  .shade { position: absolute; inset: auto 0 0; height: 160px; z-index: 2; background: linear-gradient(180deg, transparent, var(--bg)); }
+  body::after { display: none; }
+  .card {
+    position: relative; display: grid; grid-template-columns: 1fr 520px; align-items: center; gap: 40px;
+    height: 630px; padding: 0 64px; box-sizing: border-box; overflow: hidden; isolation: isolate;
+    background:
+      radial-gradient(70% 70% at 74% 48%, rgba(120, 130, 132, 0.3), transparent 60%),
+      radial-gradient(60% 50% at 10% 100%, rgba(60, 66, 68, 0.45), transparent 70%),
+      var(--bg);
+  }
+  .card .fog { z-index: -1; }
+  .card .mono { margin-bottom: 22px; }
+  .card h1 { font: 500 66px/0.98 var(--serif); letter-spacing: -0.018em; }
+  .card h1 em { color: var(--fg-2); }
+  .card p.lead { margin-top: 22px; font-size: 21px; max-width: 24ch; }
+  .card .device { width: 520px; }
 </style>
 </head>
 <body>
 <div class="card">
-  <div class="fog"><div class="fog-layer a"></div><div class="fog-layer b"></div></div>
-  <div class="bcopy">
-    <span class="label">sh23ds <b>/</b> a native port</span>
-    <h1 class="title">Silent<br>Hill 2</h1>
-    <p class="sub">on the New Nintendo 3DS</p>
+  <div class="fog" aria-hidden="true"><div class="fog-layer a"></div><div class="fog-layer b"></div></div>
+  <div>
+    <p class="mono">Development build</p>
+    <h1>Silent Hill 2<br><em>for the</em> New<br>Nintendo 3DS</h1>
+    <p class="lead">A native port of the PC Director’s Cut, running on your own copy of the game.</p>
   </div>
-  <div class="dev">
-    <div class="device-stage" style="--k: 0.47198">
+  <div class="device">
+    <div class="device-stage">
       <img class="device-photo" src="../../site/assets/new-3ds-angled.png" width="1356" height="1177" alt="">
-      <div class="screen screen-top"><img src="../../site/assets/shots/deck-top.jpg" alt=""></div>
-      <div class="screen screen-bottom"><img src="../../site/assets/shots/deck-bottom.jpg" alt=""></div>
+      <div class="screen screen-top"><img src="../../site/assets/shots/deck-top.jpg" width="400" height="240" alt=""></div>
+      <div class="screen screen-bottom"><img src="../../site/assets/shots/deck-bottom.jpg" width="320" height="240" alt=""></div>
     </div>
   </div>
-  <div class="shade"></div>
-  <div class="foot"><span>Bring your own copy of the PC game</span><i></i><span>No game files included</span></div>
 </div>
+<script>
+  var stage = document.querySelector(".device-stage");
+  stage.style.setProperty("--k", (stage.offsetWidth / 1356).toFixed(5));
+  stage.classList.add("is-mapped");
+</script>
 </body>
 </html>

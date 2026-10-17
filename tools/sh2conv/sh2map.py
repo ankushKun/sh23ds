@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+import ee
+
 MAP_MAGIC = 0x20010510
 
 
@@ -255,6 +257,11 @@ def _textures(r, p, textures):
 
 
 def load(path):
+    """A .map file; the Enhanced Edition's version when the player has it (ee.py)."""
+    return ee.load(path, _load)
+
+
+def _load(path):
     with open(path, 'rb') as f:
         data = f.read()
     r = _Reader(data)

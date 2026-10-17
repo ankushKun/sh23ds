@@ -370,9 +370,14 @@ static float position_pan(const float pos[3])
 	return side < 0.0f ? -p : p;
 }
 
+static float s_gain = 1.0f;       // the options' effects volume (sfx_set_gain)
+
+void sfx_set_gain(float g) { s_gain = g < 0.0f ? 0.0f : g > 1.0f ? 1.0f : g; }
+
 static void voice_mix(Voice* v, float gain, float pan)
 {
 	float mix[12] = { 0 };
+	gain *= s_gain;
 	if (pan > 1.0f) pan = 1.0f;
 	if (pan < -1.0f) pan = -1.0f;
 	// soft balance: the far side keeps 30%, which suits the 3DS's close speakers

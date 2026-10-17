@@ -142,19 +142,42 @@ dog. The ending programs then call `game_end`.
 
 ## Stage models
 
-The stages place models of their own in the rooms (the stage data's mdl_list: a kind, flags that
-hide or show it, a place and a turn). The port draws one of them so far, with `stagemdl.c`: the
-music box on its stand in the hotel lobby (stage 40, kind 0x524, `data/chr/item/org.mdl`, which
-`tools/sh2conv/demos.py` converts with the scenes' models, `STAGE_MODELS`). It is loaded when stage
-40 is and drawn with the characters' lights. While the right order plays (0x57b5c0 called with
-15 seconds each frame of org_b) its parts turn about their y axes as a function of the time: bones
-0, 6 and 7 by -pi/2 over the first tenth and back over the last tenth (bone 8 the other way), and
-bone 2 at 11.78 / 15 rad/s in between, ending at pi; at the end all are back at 0. The PC reads
-each bone's rotation, sets its y and writes it back; the port adds the angle to the y of the bone's
-bind rotation (taken apart in chr.c's z * y * x order), which is 0 for bones 0 and 6..8. Bones 0 and
-6..8 are the lids at the seats' height and bone 2 the golden cylinder under them, as far as the
-screenshots tell. `debug.txt` `musicbox <seconds>` (with a spawn in stage 40) poses the parts as at
-that time of the tune.
+The stages place models of their own in the rooms: each stage's Model_List (40 bytes: a kind, an
+id, flag_off, flag_on, a place and a turn) lists cars, trailers and street furniture in the town,
+furniture and props in the buildings (the piano, the beds, the tombstones), the puzzle objects
+and keys that lie around (the 0x7xx kinds, such as the clock key, the hotel keys, the coins, the
+figure boxes) and the Born From a Wish props. The character loader (0x493430,
+Event/chara_data_load.c) finds a kind's files in the table at 0x88d4f8 (s32 kind, then file
+records for the .mdl, an .anm and a .kg1) and loads the models placed in James' room whose
+flag_off is clear; the 0x3xx kinds (the town's cars) go to 0x53b510 instead in James' game,
+which places them the same way. All 425 places use 184 models, every one of which has a file.
+
+`tools/sh2conv/stagemodels.py` converts all 184 (`pack/chr/item`, `item2` for data/chr2, about
+27 MB with their textures at most 256 texels) and writes `pack/events/stagemdl.txt` with one line
+per place. `stagemdl.c` reads the current stage's places and draws, with the characters' lights,
+those within 14000 units of James whose flag_off is clear and whose flag_on is set (or 0); a
+model is loaded the first time one of its places comes that close (one a frame, at most 20 kept,
+the one unused longest dropped). The turn is applied as z * y * x. A place whose kind a running
+cutscene has among its characters is left to the cutscene (`demo_has_kind`), so a door or a box
+the scene moves is not drawn twice. Models with an .anm of their own (the fridge, the meat hooks)
+are drawn in their bind pose, and the .kg1 files are not used.
+
+The music box (stage 40, kind 0x524) turns its parts while the right order plays (0x57b5c0 called
+with 15 seconds each frame of org_b), as a function of the time t:
+
+* bones 0, 6 and 7 by -pi/2 about y over the first tenth and back over the last (bone 8 the other
+  way), bone 2 at 11.78 / 15 rad/s in between, ending at pi;
+* the figure box on each seat (kinds 0x718..0x71a): from 1.5 to 13.5 s bone 0 turns about y by
+  theta = (t - 1.5) * 11.78 / 15 and goes round a circle of 135, x = 135 sin(theta), z =
+  135 (cos(theta) - 1), stopping at theta = 3 pi;
+* the stairway key in the box (0x747): bone 0 turns about z by theta and goes round x = -135
+  sin(theta - pi/4) - 103, y = 135 cos(theta - pi/4) - 103, stopping at 11 pi / 4.
+
+The PC reads a bone's rotation, changes a component and writes it back (0x538b80 / 0x538c30); the
+port adds to the components of the bind rotation (taken apart in chr.c's z * y * x order). The
+figure boxes carry flag_off 472, which the right order sets; the PC tests flag_off only when it
+loads a room's models, so the boxes stay for the tune, and the port keeps them while it plays.
+`debug.txt` `musicbox <seconds>` (with a spawn in stage 40) poses everything as at that time.
 
 ## New game: FlagInit (0x48aed0)
 
@@ -328,7 +351,12 @@ items / 20 (0x539970, at most 15). The bits are saved with the program state (by
 
 After the results of one of James' endings the PC says "Save clear data." (message 0x1a in yellow,
 centred) and a button opens its save screen (cases 3..5); Born From a Wish goes straight back to the
-title. `clearsave.c` does the same with the port's one save slot: it lists what the slot holds,
+title. `clearsave.c` does the same with the port's one save slot, in the PC's save screen look
+(0x453fc0 / 0x4537b0): James' picture (`data/menu/mc/savebg.tbn2`, converted by `ui.py` to
+`pack/ui/savebg.t3x`) over the whole screen, "SILENT HILL 2 Save Files" at (36, 110), the file row
+from y 150 and the questions in yellow, with the PC's own texts (`m_card_x_msg_e.mes` as
+`pack/events/mcard.msg`: "Save to new file.", "Game Result", "Do you wish to overwrite?", "Save
+completed."). It lists what the slot holds,
 asks before writing over a saved game or other clear data, and writes a clear data save
 (`save.dat` version 5: the program state with the results counters, the clear data's three bytes
 and a clear mark, no place to start from). Continue on such a save does what the PC's load does
@@ -361,6 +389,51 @@ codes), so every message uses that place. A one-pixel dark shadow, which the PC 
 keeps the text readable over bright rooms. The bottom screen then shows only the "A: next" line,
 and choices, the save question and the puzzle panels stay on the bottom screen.
 
+## Touch screen
+
+The bottom screen is drawn with citro3d by `touchui.c` (port/ROADMAP.md workstream 2) in the
+game's font (font.c lays the glyphs out in screen pixels, `font_layout_px`) and colours: the
+labels in the PC's white to grey fade, the chosen row in yellow on a dark red bar. The libctru
+console still exists but writes into a buffer of its own; SELECT twice shows it as the debug page
+(and the room viewer always does), so nothing of the console is seen in play.
+
+main.c tells touchui what is up where it used to print it, and touchui turns taps into the buttons
+those screens already take, so the game logic did not move:
+
+* in play: James' condition as a heartbeat line in its colour (Fine green, Caution yellow, Danger
+  red, the help screen's thresholds of 70 and 35 percent), the equipped weapon and its rounds, and
+  Items (Y), Map (the tap goes through as before), Light (X) and Pause (START);
+* menus (title, New Game levels, pause, items): a tap chooses a row, a second tap takes it, and on
+  a "< value >" row the ends step the value; the item list has Use (A), Examine (X) and Close (B);
+* message boxes, subtitles (with Skip), the save question (Save / Cancel), the results' lines with
+  Continue and the clear data save's questions;
+* the stage programs' panels and the map and memo screens' text with the D-pad and A / B as
+  buttons; a movie shows a Skip button.
+
+In play the screen also shows the map James is on (`map_mini` in map.c): centred on him with his
+arrow turned as the map screen turns it and the red markings whose flags are set, at the map
+screen's zoomed-out size or twice that (the Zoom button), sharing the map screen's textures. A tap
+on it opens the map screen as the map key does, and it says "Too dark to read" where the map key
+would refuse (a dark room without the flashlight). While the map screen is up the touch screen has
+its buttons: the floors above and below, the other maps, zoom and close; zoomed in, the arrows
+scroll while held. The memo list is a touch menu (Read, Close), the memo's still on the top
+screen and its text below. The item screen turns the selected item's model the way the PC's item
+menu does (`itemview.c`, the skinning shader under its own light): the PC gives item i the model
+of kind 0x892640[i] from the model table at 0x88d4f8 or, for the drinks, kits and rounds, the
+table at 0x88d2b8; `tools/sh2conv/stagemodels.py` converts them (70 items have one) and writes
+`pack/events/itemmdl.txt`. Mark (R) is the PC's way of choosing items to use together, whose
+combining the playthrough batch ports in main.c. The pause menu has Music and Sound volumes
+(0..10, `options.txt` `musicvol`, `soundvol`): music on channel 0, the cutscene voices and the
+sound effects (`audio_set_gains`, `sfx_set_gain`).
+
+The screen is redrawn only when something it shows changed (the condition, the weapon line, a
+menu row, a message, the small map's picture: another map, James a pixel further, a new mark),
+from one vertex buffer allocated once, so a frame without a change costs a few comparisons, which
+matters on the Old 3DS; only the turning item model redraws continuously (every other frame) while
+the item screen is up. The hardware rows of the Old 3DS profile (hardware, control layout,
+quality) go into the pause menu's rows in `pause_draw` once `profile.h` is in the tree.
+
+## Item use and item names
 ## Item use and item names
 
 Trigger kinds 5 and 6 (use an item from the inventory) and the "use" half of kind 10 now work: A
@@ -1055,6 +1128,11 @@ levels with the endings it carried listed on the title, the memo overlays of the
 rings, the hair, the safe's dial, the wall symbols, the trunk's word and the tombstone's board,
 and the music box drawn in the hotel lobby.
 
+Ninth batch: the figure boxes on the music box's seats moving with the tune (posed at 0, 5 and 14
+seconds), the town's vans (one placed with turns of pi about x and z, one without, both upright)
+and street furniture, the hotel lobby with its stage models, and the save screen with the PC's
+picture and texts (the file row, the overwrite question, "Save completed.").
+
 ## Autotest
 
 `autotest warps [first] [count]` in `debug.txt` walks through every door and warp destination of
@@ -1114,8 +1192,9 @@ case, collision and a floor under James. What stood out:
 * Stages 57 and 58 are reconstructed (see above); if the decrypted code is ever available, check
   which message the two look events in ma77 should give.
 * The port has one save slot, so the clear data save goes to `save.dat` (after asking when a game
-  is saved there); the PC's save screen pictures (`data/menu/mc/savebg*.tbn2`) are not used. The
-  results' fade in and out is not done. Messages on the top screen
+  is saved there). The save screen has the PC's picture, title and texts but not its file list
+  details (the save icons `si_*.xbx`, place names, play time per file) nor the memory unit pages.
+  The results' fade in and out is not done. Messages on the top screen
   all use the default place since the pack's message text has lost the PC's position words, and
   the full-width and accented characters of other languages are not in the pack's text either.
 * The quiz in the otherworld 3F (0x589820) reads its questions from the still; the buttons are
@@ -1126,10 +1205,11 @@ case, collision and a floor under James. What stood out:
 * "There are a total of <e0> locks." (stage 20) and "I put <e0> in the shelf." (stage 41) have no
   MesSetInsert caller in the PC and no event shows them; they are left unused there too.
 * The music box plays org_b for the right order and org_a for a wrong one, as the PC loads them into
-  the same PlayInfo (0x8cea6c, `EXTRA_SCRIPTS` in `tools/sh2conv/demos.py`). Of 0x57b5c0 the
-  port turns the music box's own parts (stagemdl.c); the three figure boxes on the seats (kinds
-  0x718..0x71a, bone 0 of each) are stage models the port does not draw yet, and the parts' turns
-  are taken from the decompile without a PC capture to compare with.
+  the same PlayInfo (0x8cea6c, `EXTRA_SCRIPTS` in `tools/sh2conv/demos.py`). The turns of the box's
+  parts, the figure boxes and the key (0x57b5c0, see Stage models) are taken from the decompile
+  without a PC capture to compare with.
+* Stage models load from the SD card the first time they come near (one a frame); on a console
+  that can show as a short hitch when several new ones come into range at once, in the town most.
 * The PC's option to open the map zoomed out is not ported. The arrow is drawn, not the PC's
   sprite. The room table depends on `bgm.bin` (`bgm_room_id`), so without it there is no map.
 * PC 0x1dbec05 multiplies ammo boxes in ItemGet (the Extra Options "Bullet Adjust"). Pickups and

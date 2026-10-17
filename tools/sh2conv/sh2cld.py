@@ -15,6 +15,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+import ee
+
 
 @dataclass
 class Poly:
@@ -38,6 +40,11 @@ class Column:
 
 
 def load(path):
+    """A .cld file; the Enhanced Edition's version when the player has it (ee.py)."""
+    return ee.load(path, _load)
+
+
+def _load(path):
     d = open(path, 'rb').read()
     sx, sz = struct.unpack_from('<2f', d, 0)
     sizes = struct.unpack_from('<6i', d, 8)

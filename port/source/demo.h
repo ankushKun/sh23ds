@@ -53,6 +53,7 @@ void demo_light_hook(void (*set_scale)(float scale));
 
 // True if the scene brings its own James (the player model is hidden while it plays).
 bool demo_has_james(void);
+bool demo_has_kind(int kind);      // a character of the running scene is of this kind (stagemdl.c)
 
 // Text of the subtitle on screen now (the stage message the PC shows), NULL when none. *serial
 // changes whenever the subtitle changes, so the caller redraws only then.

@@ -45,7 +45,7 @@ static u32 s_nev, s_nitems;
 static int s_stage;
 static char s_name[24];
 static int s_glb_crd;
-static MsgFile s_msg, s_common, s_itemtext, s_memotext, s_resulttext;
+static MsgFile s_msg, s_common, s_itemtext, s_memotext, s_resulttext, s_mcardtext;
 static u32 s_flags[EV_MAX_FLAGS / 32];
 static u8 s_items_held[256];        // count per item number (ammo and health items stack)
 static int s_last_fired = -1;       // rising edge for non-button triggers
@@ -173,6 +173,17 @@ const char* ev_result_message(int n)
 		msg_load(&s_resulttext, PACK_DIR "/events/result.msg");
 	}
 	return n >= 0 ? msg_get(&s_resulttext, (u32)n) : NULL;
+}
+
+// The save screen's texts (m_card_x_msg_e.mes), loaded when it first shows.
+const char* ev_mcard_message(int n)
+{
+	static bool tried;
+	if (!tried) {
+		tried = true;
+		msg_load(&s_mcardtext, PACK_DIR "/events/mcard.msg");
+	}
+	return n >= 0 ? msg_get(&s_mcardtext, (u32)n) : NULL;
 }
 
 // The memo list's titles and texts (memo_x_msg_e.mes, written by tools/sh2conv/maps.py), loaded

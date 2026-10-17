@@ -1,0 +1,32 @@
+; The touch screen's 2D quads (touchui.c): screen position in the 320x240 ortho space, a texcoord
+; with a top-left origin (flipped for citro3d's bottom-up textures) and a u8 vertex colour.
+
+.fvec projection[4]
+
+.constf consts(0.5, 1.0, 0.00392156862745, 0.0)
+
+.out outpos position
+.out outtc0 texcoord0
+.out outclr color
+
+.alias inpos v0
+.alias intex v1
+.alias inclr v2
+
+.proc main
+	mov r0.xy, inpos
+	mov r0.z,  consts.x
+	mov r0.w,  consts.y
+
+	dp4 outpos.x, projection[0], r0
+	dp4 outpos.y, projection[1], r0
+	dp4 outpos.z, projection[2], r0
+	dp4 outpos.w, projection[3], r0
+
+	mov r1, intex
+	add r1.y, consts.y, -r1
+	mov outtc0, r1
+
+	mul outclr, consts.zzzz, inclr
+	end
+.end

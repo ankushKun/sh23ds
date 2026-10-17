@@ -1,4 +1,5 @@
 #include "movie.h"
+#include "touchui.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -709,16 +710,20 @@ bool movie_play(const char* name)
 				paused[ch] = true;
 			}
 	consoleClear();
+	touchui_movie(true);
 	bool alive = true;
 	u32 frame = 0;
 	while ((alive = aptMainLoop())) {
 		hidScanInput();
-		if (!movie_update(hidKeysDown()))
+		u32 kd = hidKeysDown(), kh = 0;
+		touchui_input(&kd, &kh);        // the touch screen's Skip button
+		if (!movie_update(kd))
 			break;
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		C3D_RenderTargetClear(s_top, C3D_CLEAR_ALL, 0x000000FF, 0);
 		C3D_FrameDrawOn(s_top);
 		movie_draw();
+		touchui_frame();
 		C3D_FrameEnd(0);
 		if ((frame++ % 15) == 0)
 			print_stats();
@@ -726,6 +731,7 @@ bool movie_play(const char* name)
 		printf("\x1b[15;2Hframe %5lu at %8.3f s  ", (unsigned long)s_front_idx, s_clock);
 	}
 	movie_stop();
+	touchui_movie(false);
 	for (int ch = 0; ch < 24; ch++)
 		if (paused[ch])
 			ndspChnSetPaused(ch, false);

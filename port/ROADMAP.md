@@ -1,7 +1,7 @@
 # sh23ds roadmap, phase 2
 
 Phase 1 got every part of the game into the port and tested in Azahar (see `STATUS.md`). Phase 2 makes it
-play like a finished 3DS game: the whole game playable from start to every ending with near 1:1 gameplay,
+play like a finished 3DS game on both the New 3DS and the original 3DS: the whole game playable from start to every ending with near 1:1 gameplay,
 a real touch-screen interface, better controls and animation, the Enhanced Edition's assets where a player
 has them, and a steadier frame rate.
 
@@ -66,6 +66,24 @@ them:
   fog layer's cost, skinning cost, and moving work off the main core.
 - Done when no area in the warp autotest has a frame over 33 ms after loading in Azahar, with the
   numbers in `PERFORMANCE.md`.
+
+## 6. The Old 3DS (owner: Old 3DS agent)
+
+The game must also be playable on the original 3DS, 3DS XL and 2DS: 268 MHz instead of 804, no L2 cache,
+64 MB of application memory by default (a larger SystemMode is possible in the CIA), and no C-Stick, ZL or
+ZR.
+
+- A hardware profile picked at startup (Auto / Old 3DS / New 3DS, overridable in the options) that sets the
+  memory split, a quality level and the control layout.
+- Memory that adapts to what the system gives the app; on the Old 3DS, textures loaded from their second
+  mip level, fewer resident tiles and smaller caches.
+- A quality setting (Low on the Old 3DS) that trims draw distance, fog sprites, shadows and lighting detail;
+  movies the Old 3DS can decode in time.
+- Two complete control layouts (Old 3DS: L, R, A, B, X, Y, D-Pad, Circle Pad, START, SELECT and touch; New
+  3DS: adds the C-Stick, ZL and ZR) with an option to switch, shared by the controls and touch UI work.
+- One CIA for both models.
+- Done when the smoke scenes and the warp autotest pass on Azahar's Old 3DS model with a steady 20 to 30 fps
+  in the heavy scenes, and the New 3DS profile is no slower than before.
 
 ## Rules for every workstream
 

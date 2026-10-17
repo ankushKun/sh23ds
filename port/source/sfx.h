@@ -25,6 +25,7 @@ void sfx_exit(void);
 // Restarting an id that is still playing cuts the old instance, like the PC driver.
 // Returns a handle >= 0, or -1 (unknown id, no free voice, out of memory).
 int sfx_play(int id, float volume, float pan);
+void sfx_set_gain(float g);             // the options' effects volume, 0..1 (sounds started after it)
 
 // SeCallPosDistanceF: volume fades with the source's and the camera's distance to the player,
 // pan from where the source is on screen. Looping sounds keep following the listener.

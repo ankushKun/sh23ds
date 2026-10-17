@@ -25,17 +25,20 @@ sys.path.insert(0, HERE)                                              # in tools
 sys.path.insert(1, os.path.join(HERE, '..', '..', 'tools', 'sh2conv'))  # or beside it while testing
 import chr as chrconv  # noqa: E402
 from convert import encode_textures  # noqa: E402
-from sh2map import decode_dxt  # noqa: E402
+import ee  # noqa: E402
+from ui import load_tex  # noqa: E402
 
 TEX_ID = 0x52f3
 
 
 def main():
     data, pack = sys.argv[1], sys.argv[2]
-    d = open(os.path.join(data, 'pic', 'effect', 'fly1.tbn2'), 'rb').read()
+    src = os.path.join(data, 'pic', 'effect', 'fly1.tbn2')
+    d = open(src, 'rb').read()
     tid, w, h = struct.unpack_from('<IHH', d, 0x10)
     assert tid == TEX_ID and (w, h) == (64, 64), (hex(tid), w, h)
-    rgba = decode_dxt(d[0x50:], w, h, 1)          # pixels follow the 0x50-byte header
+    # DXT1 after the 0x50-byte header (an Enhanced Edition replacement is brought to 64x64)
+    rgba = np.asarray(ee.like_original(load_tex(src).convert('RGBA'), src))
     out = os.path.join(pack, 'chr', 'moth')
     os.makedirs(os.path.join(out, 'tex'), exist_ok=True)
     os.makedirs(os.path.join(out, 'png'), exist_ok=True)

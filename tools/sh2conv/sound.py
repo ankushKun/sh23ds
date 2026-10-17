@@ -12,6 +12,9 @@ Writes
   <out>/bgm.bin            BGM files, BGM pages, per-stage BGM areas and the room-id tables
 
 Where the sounds live (static analysis of sh2pc.exe, see port/SOUND.md for the whole story)
+  Each of these is the Enhanced Edition's Audio Enhancement Pack version when the player has it
+  (sh2e/sound, see ee.py and EE_PACKS.md): 48 kHz effects (resampled to SE_MAX_RATE) and WAVs in
+  voice.afs instead of ADX.
   data/sound/sddata.bin    417 RIFF WAVE files back to back (mono PCM16, 8000..22050 Hz), each
                            followed by two bytes; the second one is 1 when the sound loops. The
                            exe never scans the file: it keeps a table of byte offsets indexed by
@@ -51,11 +54,16 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import ee  # noqa: E402
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 DEFAULT_DATA = os.path.join(ROOT, 'Silent Hill 2', 'data')
 DEFAULT_EXE = os.path.join(ROOT, 'Silent Hill 2', 'sh2pc.exe')
 DEFAULT_OUT = os.path.join(ROOT, 'pack', 'sound')
 EE_MAP = os.path.expanduser('~/Developer/refsrc/sh2ee/AudioScripts/SFX/SFX-Map.csv')
+
+# The Audio Enhancement Pack's effects are 48 kHz. The 3DS DSP mixes at 32728 Hz, so they are
+# resampled to this rate at most (also keeps se.bnk and the port's 4 MB sample cache in bounds).
+SE_MAX_RATE = 32000
 
 SE_PAIRS = 0x8a4ac0          # {game id, internal id} x 666
 SE_PAIR_COUNT = 0x29a
@@ -189,6 +197,74 @@ def adx_decode_mono(b):
     return rate, struct.pack('<%dh' % m, *mono)
 
 
+# ------------------------------------------------------------------ WAV (Audio Enhancement Pack)
+
+def parse_wav(blob):
+    """RIFF WAVE with PCM16 samples -> (rate, int16 array of shape (frames, channels))."""
+    import numpy as np
+    if blob[:4] != b'RIFF' or blob[8:12] != b'WAVE':
+        raise ValueError('not a RIFF WAVE file')
+    p, fmt = 12, None
+    while p + 8 <= len(blob):
+        cid, size = blob[p:p + 4], u32(blob, p + 4)
+        if cid == b'fmt ':
+            fmt = struct.unpack_from('<HHI6xH', blob, p + 8)
+        elif cid == b'data' and fmt:
+            tag, ch, rate, bits = fmt
+            if tag != 1 or bits != 16 or not 1 <= ch <= 2:
+                raise ValueError('WAV is not PCM16 mono or stereo (format %d, %d bits, %d channels)' % (tag, bits, ch))
+            n = min(size, len(blob) - p - 8) // (2 * ch)
+            return rate, np.frombuffer(blob, '<i2', n * ch, p + 8).reshape(n, ch)
+        p += 8 + size + (size & 1)
+    raise ValueError('WAV without fmt / data chunks')
+
+
+def resample(pcm, rate, to):
+    """Mono PCM16 bytes from rate to another rate (ffmpeg's resampler)."""
+    import subprocess
+    if rate == to:
+        return pcm
+    return subprocess.run(['ffmpeg', '-v', 'error', '-f', 's16le', '-ar', str(rate), '-ac', '1', '-i', 'pipe:',
+                           '-ar', str(to), '-f', 's16le', 'pipe:'], input=pcm, capture_output=True, check=True).stdout
+
+
+def wav_mono(blob, max_rate=SE_MAX_RATE):
+    """A WAV as (rate, mono PCM16 bytes) at max_rate at most."""
+    rate, a = parse_wav(blob)
+    mono = a[:, 0] if a.shape[1] == 1 else ((a[:, 0].astype('i4') + a[:, 1]) // 2).astype('<i2')
+    pcm = mono.astype('<i2').tobytes()
+    if max_rate and rate > max_rate:
+        return max_rate, resample(pcm, rate, max_rate)
+    return rate, pcm
+
+
+def wav_to_adx(blob):
+    """A WAV as standard 4-bit ADX (ffmpeg's encoder) the way audio.c decodes it. CRI's files and
+    audio.c (like adx_decode_mono here) use a frame's stored scale plus one, ffmpeg the stored scale
+    as is, and ffmpeg's encoder predicts with one rounding (ADX version 4) where version 3 rounds
+    each term: so each scale is stored one lower and the header says version 4 (no loop either
+    way), which decodes in audio.c as ffmpeg meant (37 dB SNR on speech, 47 dB on a sine)."""
+    import subprocess
+    import tempfile
+    import numpy as np
+    with tempfile.TemporaryDirectory() as tmp:
+        src, dst = os.path.join(tmp, 'in.wav'), os.path.join(tmp, 'out.adx')
+        with open(src, 'wb') as f:
+            f.write(blob)
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', src, '-c:a', 'adpcm_adx', '-f', 'adx', dst], check=True)
+        b = bytearray(open(dst, 'rb').read())
+    if struct.unpack_from('>H', b, 0)[0] != 0x8000 or b[4] != 3 or b[5] != 18:
+        raise ValueError('ffmpeg wrote an unexpected ADX header')
+    cofs, ch, total = struct.unpack_from('>H', b, 2)[0], b[7], struct.unpack_from('>I', b, 12)[0]
+    start, nf = cofs + 4, -(-total // 32) * ch
+    fr = np.frombuffer(b, np.uint8, nf * 18, start).reshape(nf, 18).copy()
+    scale = np.maximum(((fr[:, 0].astype(np.int32) << 8) | fr[:, 1]) - 1, 0)
+    fr[:, 0], fr[:, 1] = scale >> 8, scale & 0xff
+    b[start:start + nf * 18] = fr.tobytes()
+    b[0x12] = 4
+    return bytes(b)
+
+
 def afs_files(path):
     f = open(path, 'rb')
     head = f.read(8)
@@ -210,13 +286,40 @@ def ee_names():
     return names
 
 
+def ee_sddata(data, orig):
+    """The Audio Enhancement Pack's sddata.bin as samples in the original's order, or None. Its 417
+    WAVs are in the same order with the same loop bytes (AudioScripts/SFX/mergebin.cpp), mono 48 kHz,
+    so they sit at other offsets: the exe's offsets are matched through the original file (as the
+    EE's PatchSFXAddr does by counting RIFF headers)."""
+    sd_orig = os.path.join(data, 'sound', 'sddata.bin')
+    sd_path = ee.file(sd_orig)
+    if sd_path == sd_orig:
+        return None
+    try:
+        wavs = parse_sddata(open(sd_path, 'rb').read())
+    except (ValueError, IndexError, struct.error) as e:
+        print('warning: %s: %s; using the original sddata.bin' % (sd_path, e))
+        return None
+    if len(wavs) != len(orig):
+        print('warning: %s has %d sounds, the original %d; using the original' % (sd_path, len(wavs), len(orig)))
+        return None
+    out = []
+    for o in sorted(wavs):
+        rate, pcm, loop = wavs[o]
+        if rate > SE_MAX_RATE:
+            pcm, rate = resample(pcm, rate, SE_MAX_RATE), SE_MAX_RATE
+        out.append((rate, pcm, loop))
+    print('se.bnk: %d sounds from %s (resampled to %d Hz at most)' % (len(out), sd_path, SE_MAX_RATE))
+    return out
+
+
 def build_bank(exe, data, out):
     sd_path = os.path.join(data, 'sound', 'sddata.bin')
     blob = open(sd_path, 'rb').read()
     wavs = parse_sddata(blob)
     order = sorted(wavs)                       # sample index = position in sddata.bin
     wav_index = {o: i for i, o in enumerate(order)}
-    samples = [wavs[o] for o in order]
+    samples = ee_sddata(data, wavs) or [wavs[o] for o in order]
     names = ee_names()
     desc = {i: 'sddata%03d %s' % (i, names.get(i, '')) for i in range(len(samples))}
 
@@ -228,16 +331,22 @@ def build_bank(exe, data, out):
             raise ValueError('SE %d (internal %d) points at %#x, not a RIFF start' % (gid, internal, off))
         ids[gid] = wav_index[off]
 
-    afs = os.path.join(data, 'sound', 'adx', 'voice', 'voice.afs')
+    afs = ee.file(os.path.join(data, 'sound', 'adx', 'voice', 'voice.afs'))
     if os.path.exists(afs):
         f, toc = afs_files(afs)
         for i in range(SE_ADX_COUNT):
             gid, fid = struct.unpack('<HH', exe.read(SE_ADX + 4 * i, 4))
             o, n = toc[fid - 60000]
             f.seek(o)
-            rate, pcm = adx_decode_mono(f.read(n))
+            blob = f.read(n)
+            if blob[:4] == b'RIFF':              # the Audio Enhancement Pack's voice.afs holds WAVs
+                rate, pcm = wav_mono(blob)
+                kind = 'WAV'
+            else:
+                rate, pcm = adx_decode_mono(blob)
+                kind = 'ADX'
             ids[gid] = len(samples)
-            desc[len(samples)] = 'voice.afs #%d (ADX, mixed to mono)' % (fid - 60000)
+            desc[len(samples)] = 'voice.afs #%d (%s, mixed to mono)' % (fid - 60000, kind)
             samples.append((rate, pcm, False))
     else:
         print('warning: %s missing, the 32 ADX effects are left out' % afs)

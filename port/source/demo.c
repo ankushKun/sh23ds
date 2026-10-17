@@ -1450,6 +1450,16 @@ void demo_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		C3D_LightEnvBind(s_game_env);
 }
 
+bool demo_has_kind(int kind)
+{
+	if (!S.active)
+		return false;
+	for (int i = 0; i < S.n_chars; i++)
+		if (S.chars[i].model && S.chars[i].rec->kind == kind)
+			return true;
+	return false;
+}
+
 bool demo_has_james(void)
 {
 	if (!S.active)

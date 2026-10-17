@@ -50,6 +50,7 @@ typedef struct {
 } Chan;
 
 static Chan s_music = { .ch = MUSIC_CH }, s_voice = { .ch = VOICE_CH };
+static float s_gain[2] = { 1.0f, 1.0f };   // the options' music and voice volumes (audio_set_gains)
 static bool s_ok;
 static char s_status[64] = "audio off";
 
@@ -419,6 +420,15 @@ static void chan_stop_locked(Chan* c)
 }
 
 void audio_stop_music(void) { chan_stop_locked(&s_music); }
+
+void audio_set_gains(float music, float voice)
+{
+	s_gain[0] = music, s_gain[1] = voice;
+	for (int i = 0; i < 2; i++) {
+		float mix[12] = { s_gain[i], s_gain[i] };
+		ndspChnSetMix(i ? VOICE_CH : MUSIC_CH, mix);
+	}
+}
 void audio_stop_voice(void) { chan_stop_locked(&s_voice); }
 
 static bool play_unlocked(Chan* c, const char* path, float volume, float layer0)
@@ -460,7 +470,8 @@ static bool play_unlocked(Chan* c, const char* path, float volume, float layer0)
 	ndspChnSetInterp(c->ch, NDSP_INTERP_LINEAR);
 	ndspChnSetRate(c->ch, (float)s->rate);
 	ndspChnSetFormat(c->ch, NDSP_FORMAT_STEREO_PCM16);
-	float mix[12] = { 1.0f, 1.0f };
+	float g = s_gain[c == &s_voice];
+	float mix[12] = { g, g };
 	ndspChnSetMix(c->ch, mix);
 	for (int i = 0; i < NBUF; i++) {
 		memset(&c->wbuf[i], 0, sizeof c->wbuf[i]);

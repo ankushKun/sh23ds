@@ -25,6 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from convert import encode_textures  # noqa: E402
+import ee  # noqa: E402
 from ui import load_tex  # noqa: E402
 
 # the files FUN_004849d0 loads (0x7c53c8.. name table)
@@ -67,11 +68,12 @@ def main():
     for bg, area, name in FCL:
         src = os.path.join(data, bg, area, name + '.fcl')
         if os.path.exists(src):
-            shutil.copyfile(src, os.path.join(out, name + '.fcl'))
+            shutil.copyfile(ee.file(src), os.path.join(out, name + '.fcl'))
             n += 1
         else:
             print('missing', src)
-    load_tex(os.path.join(data, 'etc', 'effect', 'fog.tex')).save(os.path.join(out, 'fog.png'))
+    fog = os.path.join(data, 'etc', 'effect', 'fog.tex')
+    ee.like_original(load_tex(fog), fog).save(os.path.join(out, 'fog.png'))
     t3x = 'fog/fog.t3x'
     if os.path.exists(os.path.join(pack, t3x)):
         os.remove(os.path.join(pack, t3x))

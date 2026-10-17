@@ -21,6 +21,10 @@ import argparse
 import os
 import shutil
 import struct
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ee  # noqa: E402
 
 
 def valid(path):
@@ -65,6 +69,8 @@ def main():
                         if os.path.exists(os.path.join(s, stem + '.kg1'))), None)
             if not src or os.path.getsize(src) < 16:
                 continue
+            repl = ee.file(src)                # the Enhanced Edition's, unless it does not parse
+            src = repl if repl == src or valid(repl) else src
             if struct.unpack_from('<h', open(src, 'rb').read(16), 4)[0] == 0:
                 continue                    # a header with no objects: as good as empty
             if not valid(src):

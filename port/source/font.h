@@ -26,5 +26,15 @@ float font_width(int font, const char* s);                 // the widest line, i
 void font_text(int font, float x, float y, const char* s, int align, u32 top, u32 bottom);
 void font_codes(int font, float x, float y, const u16* codes, int n, int align, u32 top, u32 bottom);
 void font_flush(void);
+// A picture in the same space (x0, y0)-(x1, y1), drawn at once (before the frame's text).
+void font_image(C3D_Tex* tex, float x0, float y0, float x1, float y1, u32 rgba);
+// The same glyphs laid out in plain screen pixels for a screen of the caller's own (touchui.c):
+// (x, y) is the top left of the first line, glyphs at their atlas size, the PC's advances times
+// 0.625 and the lines 0.46875 of the cell height apart. Writes up to max vertices (6 a glyph) and
+// returns how many; font_texture is the atlas they sample.
+int font_layout_px(int font, float x, float y, const char* s, int align, u32 top, u32 bottom, FontVert* out, int max);
+float font_width_px(int font, const char* s);
+float font_line_px(int font);
+C3D_Tex* font_texture(void);
 // The PC's text colours (0x47eca0, index 0..16) as top and bottom RGBA.
 void font_pc_color(int index, u32* top, u32* bottom);

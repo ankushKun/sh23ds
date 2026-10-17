@@ -54,6 +54,7 @@ static u8 s_alpha[8];            // per entry, 0..0x80
 static float s_fx, s_fy, s_tx, s_ty, s_scroll;   // scrolling between two marks (DAT_009504e4 / d0 / ec)
 
 static bool F(int n) { return ev_flag(n); }
+static bool s_mini_used;         // the touch screen's small map keeps the textures
 
 // ---------------------------------------------------------------- data (pack/map/map.dat)
 
@@ -368,10 +369,10 @@ static bool load_t3x(C3D_Tex* tex, const char* name)
 	return true;
 }
 
-// 0x49af20: load the map and its marker sheet unless they are the ones in memory.
-static void show(int m)
+// The map's and its marker sheet's textures, kept while they stay the same (the screen and the
+// touch screen's small map share them; they are never drawn at the same time).
+static void textures_for(int m)
 {
-	s_shown = m;
 	const MapRec* r = &s_maps[m];
 	if (strcmp(s_tex_name, r->tex)) {
 		if (s_tex_ok) C3D_TexDelete(&s_tex);
@@ -383,6 +384,13 @@ static void show(int m)
 		s_mark_ok = r->mark[0] && load_t3x(&s_mark, r->mark);
 		snprintf(s_mark_name, sizeof s_mark_name, "%s", r->mark);
 	}
+}
+
+// 0x49af20: load the map and its marker sheet unless they are the ones in memory.
+static void show(int m)
+{
+	s_shown = m;
+	textures_for(m);
 	s_cx = s_cy = 0.0f;
 	float X, Y;
 	if (m == s_james && james_pos(&X, &Y))
@@ -510,7 +518,8 @@ void map_close(void)
 {
 	s_open = false;
 	s_mode = -1;
-	free_textures();
+	if (!s_mini_used)
+		free_textures();
 }
 
 bool map_update(u32 down, u32 held, const circlePosition* cp, float dt)
@@ -640,6 +649,119 @@ void map_draw(void)
 		}
 		s_draw(NULL, v, 6, pass ? 0xd01818ff : 0x000000c0);
 	}
+}
+
+// ---------------------------------------------------------------- the touch screen's small map
+
+// The map James is on, as map_open would show it, or 0 when he has none of it.
+static int mini_map(const MapPlayer* p, float* X, float* Y)
+{
+	if (!s_ready || s_open)
+		return 0;
+	s_pl = *p;
+	s_room = bgm_room_id(p->glb_crd, p->x, p->z);
+	int m = s_james = james_map(s_room, p->x, p->y, p->z);
+	if (m <= 0 || m >= N_MAPS || !available(m))
+		return 0;
+	s_shown = m;
+	if (!james_pos(X, Y))
+		return 0;
+	if (m == 1 && !(s_room >= 1 && s_room <= 3) && !(s_room == 0x0e && F(381)))
+		return 0;
+	return m;
+}
+
+u32 map_mini_key(const MapPlayer* p, float zoom)
+{
+	float X = 0, Y = 0;
+	int m = mini_map(p, &X, &Y);
+	if (!m)
+		return 0;
+	u32 marks = 0;
+	const MapRec* r = &s_maps[m];
+	for (int t = 0; t < r->ntab; t++)
+		for (int i = 0; i < r->tab[t].count; i++)
+			marks = marks * 31 + F(r->tab[t].first + 1 + i);
+	u32 px = (u32)(int)(X * zoom), py = (u32)(int)(Y * zoom), a = (u32)(int)(p->yaw * 4.0f);
+	return ((u32)m * 2654435761u) ^ (px * 40503u) ^ (py * 9973u) ^ (a * 131u) ^ marks ^ 1u;
+}
+
+bool map_mini(const MapPlayer* p, MapDrawFn fn, float x0, float y0, float x1, float y1, float zoom)
+{
+	float X, Y;
+	int m = mini_map(p, &X, &Y);
+	if (!m || !fn)
+		return false;
+	s_mini_used = true;
+	textures_for(m);
+	// map units to pixels: the PC's 4:3 shape (as the screen draws it), zoom times bigger
+	float kx = 0.625f * zoom, ky = 0.46875f * zoom;
+	float cx = (x0 + x1) * 0.5f, cy = (y0 + y1) * 0.5f;
+	// the units the rectangle shows, clipped to the map's -256..256
+	float ux0 = X - (cx - x0) / kx, ux1 = X + (x1 - cx) / kx, uy0 = Y - (cy - y0) / ky, uy1 = Y + (y1 - cy) / ky;
+	float cux0 = ux0 < -256.0f ? -256.0f : ux0, cux1 = ux1 > 256.0f ? 256.0f : ux1;
+	float cuy0 = uy0 < -256.0f ? -256.0f : uy0, cuy1 = uy1 > 256.0f ? 256.0f : uy1;
+	MapVert v[6];
+#define PX(u) (cx + ((u) - X) * kx)
+#define PY(u) (cy + ((u) - Y) * ky)
+	if (s_tex_ok && cux1 > cux0 && cuy1 > cuy0) {
+		float a0 = PX(cux0), b0 = PY(cuy0), a1 = PX(cux1), b1 = PY(cuy1);
+		float u0 = (cux0 + 256.0f) / 512.0f, v0 = (cuy0 + 256.0f) / 512.0f;
+		float u1 = (cux1 + 256.0f) / 512.0f, v1 = (cuy1 + 256.0f) / 512.0f;
+		v[0] = (MapVert){ a0, b0, u0, v0 }, v[1] = (MapVert){ a1, b0, u1, v0 }, v[2] = (MapVert){ a1, b1, u1, v1 };
+		v[3] = v[0], v[4] = v[2], v[5] = (MapVert){ a0, b1, u0, v1 };
+		fn(&s_tex, v, 6, 0xffffffff);
+	}
+	// the red markings whose flags are set (0x49afa0), at the screen's zoomed-out size times zoom
+	const MapRec* r = &s_maps[m];
+	for (int t = 0; t < r->ntab && s_mark_ok; t++)
+		for (int i = 0; i < r->tab[t].count; i++) {
+			if (!F(r->tab[t].first + 1 + i))
+				continue;
+			const MarkRec* mk = &r->tab[t].recs[i];
+			float x = code_x(mk->code), y = code_y(mk->code);
+			float w = (mk->rect[2] - mk->rect[0]) * 0.5f, h = (mk->rect[3] - mk->rect[1]) * 0.5f;
+			float a0 = PX(x), b0 = PY(y), a1 = PX(x + w), b1 = PY(y + h);
+			if (a1 < x0 || a0 > x1 || b1 < y0 || b0 > y1)
+				continue;
+			float u0 = mk->rect[0] / (float)s_mark.width, v0 = mk->rect[1] / (float)s_mark.height;
+			float u1 = mk->rect[2] / (float)s_mark.width, v1 = mk->rect[3] / (float)s_mark.height;
+			v[0] = (MapVert){ a0, b0, u0, v0 }, v[1] = (MapVert){ a1, b0, u1, v0 }, v[2] = (MapVert){ a1, b1, u1, v1 };
+			v[3] = v[0], v[4] = v[2], v[5] = (MapVert){ a0, b1, u0, v1 };
+			fn(&s_mark, v, 6, 0xffffffff);
+		}
+#undef PX
+#undef PY
+	// James' arrow in the middle, turned as the screen turns it
+	float a = p->yaw;
+	if (m == 0x10 || m == 0x11 || s_room == 1 || s_room == 5) a -= (float)M_PI / 2.0f;
+	else if (m == 0x12 || m == 0x13) a += (float)M_PI / 2.0f;
+	else if (s_room == 9 || s_room == 10 || s_room == 11 || s_room == 0x5c) a -= (float)M_PI;
+	float s = sinf(a), c = cosf(a);
+	static const float shape[6][2] = { { 0, -16 }, { -10, 12 }, { 0, 5 }, { 0, -16 }, { 0, 5 }, { 10, 12 } };
+	for (int pass = 0; pass < 2; pass++) {
+		for (int k = 0; k < 6; k++) {
+			float lx = shape[k][0] * 0.55f, ly = shape[k][1] * 0.55f;
+			v[k] = (MapVert){ cx + lx * c - ly * s + (pass ? 0.0f : 1.0f), cy + lx * s + ly * c + (pass ? 0.0f : 1.0f), 0, 0 };
+		}
+		fn(NULL, v, 6, pass ? 0xd01818ff : 0x000000c0);
+	}
+	return true;
+}
+
+bool map_zoomed(void) { return s_open && s_zoom_state >= 1 && s_zoom_state <= 2; }
+
+const char* map_name(void)
+{
+	map_legend();
+	static char name[48];
+	snprintf(name, sizeof name, "%.47s", s_legend);
+	char* nl = strchr(name, '\n');
+	if (nl)
+		*nl = 0;
+	for (char* e = name + strlen(name); e > name && e[-1] == ' '; )
+		*--e = 0;
+	return name;
 }
 
 const char* map_legend(void)

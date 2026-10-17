@@ -10,12 +10,19 @@ page; other escapes (ff fa, ff 01, ...) are display codes and are dropped. Pages
 import struct
 import sys
 
+import ee
+
 
 def _is_control(d, p):
     return p + 1 < len(d) and d[p] == 0 and d[p + 1] and not d[p + 1] & 0x0f
 
 
 def load(path):
+    """A .mes file; the Enhanced Edition's version when the player has it (ee.py)."""
+    return ee.load(path, _load)
+
+
+def _load(path):
     d = open(path, 'rb').read()
     n = struct.unpack_from('<H', d, 0)[0]
     offs = list(struct.unpack_from(f'<{n}H', d, 2))

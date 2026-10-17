@@ -6,6 +6,10 @@
 Writes pack/ui/title.t3x: the Director's Cut logo (data/pic/etc/sh2dc.tex, 512x512 DXT3) cropped to
 a 512x128 strip around the lettering, RGB565 without mipmaps.
 
+Also writes the save screen's backgrounds (data/menu/mc/savebg.tbn2, James, and savebg2.tbn2,
+Maria; 512x512 DXT3 squeezed to 512x256 RGB565 like the stills: pack/ui/savebg.t3x, savebg2.t3x)
+and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg).
+
 Also writes the PC's text font (pack/ui/font.t3x and font.bin, see write_font), which the exe carries
 compressed; pass --exe to read another sh2pc.exe than the default one.
 """
@@ -17,16 +21,29 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ee  # noqa: E402
 import sh2map  # noqa: E402
 from convert import encode_textures  # noqa: E402
 
 
 def load_tex(path):
-    """Single-sprite .tex file: 0x30-byte header, then the sprite header and DXT data."""
+    """A single-sprite .tex or .tbn2 file, the Enhanced Edition's version when the player has it
+    (ee.py; its images are the same files at up to 4x the size). See decode_tex."""
+    return ee.load(path, decode_tex)
+
+
+def decode_tex(path):
+    """Single-sprite .tex / .tbn2 file: 0x30-byte header, then the sprite header (u16 width and
+    height at 0x38, u32 format at 0x3c, u32 length at 0x40) and the pixels at 0x50: DXT1..5
+    (0x100..0x104) or 32-bit BGRA (0x20: menu/mc/mu_alpha.tbn2, the Image Enhancement Pack's
+    start01*.tex)."""
     d = open(path, 'rb').read()
     if struct.unpack_from('<I', d, 0)[0] != 0x19990901:
         raise ValueError(f'{path}: not a .tex file')
     _, _, _, w, h, fmt, length, _, _, _ = struct.unpack_from('<IHHHHIIIII', d, 0x30)
+    if fmt == 0x20:
+        bgra = np.frombuffer(d, np.uint8, w * h * 4, 0x50).reshape(h, w, 4)
+        return Image.fromarray(np.ascontiguousarray(bgra[:, :, [2, 1, 0, 3]]), 'RGBA')
     kind = sh2map.MAP_TEX_KIND[fmt]
     return Image.fromarray(sh2map.decode_dxt(d[0x50:0x50 + length], w, h, kind))
 
@@ -157,6 +174,30 @@ def write_font(pack, exe_path):
     print(f'wrote {t3x} (512x{height}) and ui/font.bin')
 
 
+def write_save_screen(data, pack):
+    """The save screen's pictures and texts (0x453fc0 / 0x4537b0, the PC's file list)."""
+    import sh2mes
+    from events_pack import write_msg
+    jobs = []
+    for name in ('savebg', 'savebg2'):
+        # 512x512 DXT3; the Image Enhancement Pack's are 2732x2048 (4:3 at square pixels), which
+        # squeeze to the same 512x256 since both fill the PC's 4:3 screen
+        img = load_tex(os.path.join(data, 'menu', 'mc', name + '.tbn2')).convert('RGB')
+        png = 'ui/%s.png' % name
+        img.resize((512, 256), Image.LANCZOS).save(os.path.join(pack, png))
+        t3x = 'ui/%s.t3x' % name
+        if os.path.exists(os.path.join(pack, t3x)):
+            os.remove(os.path.join(pack, t3x))
+        jobs.append((png, t3x, False))
+    encode_textures(jobs, pack, fmt='rgb565', mipmaps=False)
+    for png, _, _ in jobs:
+        os.remove(os.path.join(pack, png))
+    os.makedirs(os.path.join(pack, 'events'), exist_ok=True)
+    write_msg(os.path.join(pack, 'events', 'mcard.msg'),
+              sh2mes.load(os.path.join(data, 'etc', 'message', 'm_card_x_msg_e.mes')))
+    print('wrote ui/savebg.t3x, ui/savebg2.t3x and events/mcard.msg')
+
+
 def main():
     args = sys.argv[1:]
     exe_path = None
@@ -169,8 +210,10 @@ def main():
         exe_path = DEFAULT_EXE
     data, pack = args[0], args[1]
     write_font(pack, exe_path)
+    write_save_screen(data, pack)
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
-    img = load_tex(os.path.join(data, 'pic', 'etc', 'sh2dc.tex')).convert('RGB')
+    logo = os.path.join(data, 'pic', 'etc', 'sh2dc.tex')
+    img = ee.like_original(load_tex(logo), logo).convert('RGB')
     img.crop((0, 136, 512, 264)).save(os.path.join(pack, 'ui', 'title.png'))
     t3x = 'ui/title.t3x'
     if os.path.exists(os.path.join(pack, t3x)):

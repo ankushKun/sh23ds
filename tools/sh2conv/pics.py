@@ -8,7 +8,9 @@ stretched over the 4:3 screen, so the picture is squeezed to half height here an
 as 320x240 in the middle of the top screen. Overlay sprites (keys, buttons, needles) are converted
 as well but the app only shows the base still. Besides the DXT stills there are two older kinds:
 8-bit paletted PC files (htl/p_hanging*) and PS2-format files (the statue box and keys, the snake
-coin and the hospital box's sprite sheet), which are decoded here as well. It also writes the
+coin and the hospital box's sprite sheet), which are decoded here as well. With the Enhanced
+Edition's Image Enhancement Pack installed (sh2e/pic, see ee.py and EE_PACKS.md) its upscaled stills
+are the source instead. It also writes the
 puzzle overlays' sprite sheets and tables (see SHEETS). Usage: pics.py <data> <pack> [--exe sh2pc.exe]
 [dir ...]
 """
@@ -21,7 +23,8 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from convert import encode_textures  # noqa: E402
-from ui import load_tex  # noqa: E402
+import ee  # noqa: E402
+from ui import decode_tex  # noqa: E402
 
 
 def load_pc_paletted(d):
@@ -62,8 +65,15 @@ def load_ps2(d):
 
 
 def load_still(path):
+    """A still, the Enhanced Edition's when the player has the Image Enhancement Pack (ee.py): the
+    same .tex files at 4x the size (2048x2048 for the 512x512 stills), all of them DXT, also where
+    the original is one of the paletted or PS2-format files."""
+    return ee.load(path, decode_still)
+
+
+def decode_still(path):
     try:
-        return load_tex(path)
+        return decode_tex(path)
     except (KeyError, ValueError):
         d = open(path, 'rb').read()
         if d[0xc:0x10] == b'\xa7\xa7\xa7\xa7':
@@ -101,7 +111,10 @@ def write_overlays(data, pack, exe_path):
     for s in SHEETS:
         os.makedirs(os.path.join(pack, 'sheet', os.path.dirname(s)), exist_ok=True)
         png = f'sheet/{s}.png'
-        load_still(os.path.join(data, 'pic', s + '.tex')).convert('RGBA').save(os.path.join(pack, png))
+        src = os.path.join(data, 'pic', s + '.tex')
+        # the overlay tables address the sheets in the original's texels, so a larger sheet from
+        # the Image Enhancement Pack is brought back to the original's size
+        ee.like_original(load_still(src).convert('RGBA'), src).save(os.path.join(pack, png))
         jobs.append((png, f'sheet/{s}.t3x', True))
     encode_textures(jobs, pack, fmt='rgba4', mipmaps=False)
     for png, _, _ in jobs:

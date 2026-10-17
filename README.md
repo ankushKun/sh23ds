@@ -85,7 +85,7 @@ You need:
 
 - A **New Nintendo 3DS, New 3DS XL or New 2DS XL** running Luma3DS custom firmware, with FBI or the Homebrew Launcher. Not set up yet? Follow [3ds.hacks.guide](https://3ds.hacks.guide/) first. The original 3DS and 2DS don't have the speed or memory this port is made for.
 - Your own copy of **Silent Hill 2 PC, Director's Cut**. The packer checks that `sh2pc.exe` has the MD5 `f3f5360298b6d0f6f2e09cf24a0925d1`, the unmodified retail Director's Cut build.
-- About **1.7 GB free** on the SD card, and a computer with [Docker](https://www.docker.com/products/docker-desktop/) to build the game data.
+- About **1.3 GB free** on the SD card, and a computer with [Docker](https://www.docker.com/products/docker-desktop/) to build the game data.
 
 Then:
 
@@ -147,7 +147,7 @@ mkdir sd
 docker run --rm -v "C:\Games\Silent Hill 2:/game:ro" -v "${PWD}\sd:/out" ghcr.io/ankushkun/sh23ds-packer
 ```
 
-When it finishes, `sd/3ds/sh23ds/` holds about 1.7 GB. It takes a while, most of it on textures: plan on an hour or two, depending on how many CPU cores Docker gets.
+When it finishes, `sd/3ds/sh23ds/` holds about 1.3 GB. It takes a while, most of it on textures: plan on an hour or two, depending on how many CPU cores Docker gets.
 
 <details>
 <summary><b>Notes and other ways to run it</b></summary>
@@ -172,7 +172,7 @@ When it finishes, `sd/3ds/sh23ds/` holds about 1.7 GB. It takes a while, most of
   tools/make_pack.sh "/path/to/Silent Hill 2"
   ```
 
-- **The Enhanced Edition on your PC copy:** the port already includes EE's fixes, so point the packer at a clean Director's Cut install. EE's setup replaces `sh2pc.exe`, and the packer stops when the exe isn't the one it knows.
+- **Enhanced Edition packs:** if your game folder has the Enhanced Edition's `sh2e` folder (its Essential Files and the Image, FMV and Audio Enhancement Packs), the packer uses those files in place of the originals and lists them in `ee_used.txt`. The Enhanced Executable replaces `sh2pc.exe`, and the packer still needs the Director's Cut one, so put that back first. Add `-e SH2EE=0` to build from the original files only. Details are in [EE_PACKS.md](tools/sh2conv/EE_PACKS.md).
 
 </details>
 
@@ -327,7 +327,7 @@ No. The port uses the New 3DS's 804 MHz mode, its L2 cache and its extra memory,
 <details>
 <summary><b>Can I use the v1.0 PC release, or a copy with the Enhanced Edition installed?</b></summary>
 <br>
-Not yet. The converters read tables at fixed addresses in the Director's Cut exe, so the packer only accepts that build. The Enhanced Edition's fixes are already part of the port.
+The v1.0 release, no: the converters read tables at fixed addresses in the Director's Cut exe, so the packer only accepts that build. The Enhanced Edition's packs, yes: the packer uses the files in your `sh2e` folder. Its Enhanced Executable replaces `sh2pc.exe`, so put the Director's Cut exe back before running the packer.
 </details>
 
 <details>

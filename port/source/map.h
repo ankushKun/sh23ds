@@ -33,6 +33,14 @@ bool map_update(u32 down, u32 held, const circlePosition* cp, float dt);
 void map_draw(void);                 // top screen, inside C3D_FrameBegin / End
 void map_close(void);
 const char* map_legend(void);        // the shown map's name and the keys, for the bottom screen
+const char* map_name(void);          // the shown map's name
+bool map_zoomed(void);               // the screen is zoomed in (the D-pad scrolls)
+// The touch screen's small map (touchui.c): the map James is on, centred on him, zoom times the
+// screen's zoomed-out size, with the red markings and his arrow, through fn into (x0, y0)-(x1, y1)
+// in the caller's pixels. False when he has no map of where he is (or the screen is open).
+bool map_mini(const MapPlayer* p, MapDrawFn fn, float x0, float y0, float x1, float y1, float zoom);
+// Changes whenever what map_mini draws would (another map, James moved a pixel, a new mark).
+u32 map_mini_key(const MapPlayer* p, float zoom);
 
 // Memo list: the memos picked up so far (each memo has a game flag).
 int memo_count(void);
