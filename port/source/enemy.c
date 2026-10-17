@@ -11,6 +11,7 @@
 // (ambush tables, the waiting-for-car event, regeneration, path finding around furniture) are
 // simplified and marked as such.
 #include "chrlight.h"
+#include "shadow.h"
 #include "enemy.h"
 #include <math.h>
 #include <stdio.h>
@@ -5581,6 +5582,7 @@ void enemy_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		}
 		float at[3] = { e->x, e->y, e->z };
 		chrlight_at(at, false);         // the PC's per-character light list (chrlight.c)
+		shadow_cast(c, at, e->yaw);     // its flashlight shadow, if it has a .kg1 (shadow.c)
 		chr_draw(c, uBones);
 	}
 	moths_draw(view, uModelView, uBones);

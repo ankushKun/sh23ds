@@ -31,6 +31,8 @@
 #include "clearsave.h"
 #include "stagemdl.h"
 #include "chrlight.h"
+#include "shadow.h"
+#include "areaidx.h"
 #include "stream.h"
 #include "perf.h"
 #include "gamecam.h"
@@ -193,7 +195,10 @@ static float s_room_bb[MAX_ROOMS][6];
 
 static void room_bounds_load(void)
 {
+	bool idx = areaidx_load(PACK_DIR, s_areas[s_area]);   // one file for the whole area
 	for (int i = 0; i < s_nrooms; i++) {
+		if (idx && areaidx_bounds(s_rooms[i], s_room_bb[i]))
+			continue;
 		char path[192];
 		snprintf(path, sizeof path, PACK_DIR "/bg/%.7s/%.15s.s3m", s_areas[s_area], s_rooms[i]);
 		memset(s_room_bb[i], 0, sizeof s_room_bb[i]);
@@ -339,6 +344,14 @@ static bool neighbour_add_job(StreamJob* j, const int* want, int nwant)
 }
 
 static bool s_stream_sync;           // debug.txt "streamsync 1": read tiles on the main loop (for comparison)
+// A door warp's neighbouring tiles come in through the reader thread while the screen stays black
+// (fade_update holds the fade until they are resident, at most ARRIVAL_MAX seconds), instead of
+// being read in the one long frame of the room load (port/PERFORMANCE.md).
+static bool s_async_arrival;         // set by apply_warp around its room load
+static bool s_arrival;               // tiles of the last warp still on their way
+static float s_arrival_t;
+static int s_tiles_missing;          // wanted touching tiles that are not resident yet
+#define ARRIVAL_MAX 3.0f
 
 // Loads the touching tiles near James and drops the far ones. Returns true when the set changed.
 // sync: read the files now (room loads); otherwise the reader thread fetches them and they join a
@@ -383,14 +396,17 @@ static bool stream_update_ex(bool sync)
 			changed |= neighbour_add_job(j, want, nwant);
 		perf_part("join", t0);
 	}
+	s_tiles_missing = 0;
 	for (int i = 0; i < nwant && s_nnb < MAX_NB; i++) {
 		bool have = false;
 		for (int k = 0; k < s_nnb; k++)
 			have |= s_nb_idx[k] == want[i];
 		if (have)
 			continue;
-		if (!sync && stream_request(want[i], s_areas[s_area], s_rooms[want[i]]))
+		if (!sync && stream_request(want[i], s_areas[s_area], s_rooms[want[i]])) {
+			s_tiles_missing++;
 			continue;                    // the reader thread fetches it
+		}
 		char err[128], cpath[192];
 		int k = s_nnb;
 		u64 t0 = svcGetSystemTick();
@@ -417,7 +433,6 @@ static bool stream_update_ex(bool sync)
 	return changed;
 }
 
-static bool stream_update(void) { return stream_update_ex(true); }
 
 // James walked out of the primary tile into a resident neighbour: swap their roles, no reload.
 static void primary_update(void)
@@ -498,19 +513,58 @@ static void load_current(void)
 	}
 	char cpath[160];
 	snprintf(cpath, sizeof cpath, PACK_DIR "/bg/%s/%s.s3l", s_areas[s_area], s_rooms[s_room]);
+	u64 t0 = svcGetSystemTick();
+	// the files the reader thread fetched while the door faded out (warp_prefetch), if any
+	StreamJob* pre = stream_take_named(s_areas[s_area], s_rooms[s_room]);
+	stream_drop_prefetch();
+	perf_part("ld_wait", t0);
+	t0 = svcGetSystemTick();
 	col_free(&s_col_room);
-	col_load(&s_col_room, cpath);
+	if (pre && pre->s3l)
+		col_load_mem(&s_col_room, pre->s3l, pre->s3l_size);
+	else
+		col_load(&s_col_room, cpath);
 	collision_rebuild();
+	if (pre && pre->sfm) {
+		sfx_floor_put(s_rooms[s_room], pre->sfm, pre->sfm_size);
+		pre->sfm = NULL;
+	}
 	sfx_floor_load(s_rooms[s_room]);
-	s_loaded = room_load(&s_cur, PACK_DIR, s_areas[s_area], s_rooms[s_room], err, sizeof err);
+	perf_part("ld_col", t0);
+	t0 = svcGetSystemTick();
+	if (pre && pre->s3m) {
+		s_loaded = room_load_mem(&s_cur, PACK_DIR, s_areas[s_area], s_rooms[s_room], pre->s3m, pre->s3m_size,
+		                         pre->tex, pre->ntex, err, sizeof err);
+		pre->s3m = NULL;                 // room_load_mem took it
+	} else {
+		s_loaded = room_load(&s_cur, PACK_DIR, s_areas[s_area], s_rooms[s_room], err, sizeof err);
+	}
+	if (pre)
+		stream_release(pre);
+	perf_part("ld_room", t0);
 	if (s_loaded) {
 		snprintf(s_status, sizeof s_status, "%s/%s", s_areas[s_area], s_rooms[s_room]);
 		camera_reset();
-		if (!stream_update())    // touching tiles of open areas, before enemies are placed on them
+		t0 = svcGetSystemTick();
+		// touching tiles of open areas, before enemies are placed on them; after a door warp they
+		// come in behind the black screen instead (s_arrival)
+		bool async = s_async_arrival && !s_stream_sync;
+		if (!stream_update_ex(!async))
 			residents_keep();
+		if (async && s_tiles_missing) {
+			s_arrival = true;
+			s_arrival_t = 0.0f;
+		}
+		perf_part("ld_tiles", t0);
+		t0 = svcGetSystemTick();
 		enemy_room_enter(ev_stage(), s_have_col ? &s_col : NULL);
+		perf_part("ld_enemy", t0);
+		t0 = svcGetSystemTick();
 		gamecam_load_area(PACK_DIR, s_areas[s_area], (const char (*)[16])s_rooms, s_nrooms);
+		perf_part("ld_cam", t0);
+		t0 = svcGetSystemTick();
 		env_room_changed();
+		perf_part("ld_env", t0);
 		mem_log(s_status);
 		static char playing_area[8];
 		if (!bgm_ready() && strcmp(playing_area, s_areas[s_area])) {
@@ -535,7 +589,9 @@ static bool goto_map(const char* map, bool keep_player)
 		return false;
 	if (area != s_area) {
 		s_area = area;
+		u64 t0 = svcGetSystemTick();
 		list_rooms();
+		perf_part("ld_list", t0);
 	}
 	int room = -1;
 	for (int i = 0; i < s_nrooms; i++)
@@ -587,11 +643,46 @@ static bool message_update(u32 down)
 
 static int room_at(float x, float z);
 
+// A door warp's destination room: its files are read on the tile reader thread while the screen
+// fades out, and load_current takes them from there (stream_take_named).
+static int map_area(const char* map)
+{
+	int area = -1;
+	for (int i = 0; i < s_nareas; i++)
+		if (!strncmp(s_areas[i], map, strlen(s_areas[i])))
+			area = i;
+	return area;
+}
+
+static float s_warp_wait;            // time the black screen has waited for the prefetch
+
+static void warp_prefetch(const char* map)
+{
+	s_warp_wait = 0.0f;
+	int area = map[0] && !s_stream_sync ? map_area(map) : -1;
+	if (area >= 0)
+		stream_request(STREAM_PREFETCH, s_areas[area], map);
+}
+
+// The black screen waits (frames keep coming) until the prefetch is in, at most 3 seconds, so the
+// room load itself only does the GPU side.
+static bool warp_ready(float dt)
+{
+	int area = s_warp.map[0] ? map_area(s_warp.map) : -1;
+	if (area < 0 || s_warp_wait >= 3.0f || !stream_named_busy(s_areas[area], s_warp.map))
+		return true;
+	s_warp_wait += dt;
+	return false;
+}
+
 static void apply_warp(void)
 {
 	s_gamecam_reset = true;
+	s_async_arrival = true;
+	u64 t0 = svcGetSystemTick();
 	if (s_warp.stage != ev_stage())
 		ev_load_stage(s_warp.stage);
+	perf_part("ld_stage", t0);
 	s_px = s_warp.pos[0];
 	s_py = s_warp.pos[1];
 	s_pz = s_warp.pos[2];
@@ -619,11 +710,12 @@ static void apply_warp(void)
 		else
 			col_spawn(&s_col, s_px, s_pz, &s_px, &s_py, &s_pz);
 	}
+	s_async_arrival = false;
 }
 
-// debug.txt "memtest N": warps through ten rooms of different areas N times (one every 150 frames),
-// logging the free memory after each, so a leak across room changes shows as a falling column in
-// mem.txt between rounds.
+// debug.txt "memtest N": warps through ten rooms of different areas N times, one every 150 frames
+// through the same fade and prefetch as a door, logging the free memory after each, so a leak
+// across room changes shows as a falling column in mem.txt between rounds.
 static int s_memtest, s_memtest_step;
 static bool s_perflog, s_memlog;
 
@@ -649,7 +741,8 @@ static void memtest_step(u32 frame)
 	snprintf(s_warp.map, sizeof s_warp.map, "%s", dest[i].map);
 	s_warp.pos[0] = dest[i].x, s_warp.pos[2] = dest[i].z;
 	s_warp.facing = dest[i].yaw * (float)M_PI / 180.0f;
-	apply_warp();
+	warp_prefetch(s_warp.map);           // the way a door goes: prefetch, fade out, load, fade in
+	s_warp_pending = true;
 }
 
 // ---------------------------------------------------------------- inventory (bottom screen)
@@ -770,6 +863,7 @@ static void events_update(u32 down)
 	if (a.kind == EV_WARP) {
 		s_warp = a;
 		s_warp_pending = true;
+		warp_prefetch(a.map);
 		sfx_door_open(a.door_sound, feet);
 	} else if (a.kind == EV_MESSAGE) {
 		show_message(a.text);
@@ -905,8 +999,8 @@ static float s_fade_hold;
 static void fade_update(float dt)
 {
 	if (s_warp_pending) {
-		s_fade += dt * 4.0f;
-		if (s_fade >= 1.0f) {
+		s_fade = s_fade + dt * 4.0f > 1.0f ? 1.0f : s_fade + dt * 4.0f;
+		if (s_fade >= 1.0f && warp_ready(dt)) {
 			s_fade = 1.0f;
 			apply_warp();
 			s_warp_pending = false;
@@ -914,6 +1008,8 @@ static void fade_update(float dt)
 			float feet[3] = { s_px, s_py, s_pz };
 			sfx_door_close(s_warp.door_sound, feet);
 		}
+	} else if (s_arrival && s_arrival_t < ARRIVAL_MAX) {
+		s_arrival_t += dt;                // stay black until the warp's tiles are in
 	} else if (s_fade_hold > 0.0f) {
 		s_fade_hold -= dt;
 	} else if (s_fade > s_fade_target) {
@@ -1287,6 +1383,7 @@ static void setup_pipeline(void)
 	C3D_CullFace(GPU_CULL_NONE);
 	lighting_setup();
 	chrlight_init(&s_lenv);
+	shadow_init();
 	fog_init(PACK_DIR);
 	stream_init(PACK_DIR);
 	perf_init(PACK_DIR);
@@ -1377,6 +1474,25 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	}
 }
 
+// Character shadows this frame (shadow.c): the PC casts them from James' flashlight only, in rooms
+// whose record has ShadowDarkNess set (0x47bb00), and not in cutscenes (their own shadow lights are
+// not ported). The darkness is the Enhanced Edition's, faded in over about 33 frames when the
+// flashlight comes on, as EE's SetShadowFading does (3 of 100 a frame).
+static void shadow_frame(bool paused)
+{
+	static float fade;
+	float k = 0.0f;
+	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && s_chrflash.on && s_env.shadow != 0) {
+		int room = bgm_room_id(ev_glb_crd(), s_px, s_pz);
+		if (!paused)
+			fade = fade + 0.03f > 1.0f ? 1.0f : fade + 0.03f;
+		k = shadow_ee_opacity(room, prog_chapter() == 1) / 255.0f * fade;
+	} else {
+		fade = 0.0f;
+	}
+	shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, k);
+}
+
 static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 {
 	if (!s_have_james)
@@ -1412,12 +1528,16 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	}
 	if (s_chr_nofog)
 		C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
+	shadow_mark_begin();                  // characters take no shadow (shadow.c)
+	float jat[3] = { s_px, s_py, s_pz };
+	shadow_cast(&s_james, jat, s_yaw);    // the PC's hll_jms.kg1 is empty, so nothing yet
 	chr_draw(&s_james, s_uBones);
 	combat_draw_weapon(s_uBones);
 	if (s_state == ST_GAME) {
 		enemy_draw(view, s_uSkinModelView, s_uBones);
 		stagemdl_draw(view, s_uSkinModelView, s_uBones);   // the stage's own models (stagemdl.c)
 	}
+	shadow_mark_end();
 	if (s_chr_nofog)
 		C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
 	if (own)
@@ -1453,7 +1573,9 @@ static void draw_demo(const C3D_Mtx* proj, const C3D_Mtx* view)
 	demo_light_hook(demo_light_scale);
 	chrlight_begin(view, s_env.amb, s_flash_level, bright_scale(), &s_chrflash);
 	s_chr_begun = true;
+	shadow_mark_begin();
 	demo_draw(view, s_uSkinModelView, s_uBones);
+	shadow_mark_end();
 	demo_light_hook(NULL);
 	if (s_chr_nofog)
 		C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
@@ -3136,6 +3258,8 @@ int main(void)
 			if (!strcmp(key, "memlog")) s_memlog = val != 0;
 			if (!strcmp(key, "memtest")) s_memtest = val;
 			if (!strcmp(key, "streamsync")) s_stream_sync = val != 0;
+			if (!strcmp(key, "shadowdebug")) shadow_debug(val);
+			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "batch")) s_only_batch = val;
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
 			if (!strcmp(key, "debughud")) s_debug_hud = val != 0;
@@ -3404,7 +3528,9 @@ int main(void)
 
 		perf_part("game", t_part);
 		t_part = svcGetSystemTick();
-		if (s_state == ST_GAME && !s_paused && (frame % 8) == 0) {
+		if (s_arrival && (s_tiles_missing == 0 || s_arrival_t >= ARRIVAL_MAX))
+			s_arrival = false;
+		if (s_state == ST_GAME && !s_paused && ((frame % 8) == 0 || s_arrival)) {
 			primary_update();    // walked onto a neighbouring tile
 			if (stream_update_ex(s_stream_sync)) {   // load / drop touching tiles around James
 				u64 t0 = svcGetSystemTick();
@@ -3423,7 +3549,9 @@ int main(void)
 			memcpy(s_fogf.watch, feet, sizeof s_fogf.watch);
 			s_fogf.scr_z = 224.0f / tanf(fovy * 0.5f);
 			sfx_listener(feet, eye);
+			u64 tb = svcGetSystemTick();
 			bgm_update(ev_stage(), ev_glb_crd(), feet, dt);
+			perf_part("bgm", tb);
 			float near, far;
 			env_clip(&near, &far);
 			Mtx_PerspTilt(&proj, fovy, C3D_AspectRatioTop, near, far, false);
@@ -3435,13 +3563,17 @@ int main(void)
 				s_gamecam_reset = false;
 			}
 			float fovy;
+			u64 tb = svcGetSystemTick();
 			gamecam_update(&gp, dt, (held & KEY_L) != 0, &mv, &fovy);
+			perf_part("cam", tb);
 			s_chr_nofog = ee_final_boss_nofog(gamecam_eye()[1]);
 			memcpy(s_fogf.eye, gamecam_eye(), sizeof s_fogf.eye);
 			memcpy(s_fogf.watch, gamecam_watch(), sizeof s_fogf.watch);
 			s_fogf.scr_z = gamecam_scr_z();
 			sfx_listener(gp.pos, gamecam_eye());
+			tb = svcGetSystemTick();
 			bgm_update(gp.stage, gp.glb_crd, gp.pos, dt);
+			perf_part("bgm", tb);
 			float near, far;
 			env_clip(&near, &far);
 			Mtx_PerspTilt(&proj, fovy, C3D_AspectRatioTop, near, far, false);
@@ -3457,7 +3589,7 @@ int main(void)
 		u32 clear = s_cam.mode == CAM_PLAYER ? ((u32)s_env.clear_rgb[0] << 24 | (u32)s_env.clear_rgb[1] << 16 |
 		                                       (u32)s_env.clear_rgb[2] << 8 | 0xFF) : CLEAR_COLOR;
 		C3D_RenderTargetClear(top, C3D_CLEAR_ALL, s_render_mode == 3 ? 0x808080FF : clear,
-		                      s_depth_variant == 1 ? 0xFFFFFF : 0);
+		                      (s_depth_variant == 1 ? 0xFFFFFF : 0) | SHADOW_STENCIL_CLEAR);
 		C3D_FrameDrawOn(top);
 		if (s_render_mode == 3) {
 			draw_texture_test(&ortho);
@@ -3469,12 +3601,14 @@ int main(void)
 			C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, &proj);
 			C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, &mv);
 			Mtx_Multiply(&s_clip_mtx, &proj, &mv);
+			shadow_frame(s_paused);
 			calls = draw_room();
 			if (demo_active())
 				draw_demo(&proj, &mv);
 			else
 				draw_james(&proj, &mv);     // same light environment as the room
 			C3D_LightEnvBind(NULL);
+			shadow_draw(&proj, &mv, &ortho);
 			if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME)
 				fog_frame(&proj, &mv, &ortho, s_paused ? 0.0f : dt);
 			float black = s_fade > demo_fade() ? s_fade : demo_fade();
@@ -3548,6 +3682,8 @@ int main(void)
 			       gamecam_eye()[0], gamecam_eye()[1], gamecam_eye()[2], gamecam_fov() * 57.3f);
 			printf("%-38s\n", fog_status());
 			printf("%-38s\n", perf_status());
+			printf("%-38s\n", shadow_status());
+			printf("%-38.38s\n", sfx_status());
 		}
 		pause_draw();
 		inventory_draw();

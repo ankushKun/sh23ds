@@ -56,16 +56,28 @@ static char s_status[64] = "audio off";
 // Decoding one buffer of layered AIX music costs 25-30 ms of CPU, which on the main loop dropped a
 // frame every 110 ms (port/PERFORMANCE.md). A thread does the refills instead: on core 2, the New
 // 3DS's spare core, or below the main thread on core 0 when the kernel refuses that, where it runs
-// while the main thread waits for the vertical blank. The lock is only taken where a stream is
-// started or stopped; volumes and positions are single words the main thread reads or writes
-// directly.
+// while the main thread waits for the vertical blank. Starting and stopping a stream are requests
+// the thread carries out too (opening a file and reading its first AIX chunk cost 20..130 ms on the
+// main loop, and waiting for the thread's lock up to a buffer's decoding), so the main thread only
+// takes the small request lock. Volumes and positions are single words both sides read or write.
 static Thread s_thread;
-static LightLock s_lock;
+static LightLock s_lock;             // the refill thread's: streams and channels
+static LightLock s_req_lock;         // requests from the main thread
 static LightEvent s_wake;
 static volatile bool s_quit;
 static int s_core = -1;
 
+enum { REQ_NONE, REQ_STOP, REQ_PLAY };
+typedef struct {
+	int op;
+	char path[128];
+	float volume, layer0;
+} Req;
+static Req s_req[2];                 // music, voice
+
 static void chan_update(Chan* c);
+static void chan_stop(Chan* c);
+static bool play_unlocked(Chan* c, const char* path, float volume, float layer0);
 
 static void refill_thread(void* arg)
 {
@@ -75,15 +87,44 @@ static void refill_thread(void* arg)
 		if (s_quit)
 			break;
 		LightLock_Lock(&s_lock);
+		for (int i = 0; i < 2; i++) {
+			Req r;
+			LightLock_Lock(&s_req_lock);
+			r = s_req[i];
+			s_req[i].op = REQ_NONE;
+			LightLock_Unlock(&s_req_lock);
+			Chan* c = i ? &s_voice : &s_music;
+			if (r.op == REQ_STOP)
+				chan_stop(c);
+			else if (r.op == REQ_PLAY && !play_unlocked(c, r.path, r.volume, r.layer0))
+				chan_stop(c);
+		}
 		chan_update(&s_music);
 		chan_update(&s_voice);
 		LightLock_Unlock(&s_lock);
 	}
 }
 
+static void request(Chan* c, int op, const char* path, float volume, float layer0)
+{
+	Req* r = &s_req[c == &s_voice];
+	LightLock_Lock(&s_req_lock);
+	r->op = op;
+	if (path)
+		snprintf(r->path, sizeof r->path, "%s", path);
+	r->volume = volume;
+	r->layer0 = layer0;
+	LightLock_Unlock(&s_req_lock);
+	LightEvent_Signal(&s_wake);
+}
+
+static bool pending_play(const Chan* c) { return s_req[c == &s_voice].op == REQ_PLAY; }
+
 static void thread_start(void)
 {
 	LightLock_Init(&s_lock);
+	LightLock_Init(&s_req_lock);
+	memset(s_req, 0, sizeof s_req);
 	LightEvent_Init(&s_wake, RESET_ONESHOT);
 	s32 prio = 0x30;
 	svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
@@ -372,10 +413,9 @@ static void chan_stop(Chan* c)
 static void chan_stop_locked(Chan* c)
 {
 	if (s_thread)
-		LightLock_Lock(&s_lock);
-	chan_stop(c);
-	if (s_thread)
-		LightLock_Unlock(&s_lock);
+		request(c, REQ_STOP, NULL, 0.0f, 0.0f);
+	else
+		chan_stop(c);
 }
 
 void audio_stop_music(void) { chan_stop_locked(&s_music); }
@@ -433,18 +473,20 @@ static bool play_unlocked(Chan* c, const char* path, float volume, float layer0)
 		snprintf(s_status, sizeof s_status, "%s %luHz %dch%s %d", name ? name + 1 : path, (unsigned long)s->rate,
 		         s->layer[0].channels, s->aix ? " aix" : "", s->nlayers);
 	}
-	chan_update(c);
+	if (!s_thread)
+		chan_update(c);                  // with the refill thread, it decodes the first buffers
 	return true;
 }
 
+// With the refill thread this only asks for the stream and answers true; a file that turns out to
+// be missing or unreadable then simply stays silent (audio_voice_playing turns false).
 static bool play(Chan* c, const char* path, float volume, float layer0)
 {
-	if (s_thread)
-		LightLock_Lock(&s_lock);
-	bool ok = play_unlocked(c, path, volume, layer0);
-	if (s_thread)
-		LightLock_Unlock(&s_lock);
-	return ok;
+	if (s_thread) {
+		request(c, REQ_PLAY, path, volume, layer0);
+		return true;
+	}
+	return play_unlocked(c, path, volume, layer0);
 }
 
 // Layer 0 plays alone until the caller mixes in others.
@@ -461,6 +503,8 @@ bool audio_play_voice(const char* path, float volume) { return play(&s_voice, pa
 float audio_voice_position(void)
 {
 	Chan* c = &s_voice;
+	if (pending_play(c))
+		return -1.0f;                    // the refill thread has not started it yet
 	if (!c->s.rate)
 		return -1.0f;
 	u32 pos = 0;
@@ -474,6 +518,8 @@ float audio_voice_position(void)
 // Still sounding: decoding, or buffers the DSP has not finished yet.
 bool audio_voice_playing(void)
 {
+	if (pending_play(&s_voice))
+		return true;
 	if (s_voice.playing)
 		return true;
 	for (int i = 0; i < NBUF; i++)
@@ -488,7 +534,7 @@ void audio_set_layer_volume(int layer, float volume)
 		s_music.s.layer[layer].target = volume < 0.0f ? 0.0f : volume;
 }
 
-int audio_layer_count(void) { return s_music.playing ? s_music.s.nlayers : 0; }
+int audio_layer_count(void) { return s_music.playing && !pending_play(&s_music) ? s_music.s.nlayers : 0; }
 
 static void chan_update(Chan* c)
 {

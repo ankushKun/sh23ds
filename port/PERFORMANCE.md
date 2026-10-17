@@ -26,7 +26,9 @@ Switches in `debug.txt` on the SD card (`sdmc:/3ds/sh23ds/debug.txt`):
 | `perflog 1` | appends a line per second to `perf.txt`, plus a line for every frame over 25 ms (with the time of each named part of that frame) and one per streamed tile |
 | `memlog 1` | appends the free linear, VRAM and heap memory to `mem.txt` at boot and after every area change |
 | `memtest N` | warps through ten rooms of different areas N times, one every 150 frames, and logs memory after each (implies `memlog`) |
-| `streamsync 1` | reads streamed tiles on the main loop as before, for comparison |
+| `streamsync 1` | reads streamed tiles, a door's destination and its tiles on the main loop as before, for comparison |
+| `sfxsync 1` | reads a sound effect's sample on the main loop at its first play, as before |
+| `shadowdebug N` | character shadows: 1 shows the volumes in red, 2 darkens every changed stencil count, 6 turns them off |
 
 The log lines are kept in memory and written once a second, after the frame's timing has been
 taken, because an SD card write costs tens of milliseconds and would otherwise show up as the very
@@ -48,8 +50,8 @@ is the average with the worst frame in brackets.
 With the fixes James also gets about 800 units further along the street in the same 1500 frames,
 since the clamped frame time no longer loses distance on long frames.
 
-The first frame after a room load is always slow (125..450 ms) because the load itself runs there;
-that sits behind the fade and is not counted above.
+The first frame after a room load is always slow because the load runs there; it sits behind the
+fade and is not counted above. What it costs and what was taken out of it is under "Room loads".
 
 Three things caused the hitches, and the per-part times on the slow frame lines pointed at each:
 
@@ -66,13 +68,88 @@ Three things caused the hitches, and the per-part times on the slow frame lines 
 What is left on a tile change is the main thread's share of a new tile (4..7 ms: copying the
 vertices to linear memory and creating its textures) and the collision merge (under 0.1 ms).
 
+### Second pass
+
+| Place | Upd average (worst after the first frame) | Frame max | c3d cpu | Notes |
+| --- | --- | --- | --- | --- |
+| Town walk as above | 1.1 (1.2) | 16.9 | 2.9..3.8 | no slow frame at all after the first |
+| Hospital hp01 | 0.87 (0.91) | 16.8 | 1.4 | |
+| Boss ru25 | 0.51 (0.56) | 22.0 once | 5.6 | James dies after 10 s, the run ends at the title |
+| Cutscene `first_toilet` | 0.10 (0.15) | 16.8 | 1.5 | the first frame was 34 ms of starting the music, now under 1 ms |
+| ap06 corridor, a Lying Figure in the flashlight | 0.80 (0.87) | 16.9 | 4.6 with shadows, 2.8 without | 2 casters, about 2200 shadow triangles, 1.5 ms of CPU to build them |
+
+The c3d cpu column includes everything the main thread does between `C3D_FrameBegin` and
+`C3D_FrameEnd`, so the shadow volumes show up there: 1.5 ms of building for two casters plus the
+two stencil passes and the darkening quad.
+
+### Sound effects
+
+A sound effect's first play read its sample from `se.bnk` on the main loop: with `sfxsync 1` the ap06
+fight above has five frames of 10..24 ms in the game logic, one per new sound. `sfx.c` now asks a
+reader thread for the sample (its own handle on `se.bnk`, the linear buffer allocated on the main
+thread first) and starts the voice in `sfx_update` once it is in, a frame or two later; the same
+fight has no slow frame. The resident set (footsteps, menus, pickup, flashlight) is still read at
+start, and a door's close sound while the door fades out. The bottom screen's sfx line counts the
+reads done each way.
+
+### Starting music
+
+Starting a track (`audio_play_music` / `audio_play_layers`, from `bgm.c` when the area or the page
+changes) opened the file, read the first AIX chunk and decoded four buffers on the main loop, and
+could wait for the refill thread's lock on top: 20..130 ms. Start and stop are now requests the
+refill thread carries out (`audio.c`), so the call returns at once and the track starts a frame
+later. A missing file then just stays silent, and `audio_voice_playing` covers the frame in between
+for the cutscene voices.
+
+## Room loads
+
+With `perflog 1`, a room load writes the parts of its frame (`ld_stage` the stage's events,
+`ld_list` the area's room list and bounds, `ld_col` collision and footstep table, `ld_room` the
+map and its textures, `ld_tiles` the touching tiles, `ld_enemy` enemy models, `ld_cam` the camera
+roads, `ld_env` lighting). Measured with `memtest 1` over the same ten rooms, the whole frame in ms (Azahar):
+
+| Room | Before | After the index files | Through a door now |
+| --- | --- | --- | --- |
+| ap06 | 3156 | 1428 | 593 |
+| cb03 | 5617 | 753 | 223 |
+| er05 | 874 | 623 | 222 |
+| bw05 | 1098 | 1020 | 208 |
+| ps189 | 4787 | 1128 | 208 |
+| rr91 | 2853 | 1154 | 207 |
+| ap38 | 2938 | 1144 | 208 |
+| hp230 | 4497 | 1004 | 258 |
+| ca14 | - | 810 | 201 |
+| rr49 | - | 719 | 207 |
+
+What changed:
+
+- **Area index.** Entering an area opened every room's `.s3m` for its bounds and every room's
+  `.cam` for its camera roads, two files per room: up to 1.9 s each in the town, the hospital and
+  the prison. `tools/sh2conv/areaindex.py` writes `bg/<area>/area.idx` with both for the whole area,
+  and `areaidx.c` reads that one file (falling back to the single files for rooms it does not list).
+- **Door prefetch.** When a door's fade starts, the destination room's `.s3m`, `.s3l`, textures and
+  footstep table go to the tile reader thread (`warp_prefetch`), and the black screen waits for them
+  (frames keep coming, music keeps playing, at most 3 seconds) before `load_current` takes them with
+  `stream_take_named` and does only the GPU side.
+- **Tiles after the warp.** In the town the touching tiles were loaded inside the warp frame (1.1 s
+  for cb03). After a door they now come in through the reader thread while the fade stays black
+  until they are resident (`s_arrival`, at most 3 seconds).
+
+The last column has `memtest` going through the door path (prefetch and fade) like a real door.
+A real door within one area (ap06 to ap38) went from an 825 ms frame to 28 ms, with the screen
+black for half a second longer. What is left in an area change's frame, about 200 ms in Azahar: the
+stage's event files (60..120 ms), the room list and the area index (70 ms, two files), the camera
+roads (10..20 ms of converting), the GPU side of the room (5..15 ms) and, the first time an area
+needs them, enemy models (380 ms for the Lying Figure in ap06).
+
 ## Threads
 
 | Thread | Core | Priority | Work |
 | --- | --- | --- | --- |
 | main | 0 | libctru default | game, drawing, GPU uploads |
 | tile reader (`stream.c`) | 0 | main + 1 | reads `.s3m`, `.s3l`, uncached `.t3x` and the footstep `.sfm` of a requested tile into malloc'ed buffers |
-| music refill (`audio.c`) | 2, else 0 | main + 1 | ADX/AIX decoding into the ndsp wave buffers of the music and voice channels |
+| music refill (`audio.c`) | 2, else 0 | main + 1 | ADX/AIX decoding into the ndsp wave buffers of the music and voice channels, and starting and stopping their streams |
+| sound effect reader (`sfx.c`) | 0 | main + 1 | reads a sound effect's sample from `se.bnk` into the buffer the main thread allocated for it |
 | movie decoder and audio (`movie.c`) | 2, else 0 | main + 2 / + 1 | only while a movie plays |
 
 The tile reader spends almost all its time blocked in the file system, so core 0 is fine for it.
@@ -86,13 +163,13 @@ layer volumes and the voice position are plain words both sides read and write.
 
 `main.c` `stream_update_ex` decides every 8 frames which touching tiles should be resident (the
 nearest 4 within 7000 units). For a missing one it calls `stream_request`, and the reader thread
-fills a `StreamJob` with the file contents (`stream.c`, up to 6 jobs). The jobs are collected on a
+fills a `StreamJob` with the file contents (`stream.c`, up to 6 jobs; a door's prefetch uses the
+same jobs with the key `STREAM_PREFETCH`). The jobs are collected on a
 later pass with `stream_take`, and `neighbour_add_job` does the GPU side on the main thread:
 `room_load_mem` (linear memory, `C3D_TexInit` through `Tex3DS_TextureImport` from the blob) and
 `col_load_mem`. The texture ids the cache already holds are passed to the job so they are not read
-twice. A tile that left the wanted set while it was being read is thrown away. An area change
-(`load_current`) still loads synchronously behind the fade, and `stream_flush` drops queued jobs and
-the results of other areas.
+twice. A tile that left the wanted set while it was being read is thrown away. On an area change
+`stream_flush` drops the queued jobs and results of other areas.
 
 Dropped tiles go to a short list and are freed right after the next `C3D_FrameBegin`, which has
 waited for the GPU to finish the frame that may still have drawn them; the texture cache trim waits
@@ -138,6 +215,7 @@ in use, with a peak arena of 3.7 MB.
 - Nothing here has been run on a console yet. Worth checking there: that the audio line says
   core 2, the perf.txt numbers for the town walk, and how long the tile reads take on a real SD
   card (the reader thread has 7000 units of walking, a few seconds, to finish one).
-- The first frame of a room load (125..450 ms) is still one long frame; it is hidden by the fade.
-- Sound effects (`sfx.c`) load their samples on the main loop when first played; they did not show
-  up in these measurements, but a busy scene with many new sounds could.
+- Enemy models and the stage's event files are still read in the room load frame; behind the fade,
+  but the screen stays black that much longer.
+- Warps that do not go through a door's fade (debug spawns, the title's continue) still load
+  everything in one frame.

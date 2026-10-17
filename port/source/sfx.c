@@ -20,10 +20,14 @@ typedef struct {
 	s16* pcm;            // linear memory, NULL until loaded
 	u32 last_use;        // frame of the last play, for eviction
 	bool pinned;         // preloaded: never evicted
+	volatile u8 state;   // L_READY, or L_QUEUED / L_DONE / L_FAILED while the reader thread has it
 } Loaded;
+
+enum { L_READY, L_QUEUED, L_DONE, L_FAILED };
 
 typedef struct {
 	bool active, positional;
+	bool waiting;        // its sample is still being read; sfx_update starts it
 	int id, sample;
 	float volume, pos[3];
 	u32 started;
@@ -50,6 +54,24 @@ static float* s_floor;               // 10 floats per triangle: 9 coordinates, m
 static u32 s_nfloor;
 static struct { int id, set; float pos[3]; u32 not_before; } s_pending_close;
 static char s_status[64] = "sfx off";
+
+// A sample's first play used to read se.bnk on the main loop, 1..30 ms for a sound and more for a
+// long one (port/PERFORMANCE.md). Now the voice waits a frame or two while this thread reads the
+// sample into the linear buffer the main thread allocated for it; sfx_update starts the voice.
+// debug.txt "sfxsync 1" reads on the main loop as before.
+#define QUEUE 32
+static struct {
+	Thread thread;
+	LightLock lock;
+	LightEvent wake;
+	volatile bool quit;
+	FILE* bank;          // its own handle: the main thread's s_bank keeps its file position
+	int queue[QUEUE];
+	int head, tail;
+	bool sync;
+	u32 async_loads, sync_loads;
+	float sync_max_ms;
+} R;
 
 // ---------------------------------------------------------------- bank
 
@@ -81,7 +103,7 @@ static bool make_room(u32 need)
 		int best = -1;
 		for (u32 i = 0; i < s_nsamples; i++) {
 			Loaded* l = &s_loaded[i];
-			if (!l->pcm || l->pinned || sample_in_use(i))
+			if (!l->pcm || l->pinned || l->state != L_READY || sample_in_use(i))
 				continue;
 			if (best < 0 || l->last_use < s_loaded[best].last_use)
 				best = i;
@@ -95,9 +117,15 @@ static bool make_room(u32 need)
 	return true;
 }
 
+static void finish_load(int s);
+
 static bool load_sample(int s)
 {
 	Loaded* l = &s_loaded[s];
+	while (l->state == L_QUEUED)          // the reader thread has it: wait for that read instead
+		svcSleepThread(1000000);
+	if (l->state != L_READY)
+		finish_load(s);
 	if (l->pcm)
 		return true;
 	const BankSample* b = &s_samples[s];
@@ -107,13 +135,84 @@ static bool load_sample(int s)
 	l->pcm = linearAlloc(bytes);
 	if (!l->pcm)
 		return false;
+	u64 t0 = svcGetSystemTick();
 	if (fseek(s_bank, s_data_offset + b->offset, SEEK_SET) || fread(l->pcm, 1, bytes, s_bank) != bytes) {
 		linearFree(l->pcm);
 		l->pcm = NULL;
 		return false;
 	}
+	float ms = (svcGetSystemTick() - t0) * 1000.0f / SYSCLOCK_ARM11;
+	R.sync_loads++;
+	if (ms > R.sync_max_ms)
+		R.sync_max_ms = ms;
 	DSP_FlushDataCache(l->pcm, bytes);
 	s_cache_used += bytes;
+	return true;
+}
+
+static void reader(void* arg)
+{
+	(void)arg;
+	while (!R.quit) {
+		LightEvent_Wait(&R.wake);
+		for (;;) {
+			int s = -1;
+			LightLock_Lock(&R.lock);
+			if (R.head != R.tail) {
+				s = R.queue[R.tail];
+				R.tail = (R.tail + 1) % QUEUE;
+			}
+			LightLock_Unlock(&R.lock);
+			if (s < 0 || R.quit)
+				break;
+			const BankSample* b = &s_samples[s];
+			Loaded* l = &s_loaded[s];
+			u32 bytes = b->frames * 2;
+			bool ok = !fseek(R.bank, s_data_offset + b->offset, SEEK_SET) && fread(l->pcm, 1, bytes, R.bank) == bytes;
+			l->state = ok ? L_DONE : L_FAILED;
+		}
+	}
+}
+
+// Main thread: a read the reader thread finished becomes a usable sample (or is dropped).
+static void finish_load(int s)
+{
+	Loaded* l = &s_loaded[s];
+	if (l->state == L_DONE) {
+		DSP_FlushDataCache(l->pcm, s_samples[s].frames * 2);
+		l->state = L_READY;
+	} else if (l->state == L_FAILED) {
+		linearFree(l->pcm);
+		l->pcm = NULL;
+		s_cache_used -= s_samples[s].frames * 2;
+		l->state = L_READY;
+	}
+}
+
+// Queues a sample for the reader thread; false when it has to be read now.
+static bool request_load(int s)
+{
+	Loaded* l = &s_loaded[s];
+	if (R.sync || !R.thread || l->pcm)
+		return false;
+	const BankSample* b = &s_samples[s];
+	u32 bytes = b->frames * 2;
+	LightLock_Lock(&R.lock);
+	bool full = (R.head + 1) % QUEUE == R.tail;
+	LightLock_Unlock(&R.lock);
+	if (!bytes || full || !make_room(bytes))
+		return false;
+	l->pcm = linearAlloc(bytes);
+	if (!l->pcm)
+		return false;
+	s_cache_used += bytes;
+	l->state = L_QUEUED;
+	LightLock_Lock(&R.lock);
+	R.queue[R.head] = s;
+	R.head = (R.head + 1) % QUEUE;
+	LightLock_Unlock(&R.lock);
+	LightEvent_Signal(&R.wake);
+	R.async_loads++;
 	return true;
 }
 
@@ -165,12 +264,22 @@ bool sfx_init(void)
 		ndspChnReset(FIRST_CH + i);
 	s_ok = true;
 	load_steps();
+	R.bank = fopen(BANK_PATH, "rb");
+	if (R.bank) {
+		LightLock_Init(&R.lock);
+		LightEvent_Init(&R.wake, RESET_ONESHOT);
+		s32 prio = 0x30;
+		svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
+		R.thread = threadCreate(reader, NULL, 16 * 1024, prio + 1, -2, false);
+	}
 	// Sounds that play all the time stay resident: footsteps, menus, pickup, flashlight.
 	static const int resident[] = { 11000, 11001, 11002, 11003, 11004, 11005, 11006, 11007, 11008, 11009,
 	                                SFX_MENU_MOVE, SFX_MENU_OK, SFX_MENU_CANCEL, SFX_ITEM_PICKUP,
 	                                SFX_LIGHT_ON, SFX_LIGHT_OFF };
 	for (u32 i = 0; i < sizeof resident / sizeof resident[0]; i++)
 		sfx_preload(resident[i]);
+	R.sync_loads = 0;                      // count the reads after the resident set
+	R.sync_max_ms = 0.0f;
 	snprintf(s_status, sizeof s_status, "sfx %lu ids, %lu KB resident", (unsigned long)s_nids,
 	         (unsigned long)(s_cache_used >> 10));
 	return true;
@@ -181,6 +290,15 @@ void sfx_exit(void)
 	if (!s_ok)
 		return;
 	sfx_stop_all();
+	if (R.thread) {
+		R.quit = true;
+		LightEvent_Signal(&R.wake);
+		threadJoin(R.thread, U64_MAX);
+		threadFree(R.thread);
+	}
+	if (R.bank)
+		fclose(R.bank);
+	memset(&R, 0, sizeof R);
 	for (u32 i = 0; s_loaded && i < s_nsamples; i++)
 		if (s_loaded[i].pcm)
 			linearFree(s_loaded[i].pcm);
@@ -306,7 +424,9 @@ static Voice* start(int id, float volume)
 	for (int i = 0; i < NVOICES; i++)
 		if (s_voices[i].active && s_voices[i].id == id)
 			voice_stop(&s_voices[i]);
-	if (!load_sample(s))
+	finish_load(s);
+	bool waiting = s_loaded[s].state == L_QUEUED || request_load(s);
+	if (!waiting && !load_sample(s))
 		return NULL;
 	Voice* v = voice_alloc();
 	if (!v)
@@ -326,6 +446,7 @@ static Voice* start(int id, float volume)
 	v->wb.data_vaddr = s_loaded[s].pcm;
 	v->wb.nsamples = b->frames;
 	v->wb.looping = (b->flags & 1) != 0;
+	v->waiting = waiting;
 	s_loaded[s].last_use = s_tick;
 	return v;
 }
@@ -336,7 +457,8 @@ int sfx_play(int id, float volume, float pan)
 	if (!v)
 		return -1;
 	voice_mix(v, level_gain(volume), pan);
-	ndspChnWaveBufAdd(FIRST_CH + (v - s_voices), &v->wb);
+	if (!v->waiting)
+		ndspChnWaveBufAdd(FIRST_CH + (v - s_voices), &v->wb);
 	return v - s_voices;
 }
 
@@ -348,7 +470,8 @@ int sfx_play_at(int id, float volume, const float pos[3])
 	v->positional = true;
 	memcpy(v->pos, pos, sizeof v->pos);
 	positional_mix(v);
-	ndspChnWaveBufAdd(FIRST_CH + (v - s_voices), &v->wb);
+	if (!v->waiting)
+		ndspChnWaveBufAdd(FIRST_CH + (v - s_voices), &v->wb);
 	return v - s_voices;
 }
 
@@ -392,6 +515,20 @@ void sfx_update(void)
 		Voice* v = &s_voices[i];
 		if (!v->active)
 			continue;
+		if (v->waiting) {
+			finish_load(v->sample);
+			Loaded* l = &s_loaded[v->sample];
+			if (l->state == L_QUEUED)
+				continue;
+			v->waiting = false;
+			if (!l->pcm) {
+				v->active = false;              // the read failed
+				continue;
+			}
+			v->wb.data_vaddr = l->pcm;
+			ndspChnWaveBufAdd(FIRST_CH + i, &v->wb);
+			continue;
+		}
 		if (v->wb.status == NDSP_WBUF_DONE) {
 			v->active = false;
 			continue;
@@ -622,4 +759,13 @@ void sfx_footsteps(const char* clip, int first, int last, float f0, float f1, bo
 	}
 }
 
-const char* sfx_status(void) { return s_status; }
+const char* sfx_status(void)
+{
+	if (s_ok)
+		snprintf(s_status, sizeof s_status, "sfx %lu KB, read async %lu, now %lu (max %.1f ms)",
+		         (unsigned long)(s_cache_used >> 10), (unsigned long)R.async_loads, (unsigned long)R.sync_loads,
+		         R.sync_max_ms);
+	return s_status;
+}
+
+void sfx_sync_loads(bool sync) { R.sync = sync; }

@@ -177,7 +177,7 @@ StreamJob* stream_take(void)
 	StreamJob* j = NULL;
 	LightLock_Lock(&W.lock);
 	for (int i = 0; i < JOBS && !j; i++)
-		if (W.job[i].state == J_DONE)
+		if (W.job[i].state == J_DONE && W.job[i].key >= 0)   // not the warp prefetch
 			j = &W.job[i];
 	if (j)
 		j->state = J_TAKEN;
@@ -187,6 +187,30 @@ StreamJob* stream_take(void)
 		W.last_ticks = j->read_ticks;
 	}
 	return j;
+}
+
+StreamJob* stream_take_named(const char* area, const char* name)
+{
+	for (;;) {
+		StreamJob* j = NULL;
+		bool busy = false;
+		LightLock_Lock(&W.lock);
+		for (int i = 0; i < JOBS && !j; i++) {
+			StreamJob* k = &W.job[i];
+			if (k->state == J_FREE || k->state == J_TAKEN || strcmp(k->area, area) || strcmp(k->name, name))
+				continue;
+			if (k->state == J_DONE)
+				j = k;
+			else
+				busy = true;
+		}
+		if (j)
+			j->state = J_TAKEN;
+		LightLock_Unlock(&W.lock);
+		if (j || !busy)
+			return j;
+		svcSleepThread(2000000);          // still being read: that is quicker than reading it again
+	}
 }
 
 void stream_release(StreamJob* j)
@@ -201,7 +225,31 @@ void stream_flush(const char* area)
 	LightLock_Lock(&W.lock);
 	for (int i = 0; i < JOBS; i++) {
 		StreamJob* j = &W.job[i];
-		if (j->state == J_QUEUED || (j->state == J_DONE && strcmp(j->area, area)))
+		if ((j->state == J_QUEUED || j->state == J_DONE) && strcmp(j->area, area))
+			free_job(j);
+	}
+	LightLock_Unlock(&W.lock);
+}
+
+bool stream_named_busy(const char* area, const char* name)
+{
+	bool busy = false;
+	LightLock_Lock(&W.lock);
+	for (int i = 0; i < JOBS; i++) {
+		StreamJob* k = &W.job[i];
+		if ((k->state == J_QUEUED || k->state == J_READING) && !strcmp(k->area, area) && !strcmp(k->name, name))
+			busy = true;
+	}
+	LightLock_Unlock(&W.lock);
+	return busy;
+}
+
+void stream_drop_prefetch(void)
+{
+	LightLock_Lock(&W.lock);
+	for (int i = 0; i < JOBS; i++) {
+		StreamJob* j = &W.job[i];
+		if (j->key == STREAM_PREFETCH && (j->state == J_QUEUED || j->state == J_DONE))
 			free_job(j);
 	}
 	LightLock_Unlock(&W.lock);

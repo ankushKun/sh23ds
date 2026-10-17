@@ -64,3 +64,5 @@ int sfx_floor_material(float x, float y, float z);
 void sfx_footsteps(const char* clip, int first, int last, float f0, float f1, bool backward, const float pos[3]);
 
 const char* sfx_status(void);
+// debug.txt "sfxsync 1": read samples on the main loop at their first play, as before.
+void sfx_sync_loads(bool sync);

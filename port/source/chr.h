@@ -45,6 +45,8 @@ typedef struct {
 	C3D_Tex tex[CHR_MAX_TEX];
 	bool tex_ok[CHR_MAX_TEX];
 	Mtx34 skin[CHR_MAX_BONES];   // current pose: world * inv_bind
+	void* kg1;                   // <name>.kg1 shadow model (shadow.c), NULL when there is none
+	u32 kg1_size;
 } Character;
 
 bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t errlen);

@@ -18,6 +18,7 @@ typedef struct {
 	float lcol[3][3];            // shader colour (record colour x 0.25)
 	float fl_col[3], fl_start, fl_end, fl_cone;
 	int fogp[4];                 // fog particle colour RGBA (MoveFogCol), -1: the record keeps the last
+	int shadow;                  // record ShadowDarkNess (0x47bb00): 0 = no character shadows, -1 unknown
 } RoomEnv;
 
 // Shader constants for the current flashlight level (0x8a2ba8: 0 with the light on, see

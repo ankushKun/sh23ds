@@ -96,6 +96,10 @@ bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t
 		c->tex_ok[i] = true;
 	}
 	free(d);
+	snprintf(path, sizeof path, "%s/%s.kg1", dir, name);   // shadow model, optional (shadow.c)
+	long kg1_size = 0;
+	c->kg1 = read_file(path, &kg1_size);
+	c->kg1_size = c->kg1 ? (u32)kg1_size : 0;
 	for (u32 b = 0; b < c->n_bones; b++)   // bind pose until the first chr_pose
 		for (int r = 0; r < 3; r++)
 			for (int k = 0; k < 4; k++)
@@ -115,6 +119,7 @@ void chr_free(Character* c)
 	for (u32 i = 0; i < CHR_MAX_TEX; i++)
 		if (c->tex_ok[i])
 			C3D_TexDelete(&c->tex[i]);
+	free(c->kg1);
 	memset(c, 0, sizeof *c);
 }
 

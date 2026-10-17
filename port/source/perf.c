@@ -25,7 +25,7 @@ static struct {
 	float upd_sum, upd_max, ren_sum, ren_max, cpu_sum, gpu_sum, gpu_max, tot_max;
 	char status[64], mem[64];
 	// named parts of the current frame, for the slow frame lines
-	struct { const char* name; float ms; } part[12];
+	struct { const char* name; float ms; } part[20];
 	int nparts;
 	// perf.txt lines wait here and go out with the once-a-second line: a file write costs tens of
 	// ms, and a write in the middle of a frame would show up as the very hitch being measured
@@ -88,7 +88,7 @@ void perf_part(const char* name, u64 t0)
 			P.part[i].ms += t;
 			return;
 		}
-	if (P.nparts < 12)
+	if (P.nparts < 20)
 		P.part[P.nparts].name = name, P.part[P.nparts++].ms = t;
 }
 void perf_mark_render(void) { P.t_render = svcGetSystemTick(); }

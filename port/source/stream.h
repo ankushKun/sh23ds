@@ -33,8 +33,16 @@ bool stream_request(int key, const char* area, const char* name);
 bool stream_pending(int key, const char* area);
 // A finished job (main thread), or NULL. Hand it back with stream_release.
 StreamJob* stream_take(void);
+// The job for a room by name (the warp prefetch, key STREAM_PREFETCH), waiting while the reader
+// thread is still on it; NULL when there is none. Hand it back with stream_release.
+StreamJob* stream_take_named(const char* area, const char* name);
+#define STREAM_PREFETCH (-1)
+// True while the reader thread has not finished that room yet.
+bool stream_named_busy(const char* area, const char* name);
+// Drops prefetches nobody took (the warp went somewhere else).
+void stream_drop_prefetch(void);
 // Frees whatever the job still owns (s3m is set to NULL by the caller once room_load_mem has it).
 void stream_release(StreamJob* j);
-// Drops queued jobs and the results of jobs of other areas (area change).
+// Drops the queued jobs and the results of other areas (area change).
 void stream_flush(const char* area);
 const char* stream_status(void);

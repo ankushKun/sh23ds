@@ -123,27 +123,41 @@ def local_tex3ds():
 
 def encode_textures(jobs, pack_root, fmt=None, mipmaps=True):
     """jobs: list of (png path relative to pack_root, t3x path relative, has_alpha). fmt overrides the
-    ETC1 / ETC1A4 choice (any tex3ds format name)."""
+    ETC1 / ETC1A4 choice (any tex3ds format name). The jobs are split over one shell script per CPU core
+    that run side by side, since each tex3ds call uses a single core."""
     if not jobs:
         return
-    lines = ['set -e']
     mip = '-m lanczos' if mipmaps else ''
+    cmds = []
     for png, t3x, alpha in jobs:
         f = fmt or ('etc1a4' if alpha else 'etc1')
-        lines.append(f'tex3ds -f {f} -q high {mip} -z none -o "{t3x}" "{png}"')
-    name = f'_encode_{os.getpid()}_{id(jobs)}.sh'      # unique: converters may run side by side
-    script = os.path.join(pack_root, name)
-    with open(script, 'w') as f:
+        cmds.append(f'tex3ds -f {f} -q high {mip} -z none -o "{t3x}" "{png}"')
+    n = max(1, min(os.cpu_count() or 1, len(cmds)))
+    base = f'_encode_{os.getpid()}_{id(jobs)}'      # unique: converters may run side by side
+    scripts = [f'{base}_{i}.sh' for i in range(n)]
+    for i, name in enumerate(scripts):
+        with open(os.path.join(pack_root, name), 'w') as f:
+            f.write('set -e\n' + '\n'.join(cmds[i::n]) + '\n')
+    main = f'{base}.sh'
+    lines = [f'sh {name} & p{i}=$!' for i, name in enumerate(scripts)] + ['st=0']
+    lines += [f'wait $p{i} || st=1' for i in range(n)] + ['exit $st']
+    with open(os.path.join(pack_root, main), 'w') as f:
         f.write('\n'.join(lines) + '\n')
-    local = local_tex3ds()
-    if local:     # devkitPro installed on this machine, or the packer image
-        env = dict(os.environ, PATH=os.path.dirname(local) + os.pathsep + os.environ.get('PATH', ''))
-        subprocess.run(['sh', name], cwd=pack_root, env=env, check=True)
-    else:
-        subprocess.run(['docker', 'run', '--rm', '-v', f'{os.path.abspath(pack_root)}:/pack', '-w', '/pack',
-                        '--user', f'{os.getuid()}:{os.getgid()}', '-e', 'PATH=/opt/devkitpro/tools/bin:/usr/bin:/bin',
-                        DOCKER_IMAGE, 'sh', name], check=True)
-    os.remove(script)
+    try:
+        local = local_tex3ds()
+        if local:     # devkitPro installed on this machine, or the packer image
+            env = dict(os.environ, PATH=os.path.dirname(local) + os.pathsep + os.environ.get('PATH', ''))
+            subprocess.run(['sh', main], cwd=pack_root, env=env, check=True)
+        else:
+            subprocess.run(['docker', 'run', '--rm', '-v', f'{os.path.abspath(pack_root)}:/pack', '-w', '/pack',
+                            '--user', f'{os.getuid()}:{os.getgid()}', '-e', 'PATH=/opt/devkitpro/tools/bin:/usr/bin:/bin',
+                            DOCKER_IMAGE, 'sh', main], check=True)
+    finally:
+        for name in scripts + [main]:
+            try:
+                os.remove(os.path.join(pack_root, name))
+            except OSError:
+                pass
 
 
 def convert_area(data_dir, pack_root, area, max_tex, rooms_filter, bg='bg'):

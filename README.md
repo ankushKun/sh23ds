@@ -302,7 +302,7 @@ Working in Azahar: the whole game from the prologue to every ending, Born From a
 Still to do:
 
 - [ ] A test pass on a real New 3DS: frame times, SD card read times, audio on the second core
-- [ ] Character shadows
+- [ ] Drop shadows and shadows from lights other than the flashlight
 - [ ] Climbing creepers that follow the room round corners, as on the PC
 - [ ] The music box's three figure boxes
 - [ ] The fog layer's wall test and blow points

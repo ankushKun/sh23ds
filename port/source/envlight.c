@@ -21,6 +21,7 @@ static void defaults(RoomEnv* e)
 	e->ldir[0][1] = 1.0f;
 	e->lcol[0][0] = e->lcol[0][1] = e->lcol[0][2] = 0.025f;
 	e->fogp[0] = e->fogp[1] = e->fogp[2] = e->fogp[3] = -1;
+	e->shadow = -1;
 }
 
 static void parse(RoomEnv* e, const float* v)
@@ -100,9 +101,18 @@ bool env_load(const char* pack_dir, const char* map, const char* variant, RoomEn
 			fp[i] = (int)x;
 			p = end;
 		}
+		// and the record's ShadowDarkNess (lighting.py "shadow"), absent in older tables
+		int shd = -1;
+		{
+			char* end;
+			long x = strtol(p, &end, 10);
+			if (end != p)
+				shd = (int)x;
+		}
 		if (!strcmp(var, variant)) {
 			parse(out, v);
 			memcpy(out->fogp, fp, sizeof fp);
+			out->shadow = shd;
 			out->map_id = (int)strtol(mapid, NULL, 16);
 			found = true;
 			break;
@@ -110,6 +120,7 @@ bool env_load(const char* pack_dir, const char* map, const char* variant, RoomEn
 		if (!strcmp(var, "-")) {
 			parse(&def, v);
 			memcpy(def.fogp, fp, sizeof fp);
+			def.shadow = shd;
 			def.map_id = (int)strtol(mapid, NULL, 16);
 			found_default = true;
 		}

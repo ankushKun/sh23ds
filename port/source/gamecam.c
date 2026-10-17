@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "game/view/sh2cam.h"
+#include "areaidx.h"
 
 #define SCREEN_SY 448.0f          // PS2 frame height: the units of the roads' projection values
 #define EYE_HEIGHT 850.0f         // James' eyes above his feet
@@ -25,6 +26,22 @@ const float* gamecam_watch(void) { return s_watch; }
 float gamecam_scr_z(void) { return s_scr_z; }
 float gamecam_fov(void) { return s_fov; }
 float gamecam_yaw(void) { return s_yaw; }
+
+// The same from area.idx (areaidx.c), copied: the arrays are adjusted in place.
+static _VC_ROAD_DATA* load_cam_idx(const char* name, int* records)
+{
+	u32 n = 0;
+	const void* d = areaidx_cam(name, &n);
+	if (!d || n < sizeof(_VC_ROAD_DATA) || n % sizeof(_VC_ROAD_DATA))
+		return NULL;
+	_VC_ROAD_DATA* r = malloc(n);
+	if (!r)
+		return NULL;
+	memcpy(r, d, n);
+	sh2cam_convert_cam_file(r);
+	*records = (int)(n / sizeof(_VC_ROAD_DATA));
+	return r;
+}
 
 static _VC_ROAD_DATA* load_cam(const char* path, int* records)
 {
@@ -64,11 +81,16 @@ void gamecam_load_area(const char* pack_dir, const char* area, const char (*room
 	// The open areas (forest, town east/west, lake) also have an area-wide <area>GB.cam that the PC
 	// loads first (0x476310 -> 0x512f10, from the glb_crd block table at 0x8885a0); it holds the
 	// street roads the per-tile files do not cover.
+	bool idx = areaidx_load(pack_dir, area);   // every .cam of the area in one file
 	{
 		char path[160];
 		int records = 0;
+		snprintf(path, sizeof path, "%sGB", area);
+		_VC_ROAD_DATA* r = idx ? load_cam_idx(path, &records) : NULL;
+		bool listed = idx && areaidx_has(path);
 		snprintf(path, sizeof path, "%s/bg/%s/%sGB.cam", pack_dir, area, area);
-		_VC_ROAD_DATA* r = load_cam(path, &records);
+		if (!r && !listed)
+			r = load_cam(path, &records);
 		if (r) {
 			s_arrays[s_narrays++] = r;
 			s_nroads += records - 1;
@@ -77,8 +99,10 @@ void gamecam_load_area(const char* pack_dir, const char* area, const char (*room
 	for (int i = 0; i < nrooms && s_narrays < MAX_ARRAYS; i++) {
 		char path[160];
 		int records = 0;
+		_VC_ROAD_DATA* r = idx ? load_cam_idx(rooms[i], &records) : NULL;
 		snprintf(path, sizeof path, "%s/bg/%s/%s.cam", pack_dir, area, rooms[i]);
-		_VC_ROAD_DATA* r = load_cam(path, &records);
+		if (!r && !(idx && areaidx_has(rooms[i])))
+			r = load_cam(path, &records);
 		if (r) {
 			s_arrays[s_narrays++] = r;
 			s_nroads += records - 1;      // minus the END record

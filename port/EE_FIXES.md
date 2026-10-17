@@ -109,13 +109,13 @@ coordinates.
 | FixElevatorCursorColor | ElevatorCursorColorFix.cpp | left out | Puzzle overlay sprites are not drawn |
 | FixDrawingTextLine | d3d8 wrapper | not applicable | Thickens a 1-pixel line in the hospital diary at high PC resolutions; the port shows memo text, not the PC page |
 | FixHangOnEsc, PauseScreenFix, FixSaveBGImage, FixFMVResetIssue | HangOnEsc.cpp, PauseScreen.cpp, SaveBGImage.cpp, d3d8 wrapper | not applicable | Screen grabs and D3D texture pools; the port renders the game behind its pause and has a text save prompt |
-| DisableShadowCutscene | DisableShadowCutscene.cpp | not applicable | No character shadows |
+| DisableShadowCutscene | DisableShadowCutscene.cpp | not applicable | The port draws no shadows in cutscenes |
 
 ### Fog, lighting and rendering
 
 | Option | EE file | Status | Where / why |
 | --- | --- | --- | --- |
-| PS2FlashlightBrightness | Patches/EnhancedFlashlight.cpp | ported (environment part), option | `envlight.c` `ee_flashlight()`: the PC multiplies the flashlight colour by 4 before the intensity table (0x47a9ee), which washes walls out; EE uses 1.2, so the beam on the map is 0.3 of the PC value. The reach goes from 6000 to 8500 (0x47be64). The pause menu entry "Flashlight PS2 / PC" (`ps2flashlight` in `options.txt`) switches back to the PC beam. The "movable object" presets and the 0.7 brightness in the same patch (0x4ff1c6, 0x502b96) set the character shadow preset and shadow strength, not a light, so they wait for character shadows; the character lights themselves are now drawn as on the PC (`chrlight.c`, LIGHTING.md section 10) |
+| PS2FlashlightBrightness | Patches/EnhancedFlashlight.cpp | ported (environment part), option | `envlight.c` `ee_flashlight()`: the PC multiplies the flashlight colour by 4 before the intensity table (0x47a9ee), which washes walls out; EE uses 1.2, so the beam on the map is 0.3 of the PC value. The reach goes from 6000 to 8500 (0x47be64). The pause menu entry "Flashlight PS2 / PC" (`ps2flashlight` in `options.txt`) switches back to the PC beam. The "movable object" presets and the 0.7 in the same patch (0x4ff1c6, 0x502b96) pick the range of the PC's per-pixel flashlight shader on characters (x8) and scale the beam colour to 0.7 for it, which makes characters bright under the dimmer PS2 beam; the port's character flashlight (`chrlight.c`) saturates at full brightness already, so nothing more is needed (LIGHTING.md section 10 has the details; an earlier version of this page wrongly called these shadow presets) |
 | RoomLightingFix | Patches/LightingPatch.cpp | ported | `lighting.py` `EE_RECORD_REMAP`: the cemetery (ca14) uses the forest's area default, as when walking in on the PC (the port reselects the record per room, which reproduces the PC's load-from-save bug). `envlight.c` `env_ee_room_level()` + `main.c` `lighting_frame`: fixed flashlight levels (0x8a2ba8) in town east/west, the courtyard, the lake shore, the motorhome and two Born From a Wish rooms. This needed the PC's own level logic first: `env_flash_off_level()` is FUN_0050a010 (1.0 before the flashlight is found, 0.3 after, per-map exceptions), and lit rooms now keep the last level as on the PC instead of a fixed 0.3. The swinging lamp of the Otherworld hotel (0x576fa0, y -3000, start -1000) is left out: the port has no event lights (FUN_0047b040) |
 | FogParameterFix | Patches/FogAdjustments.cpp | ported | Blue Creek 208/209 (ap72) fog start 4200 instead of 3000 (`lighting.py` `EE_FOG_START`); final boss room characters drawn without fog while the camera is above y -15750 (`main.c` `ee_final_boss_nofog`, PC 0x501e76 / 0x503507) |
 | FogSpeedFix | Patches/FogAdjustments.cpp | ported | The Blue Creek 209 fog value is the one above. On the particle layer (`fog.c` `ee_fog_speed`): the PC pushes fog out of dense grid cells by GridRate (0x1f7d28c, the value EE patches through 0x486ced); EE uses 0.25 in the town, the cemetery, the final rooms and most of the mansion and 0.5 in the courtyard and the Eddie rooms, and on the cemetery path it hides particles moving faster than 10 instead of 200 (0x6a7920) so the fog does not stick to James |
@@ -135,7 +135,8 @@ coordinates.
 | ShowerRoomFlashlightFix | Patches/ShowerRoomFlashlightFix.cpp | already covered | The PC's spot jumps on the last frame of the shower drain scene; the port lights scenes from James' game position throughout, so there is no jump |
 | FixAptClockFlashlight | Patches/FlashlightClockPush.cpp | left out | Keeps the event camera bits (0x934d94) through the failed clock push so the flashlight is drawn right; the port's flashlight has no event camera state |
 | SpecularFix | Patches/Specular.cpp, d3d8 wrapper | left out | No specular or environment map pass in the port |
-| EnableSoftShadows, Room312ShadowFix, DisableShadowCutscene, BFaWAtticFix (shadow part) | Room312Shadow.cpp, DisableShadowCutscene.cpp, AtticShadowFixes.cpp | left out | No character shadows in the port |
+| EnableSoftShadows | Wrappers/d3d8/IDirect3DDevice8.cpp | ported (opacity and fading) | `shadow.c` `shadow_ee_opacity()` and `main.c` `shadow_frame()`: the stencil shadows (LIGHTING.md section 11) darken by EE's per-room opacity (170 of 255 by default) instead of the PC's halving, and fade in over about 33 frames when the flashlight comes on. The blur and the self shadows on characters are left out |
+| Room312ShadowFix, DisableShadowCutscene, BFaWAtticFix (shadow part) | Room312Shadow.cpp, DisableShadowCutscene.cpp, AtticShadowFixes.cpp | left out | They fix shadows of map objects and cutscenes, which the port does not draw |
 | RestoreSpecialFX | Patches/SpecialFX.cpp | left out | Blur, bloom and the room 312 fog volume are post effects the port does not have |
 | RemoveEffectsFlicker | d3d8 wrapper | left out | Motion blur first frame; no motion blur |
 | HotelWaterFix, WaterEnhancedRender, WaterDrawOrderFix | HotelWater.cpp, WaterEnhancement.cpp, WaterDrawOrderFix.cpp | left out | The PC water renderer (0x4d....) is not ported |
@@ -185,6 +186,7 @@ Every place below has a comment naming the EE option and file:
   `demo_light_scale` (EnemyRevealLighting), the X button (room 312 flashlight), `title_start`
   (PreserveSoundsOnLoad), `pause_update` (MenuSoundsFix), `fade_update` (DelayedFadeIn),
   `draw_low_health` (LowHealthIndicatorStyle, DisableRedCrossInCutScenes)
+- `source/shadow.c`: EnableSoftShadows opacity table; `main.c` `shadow_frame`: its fading
 - `source/chrlight.c`: draws the character lights that `lighting.py` writes with the EE record
   changes and the LightingTransitionFix spot to point rooms
 - `source/fog.c`: FogFix, FogSpeedFix and ObservationDeckFogFix on the ported PC fog particle layer
@@ -221,7 +223,7 @@ The before/after pictures are in `.eetest/evidence/` (not in git).
 
 The PC fog particle layer is ported now (`fog.c`, see LIGHTING.md section 8), with the three EE
 options that adjust it. The PC's character lighting is ported too (`chrlight.c`, LIGHTING.md section 10). The other
-gaps are features the port does not have yet: character shadows (which the EE "movable object"
-presets adjust), specular, water, scene fog and lights, Model_List props and
+gaps are features the port does not have yet: drop shadows, shadows of map objects and in
+cutscenes, specular, water, scene fog and lights, Model_List props and
 map-part visibility, the boat, the bosses and the hospital chase. The events' needs-light bit is
 also not tested yet (FireEscapeKeyFix is in place for when it is).

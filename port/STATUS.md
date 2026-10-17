@@ -127,15 +127,17 @@ mipmaps); `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `debug.txt` optional (re
   top screen; a "Messages: top / bottom" option shows messages and subtitles on the top screen like the PC;
   the hospital elevator and manacle overlays; the music box's org_a / org_b scenes
 - Save files v4 (puzzle answers, difficulty, killed enemies, health); v2 and v3 saves still load
+- Character shadows, background sound loads and fast room loads (EE batch 4, `port/PERFORMANCE.md`,
+  `tools/sh2conv/LIGHTING.md`): the PC's stencil shadow volumes from the `.kg1` shadow models, cast by
+  characters in James' flashlight when the room's record allows it (enemies only, as on the PC, whose
+  James and Maria shadow models are empty), with EE's soft-shadow opacity; sound effects read on a reader
+  thread and music starts and stops handled by the music thread; `bg/<area>/area.idx` and door prefetch
+  cut area changes from 3 to 5 s to about 250 ms in Azahar
 - Clear data, secret items, memo overlays and the music box (programs batch 8, `port/PROGRAMS.md`): the
   "Save clear data." question after James' endings and a clear-data save (save v5, v2..v4 still load) that
   starts a New Game+ with its clear data; the PC's eight secret items (ItemGet 0x49e310) counted as "n(+k)"
   on the results screen with their rank points; the seven memo overlays (0x49a210); stage-placed models
   (`stagemdl.c`) with the lobby music box and its part animation during the tune (0x57b5c0)
-
-## In progress (subagents, merged when done)
-
-- Character shadows, sound effect preloading, the room-load frame
 
 
 ## Not done yet
@@ -145,9 +147,9 @@ mipmaps); `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `debug.txt` optional (re
    screen (one slot) instead of the PC's save screen pictures
 2. Climbing creepers stay on one straight wall segment (the PC follows the room mesh round corners and onto
    other faces)
-3. Character shadows (and EE's movable-object shadow presets); the fog layer's wall test and blow points
-4. Testing on a real New 3DS (core 2 audio thread, SD read times, perflog numbers); sound effects that load
-   on first use; the long first frame of a room load (hidden behind the fade)
+3. Drop shadows and shadows from lights other than the flashlight; the fog layer's wall test and blow points
+4. Testing on a real New 3DS (core 2 audio thread, SD read times, stencil shadows, perflog numbers); enemy
+   models and stage events still load during the black frame of a room change
 
 ## Decomp status
 
