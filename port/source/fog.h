@@ -29,3 +29,6 @@ void fog_update(const FogFrame* f);    // 0x489b90 without the draw
 // the light environment unbound and the top screen target bound.
 void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho);
 const char* fog_status(void);          // debug HUD line
+// debug.txt "fogdebug N": 1 draws only the blow puffs, 2 leaves the walls out, 3 draws only the
+// puffs at eight times their alpha
+void fog_debug(int mode);

@@ -97,7 +97,7 @@ if step lighting "room lighting and fog (DrawEnvData records in the exe)"; then
 	touch "$STEPS/lighting"
 fi
 if step fog "fog particle layer (.fcl areas, fog texture)"; then
-	$PY "$ROOT/tools/sh2conv/fog.py" "$DATA" "$OUT"
+	$PY "$ROOT/tools/sh2conv/fog.py" "$DATA" "$OUT" "$GAME/sh2pc.exe"
 	touch "$STEPS/fog"
 fi
 if step ui "title art"; then

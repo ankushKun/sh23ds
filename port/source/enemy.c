@@ -5564,6 +5564,43 @@ void enemy_clear(void)
 	s_moths.on = false;
 }
 
+// The model of an Enemy_List kind, -1 for kinds the port does not spawn from the list
+static int model_for_kind(int kind)
+{
+	return kind == 0x200 ? MDL_SCU : kind == 0x201 ? MDL_MKN : kind == 0x202 ? MDL_TYU
+	     : kind == 0x207 ? MDL_NSE : kind == 0x20b ? MDL_XOO : kind == 0x208 ? MDL_RED
+	     : kind == 0x204 ? MDL_PAP : kind == 0x209 ? MDL_ONI : kind == 0x206 ? MDL_BOS : kind == 0x20a ? MDL_ARM
+	     : kind == 0x20c ? MDL_TY2 : kind == 0x20d ? MDL_TY3 : -1;
+}
+
+void enemy_prefetch_stage(int stage, void (*want)(const char* path))
+{
+	bool need[MDL_COUNT] = { false };
+	for (int i = 0; i < s_nlist + s_ndebug; i++) {
+		const EnListEntry* l = i < s_nlist ? &s_list[i] : &s_debug[i - s_nlist];
+		int m = model_for_kind(l->kind & 0xffff);
+		if (m >= 0 && (l->stage == stage || l->stage == -1))
+			need[m] = true;
+	}
+	for (u32 i = 0; i < sizeof SCRIPTS / sizeof SCRIPTS[0]; i++)
+		if (SCRIPTS[i].stage == stage)
+			need[SCRIPTS[i].model] = true;
+	for (int m = 0; m < MDL_COUNT; m++) {
+		if (!need[m] || s_mdl[m].tried)
+			continue;
+		const char* file = MODEL_FILE[m] ? MODEL_FILE[m] : MODEL_NAME[m];
+		char path[128];
+		snprintf(path, sizeof path, "%s/chr/%s/%s.s3c", s_pack, MODEL_NAME[m], file);
+		want(path);                     // the reader thread adds its textures
+		snprintf(path, sizeof path, "%s/chr/%s/%s.kg1", s_pack, MODEL_NAME[m], file);
+		want(path);
+		if (m != MDL_TY2 && m != MDL_TY3) {
+			snprintf(path, sizeof path, "%s/chr/%s/%s.s3a", s_pack, MODEL_NAME[m], file);
+			want(path);
+		}
+	}
+}
+
 // Spawns the stage's Enemy_List rows that stand on the loaded collision and are not there yet
 // (debug rows are tracked by ids below -99).
 static void spawn_list(int stage, const Collision* col)
@@ -5572,10 +5609,7 @@ static void spawn_list(int stage, const Collision* col)
 		const EnListEntry* l = i < s_nlist ? &s_list[i] : &s_debug[i - s_nlist];
 		int id = i < s_nlist ? l->id : -100 - (i - s_nlist);
 		int kind = l->kind & 0xffff;
-		int m = kind == 0x200 ? MDL_SCU : kind == 0x201 ? MDL_MKN : kind == 0x202 ? MDL_TYU
-		      : kind == 0x207 ? MDL_NSE : kind == 0x20b ? MDL_XOO : kind == 0x208 ? MDL_RED
-		      : kind == 0x204 ? MDL_PAP : kind == 0x209 ? MDL_ONI : kind == 0x206 ? MDL_BOS : kind == 0x20a ? MDL_ARM
-		      : kind == 0x20c ? MDL_TY2 : kind == 0x20d ? MDL_TY3 : -1;
+		int m = model_for_kind(kind);
 		if ((l->stage != stage && l->stage != -1) || m < 0)
 			continue;
 		if (id >= 0 && id < MAX_LIST && (s_killed[id >> 5] >> (id & 31) & 1))

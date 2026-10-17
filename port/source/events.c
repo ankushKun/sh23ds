@@ -1,4 +1,5 @@
 #include "events.h"
+#include "stream.h"
 #include "prog.h"
 #include <math.h>
 #include <stdio.h>
@@ -203,6 +204,13 @@ void* ev_flag_block(void) { return s_flags; }
 
 static void* read_all(const char* path, u32* size)
 {
+	long pre_size = 0;
+	void* pre = stream_take_file(path, &pre_size);   // read ahead for a door (main.c warp_prefetch)
+	if (pre) {
+		if (size)
+			*size = (u32)pre_size;
+		return pre;
+	}
 	FILE* f = fopen(path, "rb");
 	if (!f)
 		return NULL;

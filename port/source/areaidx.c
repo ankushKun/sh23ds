@@ -1,4 +1,5 @@
 #include "areaidx.h"
+#include "stream.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,15 +29,22 @@ bool areaidx_load(const char* pack_dir, const char* area)
 	snprintf(I.area, sizeof I.area, "%s", area);
 	char path[160];
 	snprintf(path, sizeof path, "%s/bg/%s/area.idx", pack_dir, area);
-	FILE* f = fopen(path, "rb");
-	if (!f)
-		return false;
-	fseek(f, 0, SEEK_END);
-	long size = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	I.data = size >= 16 ? malloc(size) : NULL;
-	bool ok = I.data && fread(I.data, 1, size, f) == (size_t)size;
-	fclose(f);
+	long size = 0;
+	bool ok;
+	I.data = stream_take_file(path, &size);   // read ahead for a door into this area
+	if (I.data) {
+		ok = size >= 16;
+	} else {
+		FILE* f = fopen(path, "rb");
+		if (!f)
+			return false;
+		fseek(f, 0, SEEK_END);
+		size = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		I.data = size >= 16 ? malloc(size) : NULL;
+		ok = I.data && fread(I.data, 1, size, f) == (size_t)size;
+		fclose(f);
+	}
 	u32 h[4];
 	if (ok)
 		memcpy(h, I.data, sizeof h);

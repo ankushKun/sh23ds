@@ -166,16 +166,30 @@ static void list_rooms(void)
 	s_nrooms = 0;
 	char path[128];
 	snprintf(path, sizeof path, PACK_DIR "/bg/%s/rooms.txt", s_areas[s_area]);
-	FILE* f = fopen(path, "r");
-	if (!f)
-		return;
-	char line[64];
-	while (fgets(line, sizeof line, f) && s_nrooms < MAX_ROOMS) {
-		line[strcspn(line, "\r\n")] = 0;
-		if (line[0] && strlen(line) < 16)
-			strcpy(s_rooms[s_nrooms++], line);
+	long n = 0;
+	char* text = stream_take_file(path, &n);   // read ahead for a door into another area
+	if (text) {
+		char* t2 = realloc(text, n + 1);
+		if (t2) {
+			text = t2;
+			text[n] = 0;
+			for (char* line = strtok(text, "\r\n"); line && s_nrooms < MAX_ROOMS; line = strtok(NULL, "\r\n"))
+				if (line[0] && strlen(line) < 16)
+					strcpy(s_rooms[s_nrooms++], line);
+		}
+		free(text);
+	} else {
+		FILE* f = fopen(path, "r");
+		if (!f)
+			return;
+		char line[64];
+		while (fgets(line, sizeof line, f) && s_nrooms < MAX_ROOMS) {
+			line[strcspn(line, "\r\n")] = 0;
+			if (line[0] && strlen(line) < 16)
+				strcpy(s_rooms[s_nrooms++], line);
+		}
+		fclose(f);
 	}
-	fclose(f);
 	room_bounds_load();
 }
 
@@ -658,12 +672,31 @@ static int map_area(const char* map)
 
 static float s_warp_wait;            // time the black screen has waited for the prefetch
 
-static void warp_prefetch(const char* map)
+// ...and, when the stage changes, its event files and the enemy models it needs (they used to be
+// read in the black frame of the load, 60..120 and up to 400 ms)
+static void warp_prefetch(const char* map, int stage)
 {
 	s_warp_wait = 0.0f;
-	int area = map[0] && !s_stream_sync ? map_area(map) : -1;
+	if (s_stream_sync)
+		return;
+	int area = map[0] ? map_area(map) : -1;
 	if (area >= 0)
 		stream_request(STREAM_PREFETCH, s_areas[area], map);
+	if (area >= 0 && area != s_area) {
+		char path[96];
+		snprintf(path, sizeof path, PACK_DIR "/bg/%s/rooms.txt", s_areas[area]);
+		stream_want_file(path);
+		snprintf(path, sizeof path, PACK_DIR "/bg/%s/area.idx", s_areas[area]);
+		stream_want_file(path);
+	}
+	if (stage != ev_stage()) {
+		char path[96];
+		snprintf(path, sizeof path, PACK_DIR "/events/s%02d.s3e", stage);
+		stream_want_file(path);
+		snprintf(path, sizeof path, PACK_DIR "/events/s%02d.msg", stage);
+		stream_want_file(path);
+	}
+	enemy_prefetch_stage(stage, stream_want_file);
 }
 
 // The black screen waits (frames keep coming) until the prefetch is in, at most 3 seconds, so the
@@ -671,7 +704,8 @@ static void warp_prefetch(const char* map)
 static bool warp_ready(float dt)
 {
 	int area = s_warp.map[0] ? map_area(s_warp.map) : -1;
-	if (area < 0 || s_warp_wait >= 3.0f || !stream_named_busy(s_areas[area], s_warp.map))
+	bool busy = (area >= 0 && stream_named_busy(s_areas[area], s_warp.map)) || stream_files_busy();
+	if (s_warp_wait >= 3.0f || !busy)
 		return true;
 	s_warp_wait += dt;
 	return false;
@@ -713,6 +747,7 @@ static void apply_warp(void)
 			col_spawn(&s_col, s_px, s_pz, &s_px, &s_py, &s_pz);
 	}
 	s_async_arrival = false;
+	stream_drop_files();                 // read ahead for enemies that did not come after all
 }
 
 // debug.txt "memtest N": warps through ten rooms of different areas N times, one every 150 frames
@@ -743,7 +778,7 @@ static void memtest_step(u32 frame)
 	snprintf(s_warp.map, sizeof s_warp.map, "%s", dest[i].map);
 	s_warp.pos[0] = dest[i].x, s_warp.pos[2] = dest[i].z;
 	s_warp.facing = dest[i].yaw * (float)M_PI / 180.0f;
-	warp_prefetch(s_warp.map);           // the way a door goes: prefetch, fade out, load, fade in
+	warp_prefetch(s_warp.map, s_warp.stage);   // the way a door goes: prefetch, fade out, load, fade in
 	s_warp_pending = true;
 }
 
@@ -886,7 +921,7 @@ static void events_update(u32 down)
 	if (a.kind == EV_WARP) {
 		s_warp = a;
 		s_warp_pending = true;
-		warp_prefetch(a.map);
+		warp_prefetch(a.map, a.stage);
 		sfx_door_open(a.door_sound, feet);
 	} else if (a.kind == EV_MESSAGE) {
 		show_message(a.text);
@@ -1497,14 +1532,22 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	}
 }
 
-// Character shadows this frame (shadow.c): the PC casts them from James' flashlight only, in rooms
-// whose record has ShadowDarkNess set (0x47bb00), and not in cutscenes (their own shadow lights are
-// not ported). The darkness is the Enhanced Edition's, faded in over about 33 frames when the
+// Character shadows this frame (shadow.c): in the dark rooms the PC casts stencil shadows from
+// James' flashlight, where the record has ShadowDarkNess set (0x47bb00); elsewhere the drop
+// shadows. None in cutscenes (their own shadow lights are not ported). The darkness is the Enhanced Edition's, faded in over about 33 frames when the
 // flashlight comes on, as EE's SetShadowFading does (3 of 100 a frame).
 static void shadow_frame(bool paused)
 {
 	static float fade;
 	float k = 0.0f;
+	// 0x5a8370: the lit rooms (gFlashlightAvailable 1) and the dark ones whose record has no
+	// ShadowDarkNess get the drop shadows instead
+	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && (!s_env.dark || s_env.shadow == 0)) {
+		fade = 0.0f;
+		const float* eye = gamecam_eye();
+		shadow_begin_drop(s_env.map_id, eye);
+		return;
+	}
 	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && s_chrflash.on && s_env.shadow != 0) {
 		int room = bgm_room_id(ev_glb_crd(), s_px, s_pz);
 		if (!paused)
@@ -2854,6 +2897,14 @@ static void title_start(int what)
 	sfx_play(SFX_GAME_START, 1.0f, 0.0f);
 	s_title_go = what;
 	s_title_go_t = 0.0f;
+	// Continue: the saved room is read ahead during that second, as a door's would be
+	static SaveFile sv;
+	if (what == 2 && read_save(&sv) && !sv.clear_save) {
+		char map[8];
+		memcpy(map, sv.map, sizeof map);
+		map[7] = 0;
+		warp_prefetch(map, sv.stage);
+	}
 }
 
 // New Game and Born From a Wish first ask for the action and riddle levels, as the PC does; hard
@@ -3340,6 +3391,7 @@ int main(void)
 			if (!strcmp(key, "memtest")) s_memtest = val;
 			if (!strcmp(key, "streamsync")) s_stream_sync = val != 0;
 			if (!strcmp(key, "shadowdebug")) shadow_debug(val);
+			if (!strcmp(key, "fogdebug")) fog_debug(val);
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "batch")) s_only_batch = val;
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
@@ -3471,8 +3523,11 @@ int main(void)
 			float bright = s_title_t < 1.5f ? s_title_t / 1.5f : 1.0f;
 			if (s_title_go >= 0) {
 				s_title_go_t += dt;
-				if (s_title_go_t >= TITLE_GO_SECONDS)
-					title_go();
+				if (s_title_go_t >= TITLE_GO_SECONDS) {
+					u64 t0 = svcGetSystemTick();
+					title_go();                // the title frames are not timed, so log this one
+					perf_event("title", "game start frame %.1f ms", perf_ms(svcGetSystemTick() - t0));
+				}
 				else if (bright > 1.0f - s_title_go_t / TITLE_GO_SECONDS)
 					bright = 1.0f - s_title_go_t / TITLE_GO_SECONDS;
 			}

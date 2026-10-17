@@ -145,3 +145,7 @@ int enemy_difficulty(void);
 // Distance from (x, z) to the nearest living enemy in the room (a large value when there is none).
 float enemy_nearest(float x, float z);
 const char* enemy_status(void);          // debug HUD line
+
+// The model files a stage's enemies need and that are not loaded yet, one want(path) call each
+// (main.c's door prefetch hands them to the reader thread).
+void enemy_prefetch_stage(int stage, void (*want)(const char* path));

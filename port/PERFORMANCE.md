@@ -82,6 +82,11 @@ The c3d cpu column includes everything the main thread does between `C3D_FrameBe
 `C3D_FrameEnd`, so the shadow volumes show up there: 1.5 ms of building for two casters plus the
 two stencil passes and the darkening quad.
 
+The drop shadows of the lit rooms cost less: about 230 triangles and 0.4 ms of CPU for a Lying
+Figure, one translucent draw. The fog's wall test runs over the walls within 5000 of the fog
+centre (3 to 6 in the town and the prison), and the Eddie rooms add up to 48 blow puffs to the
+fog sprites.
+
 ### Sound effects
 
 A sound effect's first play read its sample from `se.bnk` on the main loop: with `sfxsync 1` the ap06
@@ -106,20 +111,20 @@ for the cutscene voices.
 With `perflog 1`, a room load writes the parts of its frame (`ld_stage` the stage's events,
 `ld_list` the area's room list and bounds, `ld_col` collision and footstep table, `ld_room` the
 map and its textures, `ld_tiles` the touching tiles, `ld_enemy` enemy models, `ld_cam` the camera
-roads, `ld_env` lighting). Measured with `memtest 1` over the same ten rooms, the whole frame in ms (Azahar):
+roads, `ld_env` lighting). Measured with `memtest 1` over the same ten rooms, the update time of the load frame in ms (Azahar):
 
-| Room | Before | After the index files | Through a door now |
-| --- | --- | --- | --- |
-| ap06 | 3156 | 1428 | 593 |
-| cb03 | 5617 | 753 | 223 |
-| er05 | 874 | 623 | 222 |
-| bw05 | 1098 | 1020 | 208 |
-| ps189 | 4787 | 1128 | 208 |
-| rr91 | 2853 | 1154 | 207 |
-| ap38 | 2938 | 1144 | 208 |
-| hp230 | 4497 | 1004 | 258 |
-| ca14 | - | 810 | 201 |
-| rr49 | - | 719 | 207 |
+| Room | Before | After the index files | Through a door | With stage and enemy prefetch |
+| --- | --- | --- | --- | --- |
+| ap06 | 3156 | 1428 | 593 | 91 |
+| cb03 | 5617 | 753 | 223 | 50 |
+| er05 | 874 | 623 | 222 | 88 |
+| bw05 | 1098 | 1020 | 208 | 74 |
+| ps189 | 4787 | 1128 | 208 | 91 |
+| rr91 | 2853 | 1154 | 207 | 73 |
+| ap38 | 2938 | 1144 | 208 | 74 |
+| hp230 | 4497 | 1004 | 258 | 91 |
+| ca14 | - | 810 | 201 | 58 |
+| rr49 | - | 719 | 207 | 73 |
 
 What changed:
 
@@ -135,12 +140,23 @@ What changed:
   for cb03). After a door they now come in through the reader thread while the fade stays black
   until they are resident (`s_arrival`, at most 3 seconds).
 
-The last column has `memtest` going through the door path (prefetch and fade) like a real door.
-A real door within one area (ap06 to ap38) went from an 825 ms frame to 28 ms, with the screen
-black for half a second longer. What is left in an area change's frame, about 200 ms in Azahar: the
-stage's event files (60..120 ms), the room list and the area index (70 ms, two files), the camera
-roads (10..20 ms of converting), the GPU side of the room (5..15 ms) and, the first time an area
-needs them, enemy models (380 ms for the Lying Figure in ap06).
+- **Stage files, enemy models and the area's index.** A door into another stage or area now also
+  hands the reader thread the stage's event files (`s<NN>.s3e`, `.msg`), the `.s3c`, `.s3a` and `.kg1`
+  of every enemy model the stage's list and scripts can need and that is not loaded yet
+  (`enemy_prefetch_stage`; an `.s3c` brings its textures along), and the new area's `rooms.txt`
+  and `area.idx`. `events.c`, `chr.c`, `areaidx.c` and `list_rooms` take the files from the reader
+  (`stream_take_file`) and only fall back to the SD card for what it does not have; what nobody took
+  is dropped after the warp.
+- **Continue.** The title waits one second for its start sound before it loads the saved room, so
+  that second now reads the room ahead the same way (`title_start`): the start frame went from 747 to
+  243 ms in Azahar.
+
+The last two columns have `memtest` going through the door path (prefetch and fade) like a real
+door. A real door within one area (ap06 to ap38) went from an 825 ms frame to 28 ms, with the screen
+black for half a second longer. What is left in an area change's frame, 50 to 90 ms in Azahar, is
+work on the main thread: converting the camera roads (10..30 ms), the GPU side of the room (5..15
+ms), the enemy models' GPU side the first time (10 ms for ap06) and the rest of the stage setup.
+Debug spawns (`spawn` in debug.txt) still load everything in their first frame.
 
 ## Threads
 
@@ -215,7 +231,5 @@ in use, with a peak arena of 3.7 MB.
 - Nothing here has been run on a console yet. Worth checking there: that the audio line says
   core 2, the perf.txt numbers for the town walk, and how long the tile reads take on a real SD
   card (the reader thread has 7000 units of walking, a few seconds, to finish one).
-- Enemy models and the stage's event files are still read in the room load frame; behind the fade,
-  but the screen stays black that much longer.
-- Warps that do not go through a door's fade (debug spawns, the title's continue) still load
-  everything in one frame.
+- Debug spawns still load everything in one frame, and enemy models that come in with a tile after
+  the warp (the town) are still read on the main loop.

@@ -45,4 +45,11 @@ void stream_drop_prefetch(void);
 void stream_release(StreamJob* j);
 // Drops the queued jobs and the results of other areas (area change).
 void stream_flush(const char* area);
+// Single files read ahead (a door's stage events and enemy models). An .s3c brings the textures it
+// lists. stream_take_file returns the contents (the caller frees them), waiting while the file is
+// still being read, or NULL when it was not asked for.
+void stream_want_file(const char* path);
+void* stream_take_file(const char* path, long* size);
+bool stream_files_busy(void);
+void stream_drop_files(void);           // what nobody took
 const char* stream_status(void);

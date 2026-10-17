@@ -28,6 +28,10 @@
 #define EXTRUDE 6000.0f          // volume length from the light (past RANGE, so it never folds back)
 #define MAX_CASTERS 4            // 0x5a4ed0
 #define MAX_VERTS (3 * 8192)
+#define DROP_VERTS (3 * 6000)
+#define DROP_CASTERS 16          // the PC's character list (0x1dbe9bc, 16 slots)
+
+typedef struct { float x, y, z; u8 c[4]; } DVtx;
 
 typedef struct { float x, y, z; } V3;
 
@@ -42,6 +46,13 @@ static struct {
 	u64 cast_ticks;              // CPU time building the volumes this frame
 	float light[3], dir[3], cos_cone, sin_cone, strength;
 	void* quad;                  // linear memory, the darkening quad
+	bool drop;                   // this frame draws drop shadows instead (shadow_begin_drop)
+	DVtx* dbuf;                  // linear memory, drop shadow triangles
+	int ndv, dcasters;
+	float dlight[3];             // the direction drop shadows are cast along (towards the light)
+	float da0, da1;              // the drop env's alpha at the top and at the floor (x2, 0x444780)
+	u8 dcol;                     // their grey
+	float dcam[3];
 	char status[48];
 	int debug;                   // shadow_debug(): 1 volumes in red, 2 darken every changed count
 } S;
@@ -95,7 +106,8 @@ bool shadow_init(void)
 	S.uMv = shaderInstanceGetUniformLocation(S.prog.vertexShader, "modelView");
 	S.vbuf = linearAlloc(MAX_VERTS * sizeof(V3));
 	S.quad = linearAlloc(6 * sizeof(V3));
-	S.ready = S.vbuf && S.quad;
+	S.dbuf = linearAlloc(DROP_VERTS * sizeof(DVtx));
+	S.ready = S.vbuf && S.quad && S.dbuf;
 	snprintf(S.status, sizeof S.status, "shadow %s", S.ready ? "ready" : "off");
 	return S.ready;
 }
@@ -106,6 +118,8 @@ void shadow_exit(void)
 		linearFree(S.vbuf);
 	if (S.quad)
 		linearFree(S.quad);
+	if (S.dbuf)
+		linearFree(S.dbuf);
 	if (S.dvlb) {
 		shaderProgramFree(&S.prog);
 		DVLB_Free(S.dvlb);
@@ -117,6 +131,8 @@ void shadow_begin(const float pos[3], const float dir[3], float cone, float stre
 {
 	S.nv = 0;
 	S.casters = 0;
+	S.drop = false;
+	S.ndv = S.dcasters = 0;
 	S.cast_ticks = 0;
 	S.on = S.ready && strength > 0.0f && S.debug != 6;
 	if (!S.on)
@@ -204,8 +220,128 @@ static void strip(const Mtx34* w, const s16* g, int nv, V3 L, V3 Lw)
 	}
 }
 
+// 0x5a7c90 / 0x5a7730: the drop shadows of the lit rooms. The env (0x5ab750) and the light
+// (0x5a7730's (1000, -10000, 1000), 0x5ab830) have a few per-map exceptions.
+void shadow_begin_drop(int map_id, const float cam[3])
+{
+	S.nv = S.casters = 0;
+	S.ndv = S.dcasters = 0;
+	S.on = false;
+	S.cast_ticks = 0;
+	S.drop = S.ready && S.debug != 6;
+	if (!S.drop)
+		return;
+	int glb = (map_id >> 16) & 0xfff, map = map_id & 0xffff;
+	// DAT_008f1d48: { 1, 0.0, 32.0, 8 }: alpha 0 at the top, 32 at the floor (both doubled), grey 8
+	float a0 = 0.0f, a1 = 32.0f;
+	int col = 8;
+	if (glb == 1 && (map == 10 || map == 11 || map == 13 || map == 14)) a1 = 64.0f, col = 0;
+	else if (glb == 3 && map == 0x40) a1 = 16.0f;
+	else if (glb == 5) a0 = 32.0f, a1 = 32.0f, col = 0;
+	else if ((glb == 9 && map == 0x54) || (glb == 0xb && (map == 0xbd || map == 0xc1))) a0 = 32.0f, a1 = 32.0f;
+	S.da0 = a0, S.da1 = a1, S.dcol = (u8)col;
+	S.dlight[0] = 1000.0f, S.dlight[1] = -10000.0f, S.dlight[2] = 1000.0f;
+	if (glb == 0xb && (map == 0xbd || map == 0xc1))
+		S.dlight[0] = S.dlight[2] = 0.0f;      // 0x5ab830: straight down in these two rooms
+	memcpy(S.dcam, cam, sizeof S.dcam);
+}
+
+// 0x444780 for one strip: the triangles that face the light (the PC culls the others after the
+// projection), flattened along the light onto a plane 16 units above the floor (0x5a6ad0,
+// 0x5a4d20); each corner's alpha runs from 2 x da0 700 units up to 2 x da1 at the floor, at most 128.
+static void drop_strip(const Mtx34* w, const s16* g, int nv, float floor_y)
+{
+	if (nv < 3 || nv > 256)
+		return;
+	V3 D = v3(S.dlight[0], S.dlight[1], S.dlight[2]);
+	float y0 = floor_y - 16.0f, h1 = floor_y, h0 = floor_y - 700.0f;
+	float k = 2.0f * (S.da1 - S.da0) / (h1 - h0), base = 2.0f * S.da0;
+	V3 p[256], q[256];
+	u8 al[256];
+	const s16* t16 = g + 8;
+	p[0] = xf(w, s16v(g));
+	p[1] = xf(w, s16v(g + 4));
+	for (int t = 0; t < nv - 2; t++, t16 += 8)
+		p[t + 2] = xf(w, s16v(t16 + 4));
+	for (int i = 0; i < nv; i++) {
+		float a = base + (p[i].y - h0) * k;
+		al[i] = (u8)(a < 0.0f ? 0.0f : a > 128.0f ? 128.0f : a);
+		float s = (y0 - p[i].y) / D.y;
+		q[i] = add(p[i], scl(D, s));
+	}
+	t16 = g + 8;
+	for (int t = 0; t < nv - 2; t++, t16 += 8) {
+		V3 nl = s16v(t16);
+		V3 n = v3(w->m[0][0] * nl.x + w->m[0][1] * nl.y + w->m[0][2] * nl.z,
+		          w->m[1][0] * nl.x + w->m[1][1] * nl.y + w->m[1][2] * nl.z,
+		          w->m[2][0] * nl.x + w->m[2][1] * nl.y + w->m[2][2] * nl.z);
+		if (dot(n, D) <= 0.0f || S.ndv + 3 > DROP_VERTS)
+			continue;
+		int idx[3] = { t, t + 1, t + 2 };
+		for (int j = 0; j < 3; j++) {
+			DVtx* v = &S.dbuf[S.ndv++];
+			v->x = q[idx[j]].x, v->y = q[idx[j]].y, v->z = q[idx[j]].z;
+			v->c[0] = v->c[1] = v->c[2] = S.dcol;
+			v->c[3] = al[idx[j]];
+			if (S.debug == 7)
+				v->c[0] = 255, v->c[3] = 200;   // shadowdebug 7: drop shadows in strong red
+		}
+	}
+}
+
+static void drop_cast(const Character* c, const float pos[3], float yaw)
+{
+	if (S.dcasters >= DROP_CASTERS)
+		return;
+	float dx = pos[0] - S.dcam[0], dz = pos[2] - S.dcam[2];
+	if (dx * dx + dz * dz > 10000.0f * 10000.0f)
+		return;                                    // 0x5a7730 fades them to 0.3 by then anyway
+	const u8* d = c->kg1;
+	u32 size = c->kg1_size;
+	C3D_Mtx cm;
+	Mtx_Identity(&cm);
+	Mtx_Translate(&cm, pos[0], pos[1], pos[2], true);
+	Mtx_RotateY(&cm, yaw, true);
+	Mtx34 model;
+	for (int i = 0; i < 3; i++) {
+		model.m[i][0] = cm.r[i].x, model.m[i][1] = cm.r[i].y;
+		model.m[i][2] = cm.r[i].z, model.m[i][3] = cm.r[i].w;
+	}
+	int nobj = *(const s16*)(d + 4);
+	u32 o = 16;
+	int before = S.ndv;
+	for (int k = 0; k < nobj && o + 0x60 <= size; k++) {
+		int bone = *(const s16*)(d + o + 4), ngeo = *(const s16*)(d + o + 6);
+		u32 g = o + 0x60, next = g;
+		for (int j = 0; j < ngeo && next + 16 <= size; j++)
+			next += 16u * (u32)*(const s16*)(d + next + 6);
+		if (bone >= 0 && (u32)bone < c->n_bones) {
+			Mtx34 bind, b, w;
+			inv_rigid(&bind, &c->inv_bind[bone]);
+			mul34(&b, &c->skin[bone], &bind);
+			mul34(&w, &model, &b);
+			for (int j = 0; j < ngeo && g + 16 <= size; j++) {
+				const s16* h = (const s16*)(d + g);
+				int nv = h[0], prim = h[1], qw = h[3];
+				if ((prim == 5 || prim == 6 || prim == 8 || prim == 9) && g + 16u * (u32)qw <= size)
+					drop_strip(&w, h + 8, nv, pos[1]);
+				g += 16u * (u32)(qw > 0 ? qw : 1);
+			}
+		}
+		o = next;
+	}
+	if (S.ndv > before)
+		S.dcasters++;
+}
+
 void shadow_cast(const Character* c, const float pos[3], float yaw)
 {
+	if (S.drop && c->kg1 && c->kg1_size >= 16) {
+		u64 t0 = svcGetSystemTick();
+		drop_cast(c, pos, yaw);
+		S.cast_ticks += svcGetSystemTick() - t0;
+		return;
+	}
 	if (!S.on || !c->kg1 || c->kg1_size < 16 || S.casters >= MAX_CASTERS)
 		return;
 	u64 t0 = svcGetSystemTick();
@@ -282,10 +418,47 @@ void shadow_mark_end(void)
 	C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_KEEP);
 }
 
+// 0x442370 / 0x442810: the drop shadows as translucent grey triangles, fogged, no depth writes
+static void drop_draw(const C3D_Mtx* proj, const C3D_Mtx* view)
+{
+	GSPGPU_FlushDataCache(S.dbuf, S.ndv * sizeof(DVtx));
+	C3D_BindProgram(&S.prog);
+	C3D_AttrInfo* ai = C3D_GetAttrInfo();
+	AttrInfo_Init(ai);
+	AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 3);
+	AttrInfo_AddLoader(ai, 1, GPU_UNSIGNED_BYTE, 4);
+	C3D_BufInfo* bi = C3D_GetBufInfo();
+	BufInfo_Init(bi);
+	BufInfo_Add(bi, S.dbuf, sizeof(DVtx), 2, 0x10);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, S.uProj, proj);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, S.uMv, view);
+	C3D_TexEnv* env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, 0, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+	C3D_TexEnvInit(C3D_GetTexEnv(1));
+	C3D_AlphaTest(false, GPU_ALWAYS, 0);
+	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ZERO, GPU_ONE);
+	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+	C3D_DepthMap(true, -1.0f, 0.0f);
+	C3D_CullFace(GPU_CULL_NONE);
+	C3D_DrawArrays(GPU_TRIANGLES, 0, S.ndv);
+	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
+}
+
 void shadow_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 {
-	snprintf(S.status, sizeof S.status, "shadow %s casters %d tris %d %.2f ms", S.on ? "on" : "off", S.casters,
-	         S.nv / 3, S.cast_ticks * 1000.0f / SYSCLOCK_ARM11);
+	if (S.drop)
+		snprintf(S.status, sizeof S.status, "shadow drop casters %d tris %d %.2f ms", S.dcasters, S.ndv / 3,
+		         S.cast_ticks * 1000.0f / SYSCLOCK_ARM11);
+	else
+		snprintf(S.status, sizeof S.status, "shadow %s casters %d tris %d %.2f ms", S.on ? "on" : "off",
+		         S.casters, S.nv / 3, S.cast_ticks * 1000.0f / SYSCLOCK_ARM11);
+	if (S.drop && S.ndv) {
+		drop_draw(proj, view);
+		return;
+	}
 	if (!S.on || !S.nv)
 		return;
 	GSPGPU_FlushDataCache(S.vbuf, S.nv * sizeof(V3));
@@ -293,6 +466,8 @@ void shadow_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 	C3D_AttrInfo* ai = C3D_GetAttrInfo();
 	AttrInfo_Init(ai);
 	AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 3);
+	int fixed = AttrInfo_AddFixed(ai, 1);            // the colour input: 0
+	C3D_FixedAttribSet(fixed, 0.0f, 0.0f, 0.0f, 0.0f);
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, S.vbuf, sizeof(V3), 1, 0x0);

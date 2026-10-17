@@ -4,11 +4,22 @@
 #include <string.h>
 
 #define JOBS 6
+#define FILES 64
 enum { J_FREE, J_QUEUED, J_READING, J_DONE, J_TAKEN };
+
+// Single files read ahead for a door (stage events, enemy models): stream_want_file queues one,
+// stream_take_file hands its contents over. An .s3c queues the textures it lists as well.
+typedef struct {
+	char path[112];
+	u8* data;
+	long size;
+	int state;
+} FileJob;
 
 static struct {
 	char pack[96];
 	StreamJob job[JOBS];
+	FileJob file[FILES];
 	Thread thread;
 	LightLock lock;
 	LightEvent wake;
@@ -71,11 +82,62 @@ static void read_job(StreamJob* j)
 	j->read_ticks = (u32)(svcGetSystemTick() - t0);
 }
 
+static void want_locked(const char* path);
+
+// An .s3c's texture ids (chr.c's S3C v2 header: textures at +0x18, their offset at +0x4c)
+static void want_textures(const char* s3c, const u8* d, long size)
+{
+	if (size < 0x50 || memcmp(d, "S3C1", 4))
+		return;
+	u32 n, ofs;
+	memcpy(&n, d + 0x18, 4);
+	memcpy(&ofs, d + 0x4c, 4);
+	if (n > 8 || ofs + n * 4 > (u32)size)
+		return;
+	char dir[112];
+	snprintf(dir, sizeof dir, "%s", s3c);
+	char* slash = strrchr(dir, '/');
+	if (!slash)
+		return;
+	*slash = 0;
+	for (u32 i = 0; i < n; i++) {
+		u32 id;
+		memcpy(&id, d + ofs + i * 4, 4);
+		char path[160];
+		snprintf(path, sizeof path, "%s/tex/%08lx.t3x", dir, (unsigned long)id);
+		want_locked(path);
+	}
+}
+
+static bool read_files(void)
+{
+	FileJob* f = NULL;
+	LightLock_Lock(&W.lock);
+	for (int i = 0; i < FILES && !f; i++)
+		if (W.file[i].state == J_QUEUED)
+			f = &W.file[i];
+	if (f)
+		f->state = J_READING;
+	LightLock_Unlock(&W.lock);
+	if (!f)
+		return false;
+	f->data = read_file(f->path, &f->size);
+	LightLock_Lock(&W.lock);
+	f->state = J_DONE;
+	size_t l = strlen(f->path);
+	if (f->data && l > 4 && !strcmp(f->path + l - 4, ".s3c"))
+		want_textures(f->path, f->data, f->size);
+	LightLock_Unlock(&W.lock);
+	return true;
+}
+
 static void worker(void* arg)
 {
 	(void)arg;
 	while (!W.quit) {
 		LightEvent_Wait(&W.wake);
+		while (!W.quit && read_files())
+			;
 		for (;;) {
 			StreamJob* j = NULL;
 			LightLock_Lock(&W.lock);
@@ -91,7 +153,11 @@ static void worker(void* arg)
 			LightLock_Lock(&W.lock);
 			j->state = J_DONE;
 			LightLock_Unlock(&W.lock);
+			while (!W.quit && read_files())
+				;
 		}
+		while (!W.quit && read_files())
+			;
 	}
 }
 
@@ -133,6 +199,8 @@ void stream_exit(void)
 	for (int i = 0; i < JOBS; i++)
 		if (W.job[i].state != J_FREE)
 			free_job(&W.job[i]);
+	for (int i = 0; i < FILES; i++)
+		free(W.file[i].data);
 	W.ready = false;
 }
 
@@ -251,6 +319,91 @@ void stream_drop_prefetch(void)
 		StreamJob* j = &W.job[i];
 		if (j->key == STREAM_PREFETCH && (j->state == J_QUEUED || j->state == J_DONE))
 			free_job(j);
+	}
+	LightLock_Unlock(&W.lock);
+}
+
+// Lock held. Queues a file unless it is queued or held already.
+static void want_locked(const char* path)
+{
+	FileJob* free_one = NULL;
+	for (int i = 0; i < FILES; i++) {
+		FileJob* f = &W.file[i];
+		if (f->state != J_FREE && !strcmp(f->path, path))
+			return;
+		if (f->state == J_FREE && !free_one)
+			free_one = f;
+	}
+	if (!free_one)
+		return;
+	snprintf(free_one->path, sizeof free_one->path, "%s", path);
+	free_one->data = NULL;
+	free_one->size = 0;
+	free_one->state = J_QUEUED;
+}
+
+void stream_want_file(const char* path)
+{
+	if (!W.ready)
+		return;
+	LightLock_Lock(&W.lock);
+	want_locked(path);
+	LightLock_Unlock(&W.lock);
+	LightEvent_Signal(&W.wake);
+}
+
+void* stream_take_file(const char* path, long* size)
+{
+	if (!W.ready)
+		return NULL;
+	for (;;) {
+		FileJob* f = NULL;
+		bool busy = false;
+		LightLock_Lock(&W.lock);
+		for (int i = 0; i < FILES && !f; i++) {
+			FileJob* k = &W.file[i];
+			if (k->state == J_FREE || strcmp(k->path, path))
+				continue;
+			if (k->state == J_DONE)
+				f = k;
+			else
+				busy = true;
+		}
+		void* d = NULL;
+		if (f) {
+			d = f->data;
+			*size = f->size;
+			f->data = NULL;
+			f->state = J_FREE;
+		}
+		LightLock_Unlock(&W.lock);
+		if (f)
+			return d;                    // NULL when the read failed: the caller tries itself
+		if (!busy)
+			return NULL;
+		svcSleepThread(2000000);
+	}
+}
+
+bool stream_files_busy(void)
+{
+	bool busy = false;
+	LightLock_Lock(&W.lock);
+	for (int i = 0; i < FILES; i++)
+		busy |= W.file[i].state == J_QUEUED || W.file[i].state == J_READING;
+	LightLock_Unlock(&W.lock);
+	return busy;
+}
+
+void stream_drop_files(void)
+{
+	LightLock_Lock(&W.lock);
+	for (int i = 0; i < FILES; i++) {
+		FileJob* f = &W.file[i];
+		if (f->state == J_DONE || f->state == J_QUEUED) {
+			free(f->data);
+			memset(f, 0, sizeof *f);
+		}
 	}
 	LightLock_Unlock(&W.lock);
 }

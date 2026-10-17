@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tex3ds.h>
+#include "stream.h"
 
 typedef struct {
 	char magic[4];
@@ -14,6 +15,9 @@ typedef struct {
 
 static void* read_file(const char* path, long* size)
 {
+	void* pre = stream_take_file(path, size);   // read ahead for a door (main.c warp_prefetch)
+	if (pre)
+		return pre;
 	FILE* f = fopen(path, "rb");
 	if (!f)
 		return NULL;
@@ -82,11 +86,19 @@ bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t
 	const u32* tex_ids = (const u32*)(d + h->ofs_textures);
 	for (u32 i = 0; i < h->textures; i++) {
 		snprintf(path, sizeof path, "%s/tex/%08lx.t3x", dir, (unsigned long)tex_ids[i]);
-		FILE* f = fopen(path, "rb");
-		if (!f)
-			continue;
-		Tex3DS_Texture t = Tex3DS_TextureImportStdio(f, &c->tex[i], NULL, false);
-		fclose(f);
+		long tsize = 0;
+		void* blob = stream_take_file(path, &tsize);
+		Tex3DS_Texture t = NULL;
+		if (blob) {
+			t = Tex3DS_TextureImport(blob, tsize, &c->tex[i], NULL, false);
+			free(blob);
+		} else {
+			FILE* f = fopen(path, "rb");
+			if (!f)
+				continue;
+			t = Tex3DS_TextureImportStdio(f, &c->tex[i], NULL, false);
+			fclose(f);
+		}
 		if (!t)
 			continue;
 		Tex3DS_TextureFree(t);

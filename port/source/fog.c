@@ -11,12 +11,14 @@
 // PC addresses in the comments. The PC runs it at 30 frames a second with SpeedLevel = 2; here it
 // runs every frame with SpeedLevel = dt * 60, as the Enhanced Edition's 60 fps mode does.
 //
-// What the port leaves out: the wall test (0x4864a0). The PC builds the wall normals with an
-// unnormalised cross product (0x485f00 -> 0x447f40) and compares the distance against a few
-// hundred units, so walls only act on particles lying exactly in their plane; the port moves
-// every particle like the PC does without walls. The fog blow points (0x48a320, flag 0x100) and
-// the per-cell object masks (a broad phase for the object push) are left out too; the push itself
-// is the PC's.
+// The wall test (0x4864a0) is ported as the PC has it, quirk included: the PC builds the wall
+// normals with an unnormalised cross product (0x485f00 -> 0x447f40) and compares the distance
+// against a few hundred units, so a wall only acts on particles lying almost exactly in its plane,
+// and the zero-area walls of the data (|n| = 0) mark every particle that comes within 10 units of
+// them for fading. The blow points (0x48a320..0x48a500, flag 0x100) are the cold puffs from the
+// vents of the three Eddie rooms (room ids 0x8e..0x90): their sources come from the exe through
+// tools/sh2conv/fog.py (pack/fog/blow.txt). The per-cell object masks (a broad phase for the
+// object push) are left out; the push itself is the PC's.
 //
 // The 3DS draws at most FOG_MAX particles. Where an area asks for more, the extra particles are
 // not simulated and the drawn ones get the missing ones' share of alpha, so the fog stays as
@@ -35,6 +37,27 @@
 
 #define FOG_MAX      144        // sprites the 3DS draws (the PC allows 500)
 #define FOG_MAX_OBJ  64
+#define FOG_MAX_WALL 188        // the PC's table, 0x1f782c0..0x1f7b1c0
+#define BLOW_MAX     48         // puffs drawn at once (the PC allows 200)
+#define BLOW_SRC     16
+
+// one wall as 0x485f00 keeps it: the (unnormalised) normal, the centre of its four corners and
+// their box, 10 units wider in x and z
+typedef struct {
+	float n[3], c[3], mn[3], mx[3];
+} Wall;
+
+// a puff (0x489f70, 0x60 bytes on the PC): the fields the blow code uses
+typedef struct {
+	float pos[3], mv[3], size;
+	float deg[3], tdx, tdy;
+	float alp, alp_now, alp_v;
+	int state;                   // 0 live, 1 fading, 100 left the box (0x48a180)
+} Blow;
+
+typedef struct {
+	float pos[3], mv[3], size;
+} BlowSrc;
 #define EE_FOG       1
 
 typedef struct {
@@ -73,6 +96,7 @@ enum {
 	FL_TRACKX = 0x20,            // the centre slides along x with the camera (observation deck)
 	FL_STAY = 0x40,              // WorldPosV is not taken from James
 	FL_NOOBJ = 0x80,             // nothing pushes the fog
+	FL_BLOW = 0x100,             // blow points (the Eddie rooms)
 	FL_SKIP = 0x200,             // skip one draw (set when an interior fog loads)
 	FL_SCREEN = 0x400,           // screen layer only, at twice the alpha
 };
@@ -84,7 +108,7 @@ static struct {
 	DVLB_s* dvlb;
 	shaderProgram_s prog;
 	int uProj, uMv;
-	u8* vbuf;                    // FOG_MAX * 5 vertices + the screen quad
+	u8* vbuf;                    // (FOG_MAX + BLOW_MAX) * 5 vertices + the screen quad
 	u16* ibuf;
 
 	Part part[FOG_MAX];
@@ -93,6 +117,17 @@ static struct {
 	float grid_old[512], grid_new[512], grid_save[512];   // 0x1f63b20, 0x1f64320, 0x1f77ac0
 	Obj obj[FOG_MAX_OBJ];
 	int nobj;
+	Wall wall[FOG_MAX_WALL];
+	int nwall;
+	Blow blow[BLOW_MAX];
+	int nblow;
+	BlowSrc bsrc[BLOW_SRC];
+	int nbsrc, blow_room, blow_interval;
+	float btimer[BLOW_SRC];
+	float blow_acc;              // the puffs run at the PC's 30 updates a second
+	struct { int room, interval, n; BlowSrc src[BLOW_SRC]; } btab[3];
+	int nbtab;
+	int debug;                   // fog_debug
 
 	float camera[4], old_camera[4], world[4], local[4], map[4], wind[4], fewdense[4];
 	float limit_y, limit_y2, water_y, speed, sc_tdx, sc_tdy;
@@ -410,6 +445,59 @@ static void obj_move(int id, const float* pos)
 }
 
 // 0x4838a0 (objects part): the .fcl's poles and stones within 3000 of the target
+// 0x485f00: a wall from its four corners (0x447f40 makes the normal (q1 - q0) x (q2 - q1), not
+// normalised)
+static void wall_add(float q[4][3])
+{
+	if (F.nwall >= FOG_MAX_WALL)
+		return;
+	Wall* w = &F.wall[F.nwall++];
+	for (int k = 0; k < 3; k++) {
+		w->mn[k] = w->mx[k] = q[0][k];
+		w->c[k] = 0.0f;
+		for (int i = 0; i < 4; i++) {
+			w->mn[k] = fminf(w->mn[k], q[i][k]);
+			w->mx[k] = fmaxf(w->mx[k], q[i][k]);
+			w->c[k] += q[i][k] * 0.25f;
+		}
+	}
+	w->mn[0] -= 10.0f, w->mn[2] -= 10.0f, w->mx[0] += 10.0f, w->mx[2] += 10.0f;
+	float a[3] = { q[1][0] - q[0][0], q[1][1] - q[0][1], q[1][2] - q[0][2] };
+	float b[3] = { q[2][0] - q[1][0], q[2][1] - q[1][1], q[2][2] - q[1][2] };
+	w->n[0] = a[1] * b[2] - a[2] * b[1];
+	w->n[1] = a[2] * b[0] - a[0] * b[2];
+	w->n[2] = a[0] * b[1] - a[1] * b[0];
+}
+
+// 0x4838a0's wall part: the walls with a corner within 100 file units (5000) of the fog centre;
+// 12-byte records are upright quads (x0 y0 z0 x1 y1 z1), 24-byte ones four corners, x50
+static void gather_walls(float ox, float oz)
+{
+	F.nwall = 0;
+	const u16* h = (const u16*)F.fcl;
+	const s16* r = (const s16*)(F.fcl + 12);
+	int cx = (int)((F.world[0] + ox) / 50.0f), cz = (int)((F.world[2] + oz) / 50.0f);
+	int lim = F.global == 5 ? 0x1000000 : 100;
+#define NEAR(x, z) (abs((x) - cx) <= lim && abs((z) - cz) <= lim)
+	for (int i = 0; i < h[0]; i++, r += 6) {
+		if (!NEAR(r[0], r[2]) && !NEAR(r[3], r[5]))
+			continue;
+		float q[4][3] = { { r[0], r[1], r[2] }, { r[3], r[1], r[5] }, { r[0], r[4], r[2] }, { r[3], r[4], r[5] } };
+		for (int k = 0; k < 4; k++)
+			q[k][0] = q[k][0] * 50.0f - ox, q[k][1] *= 50.0f, q[k][2] = q[k][2] * 50.0f - oz;
+		wall_add(q);
+	}
+	for (int i = 0; i < h[1]; i++, r += 12) {
+		if (!NEAR(r[0], r[2]) && !NEAR(r[3], r[5]) && !NEAR(r[6], r[8]) && !NEAR(r[9], r[11]))
+			continue;
+		float q[4][3];
+		for (int k = 0; k < 4; k++)
+			q[k][0] = r[k * 3] * 50.0f - ox, q[k][1] = r[k * 3 + 1] * 50.0f, q[k][2] = r[k * 3 + 2] * 50.0f - oz;
+		wall_add(q);
+	}
+#undef NEAR
+}
+
 static void gather_objects(void)
 {
 	int k = 0;
@@ -418,12 +506,14 @@ static void gather_objects(void)
 			F.obj[k++] = F.obj[i];
 	F.nobj = k;
 	memcpy(F.map, F.world, sizeof F.map);
+	F.nwall = 0;
 	if (!F.fcl)
 		return;
 	const u16* h = (const u16*)F.fcl;
 	const u8* p = F.fcl + 12 + h[0] * 12 + h[1] * 24;
 	float range = F.global == 5 ? 3.4e38f : 3000.0f;
 	float ox = F.global == 0x65 ? 100000.0f : 0.0f, oz = F.global == 0x65 ? -100000.0f : 0.0f;
+	gather_walls(ox, oz);
 	for (int t = 0; t < 2; t++) {
 		for (int i = 0; i < h[2 + t]; i++, p += 16) {
 			float o[4];
@@ -565,6 +655,172 @@ static void push_part(Part* p, const Obj* list, int n)
 	}
 }
 
+// 0x4864a0: the move with walls about. The distance to a wall's plane is measured with its
+// unnormalised normal (see the top of the file); a particle close enough and inside the wall's box
+// is pushed out, loses the speed across the wall, and is counted as bounced (100 more when it is
+// behind the wall), which fades it from the next frame on. Then the usual move.
+static int wall_move(Part* p)
+{
+	float in = F.partsize + 10.0f, out = in + F.escape;
+	int count = 0;
+	for (int i = 0; i < F.nwall; i++) {
+		const Wall* w = &F.wall[i];
+		float d = (p->pos[1] - w->c[1]) * w->n[1] + (p->pos[0] - w->c[0]) * w->n[0] + (p->pos[2] - w->c[2]) * w->n[2];
+		float ad = fabsf(d);
+		if (ad >= out)
+			continue;
+		float q[3] = { p->pos[0] - d * w->n[0], p->pos[1] - d * w->n[1], p->pos[2] - d * w->n[2] };
+		if (q[0] < w->mn[0] || q[1] < w->mn[1] || q[2] < w->mn[2] || q[0] > w->mx[0] || q[1] > w->mx[1] ||
+		    q[2] > w->mx[2])
+			continue;                    // 0x448100: outside the wall's box
+		if (d <= 0.0f)
+			count += 100;
+		float dv = w->n[0] * p->mv[0] + w->n[1] * p->mv[1] + w->n[2] * p->mv[2];
+		if (in <= ad) {
+			dv *= (out - ad) / F.escape;
+		} else {
+			count++;
+			for (int k = 0; k < 3; k++)
+				p->pos[k] += (in - ad) * w->n[k];
+		}
+		float t[3] = { p->mv[0] - dv * w->n[0], p->mv[1] - dv * w->n[1], p->mv[2] - dv * w->n[2] };
+		float tl = sqrtf(t[0] * t[0] + t[1] * t[1] + t[2] * t[2]);
+		if (tl != 0.0f) {
+			float k = flen3(p->mv) / tl;
+			for (int j = 0; j < 3; j++)
+				p->mv[j] = t[j] * k;
+		}
+	}
+	for (int k = 0; k < 3; k++)
+		p->pos[k] += F.speed * p->mv[k];
+	return count;
+}
+
+// ---------------------------------------------------------------- blow points
+
+// pack/fog/blow.txt (tools/sh2conv/fog.py): the sources of 0x489ee0's three tables
+static void blow_load(void)
+{
+	char path[160];
+	snprintf(path, sizeof path, "%s/fog/blow.txt", F.pack);
+	FILE* f = fopen(path, "r");
+	if (!f)
+		return;
+	char line[160];
+	int t = -1;
+	while (fgets(line, sizeof line, f)) {
+		if (line[0] == '#')
+			continue;
+		float v[8];
+		int room, interval, n;
+		if (sscanf(line, "%f %f %f %f %f %f %f %f", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7]) == 8) {
+			if (t >= 0 && F.btab[t].n < BLOW_SRC) {
+				BlowSrc* b = &F.btab[t].src[F.btab[t].n++];
+				b->pos[0] = v[0], b->pos[1] = v[1], b->pos[2] = v[2];
+				b->mv[0] = v[4], b->mv[1] = v[5], b->mv[2] = v[6];
+				b->size = v[7];
+			}
+		} else if (sscanf(line, "%d %d %d", &room, &interval, &n) == 3 && F.nbtab < 3) {
+			t = F.nbtab++;
+			F.btab[t].room = room, F.btab[t].interval = interval, F.btab[t].n = 0;
+		}
+	}
+	fclose(f);
+}
+
+// 0x489ee0: the room's sources (none outside the three rooms), timers reset
+static void blow_room(int room)
+{
+	F.blow_room = room;
+	F.nbsrc = 0;
+	for (int t = 0; t < F.nbtab; t++)
+		if (F.btab[t].room == room) {
+			F.nbsrc = F.btab[t].n;
+			F.blow_interval = F.btab[t].interval;
+			memcpy(F.bsrc, F.btab[t].src, sizeof F.bsrc);
+		}
+	memset(F.btimer, 0, sizeof F.btimer);
+}
+
+// 0x489f70: a puff from a source near the fog box
+static void blow_spawn(const BlowSrc* s)
+{
+	if (F.nblow >= BLOW_MAX || fabsf(s->pos[0] - F.local[0]) > 2000.0f || fabsf(s->pos[2] - F.local[2]) > 2000.0f)
+		return;
+	Blow* b = &F.blow[F.nblow++];
+	memset(b, 0, sizeof *b);
+	float r[4];
+	rnd_vec(r, 0.1f);
+	for (int k = 0; k < 3; k++)
+		b->pos[k] = s->pos[k], b->mv[k] = s->mv[k] + r[k];
+	b->size = s->size;
+	b->tdx = rnd(), b->tdy = rnd();
+	b->alp_now = (float)F.alpha * 0.25f;
+}
+
+// 0x48a320, one of the PC's 30 updates a second: the sources' timers (in 1/60 s), then each puff:
+// fading once it left the box, rising and slowing (0x48a0d0), its alpha wandering towards the
+// fog's, and the box edge fade (0x48a180)
+static void blow_step(void)
+{
+	const float ft = 1.0f / 30.0f, speed = 2.0f;
+	for (int i = 0; i < F.nbsrc; i++) {
+		F.btimer[i] -= 2.0f;
+		if (F.btimer[i] < 1.0f) {
+			F.btimer[i] = (float)ftol(rnd_tail((float)-(F.blow_interval / 2), 1.0f)) + (float)F.blow_interval;
+			blow_spawn(&F.bsrc[i]);
+		}
+	}
+	float r2 = F.maxpos + F.maxpos;
+	for (int i = 0; i < F.nblow; i++) {
+		Blow* b = &F.blow[i];
+		if (b->state) {
+			b->alp_now *= 0.75f;
+			if (b->state == 100 || b->alp_now <= 1.0f) {
+				*b = F.blow[--F.nblow];
+				i--;
+				continue;
+			}
+		}
+		b->mv[1] += ft * 4.9f;
+		b->size = fminf(b->size + ft * 50.0f, F.partsize);
+		for (int k = 0; k < 3; k++) {
+			b->mv[k] *= 0.95f;
+			b->pos[k] += speed * b->mv[k];
+		}
+		float target = (float)F.alpha;
+		b->alp_v = (rnd_tail(target * -0.03125f, 0.02f) + b->alp_v - (b->alp_now - target) * 0.01f) * 0.9f;
+		b->alp_now += b->alp_v;
+		b->alp_now = b->alp_now < 0.0f ? 0.0f : b->alp_now > 127.0f ? 127.0f : b->alp_now;
+		float x = b->pos[0] - F.local[0], z = b->pos[2] - F.local[2];
+		if (x < -r2 || x > r2 || z < -r2 || z > r2)
+			b->state = 100;
+		float a = b->alp_now;
+		if (x < 300.0f - r2) a = (r2 + x) * a * (1.0f / 300.0f);
+		if (x > r2 - 300.0f) a = (r2 - x) * a * (1.0f / 300.0f);
+		if (z < 300.0f - r2) a = (r2 + z) * a * (1.0f / 300.0f);
+		if (z > r2 - 300.0f) a = (r2 - z) * a * (1.0f / 300.0f);
+		b->alp = a;
+	}
+}
+
+static void blow_update(int room, float dt)
+{
+	if (!(F.flag & FL_BLOW)) {
+		F.nblow = 0;
+		return;
+	}
+	if (room != F.blow_room)
+		blow_room(room);
+	F.blow_acc += dt;
+	for (int n = 0; F.blow_acc >= 1.0f / 30.0f && n < 4; n++) {
+		F.blow_acc -= 1.0f / 30.0f;
+		blow_step();
+	}
+	if (F.blow_acc > 1.0f / 30.0f)
+		F.blow_acc = 0.0f;
+}
+
 // 0x4895b0 (without the per-place setup, done by the caller)
 static void move_all(void)
 {
@@ -591,9 +847,13 @@ static void move_all(void)
 			if (p->alp_now <= 1.0f)
 				part_init_few(p);
 		}
-		for (int k = 0; k < 3; k++)
-			p->pos[k] += F.speed * p->mv[k];
-		p->bounce = 0;
+		if (F.nwall && F.debug != 2) {
+			p->bounce = wall_move(p);
+		} else {
+			for (int k = 0; k < 3; k++)
+				p->pos[k] += F.speed * p->mv[k];
+			p->bounce = 0;
+		}
 		for (int k = 0; k < 3; k++)
 			p->mv[k] += F.wind[k];
 		grid_part(p);
@@ -719,8 +979,10 @@ static void enter_mode(int mode)
 	F.areas = NULL;
 	F.env_now = NULL;
 	set_env(&ENV_DEFAULT);
-	F.flag &= ~(u32)FL_LIMIT;
+	F.flag &= ~(u32)(FL_LIMIT | FL_BLOW);
 	F.global = mode;
+	if (mode >= 0x66 && mode <= 0x68)
+		F.flag |= FL_BLOW;              // 0x4849d0: the Eddie rooms have blow points
 	const char* name = NULL;
 	if (mode >= 1 && mode <= 5) name = outdoor[mode];
 	else if (mode == 100) name = "park";
@@ -902,10 +1164,12 @@ void fog_update(const FogFrame* f)
 	ee_fog_speed(f);
 	if (F.flag & FL_FLOOR)
 		F.floory = F.world[1];
-	if (F.speed > 0.0f)
+	if (F.speed > 0.0f) {
 		move_all();
-	snprintf(F.status, sizeof F.status, "fog %02x n%d/%d a%d d%d sz%.0f m%.0f", F.global & 0xff, F.nsim, F.npc,
-	         F.alpha, F.drawn, F.partsize, F.maxpos);
+		blow_update(f->room, f->dt);
+	}
+	snprintf(F.status, sizeof F.status, "fog %02x n%d/%d a%d d%d sz%.0f w%d b%d", F.global & 0xff, F.nsim, F.npc,
+	         F.alpha, F.drawn, F.partsize, F.nwall, F.nblow);
 }
 
 // ---------------------------------------------------------------- drawing
@@ -948,11 +1212,11 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		float abyte = EE_FOG ? 112.0f : (float)(F.color >> 24);
 		float share = F.nsim > 0 ? (float)F.npc / (float)F.nsim : 1.0f;
 		float P = F.partsize, w = EE_FOG ? 0.055f : 0.0488281f;
-		float order[FOG_MAX][2];
+		float order[FOG_MAX + BLOW_MAX][2];
 		int n = 0;
 		for (int i = 0; i < F.nsim; i++) {
 			Part* p = &F.part[i];
-			if (p->alp < 1.0f || F.floory - p->pos[1] <= 0.0f)
+			if (p->alp < 1.0f || F.floory - p->pos[1] <= 0.0f || F.debug == 1 || F.debug == 3)
 				continue;
 			float rel[3] = { p->pos[0] - F.camera[0], p->pos[1] - F.camera[1], p->pos[2] - F.camera[2] };
 			float z14 = (rel[0] * fwd[0] + rel[1] * fwd[1] + rel[2] * fwd[2]) * 1.4f;
@@ -999,6 +1263,68 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 				v[1 + k] = (FogVtx){ p->pos[0] + right[0] * cx[k] + down[0] * cy[k],
 				                     p->pos[1] + right[1] * cx[k] + down[1] * cy[k],
 				                     p->pos[2] + right[2] * cx[k] + down[2] * cy[k], cu[k], 1.0f - cv[k],
+				                     { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, 0 } };
+			order[n][0] = z14;
+			order[n][1] = (float)n;
+			n++;
+		}
+		// 0x48a500: the blow puffs, drawn like the particles but each at its own size, with the
+		// PC's fixed near limit and texture window. The alpha byte is the one the particles use
+		// here (EE FogFix's 112) where the PC reads the colour's, to keep the two in step
+		for (int i = 0; i < F.nblow; i++) {
+			Blow* b = &F.blow[i];
+			if (b->alp < 1.0f)
+				continue;
+			float h = F.floory - b->pos[1], squash = 1.0f;
+			if (h < 0.0f) {
+				b->state = 100;
+				continue;
+			}
+			float rel[3] = { b->pos[0] - F.camera[0], b->pos[1] - F.camera[1], b->pos[2] - F.camera[2] };
+			float z14 = (rel[0] * fwd[0] + rel[1] * fwd[1] + rel[2] * fwd[2]) * 1.4f;
+			if (z14 < 64.0f || z14 > 32767.0f)
+				continue;
+			float a = abyte * b->alp * 0.0078125f;   // the particles' alpha byte, EE's 112 included
+			if (F.debug == 3)
+				a *= 8.0f;                       // fogdebug 3: puffs eight times as strong, to find them
+			if (h < F.partsize) {
+				h /= F.partsize;
+				squash = h < horiz ? h / horiz : 1.0f;
+			} else {
+				h = 1.0f;
+			}
+			a *= h;
+			if (z14 < 576.0f)
+				a = (z14 - 64.0f) * a * 0.001953125f;
+			if (a < 2.0f || flen3(b->mv) > 200.0f)
+				continue;
+			const float bw = 0.048828125f, BP = b->size;
+			float d[4] = { rel[0], rel[1], rel[2], 0 };
+			normalise(d);
+			float dd[3] = { d[0] - b->deg[0], d[1] - b->deg[1], d[2] - b->deg[2] };
+			memcpy(b->deg, d, sizeof b->deg);
+			b->tdx -= (dd[0] * right[0] + dd[1] * right[1] + dd[2] * right[2]) * 0.25f;
+			b->tdy -= (dd[0] * down[0] + dd[1] * down[1] + dd[2] * down[2]) * 0.25f;
+			b->tdx -= floorf(b->tdx), b->tdy -= floorf(b->tdy);
+			float vx = b->mv[0] * right[0] + b->mv[1] * right[1] + b->mv[2] * right[2];
+			float vy = b->mv[0] * down[0] + b->mv[1] * down[1] + b->mv[2] * down[2];
+			float sv = vx * vy, sx = sv >= 0.0f ? sqrtf(sv) : -sqrtf(-sv);
+			float rx = sqrtf(fabsf(vx)) * 0.125f, ry = sqrtf(fabsf(vy)) * 0.125f;
+			float lo = 1.0f - sx * 0.0078125f, hi = 1.0f + sx * 0.0078125f;
+			float axn = fmaxf(lo - rx, 0.25f), ayn = fmaxf(lo - ry, 0.25f);
+			float axp = fmaxf(hi - rx, 0.25f), ayp = fmaxf(hi - ry, 0.25f);
+			float cx[4] = { -axn * BP, axp * BP, axn * BP, -axp * BP };
+			float cy[4] = { -ayn * BP, -ayp * BP, ayn * BP * squash, ayp * BP * squash };
+			float cu[4] = { b->tdx - bw, b->tdx + bw, b->tdx + bw, b->tdx - bw };
+			float cv[4] = { b->tdy - bw, b->tdy - bw, b->tdy + bw * squash, b->tdy + bw * squash };
+			FogVtx* v = &vb[n * 5];
+			u8 alpha = a > 255.0f ? 255 : (u8)a;
+			v[0] = (FogVtx){ b->pos[0], b->pos[1], b->pos[2], b->tdx, 1.0f - b->tdy,
+			                 { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, alpha } };
+			for (int k = 0; k < 4; k++)
+				v[1 + k] = (FogVtx){ b->pos[0] + right[0] * cx[k] + down[0] * cy[k],
+				                     b->pos[1] + right[1] * cx[k] + down[1] * cy[k],
+				                     b->pos[2] + right[2] * cx[k] + down[2] * cy[k], cu[k], 1.0f - cv[k],
 				                     { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, 0 } };
 			order[n][0] = z14;
 			order[n][1] = (float)n;
@@ -1116,8 +1442,10 @@ bool fog_init(const char* pack_dir)
 	shaderProgramSetVsh(&F.prog, &F.dvlb->DVLE[0]);
 	F.uProj = shaderInstanceGetUniformLocation(F.prog.vertexShader, "projection");
 	F.uMv = shaderInstanceGetUniformLocation(F.prog.vertexShader, "modelView");
-	F.vbuf = linearAlloc((FOG_MAX * 5 + 4) * sizeof(FogVtx));
-	F.ibuf = linearAlloc((FOG_MAX * 12 + 6) * sizeof(u16));
+	F.vbuf = linearAlloc(((FOG_MAX + BLOW_MAX) * 5 + 4) * sizeof(FogVtx));
+	F.ibuf = linearAlloc(((FOG_MAX + BLOW_MAX) * 12 + 6) * sizeof(u16));
+	F.blow_room = -1;
+	blow_load();
 	F.ready = F.vbuf && F.ibuf;
 	return F.ready;
 }
@@ -1158,5 +1486,7 @@ void fog_set_color(int r, int g, int b, int a)
 		return;
 	F.color = (u32)(a & 255) << 24 | (u32)(b & 255) << 16 | (u32)(g & 255) << 8 | (u32)(r & 255);
 }
+
+void fog_debug(int mode) { F.debug = mode; }
 
 const char* fog_status(void) { return F.ready ? F.status : "fog off"; }
