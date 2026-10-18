@@ -502,7 +502,12 @@ shows:
 
 The port posts from main.c (`blood_frame`): an enemy's health going down after `enemy_update` is a
 hit (its `last_atk` and hit-back direction, the point at 0.6 of its height), its health reaching
-zero the pool. `ui.py` writes the texture as `pack/effect/blood.t3x` (A4, 256x256). Up to 8
+zero the pool. Pools and stains lie on the floor the room's collision gives under them
+(`col_floor`, as the PC puts its pools on the ground, 0x4cb510), with the room's decal depth
+offset. `debug.txt` `bloodtest 1` posts a splash and a pool 700 to one side of James every two
+seconds (the other side the next time), for screenshots; the debug page shows a `blood` line
+with the splashes, sprites, stains and pools alive and the vertices drawn. Subtracted blood only
+shows where there is light to take away: in the dark it is as invisible as on the PC. `ui.py` writes the texture as `pack/effect/blood.t3x` (A4, 256x256). Up to 8
 splashes, 96 sprites, 64 stains and 24 pools at once, drawn in two batches after the shadows
 (about 200 quads at the most), so the Old 3DS hardly notices. Not ported: class 7 and class 4 (the
 room variants of the splash and the pool, 0x4c71e0 / 0x4c73a0 pick them), the distance fade of the

@@ -4,6 +4,7 @@
 #include "demo.h"
 #include "events.h"
 #include "prog_int.h"
+#include "playtest.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +42,38 @@ static int s_stage = -1;
 static u32 s_frame;
 static float s_play = -1.0f;      // seconds into the music box's tune, < 0 when it is not playing
 
+// Maria lying in the day room S3 (stage 20, 0x58ef90): the PC places character 0x106 (hhh Maria) at
+// 0x8db2cc facing pi with motion 0xd49 (72 frames, looping), pack/chr/mar/hhh_mar_s3.s3a (motion.py).
+static struct {
+	bool on, loaded, failed;
+	Character chr;
+	Anim anim;
+	float t;
+} s_bed;
+
+static void bed_free(void)
+{
+	if (s_bed.loaded) {
+		chr_free(&s_bed.chr);
+		anim_free(&s_bed.anim);
+	}
+	s_bed.loaded = s_bed.failed = false;
+}
+
+void stagemdl_maria_bed(bool on) { s_bed.on = on; }
+
+// Bones the stage code moves (the labyrinth lift's gates, 0x5831aa): added to the bone's place.
+static struct { int kind, bone; float d[3]; } s_bone[8];
+
+void stagemdl_bone_move(int kind, int bone, float dx, float dy, float dz)
+{
+	int k = 0;
+	while (k < 7 && s_bone[k].kind && !(s_bone[k].kind == kind && s_bone[k].bone == bone))
+		k++;
+	s_bone[k].kind = kind, s_bone[k].bone = bone;
+	s_bone[k].d[0] = dx, s_bone[k].d[1] = dy, s_bone[k].d[2] = dz;
+}
+
 static void free_models(void)
 {
 	for (int i = 0; i < s_nmodels; i++)
@@ -50,6 +83,7 @@ static void free_models(void)
 		}
 	memset(s_models, 0, sizeof s_models);
 	s_nmodels = 0;
+	bed_free();
 }
 
 void stagemdl_update(int stage)
@@ -194,6 +228,9 @@ static void pose(Character* c, int kind, float t)
 			L.m[0][3] = -135.0f * sinf(th - (float)M_PI / 4.0f) - 103.0f;
 			L.m[1][3] = 135.0f * cosf(th - (float)M_PI / 4.0f) - 103.0f;
 		}
+		for (int k = 0; k < 8; k++)
+			if (s_bone[k].kind == kind && s_bone[k].bone == (int)b)
+				L.m[0][3] += s_bone[k].d[0], L.m[1][3] += s_bone[k].d[1], L.m[2][3] += s_bone[k].d[2];
 		if (c->parents[b] == 255)
 			world[b] = L;
 		else
@@ -202,9 +239,44 @@ static void pose(Character* c, int kind, float t)
 	}
 }
 
+static void bed_draw(const C3D_Mtx* view, int uModelView, int uBones)
+{
+	if (!s_bed.on || ev_stage() != 20 || s_bed.failed)
+		return;
+	if (!s_bed.loaded) {
+		char err[64];
+		if (!chr_load(&s_bed.chr, PACK_DIR "/chr/mar", "hhh_mar", err, sizeof err)) {
+			s_bed.failed = true;
+			return;
+		}
+		if (!anim_load(&s_bed.anim, PACK_DIR "/chr/mar/hhh_mar_s3.s3a")) {
+			chr_free(&s_bed.chr);
+			s_bed.failed = true;
+			return;
+		}
+		s_bed.loaded = true;
+		s_bed.t = 0.0f;
+		if (playtest_active())
+			playtest_log("S3: Maria in the bed (%lu frames)", (unsigned long)s_bed.anim.frames);
+	}
+	static const float pos[3] = { 99742.5625f, 203.282562f, 58623.1211f };   // 0x8db2cc
+	s_bed.t += 1.0f / 30.0f;
+	float frame = fmodf(s_bed.t * 30.0f, (float)(s_bed.anim.frames ? s_bed.anim.frames : 1));
+	C3D_Mtx model, mv;
+	Mtx_Identity(&model);
+	Mtx_Translate(&model, pos[0], pos[1], pos[2], true);
+	Mtx_RotateY(&model, 3.1415927f, true);
+	Mtx_Multiply(&mv, view, &model);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
+	chr_pose(&s_bed.chr, &s_bed.anim, frame);
+	chrlight_at(pos, false);
+	chr_draw(&s_bed.chr, uBones);
+}
+
 void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 {
 	stagemdl_update(ev_stage());
+	bed_draw(view, uModelView, uBones);
 	if (!s_nplaces)
 		return;
 	s_frame++;

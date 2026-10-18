@@ -8,6 +8,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Circles the coarse grid leaves out (legs the fine check could not walk), for the next try.
+static float s_blk[16][3];
+static int s_nblk;
+static bool s_use_blk;
+
 static float CELL = 100.0f;
 static int MAXN = 300;          // cells per side
 static int LAYERS = 6;          // floors over floors (the stairwells stack three, hp162 five)
@@ -32,7 +37,7 @@ static void put_height(Grid* g, int i, int j, float y)
 	for (int l = 0; l < LAYERS; l++) {
 		float* h = &g->h[idx(g, l, i, j)];
 		if (*h == NOFLOOR) { *h = y; return; }
-		if (fabsf(*h - y) < 300.0f) { if (y < *h) *h = y; return; }   // the same floor (keep the top)
+		if (fabsf(*h - y) < 100.0f) { if (y < *h) *h = y; return; }   // the same floor (keep the top; no more than a step apart, so merging makes no step: cc28's terraces)
 	}
 }
 
@@ -101,6 +106,17 @@ static void build(Grid* g, const Collision* c)
 					put_height(g, i, j, y);
 			}
 	}
+	// the circles the area route leaves out after a failed leg
+	if (s_use_blk)
+		for (int q = 0; q < s_nblk; q++) {
+			int i0 = (int)((s_blk[q][0] - s_blk[q][2] - g->x0) / CELL), i1 = (int)((s_blk[q][0] + s_blk[q][2] - g->x0) / CELL);
+			int j0 = (int)((s_blk[q][1] - s_blk[q][2] - g->z0) / CELL), j1 = (int)((s_blk[q][1] + s_blk[q][2] - g->z0) / CELL);
+			for (int j = j0 < 0 ? 0 : j0; j <= j1 && j < g->nz; j++)
+				for (int i = i0 < 0 ? 0 : i0; i <= i1 && i < g->nx; i++)
+					if (hypotf(g->x0 + (i + 0.5f) * CELL - s_blk[q][0], g->z0 + (j + 0.5f) * CELL - s_blk[q][1]) < s_blk[q][2])
+						for (int l = 0; l < LAYERS; l++)
+							g->blocked[idx(g, l, i, j)] |= 1;
+		}
 	// walls: cells whose centre is within the body's radius of a wall at the cell's height
 	u32 nw = col_wall_count(c);
 	for (u32 k = 0; k < nw; k++) {
@@ -177,6 +193,18 @@ static int layer_near(const Grid* g, int i, int j, float y)
 	return best;
 }
 
+// The floor James steps onto there (col_floor_climb): the highest within a step of y, else -1.
+static int layer_climb(const Grid* g, int i, int j, float y)
+{
+	int best = -1;
+	for (int l = 0; l < LAYERS; l++) {
+		float h = g->h[idx(g, l, i, j)];
+		if (h != NOFLOOR && fabsf(h - y) <= STEP && (best < 0 || h < g->h[idx(g, best, i, j)]))
+			best = l;
+	}
+	return best;
+}
+
 static bool free_cell(const Grid* g, int k) { return g->h[k] != NOFLOOR && !(g->blocked[k] & 1); }
 
 // A wall across the way between neighbouring cells (coarse grid): from (i, j, layer k) by (di, dj).
@@ -200,7 +228,7 @@ static bool line_ok(const Grid* g, int ia, int ja, int la, int ib, int jb, int l
 	for (int s = 1; s <= n * 4; s++) {
 		float f = (float)s / (n * 4);
 		int i = (int)lroundf(ia + (ib - ia) * f), j = (int)lroundf(ja + (jb - ja) * f);
-		int l = layer_near(g, i, j, y);
+		int l = layer_climb(g, i, j, y);
 		if (l < 0)
 			return false;
 		int k = idx(g, l, i, j);
@@ -254,6 +282,12 @@ static int plan(const Collision* c, const float start[3], const float goal[3], f
 	if (si < 0 || sj < 0 || si >= g.nx || sj >= g.nz)
 		goto done;
 	int sl = layer_near(&g, si, sj, start[1]);
+	for (int r = 1; sl < 0 && r <= 2; r++)       // big cells may miss James' floor: a neighbour's
+		for (int dj = -r; dj <= r && sl < 0; dj++)
+			for (int di = -r; di <= r && sl < 0; di++)
+				if (si + di >= 0 && sj + dj >= 0 && si + di < g.nx && sj + dj < g.nz &&
+				    (sl = layer_near(&g, si + di, sj + dj, start[1])) >= 0)
+					si += di, sj += dj;
 	if (sl < 0)
 		goto done;
 	int sk = idx(&g, sl, si, sj);
@@ -312,7 +346,7 @@ static int plan(const Collision* c, const float start[3], const float goal[3], f
 				if (!di && !dj) continue;
 				int ni = i + di, nj = j + dj;
 				if (ni < 0 || nj < 0 || ni >= g.nx || nj >= g.nz) continue;
-				int nl = layer_near(&g, ni, nj, y);
+				int nl = layer_climb(&g, ni, nj, y);   // (cc28's ramps under a flat floor)
 				if (nl < 0) continue;
 				int nk = idx(&g, nl, ni, nj);
 				if (!free_cell(&g, nk) || fabsf(g.h[nk] - y) > STEP) continue;
@@ -429,6 +463,7 @@ const float* nav_last_heights(void) { return s_last_ys; }
 
 static Collision s_ac;
 static char s_area[8];
+static float s_area_ext[4];      // the area's floors: min x, min z, max x, max z
 
 static void load_s3l_append(const char* path)
 {
@@ -478,56 +513,141 @@ static bool load_area(const char* area)
 		if (*f == ',')
 			f++;
 	}
+	s_area_ext[0] = s_area_ext[1] = 1e30f, s_area_ext[2] = s_area_ext[3] = -1e30f;
+	for (u32 k = 0; k < s_ac.n_floors; k++)
+		for (int v = 0; v < 3; v++) {
+			const float* p = s_ac.floors[k].v + 3 * v;
+			s_area_ext[0] = fminf(s_area_ext[0], p[0]), s_area_ext[1] = fminf(s_area_ext[1], p[2]);
+			s_area_ext[2] = fmaxf(s_area_ext[2], p[0]), s_area_ext[3] = fmaxf(s_area_ext[3], p[2]);
+		}
 	return s_ac.n_floors > 0;
 }
 
-int nav_area_route(const char* area, const float start[3], const float goal[3], float* out, int max)
+
+// The coarse plan over the area's tiles: about 200000 cells over the box of the walk with a wide
+// margin (roads wander), then a box twice as wide on 300000 cells (town west's lower streets join its
+// upper ones only by cc11's slope, far round to the south). Its ways are shut only by a wall across
+// them, so narrow streets are not lost to the size of the cells; the legs are checked after.
+static int coarse_plan(const float start[3], const float goal[3], float* xz, float* ys, int max)
 {
-	if (!load_area(area))
-		return 0;
-	// about 200000 cells over the box of the walk with a wide margin (roads wander), the grid
-	// following the box's shape; when that finds nothing, a box twice as wide on 300000 cells (town
-	// west's lower streets join its upper ones only by cc11's slope, far round to the south)
-	static float xz[2 * 256], ys[256];
 	bool partial = true;
 	int n = 0;
-	// (a third pass on the first box asks less room of the ways: town west's long walks get cells
-	// of 400 and more, whose ways miss the hospital's porch opening at 110 from the walls)
+	// (a third pass takes in all of the area: from Heaven's Night to the Baldwin mansion the way runs
+	// 70000 south of both)
 	for (int pass = 0; pass < 3 && (n <= 0 || partial); pass++) {
 		float span = fmaxf(fabsf(goal[0] - start[0]), fabsf(goal[2] - start[2]));
-		WAY_CLEAR = pass == 2 ? 30.0f : 110.0f;
-		MARGIN = pass == 1 ? fmaxf(20000.0f, 0.7f * span) : fmaxf(6000.0f, 0.3f * span);
+		WAY_CLEAR = 1.0f;            // only a wall across the way (the legs are checked after)
+		float mx = fmaxf(fminf(start[0], goal[0]) - s_area_ext[0], s_area_ext[2] - fmaxf(start[0], goal[0]));
+		float mz = fmaxf(fminf(start[2], goal[2]) - s_area_ext[1], s_area_ext[3] - fmaxf(start[2], goal[2]));
+		MARGIN = pass == 2 ? fmaxf(mx, mz) + 1000.0f : pass == 1 ? fmaxf(20000.0f, 0.7f * span) : fmaxf(6000.0f, 0.3f * span);
 		float sx = fabsf(goal[0] - start[0]) + 2 * MARGIN + 100.0f, sz = fabsf(goal[2] - start[2]) + 2 * MARGIN + 100.0f;
-		CELL = fmaxf(100.0f, sqrtf(sx * sz / (pass == 1 ? 300000.0f : 200000.0f)));
+		CELL = fmaxf(100.0f, sqrtf(sx * sz / (pass ? 300000.0f : 200000.0f)));
 		MAXN = (int)(fmaxf(sx, sz) / CELL) + 4;
 		BODY_R = 0.0f;
 		LAYERS = 2;
-		STEP = fmaxf(140.0f, 0.8f * CELL);   // a ramp's rise between cells this far apart (the hospital's porch)
+		STEP = fmaxf(140.0f, 1.2f * CELL);   // a ramp or a flight of steps between cells this far apart
 		s_edges = true;              // the coarse grid only looks for the way; the walk keeps clear
-		n = plan(&s_ac, start, goal, xz, 256, &partial, ys);
+		s_use_blk = true;
+		n = plan(&s_ac, start, goal, xz, max, &partial, ys);
+		s_use_blk = false;
 	}
-	if (n <= 0 || partial)
+	return n > 0 && !partial ? n : 0;
+}
+
+// A leg of the coarse route planned as the walk will plan it (cells of 100, James' body kept 110
+// from the walls, the narrow-way try of nav_plan).
+static bool leg_ok(const float a[3], const float b[3])
+{
+	static float xz[2 * 64], ys[64];
+	bool partial;
+	CELL = 100.0f, MAXN = 120, MARGIN = 2500.0f, BODY_R = 110.0f, LAYERS = 4, STEP = 140.0f;
+	s_edges = false;
+	// (the points' heights are the coarse cells' in between: on the floor nearest them)
+	float a2[3] = { a[0], a[1], a[2] }, b2[3] = { b[0], b[1], b[2] };
+	col_floor(&s_ac, a2[0], a2[2], a[1], 3000.0f, &a2[1]);
+	col_floor(&s_ac, b2[0], b2[2], b[1], 3000.0f, &b2[1]);
+	int n = plan(&s_ac, a2, b2, xz, 64, &partial, ys);
+	return n > 0 && !partial;
+}
+
+// The route is planned whole (up to 256 points) and handed out as far as max allows, the goal last:
+// the door search asks only whether a way exists, with room for 8.
+static int area_route(const float start[3], const float goal[3], float* out, int max);
+
+int nav_area_route(const char* area, const float start[3], const float goal[3], float* out, int max)
+{
+	static float full[3 * 256];
+	if (max < 1 || !load_area(area))
 		return 0;
-	// waypoints about 2000 apart along the way (long straight stretches cut up, so every leg stays
-	// within the tiles loaded around James), the goal always last
-	int count = 0;
-	float lx = start[0], ly = start[1], lz = start[2];
-	for (int i = 0; i < n && count < max - 1; i++) {
-		float dx = xz[2 * i] - lx, dz = xz[2 * i + 1] - lz, d = sqrtf(dx * dx + dz * dz);
-		int parts = (int)(d / 2000.0f);
-		for (int k = 1; k <= parts && count < max - 1; k++) {
-			float f = (float)k / (parts + 1);
-			out[count * 3] = lx + dx * f, out[count * 3 + 1] = ly + (ys[i] - ly) * f, out[count * 3 + 2] = lz + dz * f;
+	int n = area_route(start, goal, full, 256);
+	if (n <= 0)
+		return 0;
+	if (n > max)
+		n = max;
+	memcpy(out, full, 3 * (n - 1) * sizeof(float));
+	memcpy(out + 3 * (n - 1), goal, 3 * sizeof(float));
+	return n;
+}
+
+static int area_route(const float start[3], const float goal[3], float* out, int max)
+{
+	static float xz[2 * 256], ys[256];
+	s_nblk = 0;
+	for (int attempt = 0; attempt < 10; attempt++) {
+		int n = coarse_plan(start, goal, xz, ys, 256);
+		if (n <= 0)
+			return 0;
+		// waypoints about 2000 apart along the way (long straight stretches cut up, so every leg stays
+		// within the tiles loaded around James), the goal always last
+		int count = 0;
+		float lx = start[0], ly = start[1], lz = start[2];
+		for (int i = 0; i < n && count < max - 1; i++) {
+			float dx = xz[2 * i] - lx, dz = xz[2 * i + 1] - lz, d = sqrtf(dx * dx + dz * dz);
+			int parts = (int)(d / 2000.0f);
+			for (int k = 1; k <= parts && count < max - 1; k++) {
+				float f = (float)k / (parts + 1);
+				out[count * 3] = lx + dx * f, out[count * 3 + 1] = ly + (ys[i] - ly) * f, out[count * 3 + 2] = lz + dz * f;
+				count++;
+			}
+			if (count >= max - 1)
+				break;
+			out[count * 3] = xz[2 * i], out[count * 3 + 1] = ys[i], out[count * 3 + 2] = xz[2 * i + 1];
+			lx = xz[2 * i], ly = ys[i], lz = xz[2 * i + 1];
 			count++;
 		}
-		if (count >= max - 1)
-			break;
-		out[count * 3] = xz[2 * i], out[count * 3 + 1] = ys[i], out[count * 3 + 2] = xz[2 * i + 1];
-		lx = xz[2 * i], ly = ys[i], lz = xz[2 * i + 1];
-		count++;
+		out[(count - 1) * 3] = goal[0], out[(count - 1) * 3 + 1] = goal[1], out[(count - 1) * 3 + 2] = goal[2];
+		// every leg on the fine grid: where one cannot be walked, the coarse grid leaves that place
+		// out and plans again (the sloping street west of Rosewater Park, the way from Heaven's Night)
+		int bad = -1;
+		float prev[3] = { start[0], start[1], start[2] };
+		for (int k = 0; k < count && bad < 0; k++) {
+			if (!leg_ok(prev, out + 3 * k)) {
+				// a big cell's centre may sit in a wall or off the floor: straight on to the next point
+				if (k + 1 < count && leg_ok(prev, out + 3 * (k + 1))) {
+					memmove(out + 3 * k, out + 3 * (k + 1), (count - k - 1) * 3 * sizeof(float));
+					count--;
+				} else {
+					bad = k;
+					break;
+				}
+			}
+			memcpy(prev, out + 3 * k, sizeof prev);
+		}
+		if (bad < 0)
+			return count;
+		if (s_nblk >= 16)
+			return 0;
+		const float* a = bad ? out + 3 * (bad - 1) : start;   // (the leg that failed)
+		const float* b = out + 3 * bad;
+		s_blk[s_nblk][0] = (a[0] + b[0]) * 0.5f, s_blk[s_nblk][1] = (a[2] + b[2]) * 0.5f;
+		s_blk[s_nblk][2] = fmaxf(400.0f, 0.5f * hypotf(b[0] - a[0], b[2] - a[2]));
+		s_nblk++;
+#ifdef NAV_HOST
+		printf("  leg %d failed at (%.0f %.0f), left out: (%.0f %.0f %.0f) -> (%.0f %.0f %.0f)\n", bad, s_blk[s_nblk - 1][0],
+		       s_blk[s_nblk - 1][1], a[0], a[1], a[2], b[0], b[1], b[2]);
+#endif
 	}
-	out[(count - 1) * 3] = goal[0], out[(count - 1) * 3 + 1] = goal[1], out[(count - 1) * 3 + 2] = goal[2];
-	return count;
+	return 0;
 }
 
 bool nav_area_floor(const char* area, float x, float z, float y_ref, float* y)

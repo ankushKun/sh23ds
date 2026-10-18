@@ -137,6 +137,7 @@ static bool s_debug_hud, s_hud_shown;
 static void* s_fadequad;         // linear memory, 6 ROOM_VERTEX_SIZE vertices
 static char s_panel[512];        // stage program panel (choices, puzzles), empty when none
 static bool s_pt_shot, s_pt_quit;   // playtest driver: dump this frame, leave the main loop
+static bool s_free_voice;        // demo_voice_free's track is playing (its subtitles show)
 static int s_use_item;           // item chosen with "use" in the inventory, for the next event check
 static int s_riddle = 1, s_action = 2;   // new game levels (debug.txt "riddle" / "action")
 static char s_spawn_map[8];      // debug.txt "spawn"
@@ -3409,7 +3410,7 @@ static void draw_top_text(void)
 {
 	if (!s_msg_top || !font_ready() || s_paused)
 		return;
-	if (demo_active()) {
+	if (demo_active() || (s_free_voice && !s_msg_page && !s_save_prompt)) {
 		int serial;
 		const char* sub = demo_subtitle(&serial);
 		draw_message_top(s_opt.subtitles ? sub : NULL);
@@ -3916,6 +3917,7 @@ int main(void)
 		} else if (s_cam.mode == CAM_PLAYER) {
 			if (!save_prompt_update(down) && !message_update(down) && !s_warp_pending) {
 				prog_stage_tick(ev_stage(), dt);
+				s_free_voice = demo_voice_free_tick(dt);   // a voice the stage code started (the hotel corridor)
 				prog_score_frame(dt, combat_hp() / JAMES_HP_MAX, maria_distance());
 				{
 					// 0x5396e0: walking and running distance (running is the faster stride)
@@ -4152,7 +4154,7 @@ int main(void)
 		pause_draw();
 		inventory_draw();
 		static int s_sub_serial = -1;
-		if (demo_active()) {
+		if (demo_active() || (s_free_voice && !s_msg_page && !s_save_prompt)) {
 			int serial;
 			const char* sub = demo_subtitle(&serial);
 			if (!s_opt.subtitles)
@@ -4170,9 +4172,11 @@ int main(void)
 					else
 						putchar(*c);
 				}
-				printf("\x1b[29;27HSTART: skip");
 				static const TouiButton skip[1] = { { "Skip", KEY_START } };
-				touchui_box(s_msg_top && font_ready() ? "" : (sub ? sub : ""), skip, 1);
+				bool scene = demo_active();      // (a voice over the game cannot be skipped)
+				if (scene)
+					printf("\x1b[29;27HSTART: skip");
+				touchui_box(s_msg_top && font_ready() ? "" : (sub ? sub : ""), skip, scene ? 1 : 0);
 			}
 		} else if (s_sub_serial != -1) {
 			s_sub_serial = -1;               // the scene is over: the box below gets the screen back

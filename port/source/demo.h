@@ -59,6 +59,11 @@ bool demo_has_kind(int kind);      // a character of the running scene is of thi
 // changes whenever the subtitle changes, so the caller redraws only then.
 const char* demo_subtitle(int* serial);
 
+// A voice-and-subtitles track (pack/demo/<key>.voc) that plays while the game goes on, as the PC's
+// stage code starts some (demo_active stays false); tick it every game frame, true while it runs.
+bool demo_voice_free(const char* pack_dir, const char* key);
+bool demo_voice_free_tick(float dt);
+
 // 0..1 black over the picture: short fades at the start and the end of a scene.
 float demo_fade(void);
 

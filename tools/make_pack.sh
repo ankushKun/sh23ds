@@ -134,6 +134,8 @@ if step sound "sound effects, footstep materials, per-stage BGM tables"; then
 fi
 if step demos "cutscenes (scripts, motions, the characters they need, voices from voice.afs)"; then
 	$PY "$ROOT/tools/sh2conv/demos.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT"
+	# motions the stage code sets by id outside any scene (Maria lying in the day room in S3)
+	$PY "$ROOT/tools/sh2conv/motion.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT"
 	touch "$STEPS/demos"
 fi
 if step stagemodels "stage-placed models (cars, furniture, props, puzzle objects)"; then

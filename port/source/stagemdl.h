@@ -14,3 +14,8 @@ void stagemdl_music_box(float seconds);
 // Stage code turning a placed model (the cube in the labyrinth, 0x582bd0): the angles are added to
 // the place's turn of every model of that kind, until set again (0, 0, 0 puts it back).
 void stagemdl_turn(int kind, float rx, float ry, float rz);
+// Stage code moving one bone of a placed model (the labyrinth lift's gates, 0x5831aa): the offset is
+// added to the bone's own place, until set again.
+void stagemdl_bone_move(int kind, int bone, float dx, float dy, float dz);
+// Maria lying in the day room S3 (stage 20, the room code 0x58ef90 places character 0x106).
+void stagemdl_maria_bed(bool on);

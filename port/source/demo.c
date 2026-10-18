@@ -794,6 +794,7 @@ static struct {
 	// voice track
 	u8* voc;
 	bool voice_on, voice_started;
+	bool free;                 // started by stage code while the game goes on (demo_voice_free)
 	s32 voice, msg_no;
 	u32 n_times, index;
 	const u16* times;
@@ -810,6 +811,7 @@ static void track_stop(void)
 	free(Q.voc);
 	Q.voc = NULL;
 	Q.voice_on = Q.voice_started = false;
+	Q.free = false;
 	Q.text = NULL;
 	Q.serial++;
 }
@@ -979,7 +981,29 @@ bool demo_start(const char* pack_dir, int id)
 	return seq_advance();
 }
 
-bool demo_active(void) { return S.active || Q.waiting || Q.voice_on; }
+bool demo_active(void) { return S.active || Q.waiting || (Q.voice_on && !Q.free); }
+
+// A voice with subtitles the stage code starts while James goes on walking (the PC's per-frame
+// functions call SubtitlesExec 0x49fe30 themselves: the hotel corridor's 60120). A scene that starts
+// meanwhile takes over the track.
+bool demo_voice_free(const char* pack_dir, const char* key)
+{
+	if (S.active || Q.waiting || (Q.voice_on && !Q.free))
+		return false;
+	snprintf(Q.pack, sizeof Q.pack, "%s", pack_dir);
+	if (!track_start(key))
+		return false;
+	Q.free = true;
+	return true;
+}
+
+bool demo_voice_free_tick(float dt)
+{
+	if (!Q.free || !Q.voice_on)
+		return false;
+	track_update(dt);
+	return Q.voice_on;
+}
 bool demo_scene_shown(void) { return S.active; }
 
 // ---------------------------------------------------------------- per frame

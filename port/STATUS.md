@@ -184,9 +184,24 @@ walks to every trigger with the Circle Pad and B as a player does, on a plan ove
 (`playnav.c`: a grid with his body's clearance and the floors stacked up to six deep for stairwells)
 and, in the town and forest, over all of an area's tiles first; between rooms the driver picks doors
 from the event data (also through other stages, round doors it cannot reach, and back out of a room
-part it got shut in). Checked in Azahar on 2026-10-19: chapters 1 to 8 pass on foot, from the
-apartment in the prologue to the end of the prison and the labyrinth (Eddie's second round); the
-hotel (w09, w10) and Born From a Wish (w11) are not walked yet. What walking found and fixed:
+part it got shut in). Checked in Azahar on 2026-10-18 (batch 3): the whole critical path passes on
+foot, from the apartment in the prologue through the prison, the labyrinth and the hotel to the
+ending, and Born From a Wish (w11) from the Blue Creek reception to its ending. The hotel walk (w09,
+w10) takes the hotel's own order: 1F's map, keys and Laura, the basement, 2F's keys and the music box,
+then the west wing, which opens from 2F only through a program's warp (stage 41 event 13), and the
+way back down to the basement. Born From a Wish (w11) goes through the Baldwin mansion in the order a
+player meets it (its rooms are in stages 55, 56 and 58).
+
+The area plan (town and forest) no longer needs a scripted way point. The coarse grid's ways are now
+shut only by a wall across them (its cells were too big for the narrow sloping street west of
+Rosewater Park's stair blocks), and every leg of the coarse route is then planned as the walk plans it
+(cells of 100, James kept 110 from the walls); where a leg cannot be walked, that place is left out of
+the coarse grid and the route planned again, up to ten times. The route is planned whole and handed
+out as far as the caller has room, the goal last (the door search asks with room for 8). Floors less
+than 100 apart now count as one (cc28's terraced ramps under a flat floor merged into one step too
+high), and a cell's floor is the highest within a step of the last (as for James' feet).
+
+What walking found and fixed:
 
 * Stairs: James kept to the floor nearest his feet, so he walked under a stairwell's first flight
   instead of up it (ap22's foot starts 100 units up). He now takes the highest floor within his step
@@ -213,29 +228,33 @@ and health items a player could have collected by then, well short of what the s
 `pt god 1` (blows land but take no health, to check how each fight ends) the first Lying Figure,
 the stairwell Pyramid Head (health 4000 down to 40, then he leaves), the three Flesh Lips (498 s), the
 Abstract Daddy, Eddie's two rounds, the hotel pair and Mary (both phases, then the Maria ending) all
-end the PC's way. Without god mode the driver's play beat the first Lying Figure (HP 86 left), the
-Abstract Daddy (59), Eddie (46, then 2) and Mary (98), and lost to the stairwell Pyramid Head (one
-long swing does 1000), the Flesh Lips and the hotel pair; those are fights a player wins by running,
-which the driver does crudely, so they say little about the port.
+end the PC's way (checked again on the batch 3 build). Without god mode the driver's play beat the
+first Lying Figure (HP 93 left), the Abstract Daddy (45), Eddie's first round (4) and Mary (98), and
+lost Eddie's second round, the stairwell Pyramid Head (one long swing does 1000), the Flesh Lips and
+the hotel pair; those are fights a player wins by running or with more health items, which the
+driver does crudely, so they say little about the port.
 
 Known differences from the PC that are left:
 
-* The hotel (w09, w10) and Born From a Wish (w11) are not walked yet: the chapter scripts follow the
-  event numbers, not the hotel's real order (its west wing opens from 2F through a program's warp,
-  stage 41 event 13), and need reordering as was done for the apartments (w03).
-* Some walks take a scripted way point where the area plan's grid is too coarse for a narrow way (the
-  sloping street west of Rosewater Park's stair blocks, w05 and w08).
 * Puzzle answers are set with debug keys before the test plays them (the inputs are the real ones).
-* The other stage room and per-frame functions are not ported. Their flag changes, none of which an
-  event or program of the critical path waits for: stage 5's init (map marks 1496, 1497, 1526), 9
-  (552), 11 (547), 12 (149, 526), 14's init (flag 15 and marks 1533, 1534) and 15's init (clears 15),
-  15 (530, 161), 22 (216), 28 (551), 31 (648, 649), 34's room code (328, 653), 36 (365), 39 (549,
-  2070), 41's room code (541), 49's init (45, 168) and 55 (729). Their models, lights and sounds are
-  not ported either (stage 32's room 0x72 timer and 0x68 sound, the lift's sounds 0x4655 / 0x4656).
-* The corridor's voice (60120, now in the pack as voice_5769b0) is not played: the port's voice
-  steps stop the game, and the PC plays this one while James walks; Maria is not drawn lying in S3
-  (the PC's character 0x106); the labyrinth lift's and the cube room's models do not move, and the
-  cube's arms stay at the room's own floor height (75 lower than the PC's added floors).
+* Stage room and per-frame functions ported in batch 3 (`prog_stagefn.c`: `stage_init`,
+  `frame_sounds` and the room code): the inits of stages 5 (map marks 1534 / 1533 / 1494 moved to
+  1497 / 1496 / 1526), 12 (clears 87), 14 (the marks back, flag 15), 15 (clears 15) and 49 (45, 168);
+  the sounds and flags of stages 9 (552), 11 (547, 553), 15 (530, and its voice with 161), 28 (551),
+  31 (648, 649, with the PC's random chance), 39 (549, 2070), 41 (541) and 55 (729). The corridor's
+  voice (60120) now plays while James walks, with its subtitles, as the PC's does (`demo_voice_free`:
+  a voice that does not stop the game). Maria lies in the day room's bed in S3 (stage 20 room 0x41,
+  character 0x106 with the motion 0xd49 from demo/mar_hagureru/hhh_mar.anm, converted by
+  `tools/sh2conv/motion.py` to chr/mar/hhh_mar_s3.s3a in the pack's demos step; an existing pack
+  needs the demos step run again, or motion.py on its own). The labyrinth lift's gate bones follow 312
+  / 314 / 315 and its fan turns.
+* Not ported yet: stage 12's fade (526), stage 22's ambient sounds and lights (216), stage 28 room
+  0x5d's ambience, stage 36's room code (365 and the heights of model 0x41c), stage 41's init (the
+  random shuffle of 405), the light switches (0x4a2a80), the models stage 14's room code places
+  (Laura's 0x104 with motion 0xb55, 0x408), stage 9 room 0x13's lights, stage 32's room 0x72 timer and
+  0x68 sound, the lift's sounds 0x4655 / 0x4656 and its jitter, and sounds that move or fade with
+  James. None of their flags is one an event or program of the critical path waits for. The cube's
+  arms stay at the room's own floor height (75 lower than the PC's added floors).
 * The port has the plank as James' only melee weapon (no steel pipe, great knife or chainsaw yet).
 * "There's no use for just this." (item message 17) for items that do not combine is a guess at the
   PC's message (0x9445f4 = 3).
