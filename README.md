@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.1.1" src="https://img.shields.io/badge/version-0.1.1-8fa3b3?style=for-the-badge">
+  <img alt="Version 0.1.2" src="https://img.shields.io/badge/version-0.1.2-8fa3b3?style=for-the-badge">
   <img alt="New Nintendo 3DS and Nintendo 3DS" src="https://img.shields.io/badge/platform-New%203DS%20%7C%203DS-c4453a?style=for-the-badge">
   <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-5b7083?style=for-the-badge">
   <img alt="In development" src="https://img.shields.io/badge/status-in%20development-d9b26a?style=for-the-badge">
@@ -32,7 +32,7 @@ sh23ds is a new engine for Silent Hill 2, written in C for the New 3DS's ARM11 c
 The repository and the releases contain **no game files**. You need the PC release of *Silent Hill 2: Director's Cut*, and the packer in this repository turns it into the data the 3DS reads from its SD card.
 
 > [!IMPORTANT]
-> Version 0.1.1 is a development build. Every part of the game is in, from the prologue to each ending and Born From a Wish, and each part has been tested in the Azahar emulator, with an automated test that loads every door and warp in the game. It hasn't been checked on a console yet, so expect rough edges on real hardware. What's missing is listed under [Status](#%EF%B8%8F-status).
+> Version 0.1.2 is a development build. Every part of the game is in, from the prologue to each ending and Born From a Wish, and each part has been tested in the Azahar emulator, with an automated test that loads every door and warp in the game. The first run on a console turned up dark characters, stuttering cutscenes and swapped turning, which this version fixes in code; they still need a retest on hardware, so expect rough edges there. What's missing is listed under [Status](#%EF%B8%8F-status).
 
 ## ✨ What's in it
 
