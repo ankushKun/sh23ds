@@ -33,3 +33,5 @@ const float* gamecam_eye(void);
 const float* gamecam_watch(void);  // the camera's look-at target (watch_tgt_pos)
 float gamecam_scr_z(void);          // gCameraFOV in 448-line screen units
 float gamecam_fov(void);       // radians
+// James rows the boat (his status bit 0x20000): the camera takes the PC's boat parameters.
+void gamecam_on_boat(bool on);

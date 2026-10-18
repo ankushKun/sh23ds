@@ -13,6 +13,15 @@ convert_anm's layout).
   the file list 0x8db88c (data/demo/mar_hagureru/hhh_mar.anm) and motion 0xd49, which 0x540cf0 finds
   in the table at 0x6e7728 (ids from 3400; the motions lie back to back in the .anm) ->
   pack/chr/mar/hhh_mar_s3.s3a
+
+Whole files, played by the port's own code:
+  The boat on the lake (stage 38, character 0x10b, 0x53fe40): data/chr/boat/boat.anm, 474 frames.
+  The motions 51, 52 and 53 (table 0x6e2298: both oars, the left, the right) are frames 0..149,
+  150..299 and 300..449; 54, the boat lying at the pier, is 450..473 -> pack/chr/boat/boat.s3a
+  James rowing: data/chr/jms/jms_boat.anm (file record 0x7d87b8), 225 frames of hll_jms' 41 bones,
+  three loops of 75 frames that go with the boat's three (James' motions 0x4e24..0x4e26 in the lake's
+  table 0x8cf3d8 are 150 frames long, so they play at half the boat's frame rate)
+  -> pack/chr/jms/jms_boat.s3a
 """
 import argparse
 import os
@@ -30,6 +39,12 @@ from sound import Exe  # noqa: E402
 # (motion id, record table, first id, model, anm, output folder, output name)
 MOTIONS = [
     (0xd49, 0x6e7728, 3400, 'chr/mar/hhh_mar.mdl', 'demo/mar_hagureru/hhh_mar.anm', 'mar', 'hhh_mar_s3'),
+]
+
+# (model, anm, output folder, output name): the whole .anm
+WHOLE = [
+    ('chr/boat/boat.mdl', 'chr/boat/boat.anm', 'boat', 'boat'),
+    ('chr/jms/hll_jms.mdl', 'chr/jms/jms_boat.anm', 'jms', 'jms_boat'),
 ]
 
 
@@ -78,6 +93,15 @@ def convert(exe, data, pack, anim, table, base, mdl, anm, folder, name):
     return True
 
 
+def convert_whole(data, pack, mdl, anm, folder, name):
+    m = sh2mdl.load_mdl(os.path.join(data, mdl))
+    frames = sh2mdl.load_anm(os.path.join(data, anm), m)
+    out = os.path.join(pack, 'chr', folder, name + '.s3a')
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    write_s3a(m, frames, out)
+    print('%s: %d frames -> %s' % (anm, len(frames), out))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--data', default=DEFAULT_DATA)
@@ -87,6 +111,8 @@ def main():
     exe = Exe(a.exe)
     for anim, table, base, mdl, anm, folder, name in MOTIONS:
         convert(exe, a.data, a.out, anim, table, base, mdl, anm, folder, name)
+    for mdl, anm, folder, name in WHOLE:
+        convert_whole(a.data, a.out, mdl, anm, folder, name)
 
 
 if __name__ == '__main__':

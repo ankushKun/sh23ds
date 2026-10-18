@@ -1,5 +1,6 @@
 #include "prog_int.h"
 #include "stagemdl.h"
+#include "boat.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -10,26 +11,26 @@
 
 // ================================================================ stage 38 Stg_lake (0x8cf598)
 
-// 0x57dd20 EvProgEmbarkBoat. The PC then lets the player row across the lake (James in boat mode,
-// 0x20000 in his status); the port has no boat, so the ride is skipped and the disembark scene
-// (0x57de40) follows at once.
+// 0x57dd20 EvProgEmbarkBoat: the scene, then James in boat mode (0x20000 in his status) in the
+// boat on the water, both at 0x8cf688 facing -pi / 2 (boat.c rows it). The event sets flag 379.
 static int s38_embark_boat(Prog* p)
 {
 	PROG_BEGIN(p)
 		p_set(654);                     // FLAGW_640 |= 0x4000
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_LAKE_BOAT_IN))
-	PROG_STEP(p, 0x17, p_demo(p, DEMO_LAKE_BOAT_OUT))
-		p_place(-9560.6f, 3185.0f, -18665.95f, 0.0f);
-		p_set(381);                     // the disembark event's flag
+		boat_embark();
+		p_place(-14970.1f, 3592.5f, -98254.0f, -1.5707964f);
 		p_lock(p, false);
 	PROG_END(p)
 }
 
-// 0x57de40 EvProgDisembarkBoat
+// 0x57de40 EvProgDisembarkBoat: rowing into the hotel pier's area (event 3), the scene, James on the
+// pier (0x8cf6ec) and the boat left at it (0x8cf6dc, facing pi, motion 54).
 static int s38_disembark_boat(Prog* p)
 {
 	PROG_BEGIN(p)
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_LAKE_BOAT_OUT))
+		boat_disembark();
 		p_place(-9560.6f, 3185.0f, -18665.95f, 0.0f);
 		p_lock(p, false);
 	PROG_END(p)

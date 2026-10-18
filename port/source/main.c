@@ -32,6 +32,7 @@
 #include "savescreen.h"
 #include "noise.h"
 #include "blood.h"
+#include "boat.h"
 #include "mist.h"
 #include "gameover.h"
 #include "titlemenu.h"
@@ -1080,6 +1081,7 @@ typedef struct {
 	u8 clear[3];                     // version 5: the clear data it carries (prog_clear_get)
 	u8 place;                        // version 6: the save point (m_card_x_msg_e.mes place name)
 	u8 pad[3];
+	float boat[2];                   // version 7: the boat stage's time and top speed (prog_boat_get)
 } SaveFile;
 
 // Bytes of each save version (older ones are prefixes of the current layout).
@@ -1087,6 +1089,7 @@ typedef struct {
 #define SAVE_V3_SIZE (offsetof(SaveFile, killed))
 #define SAVE_V4_SIZE (offsetof(SaveFile, clear_save))
 #define SAVE_V5_SIZE (offsetof(SaveFile, place))
+#define SAVE_V6_SIZE (offsetof(SaveFile, boat))
 
 // The save files (savescreen.c): file 1 is save.dat, as when there was one, the others save2.dat
 // .. save10.dat (s_slot, s_save_place are with the other event state above).
@@ -1110,13 +1113,14 @@ static bool save_game(void)
 	static SaveFile sv;
 	memset(&sv, 0, sizeof sv);
 	memcpy(sv.magic, "SH3S", 4);
-	sv.version = 6;
+	sv.version = 7;
 	sv.place = s_save_place >= 0 ? (u8)s_save_place : 0xff;
 	sv.stage = ev_stage();
 	snprintf(sv.map, sizeof sv.map, "%s", s_nrooms ? s_rooms[s_room] : "");
 	sv.pos[0] = s_px, sv.pos[1] = s_py, sv.pos[2] = s_pz, sv.yaw = s_yaw;
 	ev_state_get(sv.events);
 	prog_state_get(sv.prog);
+	prog_boat_get(sv.boat);
 	enemy_killed_get(sv.killed);
 	sv.hp = combat_hp();
 	FILE* f = slot_open(s_slot, "wb");
@@ -1137,7 +1141,7 @@ static bool read_save(SaveFile* sv)
 	bool ok = !memcmp(sv->magic, "SH3S", 4) &&
 	          ((sv->version == 2 && n >= SAVE_V2_SIZE) || (sv->version == 3 && n >= SAVE_V3_SIZE) ||
 	           (sv->version == 4 && n >= SAVE_V4_SIZE) || (sv->version == 5 && n >= SAVE_V5_SIZE) ||
-	           (sv->version == 6 && n == sizeof *sv));
+	           (sv->version == 6 && n >= SAVE_V6_SIZE) || (sv->version == 7 && n == sizeof *sv));
 	if (ok && sv->version < 5)
 		sv->clear_save = 0;
 	if (ok && sv->version < 6)
@@ -1153,10 +1157,11 @@ static bool save_clear_data(void)
 	static SaveFile sv;
 	memset(&sv, 0, sizeof sv);
 	memcpy(sv.magic, "SH3S", 4);
-	sv.version = 6;
+	sv.version = 7;
 	sv.clear_save = 1;
 	sv.place = 0xff;
 	prog_state_get(sv.prog);
+	prog_boat_get(sv.boat);
 	prog_clear_get(sv.clear);
 	FILE* f = slot_open(s_slot, "wb");
 	if (!f)
@@ -1738,6 +1743,35 @@ static void blood_frame(float dt)
 // (controls.c) run, strafe and turn round. held is the game keys still free (combat.c took its own).
 static void player_update(const circlePosition* cp, u32 held, float dt)
 {
+	if (boat_active()) {
+		// the boat (0x53e760): the stick picks the oars, the run key pulls them full
+		float bx = cp->dx / 156.0f, by = cp->dy / 156.0f, pos[3] = { s_px, s_py, s_pz };
+		BoatInput bi = { fabsf(bx) < 0.12f ? 0.0f : bx, fabsf(by) < 0.12f ? 0.0f : by, false, false, false, false,
+		                 (held & KEY_B) != 0 };
+		boat_update(&bi, s_have_col ? &s_col : NULL, dt, pos, &s_yaw, s_vel, &s_turn_speed);
+		s_px = pos[0], s_py = pos[1], s_pz = pos[2];
+		// the lake's tiles do not touch, so no neighbour streams in: twice a second the room within
+		// 3000 of the boat that is nearer than the one loaded becomes the room (the hotel pier's
+		// for the disembark scene)
+		static float s_boat_room_t;
+		if ((s_boat_room_t -= dt) <= 0.0f) {
+			s_boat_room_t = 0.5f;
+			int best = -1;
+			float bd = room_dist(s_room, s_px, s_pz);
+			for (int i = 0; i < s_nrooms; i++) {
+				float d = room_has_bounds(i) ? room_dist(i, s_px, s_pz) : 1e9f;
+				if (i != s_room && d < 3000.0f && d + 1.0f < bd)
+					best = i, bd = d;
+			}
+			if (best >= 0) {
+				s_room = best;
+				s_keep_player = true;
+				load_current();
+				s_keep_player = false;
+			}
+		}
+		return;
+	}
 	MoveInput in;
 	memset(&in, 0, sizeof in);
 	// the circle pad reads about +-156 at the rim; a small dead zone keeps James from creeping
@@ -1899,6 +1933,7 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	Mtx_Identity(&model);
 	Mtx_Translate(&model, s_px, s_py, s_pz, true);
 	Mtx_RotateY(&model, s_yaw, true);
+	boat_james_model(&model);
 	Mtx_Multiply(&mv, view, &model);
 	use_skin_program();
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uSkinProjection, proj);
@@ -1943,7 +1978,8 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	s_jblend.neck_share = 0.2f;
 	s_jblend.look_yaw = demo_active() ? 0.0f : s_look_yaw;
 	s_jblend.look_pitch = demo_active() ? 0.0f : s_look_pitch;
-	chr_pose_blend(&s_james, anim, frame, &s_jblend, s_anim_dt);
+	if (!boat_james_pose(&s_james, s_anim_dt))
+		chr_pose_blend(&s_james, anim, frame, &s_jblend, s_anim_dt);
 	// Characters are lit like the PC's (chrlight.c: the room's character lights, the strongest
 	// point and spot lights near each character, ambient 2.1 x Ambient + 0.3 x level). Full bright
 	// in the viewer.
@@ -1966,6 +2002,7 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	if (s_state == ST_GAME) {
 		enemy_draw(view, s_uSkinModelView, s_uBones);
 		stagemdl_draw(view, s_uSkinModelView, s_uBones);   // the stage's own models (stagemdl.c)
+		boat_draw(view, s_uSkinModelView, s_uBones);       // the boat on the lake (boat.c)
 	}
 	shadow_mark_end();
 	if (s_chr_nofog)
@@ -3079,6 +3116,7 @@ static const ProgHost s_prog_host = {
 static void new_game(void)
 {
 	prog_abort();
+	boat_reset();
 	ev_reset();
 	combat_reset();
 	enemy_killed_reset();
@@ -3213,6 +3251,9 @@ static bool continue_game(void)
 	ev_state_set(sv.events);
 	if (sv.version >= 3)
 		prog_state_set(sv.prog);
+	if (sv.version >= 7)
+		prog_boat_set(sv.boat);
+	boat_reset();
 	enemy_killed_reset();
 	if (sv.version >= 4) {
 		enemy_killed_set(sv.killed);       // before the warp: entering the room spawns enemies
@@ -3294,7 +3335,7 @@ static void options_open(void)
 {
 	u8 clear[3];
 	prog_clear_get(clear);
-	OptHost host = { opt_changed, opt_keep, clear[1] != 0 };
+	OptHost host = { opt_changed, opt_keep, clear[2] != 0 };   // 0x1dbeb85: games cleared
 	optmenu_open(&s_opt, &host);
 }
 
@@ -3934,6 +3975,7 @@ int main(void)
 			if (!strcmp(key, "debughud")) s_debug_hud = val != 0;
 			if (!strcmp(key, "god")) combat_set_god(val != 0);   // enemy blows do not reach James
 			if (!strcmp(key, "logos") && !val) titlemenu_no_boot();   // no start-up screens
+			if (!strcmp(key, "viewer")) titlemenu_viewer(val != 0);   // the title's room viewer row
 			if (!strcmp(key, "bloodtest")) s_blood_test = val != 0;
 			if (!strcmp(key, "results")) s_debug_results = val;
 			if (!strcmp(key, "itemget") && s_debug_nitemget < 8) s_debug_itemget[s_debug_nitemget++] = val;
@@ -4183,6 +4225,7 @@ int main(void)
 		} else if (s_cam.mode == CAM_PLAYER) {
 			if (!save_prompt_update(down) && !message_update(down) && !s_warp_pending) {
 				prog_stage_tick(ev_stage(), dt);
+				boat_tick(ev_stage(), dt);
 				s_free_voice = demo_voice_free_tick(dt);   // a voice the stage code started (the hotel corridor)
 				prog_score_frame(dt, combat_hp() / JAMES_HP_MAX, maria_distance());
 				{
@@ -4210,12 +4253,12 @@ int main(void)
 					}
 				} else if (!inventory_update(s_inv_open ? down : gdown)) {   // Y opens, its own keys inside
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
-					u32 free_held;
+					u32 free_held = move_keys(gheld, gdown, &cp);
 					combat_set_sight(s_env.dark, s_flash_on);
 					if (s_debug_weapon && combat_equip_item(s_debug_weapon))
 						s_debug_weapon = 0;
-					if (!combat_update(&body, &cp, gdown, move_keys(gheld, gdown, &cp), dt, s_have_col ? &s_col : NULL,
-					                   &free_held)) {
+					if (boat_active() || !combat_update(&body, &cp, gdown, free_held, dt, s_have_col ? &s_col : NULL,
+					                                    &free_held)) {
 						player_update(&cp, free_held, dt);
 						events_update(gdown);
 					}
@@ -4424,7 +4467,8 @@ int main(void)
 			       (unsigned long)s_col.n_floors, (unsigned long)s_col.n_walls);
 			printf("%-38s\n", mem_log(NULL));
 			if (s_have_james)
-				printf("%-26.26s%5.2f %5.2f \n", move_status(), s_yaw, s_look_yaw);   // facing, head
+				printf("%-26.26s%5.2f %5.2f \n", boat_active() ? boat_status() : move_status(), s_yaw,
+				       s_look_yaw);   // facing, head
 			else
 				printf("james  not loaded                     \n");
 			printf("audio  %-30s\n", audio_status());

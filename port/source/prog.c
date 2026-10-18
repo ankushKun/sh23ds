@@ -1,5 +1,7 @@
 #include "prog_int.h"
 #include "stagemdl.h"
+#include "boat.h"
+#include "combat.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,6 +30,10 @@ static float s_time, s_walk, s_run;
 static u16 s_saves, s_items, s_shot, s_beaten;
 static u8 s_secret;              // gSecretItemsCollected (0x1dbeb88), saved at byte 35
 static int s_last_ending;
+// The boat stage (gBoatStageTime 0x1dbeba0, gBoatMaxSpeed 0x1dbeba4, counted by 0x5397b0 and
+// 0x5397d0 while James rows, cleared by 0x408020): seconds and m/s, saved in the save file's own
+// field (prog_boat_get).
+static float s_boat_time, s_boat_speed;
 
 static void stats_reset(void)
 {
@@ -35,6 +41,7 @@ static void stats_reset(void)
 	s_saves = s_items = s_shot = s_beaten = 0;
 	s_secret = 0;
 	s_last_ending = 0;
+	s_boat_time = s_boat_speed = 0.0f;
 }
 static u32 s_seed = 1;
 
@@ -188,6 +195,22 @@ void prog_state_set(const void* buf)
 	memcpy(s_damage, b + 36, sizeof s_damage);
 	s_last_hp = -1.0f;
 	s_running = false;
+	s_boat_time = s_boat_speed = 0.0f;   // a save older than version 7 has none (prog_boat_set)
+}
+
+void prog_boat_get(float out[2]) { out[0] = s_boat_time, out[1] = s_boat_speed; }
+
+void prog_boat_set(const float in[2])
+{
+	s_boat_time = in[0] >= 0.0f && in[0] < 1e7f ? in[0] : 0.0f;
+	s_boat_speed = in[1] >= 0.0f && in[1] < 100.0f ? in[1] : 0.0f;
+}
+
+void prog_stat_boat(float dt, float speed)
+{
+	s_boat_time += dt;
+	if (s_boat_speed < speed)
+		s_boat_speed = speed;
 }
 
 void prog_stage_tick(int stage, float dt)
@@ -219,6 +242,14 @@ void prog_debug_line(const char* line)
 	float sec;
 	if (sscanf(line, "musicbox %f", &sec) == 1)    // the music box's parts as at this time of its tune
 		stagemdl_music_box(sec);
+	if (!strncmp(line, "boat", 4)) {   // "boat [x z yaw]": in the boat on the lake (stage 38), as after the embark scene
+		float bx = -14970.1f, bz = -98254.0f, byaw = -1.5707964f;
+		sscanf(line, "boat %f %f %f", &bx, &bz, &byaw);
+		ev_flag_set(654, true);
+		ev_flag_set(379, true);
+		boat_embark_at(bx, bz, byaw);
+		p_place(bx, 3592.5f, bz, byaw);
+	}
 	if (!strncmp(line, "wish", 4))      // "wish": Born From a Wish flags (with "stage 53" for the spawn)
 		prog_new_game_wish(s_riddle, s_action);
 	if (sscanf(line, "trunk %d", &a) == 1)  // hotel trunk word 0..18 (flags 406..410)
@@ -526,10 +557,13 @@ u8* p_flag_bytes(int pc_addr) { return (u8*)ev_flag_block() + (pc_addr - 0x1f7d5
 void prog_score_frame(float dt, float hp, float maria_dist)
 {
 	s_time += dt;                    // gInGameTime (0x5396c0)
-	// James' damage (0x539800 from 0x5455be): every drop of his health, healing does not count
+	// James' damage (0x539800 from 0x5455be): every drop of his health in health points, healing
+	// does not count
 	if (s_last_hp >= 0.0f && hp < s_last_hp)
-		s_damage[2] += (s_last_hp - hp) * 100.0f;
+		s_damage[2] += (s_last_hp - hp) * combat_hp_max();
 	s_last_hp = hp;
+	if (s_running)
+		return;                      // EventMain counts the rest only while no program runs
 	if (hp < 0.5f)
 		SCORE(0x1f7d9d8) += dt * (1.0f - sinf(hp * 3.1415927f));
 	if (maria_dist >= 0.0f && maria_dist < 1000.0f)
@@ -544,6 +578,8 @@ void prog_score_examine(int item)
 	u8* n = p_puzzle() + 0x1a;              // 0x1f7da7a
 	if ((item == 20 || item == 21) && *n < 2)
 		(*n)++;
+	if (item == 0x18)
+		p_set(630);                         // Angela's knife: FLAGW_608 |= 0x400000 (In Water)
 }
 
 void prog_score_overheal(float part) { SCORE(0x1f7d9d4) += part; }
@@ -582,10 +618,19 @@ void prog_stat_kill(int attack_id)
 	           attack_id == 0x1a;
 	if (gun && s_shot < 0xffff) s_shot++;
 	if (!gun && s_beaten < 0xffff) s_beaten++;
-	u8* n = p_puzzle() + 0x1b;              // the ending score's kill count (0x1f7da7b, up to 100)
+}
+
+// EventMain (0x48ecb0): James running into Maria (0x52cf70) counts into 0x1f7da7b, up to 100; the
+// ending decision takes a point from her past 30 and gives one under 3.
+void prog_score_bump(void)
+{
+	u8* n = p_puzzle() + 0x1b;
 	if (*n < 100)
 		(*n)++;
 }
+
+// 0x539820 from Maria's damage code: enemies' blows (attack ids over 0x29) into 0x1dbebac.
+void prog_score_maria_hurt(float d) { s_damage[1] += d; }
 
 // The results screen after an ending (0x447650) and its rank (0x539bf0).
 void prog_results(ProgResults* r)
@@ -595,6 +640,7 @@ void prog_results(ProgResults* r)
 	r->ending = s_last_ending, r->endings = s_endings, r->saves = s_saves, r->time = s_time;
 	r->walk_km = s_walk * 0.002f * 0.001f, r->run_km = s_run * 0.002f * 0.001f;
 	r->items = s_items, r->shot = s_shot, r->beaten = s_beaten, r->damage = s_damage[2];
+	r->boat_time = s_boat_time, r->boat_speed = s_boat_speed;
 	int ends = 0;
 	for (int b = 0; b < 6; b++)
 		ends += s_endings >> b & 1 ? 4 : 0;
@@ -603,7 +649,7 @@ void prog_results(ProgResults* r)
 	int shot = s_shot > 75 ? 15 : s_shot / 5, beaten = s_beaten > 75 ? 15 : s_beaten / 5;
 	float d = s_damage[2];
 	int dmg = d <= 500.0f ? 5 : d <= 1000.0f ? 4 : d <= 1500.0f ? 3 : d <= 2000.0f ? 2 : d <= 2500.0f ? 1 : 0;
-	float boat = r->boat_time;       // the port has no boat ride: 0 seconds, as on the PC without one
+	float boat = r->boat_time;       // 0x539af0
 	int boat_pts = boat <= 80.0f ? 5 : boat <= 160.0f ? 4 : boat <= 240.0f ? 3 : boat <= 480.0f ? 2 : boat <= 960.0f ? 1 : 0;
 	float min = s_time / 60.0f;
 	int time = min <= 180.0f ? 10 : min <= 240.0f ? 5 : min <= 360.0f ? 3 : min <= 480.0f ? 2 : min <= 960.0f ? 1 : 0;

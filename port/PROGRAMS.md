@@ -215,12 +215,28 @@ counters the PC keeps in its flag block, so the port keeps them in the same plac
 
 | counter (PC) | port | counts for |
 |---|---|---|
-| 0x1f7d9d8: time at low health, weighted by 1 - sin(pi * hp) | `prog_score_frame` | In Water (> 60 and > 240 seconds) |
+| 0x1f7d9d8: time at low health (under half), weighted by 1 - sin(pi * hp) | `prog_score_frame` | In Water (> 60 and > 240 seconds) |
 | 0x1f7d9d4: health items used over the maximum, in maximums | `prog_score_overheal` (the item use in main.c) | Leave (> 2) |
-| 0x1f7d9cc / 0x1f7d9d0: time near Maria (< 1000) / far from her (> 5000) | `prog_score_frame` (no Maria yet: -1) | Maria (> 600 / > 300 seconds) |
+| 0x1f7d9cc / 0x1f7d9d0: time near Maria (< 1000) / far from her (> 5000) | `prog_score_frame` with `maria_distance()` | Maria (> 600 / > 300 seconds) |
 | 0x1f7da7a: looking at Mary's photo or letter in the item list, up to 2 | `prog_score_examine` | Maria (one less above 1) |
-| 0x1f7da7b: enemies killed, up to 100 | `prog_score_kill` (needs a call where enemy.c kills) | Maria (above 30, under 3) |
-| 0x1dbebb0, 0x1dbebac, 0x1dbeba8: damage to Maria, the other damage class, damage James took | `p_damage_stats`, James' part from his health in `prog_score_frame` | Maria |
+| 0x1f7da7b: James running into Maria, up to 100 | `prog_score_bump` (maria.c) | Maria (one less above 30, one more under 3) |
+| 0x1dbebb0: damage James' weapons did Maria (x 0.1 for the melee ids 8..0x1e) | `p_damage_stats()[0]`, stays 0: James' weapons cannot hit her in the port | Maria (one less above 0, another above half the limit) |
+| 0x1dbebac: damage enemies did her (attack ids over 0x29) | `prog_score_maria_hurt` (maria.c `maria_hit`) | Maria (one more under 3 % of James' damage) |
+| 0x1dbeba8: damage James took, in health points | `prog_score_frame` | as above |
+
+EventMain (0x48ecb0) counts low health, near / far and the bumps only while no stage program runs,
+and so does the port. The near / far distance (0x1fb3b14) is 3D and written only while Maria is
+about (0x52b7f0) and set to 0 when she appears (0x52c000), but EventMain reads it every frame: before
+she first comes along it is 0, so the "near" time grows, and after she leaves it keeps her last
+distance. maria.c keeps the same value. A bump (0x52cf70) is James within 365 of her, faster than
+3 m/s and heading at her (cosine under -0.85); the PC counts it once per reaction of hers, the port
+once until the condition stops holding. Looking at Angela's knife (item 0x18) in the item list sets
+flag 630 (0x471590), one more for In Water.
+
+Audited against 0x576660 in batch 18: the flags, thresholds and the order of the comparisons match
+the PC. Before that the port counted kills into 0x1f7da7b, never fed the damage enemies do Maria,
+counted James' damage as health fractions times 100 (half on easy, where his maximum is 200),
+counted near / far only while she followed and the low health time during programs too.
 
 Flags weigh in as on the PC (655, 656, 204, 371, 500, 615, 629, 630, 624), and having the four
 Rebirth items (74..77) sets 621 before anything else. The result is flag 618 (Leave), 619 (Maria)
@@ -406,7 +422,8 @@ the title an "Options" row (the PC's title has OPTIONS too).
 * GAME OPTIONS (message 73): Weapon Control (Normal: hold R to ready the weapon; Switch: R toggles
   it), Map (the map screen opens Zoom In or Zoom Out), Walk/Run Control (Walk: B runs; Run: James
   runs and B walks; Analog: a full tilt of the Circle Pad runs), View Control (Normal / Switch),
-  Blood Color (Normal, Green, Violet, Black) and, once a game has been cleared (0x1dbeb85),
+  Blood Color (Normal, Green, Violet, Black) and, once a game has been cleared (0x1dbeb85, the
+  clear count, so a Born From a Wish clear alone does not count: 0x461600 / 0x45fcf0),
   Bullet Adjust (x1 to x3, wrapping as on the PC). Weapon Control and Walk/Run Control reach the
   game as the keys `combat.c` and the movement read (`move_keys` in main.c). View Control is how
   the look button (controls.c's GK_LOOK: ZL on the New 3DS layout, L on the Old) brings up the
@@ -542,8 +559,8 @@ screen (0x496dd0). `titlemenu.c` draws them on the top screen and lists them on 
   each at its own place (with no saves the list starts at NEW GAME's place), grey 0x7f at alpha
   0x70 in PS2 units and the chosen one again at full alpha a pixel up and left. CONTINUE is chosen
   when there are saves, NEW GAME otherwise. LOAD opens the file list, CONTINUE loads the file
-  played longest (the port's saves carry no date), EXIT leaves the game. The touch list adds the
-  port's room viewer at the end.
+  played longest (the port's saves carry no date), EXIT leaves the game. With `viewer 1` in
+  debug.txt the touch list adds the port's room viewer at the end; players do not see it.
 * NEW GAME goes to the scenarios (0x4979c0 / 0x4968c0): MAIN SCENARIO: Letter From Silent Heaven and
   SUB SCENARIO: Born From A Wish (252 / 253) at x 234, y 324 and 350, the Director's Cut way into
   Born From a Wish. Then the levels (0x497bb0, 0x497fc0): ACTION LEVEL (246) at x 128 with HARD,
@@ -1124,8 +1141,66 @@ table is in `prog_prison.c`).
 
 | # | PC | PS2 name | events | what it does | status |
 |---|---|---|---|---|---|
-| 1 | 0x57dd20 | EvProgEmbarkBoat | 2 | the boat: flag 654, demo, then straight to the disembark scene (the port has no rowing) and flag 381 | ported |
-| 2 | 0x57de40 | EvProgDisembarkBoat | 3 enter | demo, James on the hotel pier | ported |
+| 1 | 0x57dd20 | EvProgEmbarkBoat | 2 | flag 654, demo boat1, then James rows (boat.c): James and the boat at 0x8cf688 / 0x8cf698 facing -pi / 2 | ported |
+| 2 | 0x57de40 | EvProgDisembarkBoat | 3 enter | demo boat2, James on the hotel pier (0x8cf6ec), the boat left at it (0x8cf6dc, facing pi, motion 54) | ported |
+
+The room function (0x57e7a0) lays the boat at the town pier (0x8cf814, facing pi / 2, motion 54)
+until flag 379 (the embark event's) is set; the boat's first update (0x53fe40 step 0) puts any
+boat on the water at y 3690. The per-frame function (0x57eeb0) sets the lake sound's (SE 0x3cf0)
+level from James' z and, within 550 of (-15500, -2500), a fixed camera at the hotel pier
+(0x8cf824 / 0x8cf834); neither is in the port, and the lake sound is not started (0x57e840).
+
+### The boat (boat.c)
+
+James rows the PC's boat character 0x10b (update 0x53fe40, its functions 0x53e760..0x540250; PS2
+beta Chacter/m3_boat.c and lake_wave.c have only the names). Each frame while James is in boat
+mode (status bit 0x20000):
+
+* The keys (0x53e760): the stick, or the arrow keys, is read as one direction; its length does not
+  matter once it is past the PC's dead zone (the bytes shifted down 4). Turned 45 degrees it gives
+  the two oars' pulls: 0.5 each straight ahead, 0.25 and -0.25 to a side, half without the run key
+  (0x1fbab0d, the Walk / Run option applies). Only the middle of a stroke (motion frames 17..79)
+  pushes: forward (a + b) x 1.8 / 2, turn (a - b) x 1.8. The oars it rows with, both (motion 51),
+  the left (52) or the right (53), are picked again at most every 1.5 s (0x1f9941c, held while the
+  motions mix) and are both once the boat goes 2 m/s.
+* The motion (0x53f5b0, 0x533800): a new pick mixes in over 32 frames keeping the stroke's step
+  (mode 10), and James' motion (0x4e24..0x4e26 in the lake's table 0x8cf3d8) changes with it and
+  stays at the boat's frame (0x559e40). The stroke speed (0x53f3c0) goes towards a x 32768 (b for
+  the left oars) by 64 a frame and back by 16, at most 2048, and plays at twice that (2048 = 30
+  frames a second); with the stick let go the oars go on at 1024 until they rest at frames 40..42.
+* Speed and turn (0x53ee20): drag 0.15 and 0.2 of the speed a second, the push x 1.5, speed -3..3.5
+  m/s, the turn push x 0.25 / (|speed| + 1), turn rate -1.5..1.5 rad/s, 500 units a metre. Below
+  0.05 m/s (0.025 rad/s) with nothing pushing the boat stops. The boat's column (1650) keeps it off
+  walls.
+* The water (0x53ee20, 0x53f9b0, 0x559b40): a bob, a roll and a pitch, each a swinging height eased
+  off by 1 % (2 %) a frame; the roll tilts the boat by atan(h / 0.5), the pitch by atan(h / 2).
+  The stick's turn and push start them, and so do the lake's 20 rings of waves that spread at 3
+  m/s from (-10000, -60000) and start again at 240 m (energy 0.25..0.75, 0.015 less a second).
+* The oars (0x53f6b0, 0x53f790): a blade (bones 3 and 4) going deeper than y 3500 plays SE 0x3cf1 or
+  0x3cf2 5000 units to its side, at the stroke speed / 10240. The PC also posts a splash (Effect2
+  water class 0x12, 0x4c7b00); the port has no water effects yet.
+* The results: the boat stage's time and top speed (gBoatStageTime 0x1dbeba0, gBoatMaxSpeed
+  0x1dbeba4, 0x5397b0 / 0x5397d0) count while James rows; they are kept in the save file's own
+  field (save version 7) and score as on the PC (0x539af0: 5 under 80 seconds down to 0 over 960).
+* The camera takes the PC's boat parameters (sh2cam's `vcIsOnBoat`, `gamecam_on_boat`).
+* The lake's tiles do not touch each other (cd01 at the town pier, cd05 at the hotel's, cd11 to the
+  west, with open water between), so no neighbour streams in while James rows: twice a second the
+  room within 3000 of the boat that is nearer than the loaded one becomes the room (main.c), which
+  brings in the hotel pier before the disembark scene. Something that moves James (a warp, the
+  playtest at a trigger) takes the boat with him.
+
+James' boat motions are 75 frames each in jms_boat.anm where the boat's are 150 (the table says
+150 for both), so the port plays James' at half the boat's frame; the two stay in step. The PC
+also shows James' oar-gripping hands (0x52f6a0 picks hand set 5 / 0x10 on the boat); the port has
+no hand sets. The 3DS reads the Circle Pad only (the D-Pad keeps its brightness keys).
+
+No lighthouse guide was found in the PC's lake code: the stage's functions, the boat's and the
+lake waves' have none, its model list holds only the music box, and no code tests the boat bit
+for anything but the camera, James' control, his hands and one flag of character creation
+(0x48ffdc). The lake is fogged to 5500..7500 (0x57e930) and
+only the wave rings come from a fixed point. The Effect2 "boat mask" (HH_Class_Boat_Mask, PC
+0x4e0640 / 0x4e02b0, data/etc/effect/boatmask.tbn2) draws a grid of quads in the boat's frame while
+the boat exists; it is not ported.
 | 3 | 0x57df80 | EvProgGetLittleMermaid | 4 | "Little Mermaid" music box (item 67) | ported |
 | 4 | 0x57df90 | EvProgEndRebirth | 7 auto | Rebirth ending: end_rbrt.sfd, credits, ending bit 8 | ported |
 | 5 | 0x57e9e0 | (DC) | 11 (use item 78) | the blue gem at the lake, UFO scene | ported (demo hook) |
@@ -1430,21 +1505,21 @@ case, collision and a floor under James. What stood out:
   most of the PC's fades of the overlay parts are shown as on / off (the elevator button
   and the manacles fade). The quiz buttons' sprites were not compared with the PC.
 * Born From a Wish runs with James' model and moves; Maria's model, motions and weapons are not
-  converted. Her escort in James' game is missing as well, so the "near / far from Maria" ending
-  counters and the damage she takes stay 0, which tilts the ending decision away from Maria.
-* enemy.c calls `prog_score_kill`, which does not know the weapon, so every kill counts as beaten
-  on the results screen; calling `prog_stat_kill(attack id)` there instead (it also counts for the
-  ending) splits shot and beaten kills as the PC does. The boat stage is not tracked (0, as on the
-  PC without a boat ride).
-* The lake has no boat: the embark program goes straight to the disembark scene on the hotel pier.
+  converted there. In James' game maria.c has her escort and feeds the ending counters (see The
+  ending score), but James' weapons cannot hit her, so the damage he does her stays 0.
+* The boat (see Stage 38) has no oar splashes (Effect2 water class 0x12) and no hand set for the
+  oars; the lake's ambient sound and the hotel pier's fixed camera (0x57eeb0) are not ported.
 * The hotel elevators, the trunk and the tombstone take the D-pad for the PC's cursor; their
   layouts (which button is which on the still) follow the PC's button tables but were not checked
   against the pictures.
 * Stages 57 and 58 are reconstructed (see above); if the decrypted code is ever available, check
   which message the two look events in ma77 should give.
-* The save screen has the PC's picture, texts and file rows but not the save icons (`si_*.xbx`, the
-  difficulty pictures), the delete option nor the memory unit pages, and it has ten files where
-  the PC lists as many as the disk holds. The results' fade in and out is not done. Messages on the top screen
+* The save screen has the PC's picture, texts and file rows but not the delete option nor the
+  memory unit pages, and it has ten files where the PC lists as many as the disk holds. The save
+  icons (`si_*.xbx`) are not shown on the PC's save screen either: saving (0x453390, 0x44b1f0) picks
+  one by action level (rows easy, nomal, gyogan, hard of the table 0x7f5260) and a counter of the
+  game data mod 6 (0x1f5f300 + 0x36), and only writes it next to the save as SaveImage.pcv, the Xbox
+  dashboard's icon; nothing reads it back. The port writes no such file. The results' fade in and out is not done. Messages on the top screen
   all use the default place since the pack's message text has lost the PC's position words, and
   the full-width and accented characters of other languages are not in the pack's text either.
 * The quiz in the otherworld 3F (0x589820) reads its questions from the still; the buttons are
@@ -1467,9 +1542,8 @@ case, collision and a floor under James. What stood out:
 * The scripted walk has no walking animation and goes straight, without the PC's path code.
 * `EvSubItemGet` also removes the pickup model and plays James' bending motion; the port has no
   item models in rooms yet.
-* Programs that only move characters, cameras or lights (Maria following, enemy removal in
-  0x599c30, the stage's per-frame function) keep only their flags; Maria and the enemies are not in
-  the port yet.
+* Programs that only move characters, cameras or lights (enemy removal in 0x599c30, the stage's
+  per-frame function) keep only their flags.
 * Where the PC lets the player skip a demo with the skip button (`ev_skip`), programs sometimes
   clear `ev_prog_flag_set`; the demo hook has no skip yet, so those branches are not taken.
 * The letters (`letter_msg`, the item "Mary's letter") still read as their item description; the

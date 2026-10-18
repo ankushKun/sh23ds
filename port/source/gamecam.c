@@ -131,6 +131,9 @@ static void yaw_matrix(float m[4][4], float yaw, const float t[3])
 	m[3][0] = t[0]; m[3][1] = t[1]; m[3][2] = t[2]; m[3][3] = 1.0f;
 }
 
+static bool s_on_boat;
+void gamecam_on_boat(bool on) { s_on_boat = on; }
+
 void gamecam_update(const GameCamPlayer* p, float dt, bool far_view, C3D_Mtx* view, float* fovy)
 {
 	if (!s_started)
@@ -147,6 +150,7 @@ void gamecam_update(const GameCamPlayer* p, float dt, bool far_view, C3D_Mtx* vi
 	in.james_pos_x = p->pos[0];
 	in.james_rot_y = p->yaw;
 	in.james_anim_status = 0;               // JMS_ST_U_STAND: only matters in first person
+	in.james_status = s_on_boat ? 0x20000u : 0u;
 
 	float neck[3] = { p->pos[0], p->pos[1] - 830.0f, p->pos[2] };
 	yaw_matrix(in.hero_neck_wm, p->yaw, neck);

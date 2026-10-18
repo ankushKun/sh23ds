@@ -237,6 +237,13 @@ void prog_debug_item_get(int item);
 // The memo list overlays (0x49a210): called every frame with the memo whose picture is up, or -1.
 void prog_overlay_memo(int memo);           // ItemGet itself (debug.txt "itemget")
 void prog_stat_kill(int attack_id);
+// The boat stage's time and top speed (boat.c, each frame James rows), kept with the save.
+void prog_stat_boat(float dt, float speed);
+// The ending decision's counters fed by maria.c: James running into her, the damage enemies did her.
+void prog_score_bump(void);
+void prog_score_maria_hurt(float d);
+void prog_boat_get(float out[2]);
+void prog_boat_set(const float in[2]);
 typedef struct {
 	int action, riddle, chapter, ending, endings, saves, items, secret, shot, beaten, rank;   // secret: how many of the 8
 	float time, walk_km, run_km, damage, boat_time, boat_speed;

@@ -32,3 +32,4 @@ bool titlemenu_init(const char* pack_dir);
 // splash screen, each a second in, a second and a second out (a key cuts them short).
 void titlemenu_boot(void);
 void titlemenu_no_boot(void);            // debug.txt "logos 0"
+void titlemenu_viewer(bool on);          // debug.txt "viewer 1": the room viewer's row on the touch list

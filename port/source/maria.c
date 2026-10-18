@@ -6,6 +6,7 @@
 #include "bgm.h"
 #include "chr.h"
 #include "events.h"
+#include "prog.h"
 #include "sfx.h"
 
 // The PC keeps all of this in shMariaWork (sh2mar at 0x1fb3860). Main states (0x8bced0): stand,
@@ -70,6 +71,28 @@ static struct {
 	float last_px, last_pz;
 	u32 drawn, updated;
 } M;
+
+// The ending counters' distance to James (0x1fb3b14): 3D, written only while she is about (0x52b7f0)
+// and 0 when she is created (0x52c000); EventMain (0x48ecb0) reads it every frame all the same, so
+// before she first comes along it is 0 ("near") and after she leaves it keeps her last distance.
+static float s_ending_dist;
+// Running into her (0x52cf70, counted by EventMain into 0x1f7da7b): James within 365 of her, faster
+// than 3 m/s, heading at her. Latched until it no longer holds (the PC waits for her reaction).
+static float s_bump_px, s_bump_pz;
+static bool s_bump_latch;
+
+static void bump_check(const EnPlayer* p, float dt)
+{
+	float mx = p->x - s_bump_px, mz = p->z - s_bump_pz;
+	s_bump_px = p->x, s_bump_pz = p->z;
+	float step = sqrtf(mx * mx + mz * mz);
+	float dx = p->x - M.x, dz = p->z - M.z, d = sqrtf(dx * dx + dz * dz);
+	bool on = dt > 0.0f && step < 200.0f && step / dt > 1500.0f && d < 365.0f && d > 1.0f &&
+	          (mx * dx + mz * dz) / (step * d) < -0.85f;
+	if (on && !s_bump_latch)
+		prog_score_bump();
+	s_bump_latch = on;
+}
 
 // Appear points (maria_apeear_point_list, 0x6cd6d0): coming into room `now` from room `prev`, she
 // stands at x/y/z facing yaw. Type 3 follows; 0 waits there; 1 rests there (the hospital bed; the
@@ -268,6 +291,7 @@ static void place(const EnPlayer* p)
 	set_anim(MA_STAND);
 	fill_trail(p->x, p->z);
 	M.tx = p->x, M.tz = p->z;
+	s_ending_dist = 0.0f;
 	if (type == 3) M.here = true;
 	else if (type == 2) M.waiting = true, M.wait_room = 8;
 	else M.waiting = true;
@@ -370,6 +394,11 @@ void maria_update(const EnPlayer* p, float dt)
 	float f0 = M.frame;
 	if (M.invuln > 0.0f) M.invuln -= dt;
 	float dist = hypotf(p->x - M.x, p->z - M.z);
+	if (M.here) {
+		s_ending_dist = sqrtf(dist * dist + (p->y - M.y) * (p->y - M.y));
+		if (M.sub < SUB_DAMAGE)
+			bump_check(p, dt);
+	}
 	if (M.sub == SUB_DYING) {
 		step_anim(1.0f, dt);
 		if (M.anim_end) M.dead_time += dt;
@@ -470,6 +499,7 @@ bool maria_hit(float x, float z, float yaw, float reach, float arc, float ap)
 	if (sqrtf(dx * dx + dz * dz) > reach + M.radius || fabsf(wrap(atan2f(dx, dz) - yaw)) > arc)
 		return false;
 	M.hp -= ap;
+	prog_score_maria_hurt(ap);          // 0x539820 from 0x52d3b2: an enemy's blow (ids over 0x29)
 	float pos[3] = { M.x, M.y, M.z };
 	M.speed = 0.0f;
 	if (M.hp <= 0.0f) {
@@ -498,7 +528,7 @@ bool maria_target(const EnPlayer* james, EnPlayer* out)
 	*out = (EnPlayer){ M.x, M.y, M.z, M.yaw, false, true, james->stomping, true };
 	return true;
 }
-float maria_distance(void) { return M.here ? hypotf(M.last_px - M.x, M.last_pz - M.z) : -1.0f; }
+float maria_distance(void) { return s_ending_dist; }
 bool maria_dead(void) { return M.sub == SUB_DYING && M.dead_time > 1.5f; }
 
 void maria_draw(const C3D_Mtx* view, int uModelView, int uBones)

@@ -78,6 +78,12 @@ static bool shown(int it)
 	return it != IT_VIEWER;     // the room viewer is a touch-screen row only
 }
 
+// The room viewer's row on the touch list, only with "viewer 1" in debug.txt.
+static bool s_viewer;
+void titlemenu_viewer(bool on) { s_viewer = on; }
+
+static bool listed(int it) { return shown(it) || (it == IT_VIEWER && s_viewer); }
+
 void titlemenu_boot(void)
 {
 	s_screen = SC_BOOT;
@@ -105,7 +111,7 @@ void titlemenu_reset(bool saves)
 	// the touch list's row for it (the first update reads the row back)
 	s_touch_sel = 0;
 	for (int it = 0; it < s_sel; it++)
-		s_touch_sel += shown(it) || it == IT_VIEWER;
+		s_touch_sel += listed(it);
 }
 
 // ---------------------------------------------------------------- the touch screen
@@ -120,7 +126,7 @@ static void touch(void)
 	case SC_MENU: {
 		static int map[IT_N];
 		for (int it = 0; it < IT_N; it++)
-			if (shown(it) || it == IT_VIEWER) {
+			if (listed(it)) {
 				snprintf(text[n], sizeof text[n], "%s", it == IT_VIEWER ? "Room viewer (debug)" : msg(238 + it, "?"));
 				map[n] = it;
 				if (it == s_sel)
@@ -160,7 +166,7 @@ static int menu_item(int row)
 {
 	int n = 0;
 	for (int it = 0; it < IT_N; it++)
-		if (shown(it) || it == IT_VIEWER) {
+		if (listed(it)) {
 			if (n == row)
 				return it;
 			n++;
@@ -225,7 +231,7 @@ int titlemenu_update(u32 down, float dt, int* action, int* riddle, const char** 
 			int it = s_sel;
 			do
 				it = (it + (dn ? 1 : IT_N - 1)) % IT_N;
-			while (!shown(it) && it != IT_VIEWER);
+			while (!listed(it));
 			s_sel = it;
 			sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
 		}

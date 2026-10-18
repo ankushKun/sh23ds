@@ -21,6 +21,8 @@ void maria_draw(const C3D_Mtx* view, int uModelView, int uBones);
 // true if it caught her (she takes `ap`).
 bool maria_hit(float x, float z, float yaw, float reach, float arc, float ap);
 bool maria_present(void);
+// The ending counters' distance to James (0x1fb3b14): 0 before she first comes along, her last
+// distance after she has left.
 float maria_distance(void);
 // Maria as an enemy's target (0x542ad0: an enemy goes for whichever of the two is closer). False
 // when she is not following James or is down.
