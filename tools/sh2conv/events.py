@@ -84,7 +84,7 @@ ITEM_KIND_ADDR = 0x88cca0    # Item_List.st>>29 -> {s16 item given, s16 system m
 # ------------------------------------------------------------------ exe access
 class Exe:
     def __init__(self, path):
-        self.pe = pefile.PE(path, fast_load=True)
+        self.pe = pefile.PE(data=open(path, 'rb').read(), fast_load=True)
         self.data = open(path, 'rb').read()
         self.secs = [(s.VirtualAddress + IMAGE_BASE, max(s.Misc_VirtualSize, s.SizeOfRawData),
                       s.PointerToRawData, s.SizeOfRawData) for s in self.pe.sections]

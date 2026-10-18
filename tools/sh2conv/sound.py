@@ -221,11 +221,11 @@ def parse_wav(blob):
 
 def resample(pcm, rate, to):
     """Mono PCM16 bytes from rate to another rate (ffmpeg's resampler)."""
-    import subprocess
+    import host
     if rate == to:
         return pcm
-    return subprocess.run(['ffmpeg', '-v', 'error', '-f', 's16le', '-ar', str(rate), '-ac', '1', '-i', 'pipe:',
-                           '-ar', str(to), '-f', 's16le', 'pipe:'], input=pcm, capture_output=True, check=True).stdout
+    return host.run(['ffmpeg', '-v', 'error', '-f', 's16le', '-ar', str(rate), '-ac', '1', '-i', 'pipe:',
+                     '-ar', str(to), '-f', 's16le', 'pipe:'], input=pcm, capture=True)
 
 
 def wav_mono(blob, max_rate=SE_MAX_RATE):
@@ -244,14 +244,14 @@ def wav_to_adx(blob):
     as is, and ffmpeg's encoder predicts with one rounding (ADX version 4) where version 3 rounds
     each term: so each scale is stored one lower and the header says version 4 (no loop either
     way), which decodes in audio.c as ffmpeg meant (37 dB SNR on speech, 47 dB on a sine)."""
-    import subprocess
     import tempfile
     import numpy as np
+    import host
     with tempfile.TemporaryDirectory() as tmp:
         src, dst = os.path.join(tmp, 'in.wav'), os.path.join(tmp, 'out.adx')
         with open(src, 'wb') as f:
             f.write(blob)
-        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', src, '-c:a', 'adpcm_adx', '-f', 'adx', dst], check=True)
+        host.run(['ffmpeg', '-v', 'error', '-y', '-i', src, '-c:a', 'adpcm_adx', '-f', 'adx', dst])
         b = bytearray(open(dst, 'rb').read())
     if struct.unpack_from('>H', b, 0)[0] != 0x8000 or b[4] != 3 or b[5] != 18:
         raise ValueError('ffmpeg wrote an unexpected ADX header')

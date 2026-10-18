@@ -44,7 +44,7 @@ def write_blow(exe, out):
     except ImportError:
         print('fog: pefile missing, no blow.txt')
         return False
-    pe = pefile.PE(exe, fast_load=True)
+    pe = pefile.PE(data=open(exe, 'rb').read(), fast_load=True)
     img = pe.get_memory_mapped_image()
     base = pe.OPTIONAL_HEADER.ImageBase
     lines = []

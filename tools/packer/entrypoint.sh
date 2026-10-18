@@ -14,10 +14,10 @@ if [ ! -f /game/sh2pc.exe ] || [ ! -d /game/data ]; then
 fi
 OUT=/out/3ds/sh23ds
 echo "sh23ds packer $(cat /opt/sh23ds/VERSION), writing $OUT"
-/opt/sh23ds/tools/make_pack.sh /game "$OUT"
-if [ "${KEEP_EXTRAS:-0}" != "1" ]; then
-	find "$OUT" -type d -name png -prune -exec rm -rf {} +
-	find "$OUT" -name '*.json' -delete
+if [ "${KEEP_EXTRAS:-0}" = "1" ]; then
+	/opt/sh23ds/tools/make_pack.sh /game "$OUT"
+else
+	/opt/sh23ds/tools/make_pack.sh /game "$OUT" --strip-extras
 fi
 echo
 echo "Done. Copy the 3ds folder inside your output folder to the root of the SD card."

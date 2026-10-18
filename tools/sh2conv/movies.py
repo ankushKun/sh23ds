@@ -33,15 +33,14 @@ stream (same order); movie.c maps the PC names onto file and stream. end_dog.bik
 tracks, so only the first is kept. Every other file has one track.
 """
 import argparse
-import concurrent.futures
 import json
 import os
-import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import ee  # noqa: E402
+import host  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 DEFAULT_DATA = os.path.join(ROOT, 'Silent Hill 2', 'data')
@@ -57,9 +56,8 @@ FPS = '30000/1001'                  # MPEG-1 only allows the standard rates; Bin
 
 
 def probe(path):
-    out = subprocess.run(['ffprobe', '-v', 'error', '-show_entries',
-                          'format=duration:stream=codec_type,width,height', '-of', 'json', path],
-                         check=True, capture_output=True, text=True).stdout
+    out = host.run(['ffprobe', '-v', 'error', '-show_entries',
+                    'format=duration:stream=codec_type,width,height', '-of', 'json', path], capture=True)
     j = json.loads(out)
     v = next(s for s in j['streams'] if s['codec_type'] == 'video')
     na = sum(1 for s in j['streams'] if s['codec_type'] == 'audio')
@@ -99,7 +97,7 @@ def convert(name, src, dst, args, half=False):
             '-subcmp', '2', '-g', '60', '-bf', '2',
             '-c:a', 'mp2', '-ar', str(args.rate), '-ac', '2', '-b:a', '%dk' % args.abr,
             '-f', 'mpeg', dst + '.part']
-    subprocess.run(cmd, check=True)
+    host.run(cmd)
     os.replace(dst + '.part', dst)
     return name, ew, eh, dur, tracks, os.path.getsize(dst)
 
@@ -151,10 +149,15 @@ def main():
             done.append((n, w, h, dur, na, os.path.getsize(dst), origin))
             continue
         jobs.append((n, src, dst, origin))
-    with concurrent.futures.ThreadPoolExecutor(args.j) as ex:
-        for r in ex.map(lambda j: convert(j[0], j[1], j[2], args) + (j[3],), jobs):
-            print('%-10s %dx%d %6.1f s  %d track(s)  %5.1f MB  from %s' % (r[0], r[1], r[2], r[3], r[4], r[5] / 1e6, r[6]))
-            done.append(r)
+    def one(jp):
+        k, (j, (lo, hi)) = jp
+        host.progress(lo, k, len(jobs), 'movies, now ' + j[0])
+        with host.part(lo, hi):          # the step's progress bar, by each movie's share of the bytes
+            r = convert(j[0], j[1], j[2], args) + (j[3],)
+        print('%-10s %dx%d %6.1f s  %d track(s)  %5.1f MB  from %s' % (r[0], r[1], r[2], r[3], r[4], r[5] / 1e6, r[6]),
+              flush=True)
+        return r
+    done += host.pmap(one, enumerate(zip(jobs, host.parts([os.path.getsize(j[1]) for j in jobs]))), args.j)
     if args.half:
         half_dir = os.path.join(out_dir, 'half')
         os.makedirs(half_dir, exist_ok=True)
@@ -167,9 +170,10 @@ def main():
             if os.path.exists(src) and (args.force or not os.path.exists(dst) or
                                         os.path.getmtime(dst) < os.path.getmtime(src)):
                 hjobs.append((n, src, dst))
-        with concurrent.futures.ThreadPoolExecutor(args.j) as ex:
-            for r in ex.map(lambda j: convert(j[0], j[1], j[2], args, True), hjobs):
-                print('half %-10s %dx%d %5.1f MB' % (r[0], r[1], r[2], r[5] / 1e6))
+        def half(j):
+            r = convert(j[0], j[1], j[2], args, True)
+            print('half %-10s %dx%d %5.1f MB' % (r[0], r[1], r[2], r[5] / 1e6), flush=True)
+        host.pmap(half, hjobs, args.j)
 
     # Keep lines for movies converted earlier that this run did not touch
     for n, w, h, dur, tracks, size, origin in done:

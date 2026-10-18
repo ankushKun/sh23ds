@@ -78,6 +78,7 @@ import sh2mdl  # noqa: E402
 from chr import convert_model  # noqa: E402
 from convert import encode_textures, pow2_floor  # noqa: E402
 from sound import Exe, afs_files, wav_to_adx  # noqa: E402
+import host  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 DEFAULT_DATA = os.path.join(ROOT, 'Silent Hill 2', 'data')
@@ -907,7 +908,8 @@ def main():
                     jobs.append((pa, pi, fn, path))
                 else:
                     print('PlayInfo %#x: extra script %s does not fit' % (pa, rel))
-    for pa, pi, fn, path in jobs:
+    for k, (pa, pi, fn, path) in enumerate(jobs):
+        host.progress(0.95 * k / len(jobs), k, len(jobs), 'scenes')
         if not path:
             print('PlayInfo %#x (program %s): no script fits (demo_no %d)' % (pa, fn and hex(fn), pi['demo_no']))
             continue

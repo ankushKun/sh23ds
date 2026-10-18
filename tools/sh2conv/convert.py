@@ -37,6 +37,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ee  # noqa: E402
+import host  # noqa: E402
 import sh2map  # noqa: E402
 
 GROUP = {'opaque': 0, 'transparent': 1, 'decal': 2}
@@ -128,12 +129,16 @@ def local_tex3ds():
     return cand if os.access(cand, os.X_OK) else None
 
 
-def encode_textures(jobs, pack_root, fmt=None, mipmaps=True):
+def encode_textures(jobs, pack_root, fmt=None, mipmaps=True, what=None):
     """jobs: list of (png path relative to pack_root, t3x path relative, has_alpha). fmt overrides the
     ETC1 / ETC1A4 choice (any tex3ds format name). The jobs are split over one subshell per CPU core
     that run side by side, since each tex3ds call uses a single core. The script goes to sh on stdin:
     a container on a macOS shared folder doesn't always see a file written just before it starts."""
     if not jobs:
+        return
+    if host.BROWSER:     # no tex3ds in the browser packer: t3x.py writes the same .t3x files
+        import t3x
+        t3x.encode_jobs(jobs, pack_root, fmt, mipmaps, what)
         return
     mip = '-m lanczos' if mipmaps else ''
     cmds = []
@@ -188,7 +193,8 @@ def convert_area(data_dir, pack_root, area, max_tex, rooms_filter, bg='bg'):
     rooms = [r for r in maps if r != area and (not rooms_filter or r in rooms_filter)]
     needed = {mt.texture_id for r in rooms for mt in maps[r].materials if mt.texture_id}
     tex_alpha, jobs, missing = {}, [], 0
-    for tid in sorted(needed):
+    for n, tid in enumerate(sorted(needed)):
+        host.progress(0.2 * n / max(1, len(needed)))
         t = textures.get(tid)
         if t is None:
             missing += 1
@@ -200,7 +206,8 @@ def convert_area(data_dir, pack_root, area, max_tex, rooms_filter, bg='bg'):
         if not os.path.exists(os.path.join(pack_root, t3x)):
             img.save(os.path.join(pack_root, png))
             jobs.append((png, t3x, alpha))
-    encode_textures(jobs, pack_root)
+    with host.part(0.2, 0.9):
+        encode_textures(jobs, pack_root, what='textures in ' + area)
     tot_v = tot_t = 0
     for r in rooms:
         cam = os.path.join(src, f'{r}.cam')     # camera roads, used as-is by the camera port
@@ -234,8 +241,11 @@ def main():
     a = ap.parse_args()
     areas = a.areas.split(',') if a.areas else sorted(os.listdir(os.path.join(a.data, a.bg)))
     rooms = set(a.rooms.split(',')) if a.rooms else None
-    for area in areas:
-        convert_area(a.data, a.pack, area, a.max_tex, rooms, a.bg)
+    # progress by each area's share of the map files
+    weights = [sum(f.endswith('.map') for f in os.listdir(os.path.join(a.data, a.bg, x))) + 1 for x in areas]
+    for area, (lo, hi) in zip(areas, host.parts(weights)):
+        with host.part(lo, hi):
+            convert_area(a.data, a.pack, area, a.max_tex, rooms, a.bg)
 
 
 if __name__ == '__main__':

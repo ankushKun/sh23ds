@@ -152,7 +152,7 @@ class Exe:
             print('warning: %s has md5 %s, expected %s (Director\'s Cut)' % (path, md5, EXE_MD5),
                   file=sys.stderr)
         self.data = raw
-        pe = pefile.PE(path, fast_load=True)
+        pe = pefile.PE(data=open(path, 'rb').read(), fast_load=True)
         self.secs = [(s.VirtualAddress + IMAGE_BASE, max(s.Misc_VirtualSize, s.SizeOfRawData),
                       s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
 

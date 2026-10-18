@@ -33,9 +33,11 @@ Command line (for tools/make_pack.sh):
   ee.py report <data>                          lists the sh2e files the packer would use
 """
 import os
-import shutil
 import struct
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import host  # noqa: E402
 
 CATEGORIES = (('images', ('pic/', 'menu/', 'etc/effect/', 'effect/')),
               ('fmv', ('movie/',)),
@@ -232,7 +234,7 @@ def copytree(data, rel, dst, skip=()):
             d = os.path.join(out, fn)
             if not (os.path.exists(d) and os.path.getsize(d) == os.path.getsize(p)
                     and os.path.getmtime(d) >= os.path.getmtime(p)):
-                shutil.copy2(p, d)
+                host.copy(p, d)
             n += 1
             r += p != s
     return n, r
@@ -242,7 +244,10 @@ def report(data):
     game = os.path.dirname(os.path.abspath(data))
     root = mod_root(game) if enabled() else None
     if not root:
-        print('no Enhanced Edition folder (%s) next to %s' % (os.environ.get('SH2EE_DIR') or 'sh2e', data))
+        # an ordinary install: the packs are optional (the browser packer's paths mean nothing to its user)
+        where = '' if host.BROWSER else ' next to %s' % data
+        print('No Enhanced Edition packs (no %s folder%s), so the game\'s own files are used.'
+              % (os.environ.get('SH2EE_DIR') or 'sh2e', where))
         return
     count = {}
     for dirpath, _, filenames in os.walk(root):
@@ -252,7 +257,7 @@ def report(data):
             key = category(rel) + (' (skipped)' if _skipped(rel) else '')
             c = count.setdefault(key, [0, 0])
             c[0 if orig else 1] += 1
-    print('Enhanced Edition folder %s:' % root)
+    print('Enhanced Edition packs found%s; their files replace the originals:' % ('' if host.BROWSER else ' in ' + root))
     for k in sorted(count):
         print('  %-22s %5d replacements, %4d files the game has no original of (not used)' % (k, *count[k]))
 

@@ -34,6 +34,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import demos  # noqa: E402
 from sound import Exe  # noqa: E402
+import host  # noqa: E402
 
 MODEL_TABLE = 0x88d4f8
 ITEM_KINDS, N_ITEMS = 0x892640, 86
@@ -63,7 +64,8 @@ def main():
     table = model_table(exe)
     events = json.load(open(a.events or os.path.join(a.out, 'events', 'events.json')))
     lines, done, missing = [], {}, set()
-    for st in events['stages']:
+    for n, st in enumerate(events['stages']):
+        host.progress(0.9 * n / len(events['stages']), n, len(events['stages']), 'stages')
         for m in st.get('models') or []:
             kind = int(m['kind'], 16)
             path = table.get(kind)

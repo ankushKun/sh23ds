@@ -128,7 +128,7 @@ def write_font(pack, exe_path):
     advance is the PC's: the width plus 2, 7 for the space and the cell width plus 2 for the
     full-width codes (0x47f400)."""
     import pefile
-    pe = pefile.PE(exe_path, fast_load=True)
+    pe = pefile.PE(data=open(exe_path, 'rb').read(), fast_load=True)
     img = pe.get_memory_mapped_image()
     base = pe.OPTIONAL_HEADER.ImageBase
 
