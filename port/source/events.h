@@ -82,6 +82,7 @@ const char* ev_system_message(int n);    // common_msg n
 const char* ev_memo_message(int n);     // memo list message n (titles, then texts)
 const char* ev_result_message(int n);   // the results screen's labels
 const char* ev_mcard_message(int n);    // the save screen's texts
+const char* ev_option_message(int n);   // the options screens' texts
 // Inserted values: bytes 1..4 in a message stand for the PC's ff e0..ff e3, byte 5 for its question
 // code ff f6. Set the values, then show the message through ev_msg_expand (main.c does).
 void ev_msg_set_insert(int slot, const char* value);

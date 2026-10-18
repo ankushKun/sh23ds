@@ -23,6 +23,7 @@ typedef struct {
 // there is no map of this area (common message 3); with the town map the screen then shows it.
 enum { MAP_OPEN, MAP_NONE, MAP_NONE_TOWN };
 int map_open(const MapPlayer* p);
+void map_set_open_zoomed(bool in);   // Game Options "Map": Zoom In (true, default) or Zoom Out
 bool map_is_open(void);
 // The marking animation a program starts (0x49c0f0 mode, then 0x49dbd0): modes 0..4. The screen
 // runs by itself (map_update returns false when it has closed); map_marking is true meanwhile.

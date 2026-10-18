@@ -8,7 +8,8 @@ a 512x128 strip around the lettering, RGB565 without mipmaps.
 
 Also writes the save screen's backgrounds (data/menu/mc/savebg.tbn2, James, and savebg2.tbn2,
 Maria; 512x512 DXT3 squeezed to 512x256 RGB565 like the stills: pack/ui/savebg.t3x, savebg2.t3x)
-and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg).
+and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg), and the options
+screens' texts (option_msg_e.mes as pack/events/option.msg).
 
 Also writes the PC's text font (pack/ui/font.t3x and font.bin, see write_font), which the exe carries
 compressed; pass --exe to read another sh2pc.exe than the default one.
@@ -198,6 +199,16 @@ def write_save_screen(data, pack):
     print('wrote ui/savebg.t3x, ui/savebg2.t3x and events/mcard.msg')
 
 
+def write_options(data, pack):
+    """The options screens' texts (0x461600 / 0x464eb0 draw option_msg_e.mes by number)."""
+    import sh2mes
+    from events_pack import write_msg
+    os.makedirs(os.path.join(pack, 'events'), exist_ok=True)
+    write_msg(os.path.join(pack, 'events', 'option.msg'),
+              sh2mes.load(os.path.join(data, 'etc', 'message', 'option_msg_e.mes')))
+    print('wrote events/option.msg')
+
+
 def main():
     args = sys.argv[1:]
     exe_path = None
@@ -211,6 +222,7 @@ def main():
     data, pack = args[0], args[1]
     write_font(pack, exe_path)
     write_save_screen(data, pack)
+    write_options(data, pack)
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
     logo = os.path.join(data, 'pic', 'etc', 'sh2dc.tex')
     img = ee.like_original(load_tex(logo), logo).convert('RGB')

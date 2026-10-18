@@ -30,6 +30,8 @@
 #include "font.h"
 #include "clearsave.h"
 #include "savescreen.h"
+#include "noise.h"
+#include "optmenu.h"
 #include "stagemdl.h"
 #include "touchui.h"
 #include "controls.h"
@@ -88,7 +90,7 @@ static int s_autotest;                // debug.txt "autotest" (autotest_frame)
 static int s_debug_itemget[8], s_debug_nitemget;   // debug.txt "itemget <id>": ItemGet before "results"
 static int s_debug_results;           // debug.txt "results 1": the results screen right after start (2: Born From a Wish)
 static bool s_msg_top;                // options.txt "messagestop": messages and subtitles on the top screen
-static int s_vol_music = 10, s_vol_sound = 10;   // options.txt "musicvol", "soundvol": 0..10
+static Options s_opt;                 // options.txt, edited by the options screens (optmenu.c)
 static char s_status[160];
 static int s_render_mode;   // 0 textured, 1 flat color per group, 2 vertex color only, 3 texture test
 static int s_only_batch = -1;   // debug: draw just this batch
@@ -1242,9 +1244,15 @@ static bool s_run_pressed;          // B went down this frame (for the toggle)
 static u32 s_gdown;                 // this frame's game keys going down (controls.c)
 // Enhanced Edition options kept in options.txt, all on by default as in the EE (combat.c, sh2cam.c, demo.c)
 static bool s_hold_stomp = true, s_swap_attack = true, s_ps2_camera = true, s_cutscene_fov = true;
-static int s_bright = 3;             // brightness option 1..7 (like the PC's); light scale 0.6 + 0.2 * level
+static int s_bright = 3;             // Brightness Level 0..7 (Advanced Options)
 static int s_bright_shown;           // frames left to show the level on the bottom screen
-static float bright_scale(void) { return 0.6f + 0.2f * s_bright; }
+// The PC's brightness is a gamma ramp with the slope k / 128 (0x47cb30); here it scales the light,
+// level 3 keeping the port's 1.2.
+static float bright_scale(void)
+{
+	static const u8 k[8] = { 0x4b, 0x5a, 0x6e, 0x80, 0x8c, 0x9b, 0xb4, 0xdc };
+	return 1.2f * k[s_bright & 7] / 128.0f;
+}
 static RoomEnv s_env;
 
 // The room is lit, or the flashlight is on (events with the "needs light" bit want this).
@@ -1551,6 +1559,26 @@ static void setup_pipeline(void)
 	perf_init(PACK_DIR);
 }
 
+// The Game Options' Weapon Control and Walk/Run Control (0x52e110) as the keys the movement and
+// combat code read: Switch makes R a toggle for the ready stance, Run runs unless B is held,
+// Analog runs on a full tilt of the circle pad.
+static u32 move_keys(u32 held, u32 down, const circlePosition* cp)
+{
+	static bool ready;
+	if (s_opt.weapon == 1) {
+		if (down & KEY_R)
+			ready = !ready;
+		held = ready ? held | KEY_R : held & ~KEY_R;
+	} else {
+		ready = false;
+	}
+	if (s_opt.walk_run == 2)
+		held ^= KEY_B;
+	else if (s_opt.walk_run == 1)
+		held = hypotf(cp->dx, cp->dy) > 0.9f * 156.0f ? held | KEY_B : held & ~KEY_B;
+	return held;
+}
+
 // James' legs (move.c, the PC's lower-body states): the circle pad walks and turns, the game keys
 // (controls.c) run, strafe and turn round. held is the game keys still free (combat.c took its own).
 static void player_update(const circlePosition* cp, u32 held, float dt)
@@ -1623,6 +1651,10 @@ static void shadow_frame(bool paused)
 {
 	static float fade;
 	float k = 0.0f;
+	if (!s_opt.shadows) {
+		shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, 0.0f);
+		return;
+	}
 	// 0x5a8370: the lit rooms (gFlashlightAvailable 1) and the dark ones whose record has no
 	// ShadowDarkNess get the drop shadows instead
 	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && (!s_env.dark || s_env.shadow == 0)) {
@@ -2110,6 +2142,20 @@ static void ui_draw(C3D_Tex* tex, const MapVert* v, int n, u32 rgba)
 	BufInfo_Add(bi, out, ROOM_VERTEX_SIZE, 4, 0x3210);
 	C3D_DrawArrays(GPU_TRIANGLES, 0, n);
 	s_ui_used += n;
+}
+
+// The 2D program as ui_draw_font sets it up (vertex colour straight through), for noise.c.
+static void ui_program_2d(const C3D_Mtx* ortho)
+{
+	C3D_Mtx id;
+	Mtx_Identity(&id);
+	use_world_program();
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, ortho);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, &id);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uGain, 0.0f, 0.0f, 0.0f, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uAmb, 0.0f, 0.0f, 0.0f, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uVgain, 1.0f, 1.0f, 1.0f, 1.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uBase, 0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 // font.c's glyphs: textured triangles tinted per vertex (the vertex colour passes straight through
@@ -2931,50 +2977,63 @@ static bool continue_game(void)
 
 static void options_load(void)
 {
-	FILE* f = fopen(OPTIONS_PATH, "r");
-	if (!f)
-		return;
-	char key[32];
-	int val;
-	while (fscanf(f, "%31s %d", key, &val) == 2) {
-		if (!strcmp(key, "brightness")) s_bright = val < 1 ? 1 : val > 7 ? 7 : val;
-		if (!strcmp(key, "controls")) s_controls = val == 1;
-		if (!strcmp(key, "togglerun")) s_toggle_run = val == 1;
-		if (!strcmp(key, "ps2flashlight")) s_ps2_flash = val != 0;
-		if (!strcmp(key, "holdstomp")) s_hold_stomp = val != 0;
-		if (!strcmp(key, "swapattack")) s_swap_attack = val != 0;
-		if (!strcmp(key, "ps2camera")) s_ps2_camera = val != 0;
-		if (!strcmp(key, "cutscenefov")) s_cutscene_fov = val != 0;
-		if (!strcmp(key, "bulletadjust")) ev_set_bullet_adjust(val);
-		if (!strcmp(key, "messagestop")) s_msg_top = val != 0;
-		if (!strcmp(key, "musicvol")) s_vol_music = val < 0 ? 0 : val > 10 ? 10 : val;
-		if (!strcmp(key, "soundvol")) s_vol_sound = val < 0 ? 0 : val > 10 ? 10 : val;
-	}
-	fclose(f);
+	opt_defaults(&s_opt);
+	opt_load(&s_opt, OPTIONS_PATH);
 }
 
+// s_opt into the game's settings
 static void options_apply(void)
 {
+	s_bright = s_opt.bright;
+	s_controls = s_opt.control_type;
+	s_toggle_run = s_opt.toggle_run;
+	s_ps2_flash = s_opt.ps2_flash;
+	s_hold_stomp = s_opt.hold_stomp, s_swap_attack = s_opt.swap_attack;
+	s_ps2_camera = s_opt.ps2_camera, s_cutscene_fov = s_opt.cutscene_fov;
+	s_msg_top = s_opt.msg_top;
+	ev_set_bullet_adjust(s_opt.bullet);
 	combat_set_options(s_hold_stomp, s_swap_attack);
 	sh2cam_set_ps2_speed(s_ps2_camera);
 	demo_set_reduce_fov(s_cutscene_fov);
 	env_set_ps2_flashlight(s_ps2_flash);
-	audio_set_gains(s_vol_music / 10.0f, s_vol_sound / 10.0f);
-	sfx_set_gain(s_vol_sound / 10.0f);
+	// BGM and SE Volume 0..15 (the PC sends them as volume << 3, 0x515760)
+	audio_set_gains(s_opt.bgm / 15.0f, s_opt.se / 15.0f);
+	sfx_set_gain(s_opt.se / 15.0f);
+	audio_set_output(s_opt.speaker);
+	map_set_open_zoomed(s_opt.map_zoom == 0);
+	noise_set(s_opt.noise, s_opt.bright, s_opt.noise_ps2);
+	s_env_dirty = true;
 }
 
 static void options_save(void)
 {
-	FILE* f = fopen(OPTIONS_PATH, "w");
-	if (!f)
-		return;
-	fprintf(f, "brightness %d\ncontrols %d\ntogglerun %d\nps2flashlight %d\n", s_bright, s_controls, s_toggle_run,
-	        s_ps2_flash);
-	fprintf(f, "holdstomp %d\nswapattack %d\nps2camera %d\ncutscenefov %d\n", s_hold_stomp, s_swap_attack,
-	        s_ps2_camera, s_cutscene_fov);
-	fprintf(f, "bulletadjust %d\nmessagestop %d\n", ev_bullet_adjust(), s_msg_top);
-	fprintf(f, "musicvol %d\nsoundvol %d\n", s_vol_music, s_vol_sound);
-	fclose(f);
+	s_opt.bright = (u8)s_bright;
+	s_opt.control_type = (u8)s_controls;
+	s_opt.bullet = (u8)ev_bullet_adjust();
+	opt_save(&s_opt, OPTIONS_PATH);
+}
+
+// The options screens' host: every change goes into the game at once (the flashlight's look and
+// the light scale want the room's lights rebuilt), the file is written when the changes are kept.
+static void opt_changed(const Options* o)
+{
+	(void)o;
+	options_apply();
+	env_room_changed();
+}
+
+static void opt_keep(const Options* o)
+{
+	(void)o;
+	opt_save(&s_opt, OPTIONS_PATH);
+}
+
+static void options_open(void)
+{
+	u8 clear[3];
+	prog_clear_get(clear);
+	OptHost host = { opt_changed, opt_keep, clear[1] != 0 };
+	optmenu_open(&s_opt, &host);
 }
 
 // The title entry being started (0 new game, 1 Born From a Wish, 2 continue) while the title fades
@@ -3071,11 +3130,14 @@ static bool title_update(u32 down)
 		savescreen_update(down);
 		return true;
 	}
+	if (optmenu_active()) {
+		if (!optmenu_update(down))
+			consoleClear();
+		return true;
+	}
 	if (s_title_sub)
 		return title_levels(down);
-	static char controls[32];
-	snprintf(controls, sizeof controls, "Controls: %s", s_controls ? "2D (camera)" : "3D (tank)");
-	const char* items[] = { "New Game", "Born From a Wish", "Continue", controls, "Room viewer (debug)" };
+	const char* items[] = { "New Game", "Born From a Wish", "Continue", "Options", "Room viewer (debug)" };
 	enum { N = 5 };
 	if (down & (KEY_DUP | KEY_DDOWN)) {
 		s_menu = (s_menu + (down & KEY_DDOWN ? 1 : N - 1)) % N;
@@ -3094,8 +3156,9 @@ static bool title_update(u32 down)
 			else
 				printf("\x1b[25;9HNo save file yet.        ");
 		} else if (s_menu == 3) {
-			s_controls = !s_controls;
-			options_save();
+			touchui_menu_close(TOUI_TITLE);
+			options_open();
+			return true;
 		} else {
 			s_state = ST_VIEWER;
 			s_cam.mode = CAM_ORBIT;
@@ -3134,14 +3197,10 @@ static bool title_update(u32 down)
 static bool s_paused;
 static int s_pause_sel;
 static bool s_pause_dirty;
-static bool s_pause_buttons;         // the Buttons page (controls.c) is open
+#define PAUSE_ROWS 5
 
 static void pause_draw(void)
 {
-	if (s_paused && s_pause_buttons) {
-		controls_menu_draw();
-		return;
-	}
 	if (!s_pause_dirty)
 		return;
 	s_pause_dirty = false;
@@ -3152,24 +3211,15 @@ static void pause_draw(void)
 		touchui_menu_close(TOUI_PAUSE);
 		return;
 	}
-	char bright[32], controls[32], runmode[32], flash[32], msgs[32], music[32], sound[32];
-	snprintf(bright, sizeof bright, "Brightness  < %d >", s_bright);
-	snprintf(controls, sizeof controls, "Controls    %s", s_controls ? "2D (camera)" : "3D (tank)");
-	snprintf(runmode, sizeof runmode, "Run         %s", s_toggle_run ? "toggle B" : "hold B");
-	snprintf(flash, sizeof flash, "Flashlight  %s", s_ps2_flash ? "PS2 (soft)" : "PC (bright)");
-	snprintf(msgs, sizeof msgs, "Messages    %s", s_msg_top ? "top screen" : "bottom screen");
-	snprintf(music, sizeof music, "Music       < %d >", s_vol_music);
-	snprintf(sound, sizeof sound, "Sound       < %d >", s_vol_sound);
-	// the Old 3DS profile's rows (hardware, control layout, quality) go before "Quit to title"
-	// once profile.h is in the tree; touchui shows whatever rows are here
-	const char* items[] = { "Resume", "Map", "Memos", bright, controls, runmode, flash, msgs, music, sound,
-	                        controls_menu_label(), "Quit to title" };
+	// the settings and the Buttons page are on the options screens (optmenu.c), where the Old 3DS
+	// profile's rows (hardware, control layout, quality) go once profile.h is in the tree
+	const char* items[PAUSE_ROWS] = { "Resume", "Map", "Memos", "Options", "Quit to title" };
 	printf("\x1b[18;1H---------------- Pause -----------------");
-	for (int i = 0; i < 12 && 19 + i < 29; i++)
+	for (int i = 0; i < PAUSE_ROWS; i++)
 		printf("\x1b[%d;6H%c %s", 19 + i * 1, i == s_pause_sel ? '>' : ' ', items[i]);
-	printf("\x1b[29;3HA: select  left/right: change  B: back");
+	printf("\x1b[29;3HA: select  B: back");
 	static const TouiButton back[1] = { { "Back", KEY_B } };
-	touchui_menu(TOUI_PAUSE, "Pause", items, 12, &s_pause_sel, back, 1);
+	touchui_menu(TOUI_PAUSE, "Pause", items, PAUSE_ROWS, &s_pause_sel, back, 1);
 }
 
 // Returns true while the game is paused (the caller skips the game update).
@@ -3179,7 +3229,6 @@ static bool pause_update(u32 down)
 		if ((down & KEY_START) && !s_msg_page && !s_save_prompt && !s_inv_open && !s_warp_pending &&
 		    !screens_open()) {
 			s_paused = true;
-			s_pause_buttons = false;
 			s_pause_sel = 0;
 			s_pause_dirty = true;
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
@@ -3187,11 +3236,9 @@ static bool pause_update(u32 down)
 		}
 		return false;
 	}
-	if (s_pause_buttons) {
-		if (!controls_menu_update(down)) {
-			s_pause_buttons = false;
-			s_pause_dirty = true;
-		}
+	if (optmenu_active()) {
+		if (!optmenu_update(down))
+			s_pause_dirty = true;            // back on the pause menu
 		return true;
 	}
 	if (down & (KEY_START | KEY_B) || ((down & KEY_A) && s_pause_sel == 0)) {
@@ -3201,7 +3248,7 @@ static bool pause_update(u32 down)
 		return true;
 	}
 	if (down & (KEY_DUP | KEY_DDOWN)) {
-		s_pause_sel = (s_pause_sel + (down & KEY_DDOWN ? 1 : 11)) % 12;
+		s_pause_sel = (s_pause_sel + (down & KEY_DDOWN ? 1 : PAUSE_ROWS - 1)) % PAUSE_ROWS;
 		s_pause_dirty = true;
 		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
 	}
@@ -3214,55 +3261,14 @@ static bool pause_update(u32 down)
 			open_memos();
 		return true;
 	}
-	if (s_pause_sel == 3 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
-		s_bright += down & KEY_DLEFT ? -1 : 1;
-		s_bright = s_bright < 1 ? 7 : s_bright > 7 ? 1 : s_bright;
-		s_env_dirty = true;
-		s_pause_dirty = true;
-		options_save();
-	}
-	if (s_pause_sel == 4 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
-		s_controls = !s_controls;
-		s_pause_dirty = true;
-		options_save();
-	}
-	if (s_pause_sel == 5 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
-		s_toggle_run = !s_toggle_run;
-		s_pause_dirty = true;
-		options_save();
-	}
-	// Changing a value gets the cursor sound (10000) too, so every input on this page is heard (the
-	// Enhanced Edition "MenuSoundsFix", Patches/MenuSounds.cpp, adds the same sound to the PC pause
-	// and options pages, which the port's own menu already has for moves, confirm and cancel)
-	// Enhanced Edition "PS2FlashlightBrightness" is the default; the PC's brighter beam is a choice
-	if (s_pause_sel == 6 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
-		s_ps2_flash = !s_ps2_flash;
-		env_set_ps2_flashlight(s_ps2_flash);
-		env_room_changed();
-		s_pause_dirty = true;
-		options_save();
-	}
-	if (s_pause_sel == 7 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
-		s_msg_top = !s_msg_top;
-		s_pause_dirty = true;
-		options_save();
-	}
-	if ((s_pause_sel == 8 || s_pause_sel == 9) && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
-		int* v = s_pause_sel == 8 ? &s_vol_music : &s_vol_sound;
-		*v += down & KEY_DLEFT ? -1 : 1;
-		*v = *v < 0 ? 10 : *v > 10 ? 0 : *v;
-		options_apply();
-		s_pause_dirty = true;
-		options_save();
-	}
-	if (s_pause_sel >= 3 && s_pause_sel <= 9 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A)))
-		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
-	if (s_pause_sel == 10 && (down & KEY_A)) {
-		s_pause_buttons = true;          // the Buttons page (controls.c)
-		controls_menu_open();
+	if (s_pause_sel == 3 && (down & KEY_A)) {
+		// the PC's options screens (Enhanced Edition "MenuSoundsFix": every change is heard there)
 		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+		touchui_menu_close(TOUI_PAUSE);
+		options_open();
+		return true;
 	}
-	if (s_pause_sel == 11 && (down & KEY_A)) {
+	if (s_pause_sel == 4 && (down & KEY_A)) {
 		s_paused = false;
 		enter_title();
 	}
@@ -3304,7 +3310,8 @@ static void draw_top_text(void)
 		return;
 	if (demo_active()) {
 		int serial;
-		draw_message_top(demo_subtitle(&serial));
+		const char* sub = demo_subtitle(&serial);
+		draw_message_top(s_opt.subtitles ? sub : NULL);
 	} else if (s_msg_page && !s_inv_open && !s_save_prompt) {
 		draw_message_top(s_msg_page);
 	}
@@ -3525,6 +3532,7 @@ int main(void)
 	s_ui_ortho = &ortho;
 	map_init(ui_draw);
 	font_init(PACK_DIR, ui_draw_font);
+	noise_init();
 
 	options_load();     // debug.txt below may override
 	controls_init(PACK_DIR);            // the player's button bindings (controls.txt)
@@ -3724,9 +3732,10 @@ int main(void)
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
-			if (s_state == ST_TITLE)
+			if (s_state == ST_TITLE && !optmenu_active())
 				draw_title(&ortho, bright);
 			savescreen_draw_top();       // Continue's file list over the title
+			optmenu_draw_top(ui_draw);   // the options from the title, on black
 			font_flush();
 			touchui_frame();
 			C3D_FrameEnd(0);
@@ -3774,9 +3783,10 @@ int main(void)
 		}
 		if (!viewer && (gdown & (KEY_DUP | KEY_DDOWN)) && !s_inv_open && !screens_open()) {
 			s_bright += gdown & KEY_DUP ? 1 : -1;
-			s_bright = s_bright < 1 ? 1 : s_bright > 7 ? 7 : s_bright;
+			s_bright = s_bright < 0 ? 0 : s_bright > 7 ? 7 : s_bright;
 			s_bright_shown = 90;
-			s_env_dirty = true;
+			s_opt.bright = (u8)s_bright;
+			options_apply();
 			options_save();
 		}
 		if (!viewer && (down & KEY_SELECT) && touchui_select()) {     // SELECT twice: the debug page
@@ -3819,7 +3829,7 @@ int main(void)
 					// it has him in event mode
 					static const circlePosition still;
 					bool locked = prog_player_locked();
-					player_update(locked ? &still : &cp, locked ? 0 : gheld, dt);
+					player_update(locked ? &still : &cp, locked ? 0 : move_keys(gheld, gdown, &cp), dt);
 					prog_update(down, held, dt);
 					if (s_game_end >= 0 && !prog_running()) {
 						bool results = s_game_end > 0;      // backing out of Born From a Wish has none
@@ -3833,7 +3843,8 @@ int main(void)
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held;
 					combat_set_sight(s_env.dark, s_flash_on);
-					if (!combat_update(&body, &cp, gdown, gheld, dt, s_have_col ? &s_col : NULL, &free_held)) {
+					if (!combat_update(&body, &cp, gdown, move_keys(gheld, gdown, &cp), dt, s_have_col ? &s_col : NULL,
+					                   &free_held)) {
 						player_update(&cp, free_held, dt);
 						events_update(gdown);
 					}
@@ -3949,7 +3960,7 @@ int main(void)
 				draw_james(&proj, &mv);     // same light environment as the room
 			C3D_LightEnvBind(NULL);
 			shadow_draw(&proj, &mv, &ortho);
-			if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME)
+			if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && s_opt.fog)
 				fog_frame(&proj, &mv, &ortho, s_paused ? 0.0f : dt);
 			float black = s_fade > demo_fade() ? s_fade : demo_fade();
 			// Enhanced Edition "DisableRedCrossInCutScenes" (Patches/DisableRedCrossDuringCutscenes.cpp,
@@ -3959,12 +3970,18 @@ int main(void)
 			if (cross > 0.0f && s_state == ST_GAME && s_cam.mode == CAM_PLAYER && !demo_active() && !s_pic_shown &&
 			    !s_inv_open && !s_paused && !(prog_running() && prog_player_locked()))
 				draw_low_health(&ortho, cross * (1.0f - black));
-			if (black > 0.0f || s_paused)
-				draw_fade(&ortho, s_paused && black < 0.5f ? 0.5f : black);
+			float dim = s_paused && !optmenu_brightness() && black < 0.5f ? 0.5f : black;
+			if (dim > 0.0f)
+				draw_fade(&ortho, dim);
+			if (noise_on() && !s_pic_shown) {
+				ui_program_2d(&ortho);
+				noise_draw();
+			}
 			if (s_pic_shown)
 				draw_picture(&ortho);
 			draw_sprites();
 			map_draw();
+			optmenu_draw_top(ui_draw);
 			draw_top_text();
 			savescreen_draw_top();       // a save point's files over the room
 			font_flush();
@@ -4038,6 +4055,8 @@ int main(void)
 		if (demo_active()) {
 			int serial;
 			const char* sub = demo_subtitle(&serial);
+			if (!s_opt.subtitles)
+				sub = NULL;
 			if (serial != s_sub_serial) {
 				s_sub_serial = serial;
 				for (int r = 18; r < 30; r++)

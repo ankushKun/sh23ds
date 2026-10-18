@@ -87,6 +87,12 @@ static const Glyph* glyph(int font, int code)
 // by the cell width plus 2; a line's width leaves out the last 2.
 static int advance(int font, int code)
 {
+	// 0xfcnn / 0xfdnn move the pen back / on by nn (the titles' kerning); 0xfffe, a full-width
+	// space, falls through to the full-width advance
+	if ((code & 0xff00) == 0xfc00)
+		return -(code & 0xff);
+	if ((code & 0xff00) == 0xfd00)
+		return code & 0xff;
 	const Glyph* g = glyph(font, code);
 	return g ? g->adv : code < 0xe0 ? 7 : s_font[font].cell_w + 2;
 }

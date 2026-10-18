@@ -234,6 +234,18 @@ const char* ev_mcard_message(int n)
 	return n >= 0 ? msg_get(&s_mcardtext, (u32)n) : NULL;
 }
 
+// The options screens' texts (option_msg_e.mes), loaded when they first show.
+const char* ev_option_message(int n)
+{
+	static MsgFile text;
+	static bool tried;
+	if (!tried) {
+		tried = true;
+		msg_load(&text, PACK_DIR "/events/option.msg");
+	}
+	return n >= 0 ? msg_get(&text, (u32)n) : NULL;
+}
+
 // The memo list's titles and texts (memo_x_msg_e.mes, written by tools/sh2conv/maps.py), loaded
 // the first time the list opens.
 const char* ev_memo_message(int n)

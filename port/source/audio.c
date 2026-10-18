@@ -150,13 +150,23 @@ static void thread_stop(void)
 static u16 be16(const u8* p) { return (u16)(p[0] << 8 | p[1]); }
 static u32 be32(const u8* p) { return (u32)p[0] << 24 | (u32)p[1] << 16 | (u32)p[2] << 8 | p[3]; }
 
+static ndspOutputMode s_output = NDSP_OUTPUT_STEREO;
+
+// The Options' "Speaker Config.": 0 Mono, 1 Stereo, 2 Surround (the 3DS's virtual surround).
+void audio_set_output(int mode)
+{
+	s_output = mode == 0 ? NDSP_OUTPUT_MONO : mode == 2 ? NDSP_OUTPUT_SURROUND : NDSP_OUTPUT_STEREO;
+	if (s_ok)
+		ndspSetOutputMode(s_output);
+}
+
 bool audio_init(void)
 {
 	if (R_FAILED(ndspInit())) {
 		snprintf(s_status, sizeof s_status, "ndsp init failed (dspfirm.cdc?)");
 		return false;
 	}
-	ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+	ndspSetOutputMode(s_output);
 	s_music.pcm = linearAlloc(NBUF * BUF_SAMPLES * MAX_CH * sizeof(s16));
 	s_voice.pcm = linearAlloc(NBUF * BUF_SAMPLES * MAX_CH * sizeof(s16));
 	if (!s_music.pcm || !s_voice.pcm) {

@@ -36,6 +36,7 @@ static int s_room;               // PC room id of the player (FUN_00495220)
 static int s_shown, s_james;     // DAT_00950528, FUN_0049a7e0()
 static int s_zoom_state;         // DAT_00950520: 0 out, 1 zooming in, 2 in, 3 zooming out
 static float s_zoom;             // DAT_00950530
+static bool s_open_in = true;    // the Game Options' Map: Zoom In (the PC's default) or Zoom Out
 static float s_cx, s_cy;         // DAT_009504cc / 009504f4: the zoomed view's centre, map units
 static C3D_Tex s_tex, s_mark;
 static char s_tex_name[16], s_mark_name[16];
@@ -409,6 +410,8 @@ static void free_textures(void)
 
 // ---------------------------------------------------------------- the screen
 
+void map_set_open_zoomed(bool in) { s_open_in = in; }
+
 int map_open(const MapPlayer* p)
 {
 	if (!s_ready)
@@ -424,8 +427,9 @@ int map_open(const MapPlayer* p)
 		ret = MAP_NONE_TOWN;
 	}
 	show(m);
-	// the PC opens zoomed in, except on the town map when the player is not on it
-	s_zoom = m != 1 || m == s_james ? 1.0f : 0.0f;
+	// the PC opens zoomed in, except on the town map when the player is not on it, and only with
+	// the Game Options' Map on Zoom In (0x49de50 reads 0x1dbec0a)
+	s_zoom = s_open_in && (m != 1 || m == s_james) ? 1.0f : 0.0f;
 	s_zoom_state = s_zoom > 0.0f ? 2 : 0;
 	s_open = true;
 	return ret;

@@ -13,6 +13,7 @@ void audio_exit(void);
 bool audio_play_music(const char* path, float volume);
 // The options' volumes, 0..1: music (channel 0) and the cutscene voices (channel 1).
 void audio_set_gains(float music, float voice);
+void audio_set_output(int mode);          // 0 mono, 1 stereo (default), 2 surround
 bool audio_play_layers(const char* path, float volume);     // same, every layer silent
 void audio_stop_music(void);
 
