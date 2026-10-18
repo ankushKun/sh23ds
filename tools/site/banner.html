@@ -8,38 +8,32 @@
 <link rel="stylesheet" href="../../site/site.css">
 <style>
   html, body { width: 1200px; height: 630px; overflow: hidden; }
-  body::after { display: none; }
-  .card {
-    position: relative; display: grid; grid-template-columns: 1fr 520px; align-items: center; gap: 40px;
-    height: 630px; padding: 0 64px; box-sizing: border-box; overflow: hidden; isolation: isolate;
-    background:
-      radial-gradient(70% 70% at 74% 48%, rgba(120, 130, 132, 0.3), transparent 60%),
-      radial-gradient(60% 50% at 10% 100%, rgba(60, 66, 68, 0.45), transparent 70%),
-      var(--bg);
+  .banner {
+    position: relative; display: grid; grid-template-columns: 1fr 560px; align-items: center; gap: 24px;
+    height: 630px; padding: 0 56px 0 72px; box-sizing: border-box; overflow: hidden; text-align: left;
   }
-  .card .fog { z-index: -1; }
-  .card .mono { margin-bottom: 22px; }
-  .card h1 { font: 500 66px/0.98 var(--serif); letter-spacing: -0.018em; }
-  .card h1 em { color: var(--fg-2); }
-  .card p.lead { margin-top: 22px; font-size: 21px; max-width: 24ch; }
-  .card .device { width: 520px; }
+  .banner .brand { margin-bottom: 30px; font-size: 22px; }
+  .banner .brand-icon { width: 36px; height: 36px; }
+  .banner h1 { font: 800 70px/1.02 var(--round); letter-spacing: -0.02em; }
+  .banner h1 .red { color: var(--red-2); }
+  .banner p { margin-top: 24px; max-width: 25ch; color: var(--text-2); font-size: 23px; line-height: 1.45; }
+  .banner .device-stage { width: 560px; }
+  .banner .note { position: absolute; right: 64px; top: 34px; font-size: 44px; transform: rotate(-4deg); }
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="fog" aria-hidden="true"><div class="fog-layer a"></div><div class="fog-layer b"></div></div>
+<div class="banner">
   <div>
-    <p class="mono">Development build</p>
-    <h1>Silent Hill 2<br><em>for the</em> New<br>Nintendo 3DS</h1>
-    <p class="lead">A native port of the PC Director’s Cut, running on your own copy of the game.</p>
+    <span class="brand"><span class="brand-icon"><i></i></span>sh23ds</span>
+    <h1>Silent Hill 2,<br><span class="red">on your 3DS</span></h1>
+    <p>A native port of the PC Director’s Cut. Bring your own copy of the game.</p>
   </div>
-  <div class="device">
-    <div class="device-stage">
-      <img class="device-photo" src="../../site/assets/new-3ds-angled.png" width="1356" height="1177" alt="">
-      <div class="screen screen-top"><img src="../../site/assets/shots/deck-top.jpg" width="400" height="240" alt=""></div>
-      <div class="screen screen-bottom"><img src="../../site/assets/shots/deck-bottom.jpg" width="320" height="240" alt=""></div>
-    </div>
+  <div class="device-stage">
+    <img class="device-photo" src="../../site/assets/new-3ds-angled.png" width="1356" height="1177" alt="">
+    <div class="screen screen-top"><img src="../../site/assets/shots/deck-top.jpg" width="400" height="240" alt=""></div>
+    <div class="screen screen-bottom"><img src="../../site/assets/shots/deck-bottom.jpg" width="320" height="240" alt=""></div>
   </div>
+  <span class="note">runs on any 3DS</span>
 </div>
 <script>
   var stage = document.querySelector(".device-stage");

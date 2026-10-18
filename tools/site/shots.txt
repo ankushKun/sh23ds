@@ -1,0 +1,10 @@
+# site picture       top capture                     bottom capture (optional)
+deck                 01_hero_lookout_lake            smoke_pause
+town                 02_town_lying_figure            smoke_pause
+apartments           03_apartments_corridor          smoke_pause
+f-game               01_hero_park_railing
+f-touch              smoke_pause                     smoke_pause
+f-fight              02_town_lying_figure_c
+f-wish               08_bfaw_maria_mansion
+f-ee                 03_apartments_corridor
+f-any                smoke_title                     smoke_title
