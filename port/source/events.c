@@ -622,11 +622,73 @@ bool ev_warp_get(int k, EvAction* out)
 	return false;
 }
 
+static void fill_info(const EvRec* e, int stage, EvInfo* out);
+
 bool ev_info(int i, EvInfo* out)
 {
 	if (i < 0 || (u32)i >= s_nev)
 		return false;
-	const EvRec* e = &s_ev[i];
+	fill_info(&s_ev[i], s_stage, out);
+	return true;
+}
+
+// Other stages' events for the playtest's door routing, read on demand and kept.
+static struct { int stage; EvRec* ev; u32 n; } s_other[16];
+
+static int other_index(int stage)
+{
+	for (int k = 0; k < 16; k++)
+		if (s_other[k].ev && s_other[k].stage == stage)
+			return k;
+	int k = 0;
+	while (k < 16 && s_other[k].ev)
+		k++;
+	if (k == 16) {
+		k = stage % 16;
+		free(s_other[k].ev);
+		s_other[k].ev = NULL;
+	}
+	char path[96];
+	snprintf(path, sizeof path, PACK_DIR "/events/s%02d.s3e", stage);
+	u32 size;
+	u8* d = read_all(path, &size);
+	if (!d)
+		return -1;
+	u32* h = (u32*)d;
+	if (size < 48 || memcmp(d, "S3E1", 4) || 48 + h[3] * sizeof(EvRec) > size) {
+		free(d);
+		return -1;
+	}
+	s_other[k].ev = malloc(h[3] * sizeof(EvRec) + 1);
+	if (s_other[k].ev)
+		memcpy(s_other[k].ev, d + 48, h[3] * sizeof(EvRec));
+	s_other[k].n = h[3];
+	s_other[k].stage = stage;
+	free(d);
+	return s_other[k].ev ? k : -1;
+}
+
+int ev_count_of(int stage)
+{
+	if (stage == s_stage)
+		return (int)s_nev;
+	int k = other_index(stage);
+	return k < 0 ? 0 : (int)s_other[k].n;
+}
+
+bool ev_info_of(int stage, int i, EvInfo* out)
+{
+	if (stage == s_stage)
+		return ev_info(i, out);
+	int k = other_index(stage);
+	if (k < 0 || i < 0 || (u32)i >= s_other[k].n)
+		return false;
+	fill_info(&s_other[k].ev[i], stage, out);
+	return true;
+}
+
+static void fill_info(const EvRec* e, int stage, EvInfo* out)
+{
 	memset(out, 0, sizeof *out);
 	out->kind = e->cond >> 28;
 	out->item = (e->cond >> 4) & 0xff;
@@ -641,7 +703,10 @@ bool ev_info(int i, EvInfo* out)
 	memcpy(out->pts, e->pts, sizeof out->pts);
 	memcpy(out->map, e->trig_map, sizeof out->map);
 	out->map[7] = 0;
-	return true;
+	memcpy(out->dest_map, e->dest_map, sizeof out->dest_map);
+	out->dest_map[7] = 0;
+	out->dest_stage = e->dest_stage ? e->dest_stage : stage;
+	memcpy(out->dest_pos, e->dest_pos, sizeof out->dest_pos);
 }
 
 static bool exec(int i, const EvRec* e, EvAction* out)
@@ -696,12 +761,14 @@ static bool exec(int i, const EvRec* e, EvAction* out)
 		out->text = msg_get(&s_common, 4);
 		out->door_sound = (e->rslt1 >> 22) & 0x3f;
 		out->door_slot = 4;
+		ev_flag_set(flag, true);   // the map marks the door (and the prison's bars count the tries, 0x5847f0)
 		break;
 	case RT_JAMMED:
 		out->kind = EV_MESSAGE;
 		out->text = msg == 0xff ? msg_get(&s_common, 6) : msg == 0xfe ? msg_get(&s_common, 7) : stage_msg(e->rslt1);
 		out->door_sound = (e->rslt1 >> 22) & 0x3f;
 		out->door_slot = 3;
+		ev_flag_set(flag, true);
 		break;
 	case RT_SAVE:
 		// the first touch of a save point shows system message 8 (0x48c680), later ones go straight
@@ -744,6 +811,19 @@ static bool items_update(const EvPlayer* p, EvAction* out)
 		return true;
 	}
 	return false;
+}
+
+// Playtest driver: the stage's item pickups (where, what, and whether it is still there).
+int ev_pickup_count(void) { return (int)s_nitems; }
+bool ev_pickup_info(int i, int* item, float pos[3], bool* available)
+{
+	if (i < 0 || (u32)i >= s_nitems)
+		return false;
+	const ItemRec* it = &s_items[i];
+	*item = it->gives_item;
+	memcpy(pos, it->pos, 3 * sizeof(float));
+	*available = !ev_flag(it->flag) && !ev_flag(it->flag + 1);
+	return true;
 }
 
 bool ev_update(const EvPlayer* p, EvAction* out)

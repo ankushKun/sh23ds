@@ -83,6 +83,7 @@ bool combat_dying(void);                 // the death animation, or dead
 float combat_hp(void);
 float combat_low_health_alpha(float dt);   // per frame: the PC red cross's alpha, 0 when hidden
 void combat_set_hp(float hp);         // continue from a save
+void combat_test_god(bool on);        // playtest: blows take no health
 void combat_heal(float amount);       // healing item: added to the recovery pool
 void combat_set_equipped(bool on);
 // Inventory: "use" on a weapon item equips it (true if it was a weapon); owned guns stay listed

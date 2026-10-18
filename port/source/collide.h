@@ -23,6 +23,17 @@ bool col_merge(Collision* out, const Collision* const* parts, int n);
 
 // Floor height under (x, z) closest to y_ref within max_step; false if there is no floor.
 bool col_floor(const Collision* c, float x, float z, float y_ref, float max_step, float* y_out);
+// The highest floor under (x, z) from up above y_ref to down below it (Y down): James' steps.
+bool col_floor_climb(const Collision* c, float x, float z, float y_ref, float up, float down, float* y_out);
+
+// Walls the stage code adds for the current frame (the PC's per-frame collision lists 0x1f98680 and
+// 0x1f92880, filled by 0x5228e0 / 0x522910): every collision set pushes against them as well.
+void col_extra_clear(void);
+void col_extra_wall(float x0, float z0, float x1, float z1, float y_top, float y_bottom);
+
+// Every wall col_push tests, the room's and the extra ones (for path planning in playtest).
+u32 col_wall_count(const Collision* c);
+const WallSeg* col_wall(const Collision* c, u32 i);
 
 // Pushes a vertical body (feet at y, height h) of the given radius out of the walls.
 void col_push(const Collision* c, float* x, float* z, float y, float h, float radius);

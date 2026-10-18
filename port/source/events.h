@@ -57,8 +57,14 @@ typedef struct {
 	bool enabled, any_height, needs_light;      // enabled: its flag test passes now
 	float y, pts[8][2];
 	char map[8];                                 // the room the trigger is in ("" when the record has none)
+	char dest_map[8];                            // doors: where they lead
+	int dest_stage;
+	float dest_pos[3];
 } EvInfo;
 bool ev_info(int i, EvInfo* out);
+// The same for another stage's events (read from the pack on demand), for routes through doors.
+int ev_count_of(int stage);
+bool ev_info_of(int stage, int i, EvInfo* out);
 
 bool ev_flag(int n);
 void ev_flag_set(int n, bool v);
@@ -77,6 +83,9 @@ int ev_item_get_amount(int item);
 void ev_set_bullet_adjust(int times);
 int ev_bullet_adjust(void);
 const char* ev_item_name(int item);      // NULL if unknown
+// Playtest driver: the current stage's item pickups (available: not taken and offered).
+int ev_pickup_count(void);
+bool ev_pickup_info(int i, int* item, float pos[3], bool* available);
 const char* ev_item_desc(int item);
 int ev_count(void);
 const char* ev_stage_message(int n);     // current stage's message n, NULL if none

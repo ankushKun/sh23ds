@@ -720,6 +720,39 @@ static bool warp_ready(float dt)
 	return false;
 }
 
+// An open-area door's tile: the PC loads the destination stage's own blocks (table 0x8885a0 by
+// Stage_Data.glb_crd: 1 ca, 2 cb, 3 cc, 4 and 17 cd) and stands James on the one under the arrival
+// point. The pack's door records name the tile its converter found there in any folder (Blue Creek's
+// way out to town west says cb02, town east's flat copy of the square walled at x 20000, where the
+// PC has cc11's street): the tile of the stage's own folder under the point.
+static void warp_area_tile(void)
+{
+	int glb = ev_glb_crd();
+	const char* f = glb == 1 ? "ca" : glb == 2 ? "cb" : glb == 3 ? "cc" : glb == 4 || glb == 17 ? "cd" : NULL;
+	const char* m = s_warp.map;
+	if (!f || m[0] != 'c' || m[1] < 'a' || m[1] > 'd' || !strncmp(m, f, 2) || (s_warp.pos[0] == 0.0f && s_warp.pos[2] == 0.0f))
+		return;
+	char path[96], line[32];
+	snprintf(path, sizeof path, PACK_DIR "/bg/%s/rooms.txt", f);
+	FILE* rf = fopen(path, "r");
+	if (!rf)
+		return;
+	while (fgets(line, sizeof line, rf)) {
+		line[strcspn(line, "\r\n")] = 0;
+		snprintf(path, sizeof path, PACK_DIR "/bg/%s/%.15s.s3m", f, line);
+		FILE* mf = fopen(path, "rb");
+		float bb[6];
+		bool ok = mf && fseek(mf, 8, SEEK_SET) == 0 && fread(bb, sizeof bb, 1, mf) == 1;
+		if (mf)
+			fclose(mf);
+		if (ok && s_warp.pos[0] >= bb[0] && s_warp.pos[0] <= bb[3] && s_warp.pos[2] >= bb[2] && s_warp.pos[2] <= bb[5]) {
+			snprintf(s_warp.map, sizeof s_warp.map, "%.7s", line);
+			break;
+		}
+	}
+	fclose(rf);
+}
+
 static void apply_warp(void)
 {
 	s_gamecam_reset = true;
@@ -727,6 +760,7 @@ static void apply_warp(void)
 	u64 t0 = svcGetSystemTick();
 	if (s_warp.stage != ev_stage())
 		ev_load_stage(s_warp.stage);
+	warp_area_tile();
 	perf_part("ld_stage", t0);
 	s_px = s_warp.pos[0];
 	s_py = s_warp.pos[1];
@@ -808,6 +842,26 @@ static int inv_list(int* items, int max)
 }
 
 // Y opens and closes the item list; D-pad picks, A examines (the game's own description).
+// The item list's "Use" (the touch menu calls it too): item alone, or with up to two marked items
+// (0 = none) as the PC's "Combine" (0x46a790 / 0x49ea00): the combination's result id is used like
+// an item by the next event check (trigger kinds 5, 6, 10), or "There's no use for just this." when
+// the items do not combine. Closes the list.
+static void inventory_use(int item, int mark0, int mark1)
+{
+	s_inv_open = false;
+	s_inv_dirty = true;
+	s_inv_mark[0] = s_inv_mark[1] = 0;
+	if (mark0 || mark1) {
+		int combo = ev_combine(item, mark0, mark1);
+		if (combo)
+			s_use_item = combo;
+		else
+			show_message(ev_item_message(17));
+	} else {
+		s_use_item = item;
+	}
+}
+
 static bool inventory_update(u32 down)
 {
 	if (!s_inv_open) {
@@ -850,21 +904,8 @@ static bool inventory_update(u32 down)
 		s_inv_dirty = true;
 	}
 	if (n && (down & KEY_A)) {
-		// "Use": the next event check gets the item (trigger kinds 5, 6, 10); a combination is used
-		// as its result item (0x49ea00 runs the event check with it)
-		int it = items[s_inv_sel], m0 = s_inv_mark[0] == it ? 0 : s_inv_mark[0], m1 = s_inv_mark[1] == it ? 0 : s_inv_mark[1];
-		s_inv_open = false;
-		s_inv_dirty = true;
-		s_inv_mark[0] = s_inv_mark[1] = 0;
-		if (m0 || m1) {
-			int combo = ev_combine(it, m0, m1);
-			if (combo)
-				s_use_item = combo;
-			else
-				show_message(ev_item_message(17));     // "There's no use for just this."
-		} else {
-			s_use_item = it;
-		}
+		int it = items[s_inv_sel];
+		inventory_use(it, s_inv_mark[0] == it ? 0 : s_inv_mark[0], s_inv_mark[1] == it ? 0 : s_inv_mark[1]);
 	}
 	return true;
 }
@@ -1629,10 +1670,19 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	if (s_have_col) {
 		float ny;
 		col_push(&s_col, &nx, &nz, s_py, 900.0f, 130.0f);
-		if (col_floor(&s_col, nx, nz, s_py, 160.0f, &ny)) {
+		if (col_floor_climb(&s_col, nx, nz, s_py, 160.0f, 160.0f, &ny)) {
 			s_px = nx;
 			s_pz = nz;
 			s_py = ny;
+		} else if (nx != s_px || nz != s_pz) {
+			// The open areas' tiles leave gaps of up to about 60 units between their floors (cb05 and
+			// cb52 meet at x 19950 / 20000), which James walks over on the PC: with floor a little
+			// further on at the same height he goes on at his height.
+			float mx = nx - s_px, mz = nz - s_pz, ml = sqrtf(mx * mx + mz * mz);
+			if (col_floor(&s_col, s_px + mx / ml * 100.0f, s_pz + mz / ml * 100.0f, s_py, 40.0f, &ny)) {
+				s_px = nx;
+				s_pz = nz;
+			}
 		}
 	} else {
 		s_px = nx;
@@ -2784,7 +2834,7 @@ static bool host_walk_to(float x, float z)
 	float nx = s_px + dx / d * step, nz = s_pz + dz / d * step, ny;
 	if (s_have_col) {
 		col_push(&s_col, &nx, &nz, s_py, 900.0f, 130.0f);
-		if (col_floor(&s_col, nx, nz, s_py, 160.0f, &ny))
+		if (col_floor_climb(&s_col, nx, nz, s_py, 160.0f, 160.0f, &ny))
 			s_px = nx, s_pz = nz, s_py = ny;
 	} else {
 		s_px = nx, s_pz = nz;
@@ -3527,6 +3577,7 @@ static void pt_use_item(int item) { s_use_item = item; }
 static void pt_new_game(int wish) { if (wish) new_game_wish(); else new_game(); }
 static void pt_shot(void) { s_pt_shot = true; }
 static void pt_quit(void) { s_pt_quit = true; }
+static const Collision* pt_collision(void) { return s_have_col ? &s_col : NULL; }
 static int pt_inv_index(int item)
 {
 	int items[64], n = inv_list(items, 64);
@@ -3538,7 +3589,7 @@ static int pt_inv_index(int item)
 
 static const PtHost s_pt_host = {
 	host_player_set, pt_floor, pt_warp, pt_use_item, save_game, continue_game, pt_new_game, pt_shot, pt_quit,
-	pt_inv_index,
+	pt_inv_index, pt_collision,
 };
 
 static void pt_frame(u32* down, u32* held, float dt)

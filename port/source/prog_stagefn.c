@@ -6,9 +6,66 @@
 #include "prog_int.h"
 #include "bgm.h"
 #include "combat.h"
+#include "collide.h"
+#include "stagemdl.h"
 #include <math.h>
 
 static int s_room = -1, s_room_stage = -1;
+
+// ---------------------------------------------------------------- stage 34, the labyrinth's first part
+
+static float s_lift_gate = 450.0f, s_lift_gv, s_lift_t, s_lift_y, s_lift_step, s_lift_accel_end;
+
+static int ring_outer(void) { return p_flag(317) | p_flag(318) << 1; }   // EvProgControlCube's rings
+static int ring_inner(void) { return p_flag(319) | p_flag(320) << 1; }
+
+// 0x582bd0, the room function: the cube room (0x87) turns its models to the rings (0x521 about x by
+// the outer and about y by the inner ring, 0x522 about y by both) and works out which of its two
+// doors are open (table 0x8d41a4: 325 the south one, 326 the north one, as EvProgControlCube does);
+// the lift room (0x78) starts its timers again, or shows the lift at the bottom once it has gone down
+// (flag 605); the room behind the bars (0x89) has Maria there once she is found alive (327, until
+// 368; flag 328; the PC places character 0x106, which the port does not draw).
+static void labyrinth_room(int room)
+{
+	static const u8 table[16] = { 2, 1, 2, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0 };
+	if (room == 0x87) {
+		int a = ring_outer(), b = ring_inner();
+		const float q = 1.5707964f;
+		stagemdl_turn(0x521, a * q, b * q, 0.0f);
+		stagemdl_turn(0x522, 0.0f, b * q, 0.0f);
+		ev_flag_set(325, table[a * 4 + b] != 0);
+		ev_flag_set(326, table[a * 4 + b] > 1);
+	} else if (room == 0x78) {
+		s_lift_gv = s_lift_step = s_lift_accel_end = s_lift_t = 0.0f;
+		if (p_flag(314)) {
+			p_set(605);                 // FLAGW_576 |= 0x2000
+			s_lift_y = -45600.0f;
+			s_lift_gate = 450.0f;
+		} else {
+			s_lift_y = 0.0f;
+		}
+	} else if (room == 0x89) {
+		if (p_flag(327) && !p_flag(368))
+			p_set(328);                 // FLAGW_320 |= 0x100
+	}
+}
+
+// 0x583960 case 0x87: the cube room's collision. The doors the rings leave shut get a wall
+// (0x5228e0 with 0x8d3a28, the south door, while 325 is clear, and 0x8d3ac8, the north one, while
+// 326 is), and of the cube's four arms only those the rings line up are open: the others get a
+// ceiling at floor height (0x522910 with 0x8d3d48 north, 0x8d3c08 east, 0x8d3ca8 south, 0x8d3b68
+// west), which the port turns into the arm's outline as walls.
+// 0x583960, room 0x87: the walls across the cube room's two ways while they are shut (0x8d3a28 the
+// south one without 325, 0x8d3ac8 the north one without 326). The arms of the cross are floors the
+// PC adds by ring (0x522910 with 0x8d3d48 north, 0x8d3c08 east, 0x8d3ca8 south, 0x8d3b68 west) at
+// y 0 over the room's own at y 75; the port has no added floors and leaves them at 75.
+static void cube_room_collision(void)
+{
+	if (!p_flag(325))
+		col_extra_wall(19795.0f, -21950.0f, 20205.0f, -21950.0f, -1000.0f, 0.0f);
+	if (!p_flag(326))
+		col_extra_wall(19795.0f, -18250.0f, 20205.0f, -18250.0f, -1000.0f, 0.0f);
+}
 
 // ---------------------------------------------------------------- room functions
 
@@ -32,6 +89,9 @@ static void room_enter(int stage, int room)
 			if (p_flag(186))
 				p_set(629);
 		}
+		break;
+	case 34:
+		labyrinth_room(room);
 		break;
 	case 35:
 		// 0x5814f0: room 0x79 before the Abstract Daddy (332): Angela's scream plays again (633)
@@ -80,16 +140,24 @@ static void well_wall_tick(int room)
 // (600 at full speed) and slowing the same way near the bottom; at the bottom flag 314 opens the
 // way out and the save point, and with the prison map the labyrinth map's flag 29 is set too. The
 // PC moves the room's models; the port keeps the timing and the flags.
-static float s_lift_gate = 450.0f, s_lift_gv, s_lift_t, s_lift_y, s_lift_step, s_lift_accel_end;
-
+static float s_lift_arr_t, s_lift_open, s_lift_ov;   // 0x1d8621c, 0x1d86210, 0x1d86214
 static void lift_tick(float dt)
 {
 	if (p_flag(314)) {
+		// 0x582f41: at the bottom, 2 s later the gate goes up again (accelerating 800 a second to
+		// 1000) and lets James out (315) once it is 292.5 open, until 450
 		s_lift_y = -45600.0f;
+		if ((s_lift_arr_t += dt) >= 2.0f && s_lift_open < 450.0f) {
+			s_lift_ov = s_lift_ov + dt * 800.0f > 1000.0f ? 1000.0f : s_lift_ov + dt * 800.0f;
+			s_lift_open += dt * s_lift_ov;
+			if (s_lift_open >= 292.5f)
+				p_set(315);             // FLAGW_288 |= 0x8000000
+		}
 		return;
 	}
 	if (!p_flag(312)) {
 		s_lift_gate = 450.0f, s_lift_gv = s_lift_t = s_lift_y = s_lift_step = s_lift_accel_end = 0.0f;
+		s_lift_arr_t = s_lift_open = s_lift_ov = 0.0f;
 		return;
 	}
 	if (!p_flag(313)) {
@@ -151,6 +219,25 @@ static void hall_voice_tick(int room, float dt)
 		p_set(624);                     // FLAGW_608 |= 0x10000
 }
 
+// 0x5847f0, the south prison's per-frame function: the bars of the Oppressor's cell, shut by the
+// tablet (288), open again 20 s after James first tries them (289, event 25); each later try (290,
+// event 26) brings it 10 s closer (timer 0x1d86250).
+static float s_bars_t;
+static void prison_bars_tick(float dt)
+{
+	if (!p_flag(288) || !p_flag(289))
+		return;
+	s_bars_t += dt;
+	if (p_flag(290)) {
+		p_clear(290);
+		s_bars_t += 10.0f;
+	}
+	if (s_bars_t > 20.0f) {
+		p_clear(288);
+		s_bars_t = 0.0f;
+	}
+}
+
 void prog_stagefn_tick(int stage, float dt)
 {
 	float pos[3], yaw;
@@ -162,11 +249,28 @@ void prog_stagefn_tick(int stage, float dt)
 		s_hall_t = 0.0f;                // 0x576960: the corridor's timer starts again on entering
 		room_enter(stage, room);
 	}
+	col_extra_clear();
 	if (dt <= 0.0f)
 		return;
 	switch (stage) {
 	case 30: well_wall_tick(room); break;
-	case 34: lift_tick(dt); break;
+	case 34:
+		// 0x583960: by room
+		if (room == 0x78) {
+			// the lift's gate behind James while it moves (0x8d3938: two planes), and the ride
+			if (p_flag(312) && !p_flag(315)) {
+				col_extra_wall(-19125.0f, -99525.0f, -19125.0f, -100450.0f, -1200.0f, 0.0f);
+				col_extra_wall(-19000.0f, -100450.0f, -19000.0f, -99525.0f, -1200.0f, 0.0f);
+			}
+			lift_tick(dt);
+		} else if (room == 0x84 && !p_flag(330)) {
+			// the wire across the way until the cutter takes it (0x8d3de8)
+			col_extra_wall(63950.0f, 100026.5f, 63950.0f, 99572.5f, -1018.1f, 0.1f);
+		} else if (room == 0x87) {
+			cube_room_collision();
+		}
+		break;
+	case 32: prison_bars_tick(dt); break;
 	case 44: hall_voice_tick(room, dt); break;
 	default: break;
 	}

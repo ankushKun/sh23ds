@@ -177,27 +177,68 @@ UFO (with its hospital and lake steps) and Born From a Wish pass. What the test 
   188 and 629), and the small ones in stages 16, 35 and 56.
 * The ending decision read the endings seen as 0; it uses the clear data now, as the PC does.
 
+On foot (batch 2, `pt walkmode 1`, scripts `w01`..`w11` and the runner `.playtest/run_walk.sh`): James
+walks to every trigger with the Circle Pad and B as a player does, on a plan over the loaded collision
+(`playnav.c`: a grid with his body's clearance and the floors stacked up to six deep for stairwells)
+and, in the town and forest, over all of an area's tiles first; between rooms the driver picks doors
+from the event data (also through other stages, round doors it cannot reach, and back out of a room
+part it got shut in). Checked in Azahar on 2026-10-19: chapters 1 to 8 pass on foot, from the
+apartment in the prologue to the end of the prison and the labyrinth (Eddie's second round); the
+hotel (w09, w10) and Born From a Wish (w11) are not walked yet. What walking found and fixed:
+
+* Stairs: James kept to the floor nearest his feet, so he walked under a stairwell's first flight
+  instead of up it (ap22's foot starts 100 units up). He now takes the highest floor within his step
+  (the PS2 beta's clCollectCharaHeightNormal casts down from above his feet, cl_main.c).
+* The ceiling list's near-vertical polygons pushed characters (hp105's slabs 636 units over the floor
+  shut James into a corner). The PC's character test uses the wall and side wall lists only (the PS2
+  beta's clCheckBg2Chara has wl, sw and the columns); `col_push` leaves the ceiling list out.
+* Doors into the town and forest named tiles of another area (Blue Creek's way out into town west
+  said cb02, town east's flat copy of the square, walled in at x 20000). The PC loads the destination
+  stage's own blocks (table 0x8885a0 by glb_crd); `apply_warp` now takes that area's tile under the
+  arrival point (cc11 there, cb46 for Wood Side's gate in stage 13).
+* Locked and jammed doors did not set their flags (the map's door marks, and the prison's bars).
+* The prison's Oppressor cell (stage 32, 0x5847f0): the tablet shuts the bars (288); 20 s after
+  James first tries them (289) they open again, 10 s sooner for each later try (290). Without it a
+  player was shut in.
+* The labyrinth lift (stage 34, 0x582f41): 2 s after the ride the gate goes up and sets 315; the
+  gate's walls kept James in the lift.
+* The cube room (stage 34, 0x583960): only the two door walls follow 325 / 326; the four arms are
+  floors the PC adds by ring at y 0 over the room's own at 75 (the batch 1 port wrongly walled them).
+  Walked with the rings set wrong (the north way stays shut) and right (the way through, flag 327).
+
+Fights with James' own weapons (`pt fight`, `.playtest/run_boss.sh`, Normal action level, the ammunition
+and health items a player could have collected by then, well short of what the stages hold): with
+`pt god 1` (blows land but take no health, to check how each fight ends) the first Lying Figure,
+the stairwell Pyramid Head (health 4000 down to 40, then he leaves), the three Flesh Lips (498 s), the
+Abstract Daddy, Eddie's two rounds, the hotel pair and Mary (both phases, then the Maria ending) all
+end the PC's way. Without god mode the driver's play beat the first Lying Figure (HP 86 left), the
+Abstract Daddy (59), Eddie (46, then 2) and Mary (98), and lost to the stairwell Pyramid Head (one
+long swing does 1000), the Flesh Lips and the hotel pair; those are fights a player wins by running,
+which the driver does crudely, so they say little about the port.
+
 Known differences from the PC that are left:
 
-* The test stands James at each trigger instead of walking there, so collision and routes between
-  triggers are covered only by the door autotest and by hand. In particular the labyrinth's cube
-  room (stage 34): the PC's room code (0x582bd0) turns models and flags 325 / 326 with the rings,
-  the port keeps the room's collision as it is; not checked by walking.
-* Fights in the test use large hits (`kill`), not the player's weapons; holds are broken by mashing
-  A and B. The bosses all die or end their fights that way, but their difficulty is not compared.
+* The hotel (w09, w10) and Born From a Wish (w11) are not walked yet: the chapter scripts follow the
+  event numbers, not the hotel's real order (its west wing opens from 2F through a program's warp,
+  stage 41 event 13), and need reordering as was done for the apartments (w03).
+* Some walks take a scripted way point where the area plan's grid is too coarse for a narrow way (the
+  sloping street west of Rosewater Park's stair blocks, w05 and w08).
 * Puzzle answers are set with debug keys before the test plays them (the inputs are the real ones).
 * The other stage room and per-frame functions are not ported. Their flag changes, none of which an
   event or program of the critical path waits for: stage 5's init (map marks 1496, 1497, 1526), 9
   (552), 11 (547), 12 (149, 526), 14's init (flag 15 and marks 1533, 1534) and 15's init (clears 15),
-  15 (530, 161), 22 (216), 28 (551), 31 (648, 649), 32 (clears 288 and 290), 34's room code (325, 326,
-  328, 653), 36 (365), 39 (549, 2070), 41's room code (541), 49's init (45, 168) and 55 (729). Their
-  models, lights and sounds are not ported either.
-* The corridor's voice (60120) is not converted, so the port is silent there; Maria is not drawn
-  lying in S3 (the PC's character 0x106); the labyrinth lift's models do not move.
+  15 (530, 161), 22 (216), 28 (551), 31 (648, 649), 34's room code (328, 653), 36 (365), 39 (549,
+  2070), 41's room code (541), 49's init (45, 168) and 55 (729). Their models, lights and sounds are
+  not ported either (stage 32's room 0x72 timer and 0x68 sound, the lift's sounds 0x4655 / 0x4656).
+* The corridor's voice (60120, now in the pack as voice_5769b0) is not played: the port's voice
+  steps stop the game, and the PC plays this one while James walks; Maria is not drawn lying in S3
+  (the PC's character 0x106); the labyrinth lift's and the cube room's models do not move, and the
+  cube's arms stay at the room's own floor height (75 lower than the PC's added floors).
+* The port has the plank as James' only melee weapon (no steel pipe, great knife or chainsaw yet).
 * "There's no use for just this." (item message 17) for items that do not combine is a guess at the
   PC's message (0x9445f4 = 3).
 * The scripted Maria escort, the "near / far from Maria" counters and the damage counters are not
-  representative in the test (James is moved, not walked), so the ending tests set those counters.
+  representative in the teleport chapters, so the ending tests set those counters.
 
 ## Not done yet
 

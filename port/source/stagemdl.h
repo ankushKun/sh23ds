@@ -11,3 +11,6 @@ void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones);   // skin p
 // 0x57b5c0 FUN(1, 15.0): one frame of the tune that opens the box (the right order); seconds is
 // the time since it started, or < 0 to put the parts back.
 void stagemdl_music_box(float seconds);
+// Stage code turning a placed model (the cube in the labyrinth, 0x582bd0): the angles are added to
+// the place's turn of every model of that kind, until set again (0, 0, 0 puts it back).
+void stagemdl_turn(int kind, float rx, float ry, float rz);

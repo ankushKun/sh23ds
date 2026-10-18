@@ -593,11 +593,16 @@ bool combat_has_ammo(void)
 // The hold attacks (kind 6) are checked once per game frame and drain James by their ap each time;
 // the port counts the PC's 30 frames a second (the struggle meter is in the same frame times). On
 // beginner they cannot kill him.
+// Playtest driver ("pt god 1"): blows still land (flinches, holds) but take no health, so a fight's
+// own end (a boss's health or clock) can be checked with the real weapons.
+static bool s_test_god;
+void combat_test_god(bool on) { s_test_god = on; }
+
 void combat_hold_damage(float ap, float dt)
 {
 	if (s_mode != M_HELD)
 		return;
-	s_hp -= ap * dt * 30.0f;
+	s_hp -= s_test_god ? 0.0f : ap * dt * 30.0f;
 	if (s_hp <= 0.0f) {
 		if (enemy_difficulty() == 0) {
 			s_hp = 1.0f;
@@ -615,7 +620,7 @@ void combat_damage_james(int attack_id, float ap, float from_x, float from_z)
 	(void)from_x, (void)from_z;
 	if (s_mode >= M_DYING || s_mode == M_HELD || s_invuln > 0.0f)
 		return;
-	s_hp -= ap;
+	s_hp -= s_test_god ? 0.0f : ap;
 	if (s_hp <= 0.0f) {
 		s_hp = 0.0f;
 		sfx_play(pdef()->snd_die, 1.0f, 0.0f);   // dying scream

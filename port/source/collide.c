@@ -98,19 +98,59 @@ bool col_floor(const Collision* c, float x, float z, float y_ref, float max_step
 	return found;
 }
 
+// James' step (the PS2 beta's clCollectCharaHeightNormal, cl_main.c: a ray down from above his feet,
+// the first floor it meets): the highest floor from up above y_ref to down below it. Nearest would
+// keep him on the ground under a stairwell's first flight, whose foot starts 100 units up (ap22).
+bool col_floor_climb(const Collision* c, float x, float z, float y_ref, float up, float down, float* y_out)
+{
+	bool found = false;
+	float best = 0;
+	for (u32 i = 0; i < c->n_floors; i++) {
+		float y;
+		if (!tri_height(&c->floors[i], x, z, &y) || y < y_ref - up || y > y_ref + down)
+			continue;
+		if (!found || y < best) {     // Y down: the smallest is the highest
+			best = y;
+			found = true;
+		}
+	}
+	if (found)
+		*y_out = best;
+	return found;
+}
+
 static bool wall_overlaps(const WallSeg* w, float y, float h)
 {
 	// body spans y - h (head) .. y (feet); Y down
 	return w->y_top < y - 10.0f && w->y_bottom > y - h;
 }
 
+#define EXTRA_MAX 24
+static WallSeg s_extra[EXTRA_MAX];
+static u32 s_nextra;
+
+void col_extra_clear(void) { s_nextra = 0; }
+
+void col_extra_wall(float x0, float z0, float x1, float z1, float y_top, float y_bottom)
+{
+	if (s_nextra < EXTRA_MAX)
+		s_extra[s_nextra++] = (WallSeg){ x0, z0, x1, z1, y_top, y_bottom, 1, 0 };
+}
+
+static const WallSeg* wall_at(const Collision* c, u32 i) { return i < c->n_walls ? &c->walls[i] : &s_extra[i - c->n_walls]; }
+u32 col_wall_count(const Collision* c) { return c->n_walls + s_nextra; }
+const WallSeg* col_wall(const Collision* c, u32 i) { return wall_at(c, i); }
+
+// The characters against the room (the PS2 beta's clCheckBg2Chara, cl_main.c, tests a column
+// against the wall list and the side wall list, its wl and sw): the ceiling list's near-vertical
+// polygons (group 2, hp105's slabs hanging 636 units over the floor) do not push.
 void col_push(const Collision* c, float* x, float* z, float y, float h, float radius)
 {
 	for (int iter = 0; iter < 3; iter++) {
 		bool moved = false;
-		for (u32 i = 0; i < c->n_walls; i++) {
-			const WallSeg* w = &c->walls[i];
-			if (!wall_overlaps(w, y, h))
+		for (u32 i = 0; i < c->n_walls + s_nextra; i++) {
+			const WallSeg* w = wall_at(c, i);
+			if (w->group == 2 || !wall_overlaps(w, y, h))
 				continue;
 			float dx = w->x1 - w->x0, dz = w->z1 - w->z0;
 			float len2 = dx * dx + dz * dz;
@@ -159,8 +199,8 @@ static float seg_hit(float px, float pz, float qx, float qz, const WallSeg* w)
 void col_clamp_ray(const Collision* c, float tx, float tz, float* cx, float* cz, float y)
 {
 	float best = 1.0f;
-	for (u32 i = 0; i < c->n_walls; i++) {
-		const WallSeg* w = &c->walls[i];
+	for (u32 i = 0; i < c->n_walls + s_nextra; i++) {
+		const WallSeg* w = wall_at(c, i);
 		if (!(w->y_top < y && w->y_bottom > y))
 			continue;
 		float t = seg_hit(tx, tz, *cx, *cz, w);

@@ -89,6 +89,17 @@ void stagemdl_update(int stage)
 
 void stagemdl_music_box(float seconds) { s_play = seconds; }
 
+static struct { int kind; float r[3]; } s_turn[4];
+
+void stagemdl_turn(int kind, float rx, float ry, float rz)
+{
+	int k = 0;
+	while (k < 3 && s_turn[k].kind && s_turn[k].kind != kind)
+		k++;
+	s_turn[k].kind = kind;
+	s_turn[k].r[0] = rx, s_turn[k].r[1] = ry, s_turn[k].r[2] = rz;
+}
+
 static bool load_model(Model* m)
 {
 	int loaded = 0, oldest = -1;
@@ -224,9 +235,13 @@ void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		C3D_Mtx model, mv;
 		Mtx_Identity(&model);
 		Mtx_Translate(&model, p->pos[0], p->pos[1], p->pos[2], true);
-		Mtx_RotateZ(&model, p->rot[2], true);
-		Mtx_RotateY(&model, p->rot[1], true);
-		Mtx_RotateX(&model, p->rot[0], true);
+		float r[3] = { p->rot[0], p->rot[1], p->rot[2] };
+		for (int k = 0; k < 4; k++)
+			if (s_turn[k].kind == p->kind)
+				r[0] += s_turn[k].r[0], r[1] += s_turn[k].r[1], r[2] += s_turn[k].r[2];
+		Mtx_RotateZ(&model, r[2], true);
+		Mtx_RotateY(&model, r[1], true);
+		Mtx_RotateX(&model, r[0], true);
 		Mtx_Multiply(&mv, view, &model);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
 		pose(m->chr, p->kind, s_play);

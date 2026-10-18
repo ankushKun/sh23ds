@@ -1,5 +1,6 @@
 #pragma once
 #include <3ds.h>
+#include "collide.h"
 
 // Playtest driver: runs a script of "pt ..." lines from debug.txt that plays the game the way a
 // player would (stands at an event's trigger, presses A, uses items, answers questions, skips
@@ -32,6 +33,7 @@ typedef struct {
 	void (*shot)(void);                                                     // dumpframe of this frame
 	void (*quit)(void);
 	int (*inv_index)(int item);   // the item's row in the item list (-1 if James does not have it)
+	const Collision* (*collision)(void);   // the loaded collision James walks on, NULL if none
 } PtHost;
 
 void playtest_init(const PtHost* host);
