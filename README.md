@@ -74,7 +74,7 @@ The repository and the releases contain **no game files**. You need the PC relea
     </td>
     <td valign="top">
       <h4>⚡ Made for the New 3DS, plays on the original</h4>
-      804 MHz with the L2 cache and the 124 MB memory mode, music decoded on the second core, open areas streamed tile by tile on a worker thread, and textures in ETC1 with mipmaps. An original 3DS gets its own profile with lighter settings and a steady 30 fps.
+      804 MHz with the L2 cache and the 124 MB memory mode, music decoded on the second core, open areas streamed tile by tile on a worker thread, and textures in ETC1 with mipmaps. An original 3DS gets its own profile with lighter settings that targets 30 fps (tested in Azahar's Old 3DS model, not yet on hardware).
     </td>
   </tr>
 </table>
