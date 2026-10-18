@@ -418,8 +418,11 @@ the title an "Options" row (the PC's title has OPTIONS too).
   Sound are the PC's own. The port's display settings follow on the same page: Messages (bottom or
   top screen), and the Enhanced Edition's Flashlight, Noise Style, Camera Speed and Cutscene View
   (PS2 looks, on by default as in the EE).
-* Control Options: the PC's key setup has no 3DS counterpart, so the page holds the port's
-  control settings (the Enhanced Edition's toggle run, hold-A heavy attacks and swapped swings).
+* Control Options: where the PC sets up its keys, the port's Buttons page (`controls.c`, see
+  CONTROLS.md: the button of each action in the active layout, chosen on the touch screen, the
+  top screen listing the bindings), then the port's control settings (the Enhanced Edition's
+  toggle run, hold-A heavy attacks and swapped swings). The pause menu keeps Resume, Map, Memos,
+  Options and Quit to title.
 * The brightness screen (0x466c30): "Adjust until vertical lines appear faint." at (25, 100),
   twenty vertical lines 20 apart from y 176 to 406 whose alpha is the level times 12, and "Level n"
   in full-width letters right-aligned at (316, 420) with arrows either side of the number. Levels

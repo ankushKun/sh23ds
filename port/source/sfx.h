@@ -63,6 +63,8 @@ void sfx_floor_load(const char* map);
 void sfx_floor_put(const char* map, u8* data, long size);
 int sfx_floor_material(float x, float y, float z);
 void sfx_footsteps(const char* clip, int first, int last, float f0, float f1, bool backward, const float pos[3]);
+// One of James' steps on the floor under pos (move.c says when, from the PC's frames).
+void sfx_footstep(float volume, const float pos[3]);
 
 const char* sfx_status(void);
 // debug.txt "sfxsync 1": read samples on the main loop at their first play, as before.

@@ -58,6 +58,23 @@ int clips_load(AnimClip* clips, int max, const char* path);
 // Poses the character at a (fractional) frame; frames are blended linearly.
 void chr_pose(Character* c, const Anim* a, float frame);
 
+// Crossfades between clips, as the PC's anime interpolation does (0x551820 with the modes 0x538920
+// sets): when a clip starts, chr_blend_start keeps the pose shown last and chr_pose_blend mixes it
+// into the new clip's pose over `seconds`. Time based, so it is the same at any frame rate.
+typedef struct {
+	Mtx34 from[CHR_MAX_BONES], last[CHR_MAX_BONES];   // local transforms
+	float t, dur;
+	bool have_last;
+	const Anim* sync;                                  // see chr_blend_start_sync
+	float sync_from, sync_to, sync_len;
+} ChrBlend;
+void chr_blend_start(ChrBlend* b, float seconds);
+// The PC's mode 10 (walk, run and strafe clips into each other): the old clip, starting at frame
+// from_start of anim a, keeps playing in step with the new one (starting at to_start, both len
+// frames long) while it fades out, so the feet do not stop.
+void chr_blend_start_sync(ChrBlend* b, const Anim* a, float from_start, float to_start, float len, float seconds);
+void chr_pose_blend(Character* c, const Anim* a, float frame, ChrBlend* b, float dt);
+
 // Draws with the skinning shader bound; uBones is the uniform location of bones[]. Lit by the bound
 // light environment (the shader outputs normal quaternions).
 void chr_draw(Character* c, int uBones);

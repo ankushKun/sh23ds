@@ -221,17 +221,14 @@ static void local_of(Mtx34* L, const Character* c, const AnmKey* k, u32 b)
 			L->m[i][3] = k->trans[i];
 }
 
-void chr_pose(Character* c, const Anim* a, float frame)
+// The local (parent-relative) transforms of every bone at a fractional frame; frames are blended
+// linearly. False when the animation does not fit the model (the bind pose is used then).
+static bool pose_locals(const Character* c, const Anim* a, float frame, Mtx34* out)
 {
-	static Mtx34 world[CHR_MAX_BONES];
 	if (!a || !a->keys || a->bones != c->n_bones) {
-		for (u32 b = 0; b < c->n_bones; b++) {
-			Mtx34 L = c->bind_local[b];
-			if (c->parents[b] == 255) world[b] = L;
-			else mul34(&world[b], &world[c->parents[b]], &L);
-			mul34(&c->skin[b], &world[b], &c->inv_bind[b]);
-		}
-		return;
+		for (u32 b = 0; b < c->n_bones; b++)
+			out[b] = c->bind_local[b];
+		return false;
 	}
 	if (frame < 0) frame = 0;
 	u32 f0 = (u32)frame;
@@ -256,10 +253,101 @@ void chr_pose(Character* c, const Anim* a, float frame)
 		} else {
 			L = L0;
 		}
-		if (c->parents[b] == 255) world[b] = L;
-		else mul34(&world[b], &world[c->parents[b]], &L);
+		out[b] = L;
+	}
+	return true;
+}
+
+static void pose_finish(Character* c, const Mtx34* local)
+{
+	static Mtx34 world[CHR_MAX_BONES];
+	for (u32 b = 0; b < c->n_bones; b++) {
+		if (c->parents[b] == 255) world[b] = local[b];
+		else mul34(&world[b], &world[c->parents[b]], &local[b]);
 		mul34(&c->skin[b], &world[b], &c->inv_bind[b]);
 	}
+}
+
+void chr_pose(Character* c, const Anim* a, float frame)
+{
+	static Mtx34 local[CHR_MAX_BONES];
+	pose_locals(c, a, frame, local);
+	pose_finish(c, local);
+}
+
+// a + (b - a) * w for a rotation and translation, then Gram-Schmidt so the result stays a rotation
+// even when the two are far apart (lerping matrices alone would shear and shrink the bone).
+static void mix34(Mtx34* o, const Mtx34* a, const Mtx34* b, float w)
+{
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 4; j++)
+			o->m[i][j] = a->m[i][j] + (b->m[i][j] - a->m[i][j]) * w;
+	float x[3] = { o->m[0][0], o->m[1][0], o->m[2][0] }, y[3] = { o->m[0][1], o->m[1][1], o->m[2][1] };
+	float n = sqrtf(x[0] * x[0] + x[1] * x[1] + x[2] * x[2]);
+	if (n < 1e-6f) {
+		*o = w < 0.5f ? *a : *b;
+		return;
+	}
+	for (int i = 0; i < 3; i++)
+		x[i] /= n;
+	float d = x[0] * y[0] + x[1] * y[1] + x[2] * y[2];
+	for (int i = 0; i < 3; i++)
+		y[i] -= d * x[i];
+	n = sqrtf(y[0] * y[0] + y[1] * y[1] + y[2] * y[2]);
+	if (n < 1e-6f) {
+		*o = w < 0.5f ? *a : *b;
+		return;
+	}
+	for (int i = 0; i < 3; i++)
+		y[i] /= n;
+	float z[3] = { x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0] };
+	for (int i = 0; i < 3; i++)
+		o->m[i][0] = x[i], o->m[i][1] = y[i], o->m[i][2] = z[i];
+}
+
+void chr_blend_start(ChrBlend* b, float seconds)
+{
+	b->sync = NULL;
+	if (!b->have_last || seconds <= 0.0f) {
+		b->t = b->dur = 0.0f;
+		return;
+	}
+	// a blend that starts while another runs leaves from the mixed pose shown last
+	memcpy(b->from, b->last, sizeof b->from);
+	b->t = 0.0f;
+	b->dur = seconds;
+}
+
+void chr_blend_start_sync(ChrBlend* b, const Anim* a, float from_start, float to_start, float len, float seconds)
+{
+	chr_blend_start(b, seconds);
+	if (b->dur > 0.0f && len > 0.0f) {
+		b->sync = a;
+		b->sync_from = from_start;
+		b->sync_to = to_start;
+		b->sync_len = len;
+	}
+}
+
+void chr_pose_blend(Character* c, const Anim* a, float frame, ChrBlend* b, float dt)
+{
+	static Mtx34 local[CHR_MAX_BONES];
+	pose_locals(c, a, frame, local);
+	if (b->t < b->dur) {
+		b->t += dt;
+		float w = b->t >= b->dur ? 1.0f : b->t / b->dur;
+		if (b->sync) {
+			float rel = fmodf(frame - b->sync_to, b->sync_len);
+			if (rel < 0.0f)
+				rel += b->sync_len;
+			pose_locals(c, b->sync, b->sync_from + rel, b->from);
+		}
+		for (u32 i = 0; i < c->n_bones; i++)
+			mix34(&local[i], &b->from[i], &local[i], w);
+	}
+	memcpy(b->last, local, sizeof(Mtx34) * c->n_bones);
+	b->have_last = true;
+	pose_finish(c, local);
 }
 
 void chr_draw(Character* c, int uBones)

@@ -764,6 +764,12 @@ void sfx_footsteps(const char* clip, int first, int last, float f0, float f1, bo
 	}
 }
 
+void sfx_footstep(float volume, const float pos[3])
+{
+	if (s_ok)
+		sfx_play_at(step_id(sfx_floor_material(pos[0], pos[1], pos[2])), volume, pos);
+}
+
 const char* sfx_status(void)
 {
 	if (s_ok)

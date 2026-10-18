@@ -19,7 +19,9 @@
 //   guns is the muzzle (handgun 125, shotgun 294, rifle 483 units out), the plank's second bone is its
 //   grip offset (frame 4 of wp/jms_weapon.anm). They are drawn rigidly on bone 35.
 #include "combat.h"
+#include "controls.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -193,10 +195,27 @@ static float s_muzzle[3];               // gun muzzle in James' bind space
 static void* s_flash_vbo;               // linear memory, muzzle flash quads (S3C vertex layout)
 static char s_line[48];
 static const Collision* s_col;          // the room, for shots
+static Enemy* s_target;                 // the locked target (0x1fbacc4), see find_target
 // A Flesh Lip that kills James in its hold carries the body up into the dark (see
 // combat_carry_james)
 static bool s_carried;
 static float s_carry[3];
+
+// How a clip starts (0x531a00 / 0x52fae0 and the modes of 0x538920): standing, walking, raising,
+// aiming and lowering crossfade over 8 frames (mode 4); swings, shots, reloads, kicks, stomps, hits
+// and falls cut in (mode 2).
+static float clip_blend(const JAnim* a)
+{
+	if (a == &J_STAND || a == &J_WALK || a == &J_RUN)
+		return 8.0f / 30.0f;
+	for (int i = 0; i < 2; i++)
+		if (a == &P_RAISE[i] || a == &P_LOWER[i] || a == &P_READY[i])
+			return 8.0f / 30.0f;
+	for (int w = 0; w < W_COUNT; w++)
+		if (a == &WEAPONS[w].raise || a == &WEAPONS[w].lower || a == &WEAPONS[w].aim)
+			return 8.0f / 30.0f;
+	return 0.0f;
+}
 
 static void play(const JAnim* a)
 {
@@ -384,6 +403,7 @@ void combat_reset(void)
 	s_mode = M_FREE;
 	s_side = 0;
 	s_invuln = s_dead_t = s_flash = 0.0f;
+	s_target = NULL;
 	s_carried = false;
 	int w = s_maria ? W_MNONE : W_PLANK;
 	if (s_ok && s_weapon != w)
@@ -616,26 +636,96 @@ void combat_damage_james(int attack_id, float ap, float from_x, float from_z)
 	play(&J_HURT);
 }
 
-// Nearest living enemy James can turn to (PlayerGetTarget): within reach and 100 degrees.
-static Enemy* find_target(const CombatBody* b, float* angle, float reach)
+// What James can see (0x52f2c0 sets his areas, 0x5420f0 tests them): a "look" sphere ahead of him
+// and a "feel" sphere round him, in metres (x500 units) by the light (0 lit room, 1 dark with the
+// flashlight, 2 dark without, 3 Maria in the dark) and the action level. An enemy in either is a
+// candidate (0x542300 lists them nearest first).
+static const float LOOK_AREA[4][5] = {        // centre ahead = radius
+	{ 7.0f, 7.0f, 6.0f, 4.5f, 4.0f }, { 5.0f, 5.0f, 3.8f, 3.0f, 2.8f },
+	{ 3.0f, 3.0f, 1.8f, 1.5f, 1.3f }, { 6.0f, 6.0f, 5.0f, 4.0f, 3.0f },
+};
+static const float FEEL_RADIUS[4][5] = {
+	{ 6.5f, 6.5f, 5.0f, 3.0f, 2.5f }, { 4.5f, 4.5f, 3.8f, 3.3f, 2.8f },
+	{ 3.0f, 3.0f, 2.3f, 2.0f, 1.5f }, { 5.0f, 5.0f, 4.0f, 3.0f, 2.0f },
+};
+static const float FEEL_CENTRE[4] = { 0.5f, 0.3f, 0.1f, 0.5f };
+static bool s_dark, s_light;
+
+void combat_set_sight(bool dark, bool flashlight)
+{
+	s_dark = dark;
+	s_light = flashlight;
+}
+
+static bool in_sight(const CombatBody* b, const Enemy* e)
+{
+	int mode = !s_dark ? 0 : s_maria ? 3 : s_light ? 1 : 2;
+	int lvl = enemy_difficulty();
+	lvl = lvl < 0 ? 0 : lvl > 4 ? 4 : lvl;
+	float fx = sinf(*b->yaw), fz = cosf(*b->yaw);
+	float lc = LOOK_AREA[mode][lvl] * 500.0f, fr = FEEL_RADIUS[mode][lvl] * 500.0f, fc = FEEL_CENTRE[mode] * 500.0f;
+	float d_look = hypotf(e->x - (*b->x + fx * lc), e->z - (*b->z + fz * lc));
+	float d_feel = hypotf(e->x - (*b->x + fx * fc), e->z - (*b->z + fz * fc));
+	return d_look <= lc || d_feel <= fr;
+}
+
+// 0x542060: nothing of the room between James' chest and the enemy
+static bool clear_line(const CombatBody* b, const Enemy* e)
+{
+	if (!s_col)
+		return true;
+	float ex = e->x, ez = e->z, d = hypotf(ex - *b->x, ez - *b->z);
+	col_clamp_ray(s_col, *b->x, *b->z, &ex, &ez, *b->y - 900.0f);
+	return hypotf(ex - *b->x, ez - *b->z) >= d - 1.0f;
+}
+
+static float angle_to(const CombatBody* b, const Enemy* e)
+{
+	float a = atan2f(e->x - *b->x, e->z - *b->z) - *b->yaw;
+	while (a > PI) a -= 2 * PI;
+	while (a < -PI) a += 2 * PI;
+	return a;
+}
+
+// 0x542560: the nearest candidate in clear sight, one still on its feet before one on the floor.
+// dir +1 / -1 (0x542740, changing target): the nearest other one to the left / right instead.
+static Enemy* pick_target(const CombatBody* b, int dir)
 {
 	Enemy* best = NULL;
-	float bd = reach;
+	float bd = 1e9f;
+	bool best_down = true;
 	for (int i = 0; i < enemy_count(); i++) {
 		Enemy* e = enemy_get(i);
-		if (!enemy_alive(e))
+		if (!enemy_alive(e) || (dir && e == s_target) || !in_sight(b, e))
 			continue;
-		float dx = e->x - *b->x, dz = e->z - *b->z, d = sqrtf(dx * dx + dz * dz);
-		float a = atan2f(dx, dz) - *b->yaw;
-		while (a > PI) a -= 2 * PI;
-		while (a < -PI) a += 2 * PI;
-		if (d < bd && fabsf(a) < 1.75f) {
-			bd = d;
-			best = e;
-			*angle = a;
-		}
+		if (dir && (angle_to(b, e) > 0.0f) != (dir > 0))
+			continue;
+		float d = hypotf(e->x - *b->x, e->z - *b->z);
+		bool down = enemy_is_down(e);
+		if (dir)
+			down = false;            // changing target takes the nearest, down or not
+		if ((down && !best_down) || (down == best_down && d >= bd))
+			continue;
+		if (!clear_line(b, e))
+			continue;
+		best = e;
+		bd = d;
+		best_down = down;
 	}
 	return best;
+}
+
+// The target James turns to and shoots at (PlayerGetTarget): the one locked when he readied,
+// while it lives and he can still see it (0x533c10), within reach.
+static Enemy* find_target(const CombatBody* b, float* angle, float reach)
+{
+	if (s_target && (!enemy_alive(s_target) || !in_sight(b, s_target)))
+		s_target = NULL;
+	Enemy* t = s_target;
+	if (!t || hypotf(t->x - *b->x, t->z - *b->z) > reach)
+		return NULL;
+	*angle = angle_to(b, t);
+	return t;
 }
 
 static void to_world(const CombatBody* b, const float in[3], float out[3])
@@ -966,6 +1056,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			return false;
 		}
 		if (held & KEY_R) {
+			s_target = pick_target(b, 0);    // 0x533ca0: locked as he readies
 			if (is_bare()) {
 				s_mode = M_READY;          // bare hands: nothing to raise
 			} else if (is_melee()) {
@@ -992,6 +1083,12 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			s_mode = M_LOWER;
 			play(is_melee() ? &P_LOWER[s_side] : &w->lower);
 			break;
+		}
+		// 0x54f100: the strafe buttons move the lock to the nearest other enemy on that side
+		if (down & (GK_STRAFE_L | GK_STRAFE_R)) {
+			Enemy* t = pick_target(b, (down & GK_STRAFE_L) ? 1 : -1);
+			if (t)
+				s_target = t;
 		}
 		turn_to_target(b, cp, dt, is_melee() || is_bare() ? 4000.0f : w->atk.max_range);
 		if (s_charge >= 0.0f) {
@@ -1223,6 +1320,14 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		s_charge = -1.0f;
 	*held_out = held & ~(KEY_A | KEY_B);
 	return true;
+}
+
+bool combat_james_free(void) { return !s_ok || s_mode == M_FREE; }
+
+int combat_james_clip(float* blend)
+{
+	*blend = s_cur ? clip_blend(s_cur) : 0.0f;
+	return (int)(uintptr_t)s_cur;
 }
 
 bool combat_james_anim(const Anim** anim, float* frame)

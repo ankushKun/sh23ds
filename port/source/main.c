@@ -32,6 +32,8 @@
 #include "savescreen.h"
 #include "stagemdl.h"
 #include "touchui.h"
+#include "controls.h"
+#include "move.h"
 #include "chrlight.h"
 #include "shadow.h"
 #include "areaidx.h"
@@ -67,10 +69,9 @@ static int s_uSkinProjection, s_uSkinModelView, s_uBones;
 // Player (James)
 static Character s_james;
 static Anim s_james_anim;
-static AnimClip s_clips[16];
-static int s_nclips, s_clip;
 static bool s_have_james;
-static float s_frame, s_px, s_pz, s_py, s_yaw;
+static float s_px, s_pz, s_py, s_yaw;
+static float s_anim_dt;                // this frame's time for James' crossfades (0 while paused)
 static float s_vel[2], s_turn_speed;   // last frame's velocity (units/s) and yaw rate (rad/s), for the camera
 static bool s_gamecam_reset = true;
 
@@ -1238,6 +1239,7 @@ static int s_controls;              // 0 = 3D (tank, PC default), 1 = 2D (camera
 static bool s_toggle_run;           // B toggles running (Enhanced Edition option)
 static bool s_ps2_flash = true;     // Enhanced Edition PS2 flashlight brightness (pause menu)
 static bool s_run_pressed;          // B went down this frame (for the toggle)
+static u32 s_gdown;                 // this frame's game keys going down (controls.c)
 // Enhanced Edition options kept in options.txt, all on by default as in the EE (combat.c, sh2cam.c, demo.c)
 static bool s_hold_stomp = true, s_swap_attack = true, s_ps2_camera = true, s_cutscene_fov = true;
 static int s_bright = 3;             // brightness option 1..7 (like the PC's); light scale 0.6 + 0.2 * level
@@ -1549,54 +1551,48 @@ static void setup_pipeline(void)
 	perf_init(PACK_DIR);
 }
 
-static int clip_index(const char* name)
-{
-	for (int i = 0; i < s_nclips; i++)
-		if (!strcmp(s_clips[i].name, name))
-			return i;
-	return -1;
-}
-
-// Tank-style movement for the first pass: circle pad X turns, Y walks; hold B to run.
+// James' legs (move.c, the PC's lower-body states): the circle pad walks and turns, the game keys
+// (controls.c) run, strafe and turn round. held is the game keys still free (combat.c took its own).
 static void player_update(const circlePosition* cp, u32 held, float dt)
 {
-	float turn = cp->dx / 156.0f, fwd = cp->dy / 156.0f;
-	if (s_controls == 1) {
-		// 2D type: the stick points where James should go on screen; he turns towards that
-		// direction (camera yaw + stick angle) and walks with the stick's tilt
-		float mag = sqrtf(turn * turn + fwd * fwd);
-		turn = fwd = 0;
-		if (mag > 0.2f) {
-			float want = gamecam_yaw() + atan2f(cp->dx / 156.0f, cp->dy / 156.0f);
-			float d = remainderf(want - s_yaw, 2.0f * (float)M_PI);
-			float step = 7.0f * dt;
-			turn = d > step ? -1.0f : d < -step ? 1.0f : -d / step;   // matches the tank turn below
-			turn *= 7.0f / 2.6f;
-			fwd = (mag > 1.0f ? 1.0f : mag) * (fabsf(d) < 1.2f ? 1.0f : 0.0f);
-		}
-	}
-	if (fabsf(turn) < 0.15f && s_controls == 0) turn = 0;
-	if (fabsf(fwd) < 0.15f) fwd = 0;
+	MoveInput in;
+	memset(&in, 0, sizeof in);
+	// the circle pad reads about +-156 at the rim; a small dead zone keeps James from creeping
+	float x = cp->dx / 156.0f, y = cp->dy / 156.0f;
+	in.x = fabsf(x) < 0.12f ? 0.0f : x;
+	in.y = fabsf(y) < 0.12f ? 0.0f : y;
 	// Enhanced Edition "EnableToggleSprint": B toggles running, which stops when James stops
 	static bool s_run_latched;
 	if (s_toggle_run) {
 		if (s_run_pressed)
 			s_run_latched = !s_run_latched;
-		if (fwd <= 0)
+		if (in.y <= 0.0f)
 			s_run_latched = false;
 	}
 	s_run_pressed = false;
-	bool run = (s_toggle_run ? s_run_latched : (held & KEY_B) != 0) && fwd > 0;
-	s_turn_speed = -turn * 2.6f;
-	s_yaw += s_turn_speed * dt;
+	static u32 s_prev_held;
+	in.run = s_toggle_run ? s_run_latched : (held & KEY_B) != 0;
+	in.strafe_l = (held & GK_STRAFE_L) != 0;
+	in.strafe_r = (held & GK_STRAFE_R) != 0;
+	in.strafe_l_down = in.strafe_l && !(s_prev_held & GK_STRAFE_L);
+	in.strafe_r_down = in.strafe_r && !(s_prev_held & GK_STRAFE_R);
+	in.turn180 = (held & GK_TURN180) && !(s_prev_held & GK_TURN180);
+	s_prev_held = held;
+	in.camera_relative = s_controls == 1;
+	in.camera_yaw = gamecam_yaw();
+	in.hp_frac = combat_hp() / JAMES_HP_MAX;
+	in.maria = combat_own_footsteps();
+	if (s_have_col) {
+		// 0x536a20: a wall within 250 of a 900 probe ahead stops a run before it starts
+		float ex = s_px + sinf(s_yaw) * 900.0f, ez = s_pz + cosf(s_yaw) * 900.0f;
+		col_clamp_ray(&s_col, s_px, s_pz, &ex, &ez, s_py - 750.0f);
+		in.wall_ahead = hypotf(ex - s_px, ez - s_pz) < 250.0f;
+	}
+	MoveOut mo;
+	move_update(&in, &s_yaw, dt, &mo);
+	s_turn_speed = mo.turn_speed;
 	float ox = s_px, oz = s_pz;
-	// Ground speeds measured from the planted foot in jms_basic1 at 30 fps (walk 51-91: 975 u/s,
-	// run 92-170: about 1550 u/s), so the feet do not slide. 1 unit ~ 2 mm.
-	// When Maria is the player she is slower, see combat_ground_speed.
-	float clip_speed = combat_ground_speed(run ? 2 : 1);
-	float speed = fwd > 0 ? clip_speed * fwd : combat_ground_speed(0) * fwd;
-	float nx = s_px + sinf(s_yaw) * speed * dt;
-	float nz = s_pz + cosf(s_yaw) * speed * dt;
+	float nx = s_px + mo.dx, nz = s_pz + mo.dz;
 	if (s_have_col) {
 		float ny;
 		col_push(&s_col, &nx, &nz, s_py, 900.0f, 130.0f);
@@ -1609,28 +1605,13 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 		s_px = nx;
 		s_pz = nz;
 	}
-	s_vel[0] = (s_px - ox) / dt;
-	s_vel[1] = (s_pz - oz) / dt;
+	s_vel[0] = dt > 0.0f ? (s_px - ox) / dt : 0.0f;
+	s_vel[1] = dt > 0.0f ? (s_pz - oz) / dt : 0.0f;
 
-	int want = clip_index(fwd == 0 ? "idle" : run ? "run" : "walk");
-	if (want < 0)
-		want = 0;
-	if (want != s_clip && s_nclips) {
-		s_clip = want;
-		s_frame = (float)s_clips[s_clip].start;
-	}
-	if (s_nclips) {
-		AnimClip* c = &s_clips[s_clip];
-		// partial stick tilt plays the clip slower in step with the slower ground speed
-		float rate = fwd == 0 ? 1.0f : fabsf(fwd) < 0.5f ? 0.5f : fabsf(fwd);
-		float f0 = s_frame;
-		s_frame += 30.0f * dt * rate * (fwd < 0 ? -1.0f : 1.0f);
-		float len = (float)(c->end - c->start + 1);
-		while (s_frame > (float)c->end + 1.0f) s_frame -= len;
-		while (s_frame < (float)c->start) s_frame += len;
+	// James' footsteps on the PC's frames of his clips (move.c); Maria's come from combat.c
+	if (mo.step && !combat_own_footsteps()) {
 		float feet[3] = { s_px, s_py, s_pz };
-		if (!combat_own_footsteps())     // Maria's come from combat.c
-			sfx_footsteps(c->name, c->start, c->end, f0, s_frame, fwd < 0, feet);
+		sfx_footstep(mo.step_volume, feet);
 	}
 }
 
@@ -1676,12 +1657,37 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
 	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
 	C3D_DepthMap(true, -1.0f, 0.0f);
-	float frame = s_frame;
-	if (frame > (float)s_clips[s_clip].end)
-		frame = (float)s_clips[s_clip].start;   // wrap blend at the loop seam
+	// The pose: combat.c's clip while it has James (readied, attacking, hurt), else his legs' (move.c),
+	// crossfaded into at each change of clip the way the PC's anime code does (chr_pose_blend)
+	const MoveOut* mo = move_last();
 	const Anim* anim = &s_james_anim;
-	combat_james_anim(&anim, &frame);       // armed: the plank animation set
-	chr_pose(&s_james, anim, frame);
+	float frame = mo->frame, blend = mo->blend;
+	bool armed = combat_james_anim(&anim, &frame);   // armed: the weapon's animation set
+	bool legs = !armed || combat_james_free();
+	int clip = mo->clip.start;
+	if (legs)
+		frame = mo->frame;
+	else
+		clip = combat_james_clip(&blend);
+	if (legs && frame >= mo->clip.end + 1.0f)
+		frame = mo->clip.start;                  // the loop seam
+	static ChrBlend s_jblend;
+	static int s_jclip = -1;
+	static bool s_jlegs;
+	static const Anim* s_janim;
+	if (clip != s_jclip || legs != s_jlegs || anim != s_janim) {
+		if (legs != s_jlegs || anim != s_janim)
+			chr_blend_start(&s_jblend, 8.0f / 30.0f);    // from combat's clip to the legs' or back
+		else if (legs && mo->sync)
+			chr_blend_start_sync(&s_jblend, anim, mo->from_start, mo->clip.start,
+			                     mo->clip.end - mo->clip.start + 1, blend);
+		else
+			chr_blend_start(&s_jblend, blend);
+		s_jclip = clip;
+		s_jlegs = legs;
+		s_janim = anim;
+	}
+	chr_pose_blend(&s_james, anim, frame, &s_jblend, s_anim_dt);
 	// Characters are lit like the PC's (chrlight.c: the room's character lights, the strongest
 	// point and spot lights near each character, ambient 2.1 x Ambient + 0.3 x level). Full bright
 	// in the viewer.
@@ -2286,7 +2292,7 @@ static bool screens_update(u32 down, u32 held, const circlePosition* cp, float d
 	                     bgm_room_id(ev_glb_crd(), s_px, s_pz) == 0xaa);   // as open_map
 	if (!screens_open()) {
 		bool free = !prog_running() && !s_inv_open && !s_msg_page && !s_save_prompt && !s_warp_pending;
-		if (free && (down & KEY_TOUCH))
+		if (free && ((down & KEY_TOUCH) || (s_gdown & GK_MAP)))
 			open_map();
 		if (!screens_open())
 			return false;
@@ -3128,9 +3134,14 @@ static bool title_update(u32 down)
 static bool s_paused;
 static int s_pause_sel;
 static bool s_pause_dirty;
+static bool s_pause_buttons;         // the Buttons page (controls.c) is open
 
 static void pause_draw(void)
 {
+	if (s_paused && s_pause_buttons) {
+		controls_menu_draw();
+		return;
+	}
 	if (!s_pause_dirty)
 		return;
 	s_pause_dirty = false;
@@ -3151,13 +3162,14 @@ static void pause_draw(void)
 	snprintf(sound, sizeof sound, "Sound       < %d >", s_vol_sound);
 	// the Old 3DS profile's rows (hardware, control layout, quality) go before "Quit to title"
 	// once profile.h is in the tree; touchui shows whatever rows are here
-	const char* items[] = { "Resume", "Map", "Memos", bright, controls, runmode, flash, msgs, music, sound, "Quit to title" };
+	const char* items[] = { "Resume", "Map", "Memos", bright, controls, runmode, flash, msgs, music, sound,
+	                        controls_menu_label(), "Quit to title" };
 	printf("\x1b[18;1H---------------- Pause -----------------");
-	for (int i = 0; i < 11; i++)
+	for (int i = 0; i < 12 && 19 + i < 29; i++)
 		printf("\x1b[%d;6H%c %s", 19 + i * 1, i == s_pause_sel ? '>' : ' ', items[i]);
 	printf("\x1b[29;3HA: select  left/right: change  B: back");
 	static const TouiButton back[1] = { { "Back", KEY_B } };
-	touchui_menu(TOUI_PAUSE, "Pause", items, 11, &s_pause_sel, back, 1);
+	touchui_menu(TOUI_PAUSE, "Pause", items, 12, &s_pause_sel, back, 1);
 }
 
 // Returns true while the game is paused (the caller skips the game update).
@@ -3167,12 +3179,20 @@ static bool pause_update(u32 down)
 		if ((down & KEY_START) && !s_msg_page && !s_save_prompt && !s_inv_open && !s_warp_pending &&
 		    !screens_open()) {
 			s_paused = true;
+			s_pause_buttons = false;
 			s_pause_sel = 0;
 			s_pause_dirty = true;
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 			return true;
 		}
 		return false;
+	}
+	if (s_pause_buttons) {
+		if (!controls_menu_update(down)) {
+			s_pause_buttons = false;
+			s_pause_dirty = true;
+		}
+		return true;
 	}
 	if (down & (KEY_START | KEY_B) || ((down & KEY_A) && s_pause_sel == 0)) {
 		s_paused = false;
@@ -3181,7 +3201,7 @@ static bool pause_update(u32 down)
 		return true;
 	}
 	if (down & (KEY_DUP | KEY_DDOWN)) {
-		s_pause_sel = (s_pause_sel + (down & KEY_DDOWN ? 1 : 10)) % 11;
+		s_pause_sel = (s_pause_sel + (down & KEY_DDOWN ? 1 : 11)) % 12;
 		s_pause_dirty = true;
 		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
 	}
@@ -3238,6 +3258,11 @@ static bool pause_update(u32 down)
 	if (s_pause_sel >= 3 && s_pause_sel <= 9 && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A)))
 		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
 	if (s_pause_sel == 10 && (down & KEY_A)) {
+		s_pause_buttons = true;          // the Buttons page (controls.c)
+		controls_menu_open();
+		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+	}
+	if (s_pause_sel == 11 && (down & KEY_A)) {
 		s_paused = false;
 		enter_title();
 	}
@@ -3502,6 +3527,7 @@ int main(void)
 	font_init(PACK_DIR, ui_draw_font);
 
 	options_load();     // debug.txt below may override
+	controls_init(PACK_DIR);            // the player's button bindings (controls.txt)
 	options_apply();
 	clear_load();
 	FILE* dbg = fopen(PACK_DIR "/debug.txt", "r");
@@ -3567,14 +3593,8 @@ int main(void)
 		char err[128];
 		s_have_james = chr_load(&s_james, PACK_DIR "/chr/jms", "hll_jms", err, sizeof err);
 		if (s_have_james) {
-			anim_load(&s_james_anim, PACK_DIR "/chr/jms/jms_basic1.s3a");
-			s_nclips = clips_load(s_clips, 16, PACK_DIR "/chr/jms/clips.txt");
-			if (!s_nclips) {
-				strcpy(s_clips[0].name, "idle");
-				s_clips[0].start = 0;
-				s_clips[0].end = 0;
-				s_nclips = 1;
-			}
+			anim_load(&s_james_anim, PACK_DIR "/chr/jms/jms_basic1.s3a");   // clips: move.c's PC table
+			move_reset();
 			combat_init(PACK_DIR, &s_james);
 		}
 		enemy_init(PACK_DIR);
@@ -3642,6 +3662,14 @@ int main(void)
 		float dt = (float)(now_tick - last_tick) / (float)SYSCLOCK_ARM11;
 		last_tick = now_tick;
 		dt = dt < 1.0f / 60.0f ? 1.0f / 60.0f : dt > 1.0f / 15.0f ? 1.0f / 15.0f : dt;
+		// Frames are shown on the screen's refresh (59.83 Hz), so a frame lasts a whole number of
+		// refreshes; snapping dt to that removes the tick jitter that made motion uneven when the
+		// frame rate sits between 60 and 30 or below (movement, the camera and the clips all use dt)
+		{
+			const float refresh = 4481136.0f / 268111856.0f;
+			float n = roundf(dt / refresh);
+			dt = (n < 1.0f ? 1.0f : n) * refresh;
+		}
 		perf_frame_begin();
 		hidScanInput();
 		s_ui_used = 0;
@@ -3659,6 +3687,10 @@ int main(void)
 		pt_frame(&down, &held, dt);
 		if (s_pt_quit)
 			break;
+		u32 gdown, gheld;                    // the game keys (controls.c): actions, not buttons
+		controls_game(down, held, &gdown, &gheld);
+		s_gdown = gdown;
+		s_anim_dt = dt;
 		touchui_debug(s_state == ST_VIEWER || s_debug_hud);
 		if (s_state != ST_TITLE) {
 			touchui_menu_close(TOUI_TITLE);
@@ -3708,10 +3740,10 @@ int main(void)
 		if (!viewer && !demo_active() && pause_update(down)) {
 			if (s_state == ST_TITLE)
 				continue;
-			down = held = 0;         // the menu took the buttons; the game is frozen below
-			dt = 0.0f;
+			down = held = gdown = gheld = s_gdown = 0;   // the menu took the buttons; the game is frozen below
+			dt = s_anim_dt = 0.0f;
 		}
-		if (down & KEY_B)
+		if (gdown & KEY_B)
 			s_run_pressed = true;
 		if (viewer && (down & (KEY_DRIGHT | KEY_DLEFT)) && s_nrooms) {
 			s_room = (s_room + (down & KEY_DRIGHT ? 1 : s_nrooms - 1)) % s_nrooms;
@@ -3735,13 +3767,13 @@ int main(void)
 			s_depth_variant = (s_depth_variant + 1) % 3;
 		// Enhanced Edition Room312FlashlightFix (Patches/Room312FlashlightFix.cpp, zlib licence): the
 		// flashlight switch (0x48f078) does nothing in hotel room 312 while James has the videotape
-		if (s_cam.mode == CAM_PLAYER && (down & KEY_X) && !screens_open() &&
+		if (s_cam.mode == CAM_PLAYER && (gdown & KEY_X) && !screens_open() && !s_inv_open &&
 		    !(bgm_room_id(ev_glb_crd(), s_px, s_pz) == 0xa2 && ev_have_item(0x17))) {
 			s_flash_on = !s_flash_on;
 			sfx_play(s_flash_on ? SFX_LIGHT_ON : SFX_LIGHT_OFF, 0.8f, 0.0f);
 		}
-		if (!viewer && (down & (KEY_DUP | KEY_DDOWN)) && !s_inv_open && !screens_open()) {
-			s_bright += down & KEY_DUP ? 1 : -1;
+		if (!viewer && (gdown & (KEY_DUP | KEY_DDOWN)) && !s_inv_open && !screens_open()) {
+			s_bright += gdown & KEY_DUP ? 1 : -1;
 			s_bright = s_bright < 1 ? 1 : s_bright > 7 ? 7 : s_bright;
 			s_bright_shown = 90;
 			s_env_dirty = true;
@@ -3787,7 +3819,7 @@ int main(void)
 					// it has him in event mode
 					static const circlePosition still;
 					bool locked = prog_player_locked();
-					player_update(locked ? &still : &cp, locked ? 0 : held, dt);
+					player_update(locked ? &still : &cp, locked ? 0 : gheld, dt);
 					prog_update(down, held, dt);
 					if (s_game_end >= 0 && !prog_running()) {
 						bool results = s_game_end > 0;      // backing out of Born From a Wish has none
@@ -3797,12 +3829,13 @@ int main(void)
 						s_results_dirty = true;
 						continue;
 					}
-				} else if (!inventory_update(down)) {
+				} else if (!inventory_update(s_inv_open ? down : gdown)) {   // Y opens, its own keys inside
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held;
-					if (!combat_update(&body, &cp, down, held, dt, s_have_col ? &s_col : NULL, &free_held)) {
+					combat_set_sight(s_env.dark, s_flash_on);
+					if (!combat_update(&body, &cp, gdown, gheld, dt, s_have_col ? &s_col : NULL, &free_held)) {
 						player_update(&cp, free_held, dt);
-						events_update(down);
+						events_update(gdown);
 					}
 				}
 				if (!prog_running() || !prog_player_locked()) {
@@ -3869,7 +3902,7 @@ int main(void)
 			}
 			float fovy;
 			u64 tb = svcGetSystemTick();
-			gamecam_update(&gp, dt, (held & KEY_L) != 0, &mv, &fovy);
+			gamecam_update(&gp, dt, (gheld & GK_LOOK) != 0, &mv, &fovy);
 			perf_part("cam", tb);
 			s_chr_nofog = ee_final_boss_nofog(gamecam_eye()[1]);
 			memcpy(s_fogf.eye, gamecam_eye(), sizeof s_fogf.eye);
@@ -3982,7 +4015,7 @@ int main(void)
 			       (unsigned long)s_col.n_floors, (unsigned long)s_col.n_walls);
 			printf("%-38s\n", mem_log(NULL));
 			if (s_have_james)
-				printf("james  %-6s frame %6.1f yaw %5.2f   \n", s_clips[s_clip].name, s_frame, s_yaw);
+				printf("%-30.30s %5.2f \n", move_status(), s_yaw);
 			else
 				printf("james  not loaded                     \n");
 			printf("audio  %-30s\n", audio_status());

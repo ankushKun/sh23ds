@@ -50,8 +50,17 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 
 // When armed, James is animated from the plank animation set: returns the pose to use.
 bool combat_james_anim(const Anim** anim, float* frame);
+// True while combat leaves James' legs to move.c (nothing readied): his clips then come from
+// move_last(), played on the anim combat_james_anim gives.
+bool combat_james_free(void);
+// The clip combat plays (an id that changes with it) and how long to crossfade into it.
+int combat_james_clip(float* blend);
 // After chr_draw(james): the plank on his right hand (same model view and skinning program).
 void combat_draw_weapon(int uBones);
+
+// Per frame from main.c: the room is dark, the flashlight is on (how far James sees enemies to lock
+// on to them, 0x52f2c0).
+void combat_set_sight(bool dark, bool flashlight);
 
 // Called by enemies when an attack reaches James.
 void combat_damage_james(int attack_id, float ap, float from_x, float from_z);
