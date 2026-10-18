@@ -41,12 +41,12 @@ static void init(void)
 	};
 	C3D_LightEnvInit(&s_env);
 	C3D_LightEnvMaterial(&s_env, &mat);
-	C3D_LightEnvAmbient(&s_env, 1.0f, 1.0f, 1.0f);
+	chr_light_ambient(&s_env, 1.0f, 1.0f, 1.0f);
 	static C3D_LightLut d0;
 	LightLut_FromFunc(&d0, lut_one, 0.0f, false);
 	C3D_LightEnvLut(&s_env, GPU_LUT_D0, GPU_LUTINPUT_NH, false, &d0);
 	C3D_LightInit(&s_light, &s_env);
-	C3D_LightColor(&s_light, 1.0f, 1.0f, 1.0f);
+	chr_light_color(&s_light, 1.0f, 1.0f, 1.0f, 0.6f);
 	C3D_FVec dir = FVec4_New(-0.4f, 0.6f, 0.7f, 0.0f);     // view space, towards the light
 	C3D_LightPosition(&s_light, &dir);
 }

@@ -254,9 +254,9 @@ static int walk_update(const PtState* st, float dt)
 	}
 	float diff = remainderf(atan2f(tx, tz) - st->yaw, 2.0f * (float)M_PI);
 	if (fabsf(diff) > 0.6f) {
-		s_wpad[0] = diff > 0 ? -1.0f : 1.0f;      // turn on the spot (positive x turns right)
+		s_wpad[0] = diff > 0 ? 1.0f : -1.0f;      // turn on the spot (positive x turns right)
 	} else {
-		s_wpad[0] = fmaxf(-1.0f, fminf(1.0f, -diff * 2.5f));
+		s_wpad[0] = fmaxf(-1.0f, fminf(1.0f, diff * 2.5f));
 		s_wpad[1] = d < 250.0f ? 0.6f : 1.0f;
 		if (d > 1500.0f && fabsf(diff) < 0.25f)
 			s_wheld = KEY_B;                        // run on the long stretches

@@ -347,7 +347,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 		else
 			ramp(1.3f, 1.7f, 3.4f, dt);
 		rate = 1.9f * tx;
-		off_to = M.state == MV_LSWALK ? PI / 2.0f : -PI / 2.0f;
+		off_to = M.state == MV_LSWALK ? -PI / 2.0f : PI / 2.0f;   // +yaw is to the right
 		break;
 	case MV_RUN1: case MV_RUN2: case MV_RUN3: {
 		static const float top[3] = { 3.5f, 4.0f, 4.8f };
@@ -370,7 +370,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 		ramp(3.8f, 6.0f, 6.0f, dt);
 		rate = 1.7f * tx;
 		M.stam += dt * 30.0f;
-		off_to = M.state == MV_LSRUN ? PI / 2.0f : -PI / 2.0f;
+		off_to = M.state == MV_LSRUN ? -PI / 2.0f : PI / 2.0f;
 		break;
 	case MV_LTURN: case MV_RTURN: {
 		M.spd = 0.0f;
@@ -380,7 +380,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 			*yaw = M.turn_to;
 			enter(MV_STAND);
 		} else {
-			*yaw += M.state == MV_LTURN ? step : -step;
+			*yaw += M.state == MV_LTURN ? -step : step;
 		}
 		off_to = 0.0f;
 		M.off = 0.0f;
@@ -389,7 +389,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	}
 
 	if (in->control == MOVE_TANK && turn)
-		*yaw -= (float)turn * rate * dt;      // right turns lower the port's yaw
+		*yaw += (float)turn * rate * dt;      // right turns raise the yaw: forward is (sin, cos) and +x is screen right
 	// the direction of travel eases between the gaits' offsets (0x54ef10, 4 rad/s)
 	if (moving(M.state) && moving(M.prev)) {
 		float d = wrap(off_to - M.off), s = 4.0f * dt;

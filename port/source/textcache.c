@@ -1,4 +1,5 @@
 #include "textcache.h"
+#include "sdio.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +27,7 @@ const char* text_cached(const char* path)
 	long n = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	char* t = n >= 0 ? malloc(n + 1) : NULL;
-	if (t && fread(t, 1, n, f) != (size_t)n) {
+	if (t && sd_fread(t, n, f) != (size_t)n) {
 		free(t);
 		t = NULL;
 	}

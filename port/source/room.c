@@ -1,5 +1,6 @@
 #include "room.h"
 #include "sdsim.h"
+#include "sdio.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -190,15 +191,13 @@ bool room_load(Room* room, const char* pack, const char* area, const char* name,
 	long size = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	u8* data = malloc(size);
-	if (!data || fread(data, 1, size, f) != (size_t)size) {
+	if (!data || sd_fread(data, size, f) != (size_t)size) {
 		fclose(f);
 		free(data);
 		snprintf(err, errlen, "read failed (%ld bytes)", size);
 		return false;
 	}
 	fclose(f);
-	sdsim_open();
-	sdsim_read((u32)size);
 	return room_load_mem(room, pack, area, name, data, size, NULL, 0, err, errlen);
 }
 

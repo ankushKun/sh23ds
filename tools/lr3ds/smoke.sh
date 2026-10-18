@@ -34,6 +34,7 @@ run continue  "debughud 1\n" 560 --press 300-303:A     # CONTINUE (the default w
 run heal      "debughud 1\nflag 32 1\nitem 1 2\nspawn er05 9850 0 10281 180 2\n" 520 --press 420-423:Y --press 450-453:A
 run wish      "debughud 1\n" 840 --press 300-303:DOWN --press 330-333:A --press 360-363:DOWN --press 390-393:A --press 420-423:A     # NEW GAME, SUB SCENARIO, action level
 run cutscene  "debughud 1\nflag 32 1\nspawn er01 -19520 0 20430 -90 2\ndemo first_toilet 300\n" 520
+run angela    "debughud 1\nflag 32 1\nspawn ca11 3475 2318 -1034 0 2\ndemo haka_agl 300\n" 700     # an outdoor scene: the forest tiles, Angela and her voice
 run pause     "flag 32 1\nspawn er05 9850 0 10281 180 2\n" 500 --press 420-423:START --press 450-453:DOWN
 
 if [ -f "$OUT/debug.txt.bak" ]; then mv "$OUT/debug.txt.bak" "$SD/debug.txt"; else rm -f "$SD/debug.txt"; fi
@@ -41,7 +42,7 @@ if [ -f "$OUT/debug.txt.bak" ]; then mv "$OUT/debug.txt.bak" "$SD/debug.txt"; el
 import sys, os
 from PIL import Image
 d = sys.argv[1]
-names = ['title', 'newgame', 'deck', 'door', 'jammed', 'savepoint', 'continue', 'heal', 'wish', 'cutscene', 'pause']
+names = ['title', 'newgame', 'deck', 'door', 'jammed', 'savepoint', 'continue', 'heal', 'wish', 'cutscene', 'angela', 'pause']
 ims = [Image.open(os.path.join(d, n + '.png')) for n in names if os.path.exists(os.path.join(d, n + '.png'))]
 if ims:
     sheet = Image.new('RGB', (400 * 3, 480 * ((len(ims) + 2) // 3)))

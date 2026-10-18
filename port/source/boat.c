@@ -252,12 +252,12 @@ void boat_tick(int stage, float dt)
 static void keys(const BoatInput* in)
 {
 	// the PC's stick bytes less 0x80, shifted down 4 (-7..7), the arrow keys as 7; its x grows to
-	// the left (the stick to the right turns the boat right, lowering the turn as James' own turns do)
-	int x = (int)(-in->x * 127.0f) / 16, y = (int)(-in->y * 127.0f) / 16;
+	// the right and its y downwards
+	int x = (int)(in->x * 127.0f) / 16, y = (int)(-in->y * 127.0f) / 16;
 	if (in->down) y = 7;
 	if (in->up) y = -7;
-	if (in->right) x = -7;
-	if (in->left) x = 7;
+	if (in->right) x = 7;
+	if (in->left) x = -7;
 	float ang = atan2f((float)x, (float)-y), s = sinf(ang), c = cosf(ang);
 	float m = sqrtf((s * x) * (s * x) + (c * y) * (c * y));    // 0x53e6c0: 0..1
 	m = m < 0.0f ? 0.0f : m > 1.0f ? 1.0f : m;

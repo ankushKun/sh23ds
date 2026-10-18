@@ -1,5 +1,6 @@
 #include "stream.h"
 #include "sdsim.h"
+#include "sdio.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,13 +42,11 @@ static u8* read_file(const char* path, long* size)
 	long n = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	u8* d = n > 0 ? malloc(n) : NULL;
-	if (d && fread(d, 1, n, f) != (size_t)n) {
+	if (d && sd_fread(d, n, f) != (size_t)n) {
 		free(d);
 		d = NULL;
 	}
 	fclose(f);
-	if (d)
-		sdsim_read((u32)n);
 	*size = d ? n : 0;
 	return d;
 }

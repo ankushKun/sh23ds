@@ -1,4 +1,5 @@
 #include "chrlight.h"
+#include "chr.h"
 #include "textcache.h"
 #include "profile.h"
 #include <math.h>
@@ -235,7 +236,7 @@ static void set_parallel(C3D_Light* g, const float* dir, const float* col)
 	// the light travels along dir; a PICA directional light gives the direction towards the light
 	C3D_FVec d = Mtx_MultiplyFVec4(&L.view, FVec4_New(-dir[0], -dir[1], -dir[2], 0.0f));
 	C3D_LightPosition(g, &d);
-	C3D_LightColor(g, col[0] * L.bright, col[1] * L.bright, col[2] * L.bright);
+	chr_light_color(g, col[0] * L.bright, col[1] * L.bright, col[2] * L.bright, 0.7f);
 	C3D_LightSpotEnable(g, false);
 	C3D_LightDistAttnEnable(g, false);
 	C3D_LightEnable(g, true);
@@ -245,7 +246,7 @@ static void set_extra(C3D_Light* g, Slot* s, float k)
 {
 	C3D_FVec p = Mtx_MultiplyFVec4(&L.view, FVec4_New(s->pos[0], s->pos[1], s->pos[2], 1.0f));
 	C3D_LightPosition(g, &p);
-	C3D_LightColor(g, s->col[0] * k * L.bright, s->col[1] * k * L.bright, s->col[2] * k * L.bright);
+	chr_light_color(g, s->col[0] * k * L.bright, s->col[1] * k * L.bright, s->col[2] * k * L.bright, 0.7f);
 	C3D_LightDistAttn(g, &s->da);
 	C3D_LightDistAttnEnable(g, true);
 	bool spot = s->kind == K_SPOT;
@@ -306,7 +307,7 @@ void chrlight_at(const float pos[3], bool james)
 {
 	if (!L.active)
 		return;
-	C3D_LightEnvAmbient(L.env, L.amb[0], L.amb[1], L.amb[2]);
+	chr_light_ambient(L.env, L.amb[0], L.amb[1], L.amb[2]);
 	int g = 0;
 	// parallels (UpdateParallels, at most three here): record lights 1..3 and the fakes
 	for (int i = 1; i < NSLOT && g < CL_PAR; i++) {
@@ -356,7 +357,7 @@ void chrlight_at(const float pos[3], bool james)
 void chrlight_ambient_scale(float k)
 {
 	if (L.active)
-		C3D_LightEnvAmbient(L.env, L.amb[0] * k, L.amb[1] * k, L.amb[2] * k);
+		chr_light_ambient(L.env, L.amb[0] * k, L.amb[1] * k, L.amb[2] * k);
 }
 
 void chrlight_end(void)

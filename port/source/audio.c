@@ -27,6 +27,9 @@ typedef struct {
 
 typedef struct {
 	FILE* f;
+	u8* rb;                     // read-ahead (sread_at): file bytes rb_off.. rb_off + rb_len
+	u32 rb_off, rb_len, cur;
+	bool rb_eof;
 	bool aix;
 	u32 data_start;             // ADX: first frame
 	u32 rate;
@@ -45,6 +48,7 @@ typedef struct {
 	Stream s;
 	int ch;
 	bool playing;
+	bool primed;                // its buffers have been queued once (an empty queue after is a gap)
 	float volume;
 	u64 played;                 // samples of the buffers the DSP has finished
 	ndspWaveBuf wbuf[NBUF];
@@ -55,6 +59,7 @@ static Chan s_music = { .ch = MUSIC_CH }, s_voice = { .ch = VOICE_CH };
 static float s_gain[2] = { 1.0f, 1.0f };   // the options' music and voice volumes (audio_set_gains)
 static bool s_ok;
 static char s_status[64] = "audio off";
+static volatile u32 s_underruns;     // times a stream's buffers had all played before the refill
 
 // Decoding one buffer of layered AIX music costs 25-30 ms of CPU, which on the main loop dropped a
 // frame every 110 ms (port/PERFORMANCE.md). A thread does the refills instead: on core 2, the New
@@ -253,6 +258,70 @@ static bool adx_header(Stream* s, Layer* l, const u8* h, u32 len)
 	return true;
 }
 
+// The streams read through a read-ahead of their own, topped up here on the refill thread whenever
+// less than half of it is left. On a console every thread's file reads go through the FS service one
+// request at a time, so while the main loop or the tile reader read a large file the music's and the
+// voice's small reads used to wait for it, and the four PCM buffers (about 0.4 s) ran dry: cutscene
+// voices stuttered on hardware, never in Azahar, where reads take no time. With up to 192 KB held
+// (seconds of a voice, about a second of layered music) a long read elsewhere goes unheard.
+#define RB_SIZE (192 * 1024)
+
+static void rb_fill(Stream* s)
+{
+	u32 want = RB_SIZE - s->rb_len;
+	if (!want || s->rb_eof)
+		return;
+	u32 got = 0;
+	if (fseek(s->f, s->rb_off + s->rb_len, SEEK_SET) == 0)
+		got = fread(s->rb + s->rb_len, 1, want, s->f);
+	sdsim_read(got);
+	s->rb_len += got;
+	if (got < want)
+		s->rb_eof = true;
+}
+
+// Up to n bytes from file offset off into dst; the count read (short at the end of the file).
+static u32 sread_at(Stream* s, u32 off, void* dst, u32 n)
+{
+	if (!s->rb)
+		s->rb = malloc(RB_SIZE);
+	if (!s->rb || n > RB_SIZE / 2 || sdsim_legacy) {   // no read-ahead: straight from the file
+		s->cur = off;
+		if (fseek(s->f, off, SEEK_SET))
+			return 0;
+		u32 got = fread(dst, 1, n, s->f);
+		sdsim_read(got);
+		s->cur += got;
+		return got;
+	}
+	u32 end = s->rb_off + s->rb_len;
+	if (off < s->rb_off || off + n > end) {
+		// a seek, or the data runs on past what is held: keep what is held from off on, read the rest
+		u32 keep = off >= s->rb_off && off < end ? end - off : 0;
+		if (keep)
+			memmove(s->rb, s->rb + (off - s->rb_off), keep);
+		else
+			s->rb_eof = false;
+		s->rb_off = off;
+		s->rb_len = keep;
+		rb_fill(s);
+		end = s->rb_off + s->rb_len;
+	}
+	u32 have = off + n <= end ? n : end > off ? end - off : 0;
+	memcpy(dst, s->rb + (off - s->rb_off), have);
+	s->cur = off + have;
+	if (!s->rb_eof && end - s->cur < RB_SIZE / 2) {   // read ahead while there is time
+		u32 keep = end - s->cur;
+		memmove(s->rb, s->rb + (s->cur - s->rb_off), keep);
+		s->rb_off = s->cur;
+		s->rb_len = keep;
+		rb_fill(s);
+	}
+	return have;
+}
+
+static u32 sread(Stream* s, void* dst, u32 n) { return sread_at(s, s->cur, dst, n); }
+
 // AIX: "AIXF" header, then "AIXP" chunks: u32 BE size, u8 layer, u8 layer count, u16 BE frames, then
 // layer data. Each block has one chunk per layer in order; a layer's first chunk starts with its
 // ADX header. Reads the next block into every layer's buffer. first: parse the headers.
@@ -261,7 +330,7 @@ static bool aix_fill(Stream* s, bool first)
 	int got = 0;
 	while (got < s->nlayers || first) {
 		u8 hd[16];
-		if (fseek(s->f, s->aix_next_chunk, SEEK_SET) || fread(hd, 1, 16, s->f) != 16)
+		if (sread_at(s, s->aix_next_chunk, hd, 16) != 16)
 			return false;
 		if (memcmp(hd, "AIXP", 4) != 0)
 			return false;                          // "AIXE" ends the stream
@@ -283,9 +352,8 @@ static bool aix_fill(Stream* s, bool first)
 			l->buf = nb;
 			l->cap = payload;
 		}
-		if (fread(l->buf, 1, payload, s->f) != payload)
+		if (sread(s, l->buf, payload) != payload)
 			return false;
-		sdsim_read(payload);
 		l->len = payload;
 		l->pos = 0;
 		if (!l->channels) {
@@ -304,10 +372,7 @@ static bool read_frame_group(Stream* s, u8 out[MAX_LAYERS][18 * MAX_CH])
 	if (!s->aix) {
 		u32 need = 18 * s->layer[0].channels;
 		u32 frame = s->sample_pos / 32;
-		if (fseek(s->f, s->data_start + frame * need, SEEK_SET))
-			return false;
-		sdsim_read(need);
-		return fread(out[0], 1, need, s->f) == need;
+		return sread_at(s, s->data_start + frame * need, out[0], need) == need;
 	}
 	while (s->layer[0].pos + 18 * s->layer[0].channels > s->layer[0].len)
 		if (!aix_fill(s, false))
@@ -435,8 +500,11 @@ static void chan_stop(Chan* c)
 		fclose(c->s.f);
 	Layer keep[MAX_LAYERS];
 	memcpy(keep, c->s.layer, sizeof keep);
+	u8* rb = c->s.rb;                                 // so is the read-ahead
 	memset(&c->s, 0, sizeof c->s);
+	c->s.rb = rb;
 	c->played = 0;
+	c->primed = false;
 	for (int i = 0; i < MAX_LAYERS; i++) {          // chunk buffers are reused by the next stream
 		c->s.layer[i].buf = keep[i].buf;
 		c->s.layer[i].cap = keep[i].cap;
@@ -477,7 +545,7 @@ static bool play_unlocked(Chan* c, const char* path, float volume, float layer0)
 		return false;
 	}
 	u8 head[0x40];
-	if (fread(head, 1, sizeof head, s->f) < 0x20) {
+	if (sread_at(s, 0, head, sizeof head) < 0x20) {
 		chan_stop(c);
 		return false;
 	}
@@ -585,6 +653,12 @@ static void chan_update(Chan* c)
 {
 	if (!c->playing)
 		return;
+	int empty = 0;
+	for (int i = 0; i < NBUF; i++)
+		empty += c->wbuf[i].status == NDSP_WBUF_DONE || c->wbuf[i].status == NDSP_WBUF_FREE;
+	if (c->primed && empty == NBUF)
+		s_underruns++;              // the DSP ran out: a gap the player hears
+	c->primed = true;
 	for (int i = 0; i < NBUF; i++) {
 		ndspWaveBuf* w = &c->wbuf[i];
 		if (w->status != NDSP_WBUF_DONE && w->status != NDSP_WBUF_FREE)
@@ -620,6 +694,7 @@ void audio_update(void)
 }
 
 const char* audio_status(void) { return s_status; }
+u32 audio_underruns(void) { return s_underruns; }
 
 int audio_decode_load(void)
 {

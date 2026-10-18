@@ -10,3 +10,5 @@ void sdsim_set(int kb_per_s, int open_ms);
 void sdsim_open(void);                // a file opened (the directory lookup)
 void sdsim_read(u32 bytes);           // bytes read
 const char* sdsim_status(void);
+// debug.txt "sdlegacy 1": whole-file reads and no audio read-ahead (sdio.h, audio.c), to compare
+extern volatile int sdsim_legacy;

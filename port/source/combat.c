@@ -1292,7 +1292,7 @@ static void turn_to_target(CombatBody* b, const circlePosition* cp, float dt, fl
 		float st = 4.0f * dt;
 		*b->yaw += ang > st ? st : ang < -st ? -st : ang;
 	} else {
-		*b->yaw -= cp->dx / 156.0f * 2.0f * dt;
+		*b->yaw += cp->dx / 156.0f * 2.0f * dt;
 	}
 }
 

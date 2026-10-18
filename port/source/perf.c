@@ -163,9 +163,10 @@ void perf_frame_end(const char* where)
 	         P.ren_sum / n, P.gpu_sum / n);
 	if (P.log_frames) {
 		log_add("%-10s upd %5.2f max %5.2f  render %5.2f max %5.2f  c3d cpu %5.2f gpu %5.2f max %5.2f  frame max %5.2f"
-		        "  lin %lu  music %d%%\n",
+		        "  lin %lu  music %d%%  gaps %lu\n",
 		        where, P.upd_sum / n, P.upd_max, P.ren_sum / n, P.ren_max, P.cpu_sum / n, P.gpu_sum / n, P.gpu_max,
-		        P.tot_max, (unsigned long)(linearSpaceFree() >> 10), audio_decode_load());
+		        P.tot_max, (unsigned long)(linearSpaceFree() >> 10), audio_decode_load(),
+		        (unsigned long)audio_underruns());
 		// the named parts: average over the second and the worst frame's share
 		if (P.npsum) {
 			log_add("%-10s parts", where);

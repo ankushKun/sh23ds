@@ -362,7 +362,7 @@ static float position_pan(const float pos[3])
 		return 0.0f;
 	fx /= fl, fz /= fl;
 	float rx = pos[0] - s_eye[0], rz = pos[2] - s_eye[2];
-	float side = rx * -fz + rz * fx;     // screen right is (-fz, fx): turning right lowers the yaw
+	float side = rx * fz - rz * fx;      // screen right is (fz, -fx): turning right raises the yaw
 	float ahead = rx * fx + rz * fz;
 	float l = sqrtf(side * side + ahead * ahead);
 	if (l < 1.0f)

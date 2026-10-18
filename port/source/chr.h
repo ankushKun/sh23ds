@@ -81,5 +81,13 @@ void chr_blend_start_sync(ChrBlend* b, const Anim* a, float from_start, float to
 void chr_pose_blend(Character* c, const Anim* a, float frame, ChrBlend* b, float dt);
 
 // Draws with the skinning shader bound; uBones is the uniform location of bones[]. Lit by the bound
-// light environment (the shader outputs normal quaternions).
+// light environment (the shader outputs normal quaternions), whose colours must come from the two
+// setters below: chr_draw's combiner doubles the lighting and clamps it to 1.
 void chr_draw(Character* c, int uBones);
+
+// The PICA keeps 8 bits per light colour (255 is 1.0): a brighter light wraps round to a dim one,
+// although Azahar reads 10 bits and shows it as meant. Characters' lights have colours up to about
+// 2 (the PC's lights times the brightness), so they go to the GPU at half strength, clamped to
+// what the register holds, and chr_draw doubles them back.
+void chr_light_color(C3D_Light* l, float r, float g, float b, float mat_diffuse);
+void chr_light_ambient(C3D_LightEnv* env, float r, float g, float b);

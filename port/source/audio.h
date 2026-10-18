@@ -33,3 +33,5 @@ void audio_update(void);
 const char* audio_status(void);
 // Percent of one core the music decoding took since the last call (-1: nothing decoded).
 int audio_decode_load(void);
+// How many times a music or voice stream ran dry since start-up (heard as a stutter).
+u32 audio_underruns(void);

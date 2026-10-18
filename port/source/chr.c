@@ -1,4 +1,5 @@
 #include "chr.h"
+#include "sdio.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,6 +7,24 @@
 #include <tex3ds.h>
 #include "stream.h"
 #include "sdsim.h"
+
+#define CHR_LIGHT_SCALE 0.5f
+
+static float light_clamp(float v, float max) { return v < 0.0f ? 0.0f : v > max ? max : v; }
+
+void chr_light_color(C3D_Light* l, float r, float g, float b, float mat_diffuse)
+{
+	float max = mat_diffuse > 0.0f ? 1.0f / mat_diffuse : 1.0f;   // the register holds material x light
+	C3D_LightDiffuse(l, light_clamp(r * CHR_LIGHT_SCALE, max), light_clamp(g * CHR_LIGHT_SCALE, max),
+	                 light_clamp(b * CHR_LIGHT_SCALE, max));
+	C3D_LightSpecular0(l, 0.0f, 0.0f, 0.0f);     // the characters' combiner uses no specular
+	C3D_LightSpecular1(l, 0.0f, 0.0f, 0.0f);
+}
+
+void chr_light_ambient(C3D_LightEnv* env, float r, float g, float b)
+{
+	C3D_LightEnvAmbient(env, r * CHR_LIGHT_SCALE, g * CHR_LIGHT_SCALE, b * CHR_LIGHT_SCALE);
+}
 
 typedef struct {
 	char magic[4];
@@ -28,13 +47,11 @@ static void* read_file(const char* path, long* size)
 	*size = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	void* d = malloc(*size);
-	if (d && fread(d, 1, *size, f) != (size_t)*size) {
+	if (d && sd_fread(d, *size, f) != (size_t)*size) {
 		free(d);
 		d = NULL;
 	}
 	fclose(f);
-	if (d)
-		sdsim_read((u32)*size);
 	return d;
 }
 
@@ -411,20 +428,22 @@ void chr_draw(Character* c, int uBones)
 			tex_slot = (int)d->texture_slot;
 		}
 		if ((int)textured != env_mode) {
+			// stage 0 doubles the half-strength lighting (chr_light_color) and clamps it to 1, as
+			// the fragment lighting's own sum would be; stage 1 puts the texture on it
 			C3D_TexEnv* env = C3D_GetTexEnv(0);
 			C3D_TexEnvInit(env);
+			C3D_TexEnvSrc(env, C3D_RGB, GPU_FRAGMENT_PRIMARY_COLOR, 0, 0);
+			C3D_TexEnvSrc(env, C3D_Alpha, textured ? GPU_TEXTURE0 : GPU_PRIMARY_COLOR, 0, 0);
+			C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+			C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);
+			C3D_TexEnv* e1 = C3D_GetTexEnv(1);
+			C3D_TexEnvInit(e1);
 			if (textured) {
-				C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_FRAGMENT_PRIMARY_COLOR, 0);
-				C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, 0, 0);
-				C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-				C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-			} else {
-				C3D_TexEnvSrc(env, C3D_RGB, GPU_FRAGMENT_PRIMARY_COLOR, 0, 0);
-				C3D_TexEnvSrc(env, C3D_Alpha, GPU_PRIMARY_COLOR, 0, 0);
-				C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+				C3D_TexEnvSrc(e1, C3D_RGB, GPU_TEXTURE0, GPU_PREVIOUS, 0);
+				C3D_TexEnvSrc(e1, C3D_Alpha, GPU_PREVIOUS, 0, 0);
+				C3D_TexEnvFunc(e1, C3D_RGB, GPU_MODULATE);
+				C3D_TexEnvFunc(e1, C3D_Alpha, GPU_REPLACE);
 			}
-			if (env_mode < 0)
-				C3D_TexEnvInit(C3D_GetTexEnv(1));
 			env_mode = (int)textured;
 		}
 		int a = textured && (d->flags & 1);
@@ -433,5 +452,9 @@ void chr_draw(Character* c, int uBones)
 			alpha = a;
 		}
 		C3D_DrawElements(GPU_TRIANGLES, d->index_count, C3D_UNSIGNED_SHORT, d->indices);
+	}
+	if (env_mode >= 0) {     // leave the combiner as the old one-stage setup did: stage 1 passes through
+		C3D_TexEnvScale(C3D_GetTexEnv(0), C3D_RGB, GPU_TEVSCALE_1);
+		C3D_TexEnvInit(C3D_GetTexEnv(1));
 	}
 }

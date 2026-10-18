@@ -1374,7 +1374,9 @@ static float bright_scale(void)
 static RoomEnv s_env;
 
 // The room is lit, or the flashlight is on (events with the "needs light" bit want this).
-static bool james_can_see(void) { return !s_env.dark || s_flash_on; }
+// The flashlight shines once James has it (item 18, the PC's gFlashLightAcquired) and it is switched on.
+static bool flash_lit(void) { return s_flash_on && ev_have_item(18); }
+static bool james_can_see(void) { return !s_env.dark || flash_lit(); }
 static RoomEnvConst s_envc;
 static bool s_env_dirty = true;      // fog and flashlight LUTs need rebuilding
 static float s_flash_level = 1.0f;   // 0x8a2ba8: feeds c19 / c21; only dark rooms change it
@@ -1511,7 +1513,7 @@ static void lighting_frame(const C3D_Mtx* view, bool player)
 	// the Maria ending epilogue (0x5c); the port lights scenes from James' position, so it stays off
 	// for the whole scene.
 	int dn = demo_number();
-	bool flash = player && s_env.dark && s_flash_on && dn != 0x19 && dn != 0x5c;
+	bool flash = player && s_env.dark && flash_lit() && dn != 0x19 && dn != 0x5c;
 	// 0x50a7d0: dark rooms set the level every frame, lit rooms keep the last one
 	if (player && s_env.dark)
 		s_flash_level = flash ? 0.0f : env_flash_off_level(&s_env, ev_have_item(0x12), ev_flag(625));
@@ -1894,13 +1896,13 @@ static void head_update(const circlePosition* cp, u32 gheld, float dt, bool on)
 	if (on && st != MV_RELAX && st != MV_ALERT) {
 		if (gheld & GK_LOOK) {
 			float x = cp->dx / 156.0f, y = cp->dy / 156.0f;
-			ty = -x * 0.8f;                    // the stick right turns the head right (yaw down)
-			tp = y * (ty >= 0.0f ? 0.4f : 0.5f);
+			ty = x * 0.8f;                     // the stick right turns the head right (yaw up)
+			tp = y * (y >= 0.0f ? 0.5f : 0.4f);
 		} else {
 			static float pts[33][3];
 			int n = ev_items_lying(pts, 32);
 			CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
-			EnPlayer jp = combat_enplayer(&body, s_flash_on), mp;
+			EnPlayer jp = combat_enplayer(&body, flash_lit()), mp;
 			if (maria_target(&jp, &mp))
 				pts[n][0] = mp.x, pts[n][1] = mp.y - 800.0f, pts[n][2] = mp.z, n++;
 			float at[3];
@@ -2020,7 +2022,7 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 		float at[3] = { s_px, s_py, s_pz };
 		chrlight_at(at, true);
 	} else {
-		C3D_LightEnvAmbient(&s_lenv, 1.0f, 1.0f, 1.0f);
+		chr_light_ambient(&s_lenv, 1.0f, 1.0f, 1.0f);
 	}
 	if (s_chr_nofog)
 		C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
@@ -2063,7 +2065,7 @@ static void draw_demo(const C3D_Mtx* proj, const C3D_Mtx* view)
 		a[i] = 1.4f * lit * bright_scale();
 		s_demo_amb[i] = a[i];
 	}
-	C3D_LightEnvAmbient(&s_lenv, a[0], a[1], a[2]);
+	chr_light_ambient(&s_lenv, a[0], a[1], a[2]);
 	if (s_chr_nofog)
 		C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
 	demo_set_lighting(&s_lenv, a, bright_scale());
@@ -3997,6 +3999,7 @@ int main(void)
 				sscanf(line, "%*s %d %d", &kb, &open_ms);
 				sdsim_set(kb, open_ms < 0 ? 8 : open_ms);
 			}
+			if (!strcmp(key, "sdlegacy")) sdsim_legacy = val != 0;   // reads as before the read-ahead, for A/B tests
 			if (!strcmp(key, "shadowdebug")) shadow_debug(val);
 			if (!strcmp(key, "fogdebug")) fog_debug(val);
 			if (!strcmp(key, "fogsprites") || !strcmp(key, "shadows") || !strcmp(key, "framecap") ||
@@ -4225,7 +4228,8 @@ int main(void)
 			s_depth_variant = (s_depth_variant + 1) % 3;
 		// Enhanced Edition Room312FlashlightFix (Patches/Room312FlashlightFix.cpp, zlib licence): the
 		// flashlight switch (0x48f078) does nothing in hotel room 312 while James has the videotape
-		if (s_cam.mode == CAM_PLAYER && (gdown & KEY_X) && !screens_open() && !s_inv_open &&
+		// the switch does nothing until James has the flashlight (the PC's 0x48f078 tests item 18)
+		if (s_cam.mode == CAM_PLAYER && (gdown & KEY_X) && !screens_open() && !s_inv_open && ev_have_item(18) &&
 		    !(bgm_room_id(ev_glb_crd(), s_px, s_pz) == 0xa2 && ev_have_item(0x17))) {
 			s_flash_on = !s_flash_on;
 			sfx_play(s_flash_on ? SFX_LIGHT_ON : SFX_LIGHT_OFF, 0.8f, 0.0f);
@@ -4293,7 +4297,7 @@ int main(void)
 				} else if (!inventory_update(s_inv_open ? down : gdown)) {   // Y opens, its own keys inside
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held = move_keys(gheld, gdown, &cp);
-					combat_set_sight(s_env.dark, s_flash_on);
+					combat_set_sight(s_env.dark, flash_lit());
 					if (s_debug_weapon && combat_equip_item(s_debug_weapon))
 						s_debug_weapon = 0;
 					if (boat_active() || !combat_update(&body, &cp, gdown, free_held, dt, s_have_col ? &s_col : NULL,
@@ -4304,7 +4308,7 @@ int main(void)
 				}
 				if (!prog_running() || !prog_player_locked()) {
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
-					EnPlayer ep = combat_enplayer(&body, s_flash_on);
+					EnPlayer ep = combat_enplayer(&body, flash_lit());
 					enemy_update(&ep, dt);
 					head_update(&cp, gheld, dt, !prog_running() || !prog_player_locked());
 				}
@@ -4317,13 +4321,13 @@ int main(void)
 		} else if (s_cam.mode == CAM_FLY) {
 			float look_x = cs.dx / 156.0f + ((held & KEY_A) ? 1 : 0) - ((held & KEY_Y) ? 1 : 0);
 			float look_y = cs.dy / 156.0f + ((held & KEY_X) ? 1 : 0) - ((held & KEY_B) ? 1 : 0);
-			s_cam.yaw -= look_x * 0.04f;
+			s_cam.yaw += look_x * 0.04f;
 			s_cam.pitch -= look_y * 0.03f;
 			if (s_cam.pitch > 1.4f) s_cam.pitch = 1.4f;
 			if (s_cam.pitch < -1.4f) s_cam.pitch = -1.4f;
 			float fwd = cp.dy / 156.0f * 40.0f, side = cp.dx / 156.0f * 40.0f;
-			s_cam.eye[0] += sinf(s_cam.yaw) * fwd - cosf(s_cam.yaw) * side;
-			s_cam.eye[2] += cosf(s_cam.yaw) * fwd + sinf(s_cam.yaw) * side;
+			s_cam.eye[0] += sinf(s_cam.yaw) * fwd + cosf(s_cam.yaw) * side;
+			s_cam.eye[2] += cosf(s_cam.yaw) * fwd - sinf(s_cam.yaw) * side;
 			if (held & KEY_L) s_cam.eye[1] += 30.0f;
 			if (held & KEY_R) s_cam.eye[1] -= 30.0f;
 		} else {
@@ -4513,7 +4517,7 @@ int main(void)
 				       s_look_yaw);   // facing, head
 			else
 				printf("james  not loaded                     \n");
-			printf("audio  %-30s\n", audio_status());
+			printf("audio  %-24s gaps %lu\n", audio_status(), (unsigned long)audio_underruns());
 			printf("%-16.16s%-22.22s\n", combat_status(), enemy_status());
 			printf("%-38s\n", bgm_status());
 			printf("stage  %2d %-16.16s ev%3d #%-3d\n", ev_stage(), ev_stage_name(), ev_count(), s_last_event);

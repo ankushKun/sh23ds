@@ -1,4 +1,5 @@
 #include "chrlight.h"
+#include "sdio.h"
 #include "demo.h"
 #include <math.h>
 #include <stdio.h>
@@ -642,7 +643,7 @@ static void* read_file(const char* path, long* size)
 	*size = ftell(f);
 	fseek(f, 0, SEEK_SET);
 	void* d = *size > 0 ? malloc(*size) : NULL;
-	if (d && fread(d, 1, *size, f) != (size_t)*size) {
+	if (d && sd_fread(d, *size, f) != (size_t)*size) {
 		free(d);
 		d = NULL;
 	}
@@ -1390,7 +1391,7 @@ static bool lights_frame(const C3D_Mtx* view, float t)
 			continue;
 		C3D_Light* g = &s_light[used];
 		float k = 0.5f * s_bright;               // the scripts' colours go up to 2
-		C3D_LightColor(g, l.col[0] * k, l.col[1] * k, l.col[2] * k);
+		chr_light_color(g, l.col[0] * k, l.col[1] * k, l.col[2] * k, 1.0f);
 		C3D_LightEnable(g, true);
 		if (i >= S.n_point + S.n_spot) {          // parallel: the direction is -position
 			float n = sqrtf(l.pos[0] * l.pos[0] + l.pos[1] * l.pos[1] + l.pos[2] * l.pos[2]);
@@ -1460,7 +1461,7 @@ void demo_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		morph_char(dc, mf);
 		float k = char_light(dc);
 		if (own) {
-			C3D_LightEnvAmbient(&s_lenv, s_amb[0] * k, s_amb[1] * k, s_amb[2] * k);
+			chr_light_ambient(&s_lenv, s_amb[0] * k, s_amb[1] * k, s_amb[2] * k);
 		} else {
 			chrlight_at(p, dc->rec->kind >= 0x100 && dc->rec->kind <= 0x103);
 			if (s_light_hook && k != 1.0f)
