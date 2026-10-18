@@ -29,6 +29,7 @@
 #include "fog.h"
 #include "font.h"
 #include "clearsave.h"
+#include "savescreen.h"
 #include "stagemdl.h"
 #include "touchui.h"
 #include "chrlight.h"
@@ -125,6 +126,8 @@ static bool s_msg_dirty;
 static int s_last_event = -1;
 static bool s_save_after_msg;    // a save point's message is up; prompt when it closes
 static bool s_save_prompt;
+static int s_slot;               // the save file Continue loads and saves go to (savescreen.c)
+static int s_save_place = -1;    // the save point last used (its place name in the file list)
 static bool s_debug_hud, s_hud_shown;
 #define SAVE_PATH PACK_DIR "/save.dat"
 static void* s_fadequad;         // linear memory, 6 ROOM_VERTEX_SIZE vertices
@@ -963,6 +966,7 @@ static void events_update(u32 down)
 		else if (a.event < 0)
 			sfx_play(SFX_ITEM_PICKUP, 1.0f, 0.0f);
 	} else if (a.kind == EV_SAVE) {
+		s_save_place = a.save_point;
 		show_message(a.text);
 		if (s_msg_page) {
 			s_save_after_msg = true;
@@ -988,20 +992,40 @@ typedef struct {
 	float hp;                        // version 4: James' health
 	u8 clear_save;                   // version 5: 1 for clear data (the PC's 0x1dbeb87 = 0xff)
 	u8 clear[3];                     // version 5: the clear data it carries (prog_clear_get)
+	u8 place;                        // version 6: the save point (m_card_x_msg_e.mes place name)
+	u8 pad[3];
 } SaveFile;
 
 // Bytes of each save version (older ones are prefixes of the current layout).
 #define SAVE_V2_SIZE (offsetof(SaveFile, prog))
 #define SAVE_V3_SIZE (offsetof(SaveFile, killed))
 #define SAVE_V4_SIZE (offsetof(SaveFile, clear_save))
+#define SAVE_V5_SIZE (offsetof(SaveFile, place))
 
+// The save files (savescreen.c): file 1 is save.dat, as when there was one, the others save2.dat
+// .. save10.dat (s_slot, s_save_place are with the other event state above).
+static void slot_path(int slot, char* out, size_t size)
+{
+	if (slot <= 0)
+		snprintf(out, size, "%s", SAVE_PATH);
+	else
+		snprintf(out, size, PACK_DIR "/save%d.dat", slot + 1);
+}
+
+static FILE* slot_open(int slot, const char* mode)
+{
+	char path[64];
+	slot_path(slot, path, sizeof path);
+	return fopen(path, mode);
+}
 static bool save_game(void)
 {
 	prog_stat_save();                // the results screen's save count
 	static SaveFile sv;
 	memset(&sv, 0, sizeof sv);
 	memcpy(sv.magic, "SH3S", 4);
-	sv.version = 5;
+	sv.version = 6;
+	sv.place = s_save_place >= 0 ? (u8)s_save_place : 0xff;
 	sv.stage = ev_stage();
 	snprintf(sv.map, sizeof sv.map, "%s", s_nrooms ? s_rooms[s_room] : "");
 	sv.pos[0] = s_px, sv.pos[1] = s_py, sv.pos[2] = s_pz, sv.yaw = s_yaw;
@@ -1009,7 +1033,7 @@ static bool save_game(void)
 	prog_state_get(sv.prog);
 	enemy_killed_get(sv.killed);
 	sv.hp = combat_hp();
-	FILE* f = fopen(SAVE_PATH, "wb");
+	FILE* f = slot_open(s_slot, "wb");
 	if (!f)
 		return false;
 	bool ok = fwrite(&sv, sizeof sv, 1, f) == 1;
@@ -1019,16 +1043,19 @@ static bool save_game(void)
 
 static bool read_save(SaveFile* sv)
 {
-	FILE* f = fopen(SAVE_PATH, "rb");
+	FILE* f = slot_open(s_slot, "rb");
 	if (!f)
 		return false;
 	memset(sv, 0, sizeof *sv);
 	size_t n = fread(sv, 1, sizeof *sv, f);
 	bool ok = !memcmp(sv->magic, "SH3S", 4) &&
 	          ((sv->version == 2 && n >= SAVE_V2_SIZE) || (sv->version == 3 && n >= SAVE_V3_SIZE) ||
-	           (sv->version == 4 && n >= SAVE_V4_SIZE) || (sv->version == 5 && n == sizeof *sv));
+	           (sv->version == 4 && n >= SAVE_V4_SIZE) || (sv->version == 5 && n >= SAVE_V5_SIZE) ||
+	           (sv->version == 6 && n == sizeof *sv));
 	if (ok && sv->version < 5)
 		sv->clear_save = 0;
+	if (ok && sv->version < 6)
+		sv->place = 0xff;
 	fclose(f);
 	return ok;
 }
@@ -1040,11 +1067,12 @@ static bool save_clear_data(void)
 	static SaveFile sv;
 	memset(&sv, 0, sizeof sv);
 	memcpy(sv.magic, "SH3S", 4);
-	sv.version = 5;
+	sv.version = 6;
 	sv.clear_save = 1;
+	sv.place = 0xff;
 	prog_state_get(sv.prog);
 	prog_clear_get(sv.clear);
-	FILE* f = fopen(SAVE_PATH, "wb");
+	FILE* f = slot_open(s_slot, "wb");
 	if (!f)
 		return false;
 	bool ok = fwrite(&sv, sizeof sv, 1, f) == 1;
@@ -1052,30 +1080,71 @@ static bool save_clear_data(void)
 	return ok;
 }
 
-static bool save_slot_info(char* line, int size, bool* is_clear)
+// The save screen's files (savescreen.c).
+static bool files_info(int slot, SaveSlotInfo* out)
 {
 	static SaveFile sv;
-	if (!read_save(&sv))
+	int keep = s_slot;
+	s_slot = slot;
+	bool ok = read_save(&sv);
+	s_slot = keep;
+	if (!ok)
 		return false;
-	*is_clear = sv.clear_save != 0;
-	if (sv.clear_save)
-		snprintf(line, size, "Clear data (%d clears)", sv.clear[2]);
-	else
-		snprintf(line, size, "%.7s  (stage %d)", sv.map, (int)sv.stage);
+	out->clear = sv.clear_save != 0;
+	out->place = sv.place == 0xff ? -1 : sv.place;
+	out->stage = (int)sv.stage;
+	out->clears = sv.clear[2];
+	memcpy(out->map, sv.map, sizeof out->map);
+	out->map[7] = 0;
+	if (sv.version >= 3)
+		prog_state_summary(sv.prog, &out->time, &out->saves, &out->chapter, &out->action, &out->riddle);
 	return true;
 }
 
+static bool files_write(int slot, int mode)
+{
+	int keep = s_slot;
+	s_slot = slot;
+	bool ok = mode == SS_CLEAR ? save_clear_data() : save_game();
+	if (mode == SS_CLEAR)
+		s_slot = keep;
+	return ok;
+}
+
+static void title_start(int what);
+static void files_load(int slot)
+{
+	s_slot = slot;
+	title_start(2);
+}
+
+static const SaveScreenHost s_files = { files_info, files_write, files_load };
+
+static bool any_save(void)
+{
+	for (int i = 0; i < SAVE_SLOTS; i++) {
+		FILE* f = slot_open(i, "rb");
+		if (f) {
+			fclose(f);
+			return true;
+		}
+	}
+	return false;
+}
+
+// A save point opens the PC's save screen (0x4551d0): the files, then the overwrite question and
+// "Save completed."; s_save_prompt stays set while it is up (the game waits).
 static bool save_prompt_update(u32 down)
 {
 	if (!s_save_prompt)
 		return false;
-	if (down & (KEY_A | KEY_B)) {
+	if (!savescreen_active()) {
+		savescreen_open(SS_SAVE, &s_files, prog_chapter());
+		return true;
+	}
+	if (!savescreen_update(down)) {
 		s_save_prompt = false;
-		sfx_play(down & KEY_A ? SFX_MENU_OK : SFX_MENU_CANCEL, 1.0f, 0.0f);
-		if (down & KEY_A)
-			show_message(save_game() ? "Game saved." : "Could not write the save file.");
-		else
-			s_msg_dirty = true;
+		s_msg_dirty = true;
 	}
 	return true;
 }
@@ -2527,7 +2596,7 @@ static bool results_update(u32 down)
 		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 		if (prog_chapter() != 1) {
 			// James' endings offer the clear data save (0x447650 case 3); Born From a Wish does not
-			static const ClearSaveHost host = { save_slot_info, save_clear_data, ev_result_message };
+			static const ClearSaveHost host = { &s_files, ev_result_message };
 			clearsave_begin(&host);
 			s_clear_saving = true;
 			clearsave_update(0);
@@ -2992,6 +3061,10 @@ static bool title_update(u32 down)
 {
 	if (s_title_go >= 0)
 		return true;               // fading out to the game: no input
+	if (savescreen_active()) {
+		savescreen_update(down);
+		return true;
+	}
 	if (s_title_sub)
 		return title_levels(down);
 	static char controls[32];
@@ -3010,13 +3083,10 @@ static bool title_update(u32 down)
 			s_title_sub = s_menu + 1;
 			consoleClear();
 		} else if (s_menu == 2) {
-			FILE* save = fopen(SAVE_PATH, "rb");
-			if (save) {
-				fclose(save);
-				title_start(2);
-			} else {
+			if (any_save())
+				savescreen_open(SS_LOAD, &s_files, 0);     // files_load starts the chosen one
+			else
 				printf("\x1b[25;9HNo save file yet.        ");
-			}
 		} else if (s_menu == 3) {
 			s_controls = !s_controls;
 			options_save();
@@ -3624,6 +3694,8 @@ int main(void)
 			C3D_FrameDrawOn(top);
 			if (s_state == ST_TITLE)
 				draw_title(&ortho, bright);
+			savescreen_draw_top();       // Continue's file list over the title
+			font_flush();
 			touchui_frame();
 			C3D_FrameEnd(0);
 			continue;            // the button that left the title is not seen by the game
@@ -3861,6 +3933,7 @@ int main(void)
 			draw_sprites();
 			map_draw();
 			draw_top_text();
+			savescreen_draw_top();       // a save point's files over the room
 			font_flush();
 		}
 		touchui_frame();

@@ -1,16 +1,15 @@
 #pragma once
 #include <3ds.h>
+#include "savescreen.h"
 
 // After the results of one of James' endings the PC says "Save clear data." and, on a button,
 // opens its save screen (0x447650 cases 3..5). A clear-data save holds the system block at
 // 0x1dbeb80 (the clear data and the results counters) with 0x1dbeb87 = 0xff; loading one starts a
-// New Game whose FlagInit reads that clear data (0x402d00 case 10). The port has one save slot,
-// so its save screen lists that slot and asks before writing over a saved game.
+// New Game whose FlagInit reads that clear data (0x402d00 case 10). The save screen is the PC's
+// file list (savescreen.c) in its clear data mode.
 
 typedef struct {
-	// One line about what the slot holds now; false when it is empty.
-	bool (*slot_info)(char* line, int size, bool* is_clear);
-	bool (*write)(void);             // writes the clear-data save into the slot
+	const SaveScreenHost* files;     // the save files (write is asked for SS_CLEAR)
 	const char* (*message)(int n);   // result_msg_e.mes
 } ClearSaveHost;
 

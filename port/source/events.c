@@ -683,6 +683,7 @@ static bool exec(int i, const EvRec* e, EvAction* out)
 		// the first touch of a save point shows system message 8 (0x48c680), later ones go straight
 		// to the save prompt
 		out->kind = EV_SAVE;
+		out->save_point = msg;
 		out->text = ev_flag(flag) ? NULL : msg_get(&s_common, 8);
 		ev_flag_set(flag, true);
 		break;

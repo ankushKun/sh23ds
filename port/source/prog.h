@@ -202,6 +202,8 @@ const char* prog_demo_name(int id);
 #define PROG_STATE_SIZE 64
 void prog_state_get(void* buf);
 void prog_state_set(const void* buf);
+// What a saved program state says for the save screen: play time, saves, chapter and levels.
+void prog_state_summary(const void* buf, float* time, int* saves, int* chapter, int* action, int* riddle);
 
 // Debug: "clock <minutes>", "safe <a> <b> <c> <d>" and "box <code> <wheels>" (debug.txt) set puzzle
 // answers (box: the hospital box's dial code and wall symbols, wheels set to match); the status

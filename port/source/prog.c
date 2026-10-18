@@ -156,6 +156,20 @@ void prog_state_get(void* buf)
 	memcpy(b + 36, s_damage, sizeof s_damage);
 }
 
+void prog_state_summary(const void* buf, float* time, int* saves, int* chapter, int* action, int* riddle)
+{
+	const u8* b = buf;
+	u16 st[8];
+	memcpy(st, b + 48, 16);
+	memcpy(time, st, 4);
+	if (!(*time >= 0.0f && *time < 1e7f))
+		*time = 0.0f;
+	*saves = st[4];
+	*riddle = b[32] < 4 ? b[32] : 1;
+	*action = b[33] < 4 ? b[33] : 2;
+	*chapter = b[34] == 1;
+}
+
 void prog_state_set(const void* buf)
 {
 	const u8* b = buf;

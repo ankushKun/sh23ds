@@ -26,6 +26,7 @@ typedef struct {
 	const char* text;        // pages separated by '\f'
 	// EV_PROGRAM, EV_WARP of a door + program event: ev_prog index (0 = none)
 	int program;
+	int save_point;          // EV_SAVE: the save point's id (rslt1 >> 14 & 0xff, its place name)
 } EvAction;
 
 typedef struct {

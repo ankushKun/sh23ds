@@ -275,7 +275,8 @@ Maria and In Water have been seen.
 * Opening (0x48ef03): a tap on the touch screen (the PC's map key) or "Map" in the pause menu. In a
   dark room without the flashlight on it says common message 2 ("It's too dark to read the map.");
   without a map of the area common message 3, and then the town map if the player has it, as on
-  the PC. The screen opens zoomed in on the player except on the town map.
+  the PC. The screen opens zoomed in on the player except on the town map, and zoomed out
+  whenever the Game Options' Map is on Zoom Out (0x49de50 reads 0x1dbec0a).
 * Keys as on the PC: zoomed out the D-pad goes to the floor above or below and to the neighbouring
   maps (0x890108), A zooms in; zoomed in the Circle Pad and the D-pad scroll (307.2 and 384 units a
   second) and A zooms out; B or START closes. The bottom screen names the map.
@@ -369,9 +370,12 @@ a page (rows from y 151 in steps of 40) over James' picture (`data/menu/mc/saveb
 110) and the PC's texts from `m_card_x_msg_e.mes` (`pack/events/mcard.msg`). `savescreen.c` draws
 the same on the top screen for ten files (two pages): each row has its number, the place it was
 saved at (the save point's id, `rslt1 >> 14`, names it: "Hospital office", "Motel", ...; clear
-data shows "Game Result"), the play time and "Number of Saves", the chosen file in yellow, "Save
-to new file." or "No file data." for an empty one. A save point opens it straight away (the PC's
-0x4551d0, after the point's first message); a used file asks "Do you wish to overwrite?", then
+data shows "Game Result", and a name too wide for the column drops to the small font), the play
+time and the save count ("Saves 3", shortened from the PC's "Number of Saves" to fit the row), the
+chosen file in yellow, "Save to new file." or "No file data." for an empty one. The picture is 4:3,
+so the strips beside it on the wide top screen are filled black. A save point opens it straight
+away (the PC's 0x4551d0, after the point's first message); a used file asks "Do you wish to
+overwrite?", then
 "Save completed." Continue on the title opens it as the load screen, starting on the file with the
 most play time. The touch screen lists the files with Save / Load and Back, and the questions with
 Yes / No; the D-pad picks a file, L, R and left / right turn the page.
@@ -381,6 +385,82 @@ Version 6 adds the save point's id (0xff for older files, which show their room 
 
 The bottom screen keeps its text version. `debug.txt` `results 1` (or `results 2` for Born From a
 Wish) opens the screen right after start, and `itemget <id>` (up to eight) runs ItemGet before it.
+
+## Options
+
+The PC's options screens run from 0x469ad0 (the page in gOptionsPage); 0x461600 draws the first
+page and the Game Options, 0x464eb0 the Advanced Options, 0x466c30 the brightness screen, all with
+texts from `option_msg_e.mes` by number (`ui.py` writes it as `pack/events/option.msg`). The values
+live in Playing_Info (0x1dbeb80, the PS2 beta's struct of the same name has the field names) and
+in the config block at 0xa35fa8; 0x4f6ae0 and 0x4f6c70 set the defaults and 0x469ad0 copies them to
+`options.ini` on the way out. `optmenu.c` ports the screens: START's pause menu has "Options" and
+the title an "Options" row (the PC's title has OPTIONS too).
+
+* OPTIONS (title: full-width codes, message 72): Game Options, Advanced Options and Control
+  Options open their pages; then Control Type (Rotational Style = the port's tank controls,
+  Directional Style = camera-relative), Subtitles (Off / On, 0x1dbec07: no scene subtitles on
+  either screen when off), Speaker Config. (the PC lists DirectSound's speaker setups; here Mono,
+  Stereo and Surround, the three NDSP output modes, `audio_set_output`), BGM Volume and SE Volume
+  (0 to 15, 12 by default; the PC passes volume << 3 to its mixer, here the gain is volume / 15).
+  The PC's Vibration and Language rows have nothing to set on the 3DS and are left out.
+* GAME OPTIONS (message 73): Weapon Control (Normal: hold R to ready the weapon; Switch: R toggles
+  it), Map (the map screen opens Zoom In or Zoom Out), Walk/Run Control (Walk: B runs; Run: James
+  runs and B walks; Analog: a full tilt of the Circle Pad runs), View Control (Normal / Switch),
+  Blood Color (Normal, Green, Violet, Black) and, once a game has been cleared (0x1dbeb85),
+  Bullet Adjust (x1 to x3, wrapping as on the PC). Weapon Control and Walk/Run Control reach the
+  game as the keys `combat.c` and the movement read (`move_keys` in main.c). View Control has no
+  search view to turn round and Blood Color no blood effects to colour yet; both are kept and saved
+  for when they come.
+* ADVANCED OPTIONS (message 167): Brightness Level opens its screen; Noise Effect (Off / On, off
+  by default as on the PC), Shadows (Off / On, 0xa35ffc: 0x5a8370 draws no character shadows when
+  off), Fog (Simple / Complex, 0xa35ff8: 0x476ff0 runs the fog particle layer only on Complex).
+  Screen Position, High Res. Textures, Resolution, Advanced Filters, Lens Flare and Software 3D
+  Sound are the PC's own. The port's display settings follow on the same page: Messages (bottom or
+  top screen), and the Enhanced Edition's Flashlight, Noise Style, Camera Speed and Cutscene View
+  (PS2 looks, on by default as in the EE).
+* Control Options: the PC's key setup has no 3DS counterpart, so the page holds the port's
+  control settings (the Enhanced Edition's toggle run, hold-A heavy attacks and swapped swings).
+* The brightness screen (0x466c30): "Adjust until vertical lines appear faint." at (25, 100),
+  twenty vertical lines 20 apart from y 176 to 406 whose alpha is the level times 12, and "Level n"
+  in full-width letters right-aligned at (316, 420) with arrows either side of the number. Levels
+  0 to 7 (3 by default) are the PC's gamma ramp slopes k / 128 with k = 75, 90, 110, 128, 140, 155,
+  180, 220 (0x47cb30); the port scales its light by 1.2 * k / 128 instead, which keeps level 3 as
+  before. The scene behind is shown undimmed while the screen is up. The D-pad's quick brightness
+  in the game steps the same level.
+
+Layout as 0x461600 draws it, in the PC's text space: the title centred at (256, 52), the rows from
+y 100 in steps of 27, labels right-aligned at x 241 (243 on the other pages) and values from x 270,
+page rows centred at 256, the chosen row drawn again 2 up and 2 left at full alpha, the others at
+alpha 0x60 (colours from 0x47edb0 in PS2 units, doubled), changed values yellow, the row's
+description at (70, 395). The volumes are fifteen two-tone blocks from x 273, 11 apart (0x45bf10).
+0x45e750 draws the panel (grey 0x80 at alpha 0x40 over x +-0.443 of the screen, y -0.344 to 0.267,
+the top corners cut), the description box below it and the dark blue outline around both; 0x45fcf0
+the fading band under the chosen row. Values change at once; leaving with changes asks "Change the
+settings?" (89) with Yes. and No. at (170, 240) and (280, 240) over rows 3 to 6, and No. restores
+what was set when the screen opened. The touch screen lists the page's rows (a tap on a row's
+arrows changes it) with Back, and the question with Yes. and No.; the D-pad and A / B work as on
+the PC's pad.
+
+`options.txt` keeps every setting by name (`opt_load` / `opt_save`); the earlier `musicvol` and
+`soundvol` (0 to 10) turn into the 0 to 15 volumes when the new keys are missing.
+
+### Noise Effect
+
+The PC's film grain (`noise.c`). Every frame 0x476b30 calls 0x478520, which fills a 128x128 DXT1
+texture with random 4x4 blocks: colour 0 is 0xde99 (a warm light grey, 222 210 206), colour 1
+black, and the 2-bit indices random, so every texel is the grey, black, two thirds or one third of
+the grey. 0x4781e0 draws it over the whole screen (four tiles across and down at 640x480) with the
+texture factor's grey from 0x9458c5 as MODULATE2X and its alpha from 0x9458c2, blended
+INVSRCALPHA / SRCALPHA (0x9458c0 picks that mode and is never set), so the picture keeps about
+94 % of itself. 0x47cb30 (the brightness) sets the grey to 350 - k up to 255 and lowers the alpha
+byte for the two darkest levels. The Enhanced Edition's PS2StyleNoiseFilter (PS2NoiseFilter.cpp)
+divides the grey by 7.4 and starts the alpha from 0x1d7 instead of 0xff, a darker, stronger
+grain; the port offers it as Noise Style, PS2 by default as in the EE. Here the texture is 4-bit
+luminance with the same four levels (the tint goes into the TEV constant, MODULATE2X into the
+TEV's x2 scale), refilled from a xorshift every frame into one of two textures in turn, drawn one
+texel per pixel after the scene and the fades and under the text, and not over still pictures
+(the EE takes it off those). The PC also lays it over the movies; the port's movie player does
+not draw it.
 
 ## Text on the top screen
 
@@ -395,7 +475,7 @@ full-width codes the cell width + 2; centred and right-aligned lines measure wit
 coloured with the PC's colour table (0x47eca0), top and bottom colour per glyph. All glyphs of a
 frame go out in one draw call.
 
-The pause menu's "Messages" option (`options.txt` `messagestop`, bottom screen by default) puts
+The Advanced Options' "Messages" setting (`options.txt` `messagestop`, bottom screen by default) puts
 messages and cutscene subtitles on the top screen the way the PC's message window places them when
 the message gives no position (0x47ff50): the big font, the lines left-aligned in a block centred
 on the widest one, the first line at 476 - (lines + 4) * 15, half a line higher for each line
@@ -438,16 +518,17 @@ of kind 0x892640[i] from the model table at 0x88d4f8 or, for the drinks, kits an
 table at 0x88d2b8; `tools/sh2conv/stagemodels.py` converts them (70 items have one) and writes
 `pack/events/itemmdl.txt`. Mark (R) chooses up to two items to use together with the chosen one
 (main.c's combining, PC 0x46a790 and 0x49e900); the marked items show a "+" and the Use button
-reads Combine while any are marked. The pause menu has Music and Sound volumes
-(0..10, `options.txt` `musicvol`, `soundvol`): music on channel 0, the cutscene voices and the
-sound effects (`audio_set_gains`, `sfx_set_gain`).
+reads Combine while any are marked. The options' BGM Volume and SE Volume (see Options) set the
+music on channel 0, and the cutscene voices and the sound effects (`audio_set_gains`,
+`sfx_set_gain`).
 
 The screen is redrawn only when something it shows changed (the condition, the weapon line, a
 menu row, a message, the small map's picture: another map, James a pixel further, a new mark),
 from one vertex buffer allocated once, so a frame without a change costs a few comparisons, which
 matters on the Old 3DS; only the turning item model redraws continuously (every other frame) while
-the item screen is up. The hardware rows of the Old 3DS profile (hardware, control layout,
-quality) go into the pause menu's rows in `pause_draw` once `profile.h` is in the tree.
+the item screen is up. The rows of the Old 3DS profile go onto the options screens once
+`profile.h` is in the tree: hardware and quality on Advanced Options, the control layout on
+Control Options (`optmenu.c` `build` marks both places).
 
 ## Item use and item names
 ## Item use and item names
@@ -1232,8 +1313,7 @@ case, collision and a floor under James. What stood out:
   without a PC capture to compare with.
 * Stage models load from the SD card the first time they come near (one a frame); on a console
   that can show as a short hitch when several new ones come into range at once, in the town most.
-* The PC's option to open the map zoomed out is not ported. The arrow is drawn, not the PC's
-  sprite. The room table depends on `bgm.bin` (`bgm_room_id`), so without it there is no map.
+* The arrow on the map is drawn, not the PC's sprite. The room table depends on `bgm.bin` (`bgm_room_id`), so without it there is no map.
 * PC 0x1dbec05 multiplies ammo boxes in ItemGet (the Extra Options "Bullet Adjust"). Pickups and
   `p_item_get_now` both go through `ev_item_get_amount()`, so programs that hand out ammo get the
   multiplier as well.
