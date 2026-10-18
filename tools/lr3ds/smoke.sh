@@ -14,7 +14,7 @@ fail=0
 
 run() {   # name, debug.txt contents, frames, lr3ds options...
 	name=$1; dbg=$2; frames=$3; shift 3
-	if [ -n "$dbg" ]; then printf "$dbg" > "$SD/debug.txt"; else rm -f "$SD/debug.txt"; fi
+	printf "logos 0\n$dbg" > "$SD/debug.txt"   # logos 0: no start-up screens, so the frame counts hold
 	if "$RUN" 1200 --frames "$frames" --shot "$((frames - 5)):$OUT/$name.bmp" "$@" 2>&1 | grep -q "^\[done\] $frames frames"; then
 		sips -s format png "$OUT/$name.bmp" --out "$OUT/$name.png" >/dev/null && rm -f "$OUT/$name.bmp"
 		echo "ok    $name"

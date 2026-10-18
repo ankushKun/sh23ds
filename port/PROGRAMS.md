@@ -555,8 +555,13 @@ screen (0x496dd0). `titlemenu.c` draws them on the top screen and lists them on 
 * MOVIES: the Movie Menu (210), the PC's list (214..237, files from the exe's movie table) of the
   movies the pack has (`movie_exists`), played with movie_play.
 
-`ui.py` writes start00 as `pack/ui/start00.t3x` (RGB565, 512x256). Not ported: the menu's
-pulsing glow sprite (0x4960d0 from start01) and the minute's attract mode from the menu.
+`ui.py` writes start00 as `pack/ui/start00.t3x` (RGB565, 512x256). Over start00's red logo
+0x496dd0 draws start01.tex's white one (its first item, at (-257, -103)-(255, -19) of the 512x448
+screen) in a colour that goes from (255, 255, 255, 128) to (38, 38, 38, 8) and back in 15.5 s
+(0x496a10), so the logo slowly pulses (`pack/ui/titleglow.t3x`). A minute on the menu without a
+key plays the opening movie (title event 8, menu event 0xc, 0x43e750: open_bgm, open_voc once a
+game is cleared) and comes back to the title. Before the first title come the start-up screens
+(see Screens audit).
 
 ## Game over
 
@@ -568,6 +573,41 @@ rand() % 30 - 15 lines every frame round a steady one; then the screen fades and
 the title. `gameover.c` does the same between `combat_dead()` and `enter_title()`. `ui.py` writes
 the picture's top left quarter as `pack/ui/gameover.t3x` and copies voice 143 (demos.py's
 `copy_voice`).
+
+## Screens audit
+
+Every screen and overlay of the PC game (the menu events in 0x402d00, the game events in 0x401fc0,
+the title events in the table at 0x88ef38, the options pages in 0x469ad0) and where the port stands.
+
+| Screen | PC | Port |
+| --- | --- | --- |
+| Start-up screens | menu events 4 and 5, 0x405e90: konami2048x2048.tex, splash_logo.tex, each a second in, a second and a second out, a key cuts them short (cesa.tex, event 3, is skipped by 0x405c60) | `titlemenu_boot`, the touch screen shows Skip; `debug.txt` `logos 0` leaves them out |
+| Title menu | title event 2, 0x4976b0 / 0x496280 | `titlemenu.c` (see Title screens) |
+| Title logo pulse | 0x496dd0 / 0x496a10: start01.tex's white logo over start00's red one, (255, 255, 255, 128) to (38, 38, 38, 8) and back in 15.5 s | `titlemenu.c`, `pack/ui/titleglow.t3x` |
+| Attract mode | a minute without a key: title event 8 (0x498690), menu event 0xc (0x43e750): open_bgm, open_voc once a game is cleared, then the title again | `TM_ATTRACT` plays the same movie |
+| Scenarios, levels | title events 3..5, 0x4979c0, 0x497bb0, 0x497fc0 (0x496490 for Born From a Wish) | `titlemenu.c` |
+| Movie Menu | MOVIES (0x45be10) | `titlemenu.c`, the movies in the pack |
+| First-start brightness check | none: only the options open the brightness screen | none |
+| Loading | black with the fades; 0x407620 has "Now loading" / "Please wait" (state 3) but nothing sets that state | black with the fades |
+| Movies | game events 0xe / 0xf, 0x43dd30 / 0x43ded0 | `movie.c` |
+| Pause | game event 0x10, 0x407310: PAUSED, Resume, Save Game, Load Game, Options, Quit | `pausemenu.c`; the port's Map and Memos rows on the touch screen |
+| Quit question | 0x407620 state 10: "Exit to Main Menu?" Yes / No | `pausemenu.c` |
+| Save from the pause menu | 0x44c7d0 (not in stages 27, 37, 48..52, not in events), place 0x9d + stage (0x4551d0) | Save Game opens the file list, the file named after the stage (m_card_x_msg_e.mes 157..) |
+| Items | game event 6, 0x475b80 | the list and its buttons on the touch screen, the item's turning model and text on the top screen (`itemview.c`) |
+| Combining | 0x46a790 / 0x49e900 | main.c (Mark, Combine) |
+| Map | game event 5, 0x49de50 | `map.c` |
+| Memos | game event 8, 0x49a740 | the memo list on the touch screen, the still and its text on the top screen |
+| Save and load screens | game event 9 0x453fc0 / 0x4537b0, menu event 0x11 | `savescreen.c` |
+| Options | game event 7, 0x469ad0 (0x461600, 0x464eb0, 0x466c30; key setup 0x467440) | `optmenu.c` (the key setup is the port's Buttons page) |
+| Results | game events 10 / 11, 0x447650 | the results screen, clear data (`clearsave.c`) |
+| Game over | game event 0xd, 0x498780 | `gameover.c` |
+| Coming soon | game event 0xc, 0x496ac0 (comingsoon.tex) | the trial version's end, not in the full game |
+| Messages and questions | 0x47ff50 and the message system's Yes / No | top screen (option) or the touch screen's box, Yes / No buttons |
+| Item-get and "can't use" messages | ItemGet, item_x_msg 16 | events.c / main.c |
+| Low health | the Enhanced Edition's red cross (RedCrossIcon.png); the PC itself shows nothing | `draw_low_health` (EE) |
+| Noise Effect | 0x4781e0 | `noise.c`, also over the movies |
+| Quick save and load | F-keys in game event 4 (0x44bb70, "Quick Save" 216) | not on the 3DS: Save Game in the pause menu does the same |
+| Disc and controller messages | 0x407620 states 5..9 | not on the 3DS |
 
 ## Text on the top screen
 

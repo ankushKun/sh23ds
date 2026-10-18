@@ -15,6 +15,7 @@
 
 enum {
 	TM_NONE, TM_LOAD, TM_CONTINUE, TM_NEW_GAME, TM_WISH, TM_OPTIONS, TM_MOVIE, TM_EXIT, TM_VIEWER,
+	TM_ATTRACT,          // a minute on the menu without a key: the opening movie (menu event 0xc)
 };
 
 // Back on the menu: saves 0 none, 1 some (LOAD and CONTINUE show); CONTINUE is chosen when there
@@ -27,3 +28,7 @@ int titlemenu_update(u32 down, float dt, int* action, int* riddle, const char** 
 // no start00 (the caller draws a background of its own).
 bool titlemenu_draw_top(MapDrawFn draw, float bright);
 bool titlemenu_init(const char* pack_dir);
+// The start-up screens before the menu (menu events 4 and 5, 0x405e90): the Konami logo and the
+// splash screen, each a second in, a second and a second out (a key cuts them short).
+void titlemenu_boot(void);
+void titlemenu_no_boot(void);            // debug.txt "logos 0"

@@ -34,6 +34,7 @@
 #include "blood.h"
 #include "gameover.h"
 #include "titlemenu.h"
+#include "pausemenu.h"
 #include "optmenu.h"
 #include "stagemdl.h"
 #include "touchui.h"
@@ -3382,6 +3383,14 @@ static bool title_update(u32 down, float dt)
 		touchui_menu_close(TOUI_LEVELS);
 		movie_play(movie);
 		break;
+	case TM_ATTRACT: {
+		u8 clear[3];
+		prog_clear_get(clear);
+		touchui_menu_close(TOUI_TITLE);
+		movie_play(clear[1] ? "open_voc" : "open_bgm");     // 0x43e750
+		titlemenu_reset(any_save());
+		break;
+	}
 	case TM_EXIT:
 		return false;
 	case TM_VIEWER:
@@ -3400,9 +3409,7 @@ static bool title_update(u32 down, float dt)
 // ---------------------------------------------------------------- pause menu (START in game)
 
 static bool s_paused;
-static int s_pause_sel;
 static bool s_pause_dirty;
-#define PAUSE_ROWS 5
 
 static void pause_draw(void)
 {
@@ -3413,18 +3420,23 @@ static void pause_draw(void)
 		printf("\x1b[%d;1H%40s", r, "");
 	if (!s_paused) {
 		s_msg_dirty = true;
-		touchui_menu_close(TOUI_PAUSE);
+		pausemenu_close();
 		return;
 	}
-	// the settings and the Buttons page are on the options screens (optmenu.c), where the Old 3DS
-	// profile's rows (hardware, control layout, quality) go once profile.h is in the tree
-	const char* items[PAUSE_ROWS] = { "Resume", "Map", "Memos", "Options", "Quit to title" };
+	// the PC's pause menu is on the top screen and the touch screen (pausemenu.c); the settings and
+	// the Old 3DS profile's rows are on the options screens
 	printf("\x1b[18;1H---------------- Pause -----------------");
-	for (int i = 0; i < PAUSE_ROWS; i++)
-		printf("\x1b[%d;6H%c %s", 19 + i * 1, i == s_pause_sel ? '>' : ' ', items[i]);
-	printf("\x1b[29;3HA: select  B: back");
-	static const TouiButton back[1] = { { "Back", KEY_B } };
-	touchui_menu(TOUI_PAUSE, "Pause", items, PAUSE_ROWS, &s_pause_sel, back, 1);
+}
+
+// 0x44c7d0: Save Game works anywhere but in stages 27, 37 and 48..52, and not while a stage
+// program holds James (0x79b830); the file's place is the stage's name (0x4551d0: 0x9d + stage,
+// m_card_x_msg_e.mes 157..)
+static bool pause_can_save(void)
+{
+	int st = ev_stage();
+	if (st == 27 || st == 37 || (st >= 48 && st <= 52))
+		return false;
+	return !prog_running();
 }
 
 // Returns true while the game is paused (the caller skips the game update).
@@ -3434,48 +3446,60 @@ static bool pause_update(u32 down)
 		if ((down & KEY_START) && !s_msg_page && !s_save_prompt && !s_inv_open && !s_warp_pending &&
 		    !screens_open()) {
 			s_paused = true;
-			s_pause_sel = 0;
 			s_pause_dirty = true;
+			pausemenu_open(pause_can_save());
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 			return true;
 		}
 		return false;
 	}
 	if (optmenu_active()) {
-		if (!optmenu_update(down))
+		if (!optmenu_update(down)) {
 			s_pause_dirty = true;            // back on the pause menu
+			pausemenu_open(pause_can_save());
+		}
 		return true;
 	}
-	if (down & (KEY_START | KEY_B) || ((down & KEY_A) && s_pause_sel == 0)) {
+	if (savescreen_active()) {
+		if (!savescreen_update(down))
+			pausemenu_open(pause_can_save());
+		return true;
+	}
+	switch (pausemenu_update(down)) {
+	case PM_RESUME:
 		s_paused = false;
 		s_pause_dirty = true;
-		sfx_play(SFX_MENU_CANCEL, 1.0f, 0.0f);
-		return true;
-	}
-	if (down & (KEY_DUP | KEY_DDOWN)) {
-		s_pause_sel = (s_pause_sel + (down & KEY_DDOWN ? 1 : PAUSE_ROWS - 1)) % PAUSE_ROWS;
-		s_pause_dirty = true;
-		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
-	}
-	if ((s_pause_sel == 1 || s_pause_sel == 2) && (down & KEY_A)) {
-		s_paused = false;
-		s_pause_dirty = true;
-		if (s_pause_sel == 1)
-			open_map();
-		else if (!prog_running())
-			open_memos();
-		return true;
-	}
-	if (s_pause_sel == 3 && (down & KEY_A)) {
-		// the PC's options screens (Enhanced Edition "MenuSoundsFix": every change is heard there)
-		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
-		touchui_menu_close(TOUI_PAUSE);
-		options_open();
-		return true;
-	}
-	if (s_pause_sel == 4 && (down & KEY_A)) {
+		break;
+	case PM_SAVE:
+		pausemenu_close();
+		s_save_place = 157 + ev_stage();
+		savescreen_open(SS_SAVE, &s_files, prog_chapter());
+		break;
+	case PM_LOAD:
+		// the PC's load screen (menu event 0x11); the port shows it over the title
 		s_paused = false;
 		enter_title();
+		savescreen_open(SS_LOAD, &s_files, 0);
+		break;
+	case PM_OPTIONS:
+		pausemenu_close();
+		options_open();
+		break;
+	case PM_QUIT:
+		s_paused = false;
+		enter_title();
+		break;
+	case PM_MAP:                     // the port's own rows on the touch screen
+		s_paused = false;
+		s_pause_dirty = true;
+		open_map();
+		break;
+	case PM_MEMOS:
+		s_paused = false;
+		s_pause_dirty = true;
+		if (!prog_running())
+			open_memos();
+		break;
 	}
 	return true;
 }
@@ -3741,6 +3765,7 @@ int main(void)
 	gameover_init(PACK_DIR);
 	titlemenu_init(PACK_DIR);
 	titlemenu_reset(any_save());
+	titlemenu_boot();
 
 	options_load();     // debug.txt below may override
 	controls_init(PACK_DIR);            // the player's button bindings (controls.txt)
@@ -3791,6 +3816,7 @@ int main(void)
 			if (!strcmp(key, "batch")) s_only_batch = val;
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
 			if (!strcmp(key, "debughud")) s_debug_hud = val != 0;
+			if (!strcmp(key, "logos") && !val) titlemenu_no_boot();   // no start-up screens
 			if (!strcmp(key, "bloodtest")) s_blood_test = val != 0;
 			if (!strcmp(key, "results")) s_debug_results = val;
 			if (!strcmp(key, "itemget") && s_debug_nitemget < 8) s_debug_itemget[s_debug_nitemget++] = val;
@@ -4210,6 +4236,8 @@ int main(void)
 			draw_sprites();
 			map_draw();
 			optmenu_draw_top(ui_draw);
+			if (s_paused && !optmenu_active() && !savescreen_active())
+				pausemenu_draw_top();
 			draw_top_text();
 			savescreen_draw_top();       // a save point's files over the room
 			font_flush();

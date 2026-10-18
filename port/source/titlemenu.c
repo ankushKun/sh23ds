@@ -4,17 +4,21 @@
 #include "movie.h"
 #include "sfx.h"
 #include "touchui.h"
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <tex3ds.h>
 
-enum { SC_MENU, SC_SCENARIO, SC_LEVELS, SC_MOVIES };
+enum { SC_MENU, SC_SCENARIO, SC_LEVELS, SC_MOVIES, SC_BOOT };
 
 // the menu's items by their place (0x496280 draws each at its own y, whether shown or not)
 enum { IT_LOAD, IT_CONTINUE, IT_NEW_GAME, IT_OPTIONS, IT_MOVIES, IT_EXIT, IT_VIEWER, IT_N };
 
-static C3D_Tex s_bg;
-static bool s_bg_ok, s_saves;
+static C3D_Tex s_bg, s_glow, s_boot[2];
+static bool s_bg_ok, s_glow_ok, s_boot_ok[2], s_saves;
+static float s_glow_t;           // 0x88ead4: the logo's pulse, 15.5 s round
+static int s_boot_pic;
+static float s_boot_t, s_boot_b, s_boot_speed;   // time on the picture; its brightness; 0 fading in
 static int s_screen, s_sel, s_step;      // s_step: levels 0 action, 1 riddle
 static bool s_wish;
 static int s_action_sel = 2, s_riddle_sel = 2;   // 1-based as the PC: action 1 hard .. 4 beginner
@@ -36,20 +40,28 @@ static const char* msg(int n, const char* fallback)
 	return m && *m ? m : fallback;
 }
 
-bool titlemenu_init(const char* pack_dir)
+static bool load(const char* pack_dir, const char* name, C3D_Tex* tex)
 {
 	char path[128];
-	snprintf(path, sizeof path, "%s/ui/start00.t3x", pack_dir);
+	snprintf(path, sizeof path, "%s/ui/%s.t3x", pack_dir, name);
 	FILE* f = fopen(path, "rb");
-	if (f) {
-		Tex3DS_Texture t = Tex3DS_TextureImportStdio(f, &s_bg, NULL, false);
-		fclose(f);
-		if (t) {
-			Tex3DS_TextureFree(t);
-			C3D_TexSetFilter(&s_bg, GPU_LINEAR, GPU_LINEAR);
-			s_bg_ok = true;
-		}
-	}
+	if (!f)
+		return false;
+	Tex3DS_Texture t = Tex3DS_TextureImportStdio(f, tex, NULL, false);
+	fclose(f);
+	if (!t)
+		return false;
+	Tex3DS_TextureFree(t);
+	C3D_TexSetFilter(tex, GPU_LINEAR, GPU_LINEAR);
+	return true;
+}
+
+bool titlemenu_init(const char* pack_dir)
+{
+	s_bg_ok = load(pack_dir, "start00", &s_bg);
+	s_glow_ok = load(pack_dir, "titleglow", &s_glow);
+	s_boot_ok[0] = load(pack_dir, "boot0", &s_boot[0]);
+	s_boot_ok[1] = load(pack_dir, "boot1", &s_boot[1]);
 	s_movie_n = 0;
 	for (int i = 0; i < 24; i++)
 		if (movie_exists(MOVIE_FILE[i]))
@@ -66,10 +78,28 @@ static bool shown(int it)
 	return it != IT_VIEWER;     // the room viewer is a touch-screen row only
 }
 
+void titlemenu_boot(void)
+{
+	s_screen = SC_BOOT;
+	s_boot_pic = s_boot_ok[0] ? 0 : 1;
+	s_boot_t = s_boot_b = s_boot_speed = 0.0f;
+	if (!s_boot_ok[s_boot_pic])
+		s_screen = SC_MENU;
+}
+
+void titlemenu_no_boot(void)
+{
+	if (s_screen == SC_BOOT) {
+		touchui_movie(false);
+		s_screen = SC_MENU;
+	}
+}
+
 void titlemenu_reset(bool saves)
 {
 	s_saves = saves;
-	s_screen = SC_MENU;
+	if (s_screen != SC_BOOT)             // the start-up screens run on into the menu
+		s_screen = SC_MENU;
 	s_sel = saves ? IT_CONTINUE : IT_NEW_GAME;
 	s_idle = 0.0f;
 	// the touch list's row for it (the first update reads the row back)
@@ -157,6 +187,36 @@ int titlemenu_update(u32 down, float dt, int* action, int* riddle, const char** 
 	else
 		s_sel = s_touch_sel;
 	s_idle = down ? 0.0f : s_idle + dt;
+	s_glow_t += dt;
+	if (s_glow_t >= 15.5f)
+		s_glow_t -= 15.5f;
+	if (s_screen == SC_BOOT) {
+		// 0x405e90: in over a second, a second, out over a second; a key fades out in half a second
+		// (the touch screen shows only Skip, which is START)
+		touchui_menu_close(TOUI_TITLE);
+		touchui_menu_close(TOUI_LEVELS);
+		touchui_movie(true);
+		s_boot_t += dt;
+		if (s_boot_speed == 0.0f) {
+			s_boot_b = s_boot_t < 1.0f ? s_boot_t : 1.0f;
+			if (down & (KEY_A | KEY_B | KEY_START | KEY_TOUCH))
+				s_boot_speed = 2.0f;
+			else if (s_boot_t >= 2.0f)
+				s_boot_speed = 1.0f;
+		} else {
+			s_boot_b -= dt * s_boot_speed;
+		}
+		if (s_boot_speed > 0.0f && s_boot_b <= 0.0f) {
+			s_boot_t = s_boot_b = s_boot_speed = 0.0f;
+			if (++s_boot_pic > 1 || !s_boot_ok[s_boot_pic]) {
+				touchui_movie(false);
+				s_screen = SC_MENU;
+				s_idle = 0.0f;
+				touch();
+			}
+		}
+		return TM_NONE;
+	}
 	int result = TM_NONE;
 	bool up = down & KEY_DUP, dn = down & KEY_DDOWN;
 	switch (s_screen) {
@@ -187,6 +247,11 @@ int titlemenu_update(u32 down, float dt, int* action, int* riddle, const char** 
 			case IT_EXIT: result = TM_EXIT; break;
 			case IT_VIEWER: result = TM_VIEWER; break;
 			}
+		}
+		// 0x4976b0: a minute without a key, then the opening movie (title event 8, menu event 0xc)
+		if (s_idle > 60.0f && result == TM_NONE) {
+			s_idle = 0.0f;
+			result = TM_ATTRACT;
 		}
 		break;
 	case SC_SCENARIO:
@@ -280,12 +345,34 @@ static void item(float x, float y, const char* s, bool chosen, float bright)
 
 bool titlemenu_draw_top(MapDrawFn draw, float bright)
 {
+	if (s_screen == SC_BOOT) {
+		if (!draw || !s_boot_ok[s_boot_pic])
+			return true;
+		float b = s_boot_b < 0.0f ? 0.0f : s_boot_b > 1.0f ? 1.0f : s_boot_b;
+		u32 c = (u32)(b * 255.0f) & 0xff;
+		MapVert v[6] = { { 40, 0, 0, 0 }, { 360, 0, 1, 0 }, { 360, 240, 1, 1 },
+		                 { 40, 0, 0, 0 }, { 360, 240, 1, 1 }, { 40, 240, 0, 1 } };
+		draw(&s_boot[s_boot_pic], v, 6, c << 24 | c << 16 | c << 8 | 0xff);
+		return true;
+	}
 	if (s_bg_ok && draw) {
 		// 0x496dd0: start00 over the whole 4:3 picture
 		u32 b = (u32)(bright * 255.0f) & 0xff;
 		MapVert v[6] = { { 40, 0, 0, 0 }, { 360, 0, 1, 0 }, { 360, 240, 1, 1 },
 		                 { 40, 0, 0, 0 }, { 360, 240, 1, 1 }, { 40, 240, 0, 1 } };
 		draw(&s_bg, v, 6, b << 24 | b << 16 | b << 8 | 0xff);
+		if (s_glow_ok) {
+			// 0x496dd0 / 0x496a10: start01's white logo at (-257, -103)-(255, -19) of the 512x448
+			// screen, its colour from (255, 255, 255, 128) to (38, 38, 38, 8) and back over 15.5 s
+			float f = sinf(s_glow_t / 15.5f * 3.14159265f);
+			float c = 255.0f + (38.0f - 255.0f) * f, a = (128.0f + (8.0f - 128.0f) * f) * 2.0f;
+			u32 cc = (u32)(c * bright) & 0xff, aa = (u32)(a > 255.0f ? 255.0f : a) & 0xff;
+			float y0 = 120.0f - 103.0f * 240.0f / 448.0f, y1 = 120.0f - 19.0f * 240.0f / 448.0f;
+			float x0 = 200.0f - 257.0f * 0.625f, x1 = 200.0f + 255.0f * 0.625f, t1 = 96.0f / 128.0f;
+			MapVert g[6] = { { x0, y0, 0, 0 }, { x1, y0, 1, 0 }, { x1, y1, 1, t1 },
+			                 { x0, y0, 0, 0 }, { x1, y1, 1, t1 }, { x0, y1, 0, t1 } };
+			draw(&s_glow, g, 6, cc << 24 | cc << 16 | cc << 8 | aa);
+		}
 	}
 	if (!font_ready())
 		return s_bg_ok;

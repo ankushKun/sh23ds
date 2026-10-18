@@ -218,7 +218,9 @@ def write_blood(data, pack):
 
 def write_screens(data, pack, out_voice=True):
     """The PC's title background (data/pic/etc/start00.tex, the menus are text over it:
-    pack/ui/start00.t3x, 512x512 DXT3 squeezed to 512x256 RGB565 like the stills), the game over
+    pack/ui/start00.t3x, 512x512 DXT3 squeezed to 512x256 RGB565 like the stills) and its pulsing
+    white logo (start01.tex's top 512x96, ui/titleglow.t3x), the start-up screens
+    (konami2048x2048.tex and splash_logo.tex as ui/boot0.t3x and ui/boot1.t3x), the game over
     text (gameover1.tex: four "GAME OVER" of 160x48 in its top left quarter, pack/ui/gameover.t3x,
     LA4 256x256) and the game over sound (voice.afs 143, SE 60143 in 0x498780)."""
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
@@ -229,6 +231,17 @@ def write_screens(data, pack, out_voice=True):
     img = load_tex(os.path.join(data, 'pic', 'etc', 'gameover1.tex')).convert('RGBA').crop((0, 0, 256, 256))
     img.save(os.path.join(pack, 'ui', 'gameover.png'))
     jobs.append(('ui/gameover.png', 'ui/gameover.t3x', True, 'la4'))
+    # the title's white logo that pulses over start00's red one (start01.tex's first item, 0x496dd0)
+    img = load_tex(os.path.join(data, 'pic', 'etc', 'start01.tex')).convert('RGBA').crop((0, 0, 512, 96))
+    glow = Image.new('RGBA', (512, 128), (255, 255, 255, 0))
+    glow.paste(img, (0, 0))
+    glow.save(os.path.join(pack, 'ui', 'titleglow.png'))
+    jobs.append(('ui/titleglow.png', 'ui/titleglow.t3x', True, 'la4'))
+    # the start-up screens (menu events 4 and 5, 0x405e90): the Konami logo and the splash screen
+    for name, out in (('konami2048x2048', 'boot0'), ('splash_logo', 'boot1')):
+        img = load_tex(os.path.join(data, 'pic', 'etc', name + '.tex')).convert('RGB')
+        img.resize((512, 256), Image.LANCZOS).save(os.path.join(pack, 'ui', out + '.png'))
+        jobs.append(('ui/%s.png' % out, 'ui/%s.t3x' % out, False, 'rgb565'))
     for png, t3x, alpha, fmt in jobs:
         if os.path.exists(os.path.join(pack, t3x)):
             os.remove(os.path.join(pack, t3x))
@@ -237,7 +250,8 @@ def write_screens(data, pack, out_voice=True):
     if out_voice:
         from demos import copy_voice
         copy_voice(None, data, pack, 143, False)
-    print('wrote ui/start00.t3x, ui/gameover.t3x and sound/voice/143.adx')
+    print('wrote ui/start00.t3x, ui/gameover.t3x, ui/titleglow.t3x, ui/boot0.t3x, ui/boot1.t3x and '
+          'sound/voice/143.adx')
 
 
 def write_options(data, pack):
