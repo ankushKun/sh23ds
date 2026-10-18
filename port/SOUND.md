@@ -192,7 +192,7 @@ behaviour (layer 0 only), `audio_play_layers` starts everything silent for `bgm.
 ## Verified in Azahar
 
 Captures with `lr3ds --wav` (32728 Hz stereo), each effect cross-correlated with its source PCM from
-the bank (`.sfxtest/scripts/xcorr.py`):
+the bank (`tools/xcorr.py`):
 
 | Test | Result |
 | --- | --- |

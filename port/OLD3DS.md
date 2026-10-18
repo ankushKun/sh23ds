@@ -186,8 +186,8 @@ Measured against the main tree's build of the same day on Azahar's New 3DS model
 | Town walk cb03 to cb19 | 1.15 / 4.04 / 17.1 (worst 157, stage models) | 1.15 / 4.17 / 16.9 (worst 157, stage models) |
 | Boss ru25 | 0.49 / 4.16 / 16.8 | 0.50 / 4.27 / 16.8 |
 
-The 11 smoke scenarios pass on both models (`.o3dstest/smoke_o3ds.sh`, a copy of
-`tools/lr3ds/smoke.sh` that takes the model and a `.3ds` image).
+The smoke scenarios pass on both models (`LR3DS_MODEL="Old 3DS" tools/lr3ds/smoke.sh`; the memory
+numbers were taken with a `.3ds` image, see below).
 
 ## Movies
 
@@ -208,7 +208,7 @@ movies play on every profile. The half-size files were checked for `hei`, `toile
 
 ## Testing it yourself
 
-`.o3dstest`-style runs need Azahar's libretro core with `--opt 'citra_is_new_3ds=Old 3DS'`. A
+Old 3DS runs need Azahar's libretro core with `--opt 'citra_is_new_3ds=Old 3DS'`. A
 `.3dsx` started that way gets 96 MB (Azahar's choice for a 3dsx on the Old 3DS), so the memory
 numbers above come from `.3ds` images made with the CIA's settings (`makerom -f cci` with the same
 RSF and `-DAPP_SYSTEM_MODE=64MB`), which Azahar loads with the exheader's memory mode. Azahar's

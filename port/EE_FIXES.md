@@ -221,7 +221,7 @@ All in Azahar (software renderer, New 3DS), before (current port, plain PC `ligh
 - `tools/lr3ds/smoke.sh` reaches every last frame on the merged build. The "continue" shot now
   catches the title still fading out, because starting a game waits one second for the start sound
 
-The before/after pictures are in `.eetest/evidence/` (not in git).
+The before/after pictures were kept in a test workspace that has since been removed.
 
 ## Not done yet, and why
 

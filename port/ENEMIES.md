@@ -735,8 +735,7 @@ without the multiplier and could call `ev_item_get_amount` instead.
 They are drawn now. Mary releases 33 (0x4b4ec0 case 0), each a camera-facing quad 100 units across
 with the effect texture 0x12 (0x4a5270), which is file id 0x52f3, `data/pic/effect/fly1.tbn2`: a 64 x 64 DXT1 sheet of four
 wing beats, picked by the moth's frame byte (u = (frame & 1) / 2, v = (frame / 2) / 2, 0x4a46f0). The
-frame runs at 0x400 a tick over a 0x2580 cycle (0x4ac070). `.enemytest/tools/moths.py` (to go to
-`tools/sh2conv/`) builds `pack/chr/moth/moth.s3c`: four unit quads on four bones, one per frame, so
+frame runs at 0x400 a tick over a 0x2580 cycle (0x4ac070). `tools/sh2conv/moths.py` builds `pack/chr/moth/moth.s3c`: four unit quads on four bones, one per frame, so
 enemy.c draws a moth by giving its frame's bone the billboard matrix and collapsing the other three.
 The swarm keeps the PC's states: chest height (y -16800) while it hunts, on James while it holds him,
 and up and away (2.5 s) once it lets go or Mary is hit out of the state.
@@ -827,7 +826,7 @@ way).
   with James off the grate (x -25300, material 0, `g6b*`) it crawls up to 370 from him and never
   strikes (state 0.2, James at 100 the whole time).
 * Maria's footsteps (`w6c.wav`, th09, the circle pad held up for 250 frames, material 0):
-  `.enemytest/tools/stepmatch.py` (a high-passed normalised cross-correlation against every
+  `tools/stepmatch.py` (a high-passed normalised cross-correlation against every
   sample in se.bnk) finds 19031, her default step, seven times 0.57 s apart (7.70 .. 11.16 s, two
   steps per 1.16 s walk cycle), and none of 19032..19038 or James' 11000..11005. An earlier capture
   held the D-pad, which does not move the player; batch 4's "Maria walks" result had the same flaw.

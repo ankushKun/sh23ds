@@ -24,7 +24,7 @@ the 3DS side down to one small decoder for both video and audio.
   become exactly 400x240. The 640x480 ones (credits, endings, murder, water, flash, trailers) are full 4:3 frames with
   credit text right up to the edges, so they are encoded at 320x240 and shown between black bars.
   `--fit crop` instead scales them to 400x300 and keeps the middle 240 lines, which loses the top and
-  bottom credit lines (compare `.fmvtest/evidence/pillarbox_vs_crop.png`).
+  bottom credit lines.
 - Audio: MP2 at 32 kHz stereo, 128 kbit/s. The DSP mixes at 32728 Hz, so a higher rate would only
   cost space. MP2 is half the size of IMA-ADPCM at that rate and pl_mpeg already decodes it.
 - Tracks: `Movie_BinkPlay` (0x43d770) selects Bink sound tracks for two files, so those keep every
@@ -149,9 +149,8 @@ was still free while toilet played after New Game.
 
 ## Verification
 
-`.fmvtest/` (not in the repo) holds the test setup: `run.sh` and `run2.sh` run the copies in Azahar,
-`lr3ds_av` is lr3ds that also prints the audio sample count at each screenshot, and `avsync.py`
-compares a run with ffmpeg's decode of the same `.mpg`:
+The checks below were made in a test workspace that has since been removed: scripts ran the copies
+in Azahar, an lr3ds build also printed the audio sample count at each screenshot, and a script compared a run with ffmpeg's decode of the same `.mpg`:
 
 - Audio: the core's WAV output cross-correlated with ffmpeg's MP2 decode (stretched to the DSP's
   32728.498 Hz): 0.9989 over the whole 233 s of open_voc, 0.9991 over the 230 s of ending, 0.9985 for
