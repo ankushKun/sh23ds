@@ -92,6 +92,23 @@ On the build before 0.1.2's console fixes:
 Puzzle answers are set with debug keys before the scripts play them, and the ending scripts set the
 Maria escort and damage counters, which the teleport chapters do not build up as a player would.
 
+## Browser packer (converter or packer-page changes)
+
+`site/packer.html` runs the converters in Pyodide (tools/packer-web/README.md). Three checks, all on the
+real game folder:
+
+- `tools/texenc/check.py <pack>`: every texture of a native pack (built with its png folders) re-encoded
+  by `t3x.py` + texenc against tex3ds's file. Header and level 0 byte for byte at high quality,
+  mipmaps by PSNR.
+- `node tools/packer-web/run.mjs "Silent Hill 2" <out>` then `compare.py <out> <native pack>`: the
+  whole engine in Node, compared file by file. Fails on a missing file or on any difference outside
+  textures and movies.
+- `node tools/packer-web/e2e.mjs "Silent Hill 2" <dir>`: the page in headless Chrome, from the folder
+  input to the saved zip.
+
+Last run 2026-10-19: all three pass, and the smoke run passes on the zip the page made. The numbers are
+in tools/packer-web/README.md.
+
 ## On a console
 
 Nothing has been measured on a console yet, and it is the biggest open question. Version 0.1.1 ran on

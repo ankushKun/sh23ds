@@ -1,0 +1,11 @@
+{
+  "name": "sh23ds-packer-web-tests",
+  "private": true,
+  "description": "Runs the browser packer (site/packer/core.js) in Node against a game folder, for the tests",
+  "type": "module",
+  "devDependencies": {
+    "@ffmpeg/core": "0.12.10",
+    "puppeteer-core": "24.43.1",
+    "pyodide": "314.0.7"
+  }
+}

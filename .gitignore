@@ -85,3 +85,8 @@ reference/
 !/.github/
 !/.gitignore
 !/.dockerignore
+
+# browser packer: test dependencies, the converter bundle (built by the Pages workflow), native test build
+node_modules/
+site/packer/sh2conv.zip
+tools/texenc/build/

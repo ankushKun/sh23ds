@@ -21,7 +21,7 @@ summary and the list of what to do next. How to run the tests is in TESTING.md.
 | Piece | Where | Notes |
 | --- | --- | --- |
 | 3DS app | `port/` | C, libctru + citro3d. `./build.sh` (devkitARM in Docker), `./package.sh` makes `sh23ds.cia` and `dist/` |
-| Asset converter | `tools/sh2conv/`, `tools/make_pack.sh` | Reads the user's `Silent Hill 2` folder (checks the DC exe's MD5), writes the SD pack; `tools/packer/` is the same in a Docker image (ghcr.io/ankushkun/sh23ds-packer) |
+| Asset converter | `tools/sh2conv/` (`pack.py` is the step list) | Reads the user's `Silent Hill 2` folder (checks the DC exe's MD5), writes the SD pack; `tools/make_pack.sh` runs it natively, `tools/packer/` in a Docker image (ghcr.io/ankushkun/sh23ds-packer) and `site/packer.html` in the browser (Pyodide, ffmpeg.wasm and `tools/texenc`, see `tools/packer-web/README.md`) |
 | Headless tests | `tools/lr3ds/`, `tests/playtest/` | Azahar's libretro core with the software renderer at 100 % clock, scripted input and screenshots; the smoke run and the playthrough suite (TESTING.md) |
 | Decomp tooling | `tools/*.py`, `sh2-3ds-port-kit/` | PS2 beta DWARF names and types for the Ghidra project, PC to PS2 name mapping (`docs/RESEARCH.md`) |
 | Website | `site/` | GitHub Pages, deployed on push |
@@ -116,12 +116,17 @@ max, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `demo/`
   room changes in about 250 ms in Azahar, audio read ahead in 64 KB pieces (`PERFORMANCE.md`).
 - Every Enhanced Edition fix that applies, always on (`EE_FIXES.md`); the packer reads installed EE packs
   (`tools/sh2conv/EE_PACKS.md`).
+- The packer runs in Docker, natively or in the player's browser (`site/packer.html`): the same
+  converters, with nothing uploaded; checked file by file against the native packer.
 
 ## Testing
 
 Details and commands are in TESTING.md. In short, as of 2026-10-18:
 
-- Smoke run: 12 of 12 scenarios on both console models (0.1.2, rerun during the clean-up).
+- Smoke run: 12 of 12 scenarios on both console models (0.1.2, rerun during the clean-up), and on a
+  pack the browser packer made.
+- Browser packer: the whole game in about 7 minutes with three workers in Chrome; the result matches
+  the native packer's file by file within the expected encoder differences (tools/packer-web/README.md).
 - Warp autotest: all 570 door and warp destinations load on both models, with textures, camera roads
   and, except the lake (which has no collision on the PC either), a floor.
 - Playthrough suite (`tests/playtest/`): on 0.1.2 the teleport chain, all six endings and Born From

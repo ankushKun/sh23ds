@@ -1,0 +1,86 @@
+// The browser packer's writer (a module worker that packer.html starts): the one place the output is
+// written, so several packing workers can run at once. Each packing worker sends its files here over its
+// own MessageChannel; this worker adds them, in the order each one sent them, to a zip in the browser's
+// private storage (OPFS) or to a folder the player picked.
+//
+// Messages in:  {type: 'open', out: 'zip' | 'dir', dir, lanes}   then one {type: 'port', port} per worker
+//               {type: 'add', rel, data}                           a file from the page itself
+//               {type: 'finish'}                                   after every worker sent its 'end'
+// Messages out: {type: 'ready'} {type: 'done', name, size, files, bytes} {type: 'error', message}
+import './sinks.js';    // self.SH2Sinks
+
+const ZIP_NAME = 'sh23ds-sd.zip';
+const post = (m) => self.postMessage(m);
+let sink = null, queue = Promise.resolve(), files = 0, bytes = 0;
+let lanes = 0, ended = 0, finishing = null;
+
+async function zipSink() {
+	let root;
+	try {
+		root = await navigator.storage.getDirectory();
+		await root.getFileHandle('sh23ds-probe', { create: true });
+		await root.removeEntry('sh23ds-probe');
+	} catch (e) {
+		// a private window (Safari's in particular) has no storage for sites
+		throw new Error('This browser window can’t store the zip (' + (e.message || e.name) + '). ' +
+			'A private window does that: use a normal window, or in Chrome and Edge save straight to a folder.');
+	}
+	try { await root.removeEntry(ZIP_NAME); } catch (e) { /* none yet */ }
+	const fh = await root.getFileHandle(ZIP_NAME, { create: true });
+	const handle = await fh.createSyncAccessHandle();
+	const z = new SH2Sinks.ZipSink((u8, at) => {
+		const n = handle.write(u8, { at });
+		if (n !== u8.length) throw new Error('the browser storage is full (wrote ' + n + ' of ' + u8.length + ' bytes)');
+	}, '3ds/sh23ds/');
+	const finish = z.finish.bind(z);
+	z.finish = async () => {
+		const size = await finish();
+		handle.flush();
+		handle.close();
+		return size;
+	};
+	return z;
+}
+
+function add(rel, data) {
+	queue = queue.then(async () => {
+		await sink.add(rel, data);
+		files++;
+		bytes += data.size !== undefined ? data.size : data.length;
+	}).catch((err) => post({ type: 'error', message: String(err && err.message || err) }));
+}
+
+function maybeFinish() {
+	if (!finishing || ended < lanes) return;
+	queue.then(async () => {
+		const size = await sink.finish();
+		post({ type: 'done', name: ZIP_NAME, size, files, bytes });
+	}).catch((err) => post({ type: 'error', message: String(err && err.message || err) }));
+}
+
+self.onmessage = async (e) => {
+	const m = e.data;
+	try {
+		if (m.type === 'open') {
+			lanes = m.lanes;
+			sink = m.out === 'dir' ? new SH2Sinks.DirSink(m.dir, '3ds/sh23ds/') : await zipSink();
+			post({ type: 'ready' });
+		} else if (m.type === 'port') {
+			m.port.onmessage = (ev) => {
+				if (ev.data.type === 'end') {
+					ended++;
+					maybeFinish();
+				} else {
+					add(ev.data.rel, ev.data.data);
+				}
+			};
+		} else if (m.type === 'add') {
+			add(m.rel, m.data);
+		} else if (m.type === 'finish') {
+			finishing = true;
+			maybeFinish();
+		}
+	} catch (err) {
+		post({ type: 'error', message: String(err && err.message || err) });
+	}
+};

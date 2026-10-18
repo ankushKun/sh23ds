@@ -85,7 +85,7 @@ You need:
 
 - A **New Nintendo 3DS, New 3DS XL or New 2DS XL**, or an **original 3DS, 3DS XL or 2DS**, running Luma3DS custom firmware, with FBI or the Homebrew Launcher. Not set up yet? Follow [3ds.hacks.guide](https://3ds.hacks.guide/) first. The New models give the best results. On an original 3DS the game picks its Old 3DS profile by itself: fewer fog sprites and streamed town tiles, no character shadows, simpler character lighting and 30 fps (see [port/OLD3DS.md](port/OLD3DS.md)).
 - Your own copy of **Silent Hill 2 PC, Director's Cut**. The packer checks that `sh2pc.exe` has the MD5 `f3f5360298b6d0f6f2e09cf24a0925d1`, the unmodified retail Director's Cut build.
-- About **1.3 GB free** on the SD card, and a computer with [Docker](https://www.docker.com/products/docker-desktop/) to build the game data.
+- About **1.3 GB free** on the SD card, and a computer to build the game data on: a current Chrome, Edge, Firefox or Safari, or [Docker](https://www.docker.com/products/docker-desktop/).
 
 Then:
 
@@ -133,7 +133,9 @@ sdmc:/
 
 The packer reads your `Silent Hill 2` folder (the one with `sh2pc.exe` and `data/`), converts every room, texture, character, animation, event, message, picture, map, sound and movie into the formats the port reads, and writes the `3ds` folder for the SD card. It only reads the game folder and never changes it.
 
-It runs in a container with everything it needs, so the only thing to install is Docker. The image holds the converters from this repository and nothing from the game.
+**In your browser.** Open the [packer page](https://ankush.one/sh23ds/packer.html), choose the game folder and save the zip it makes, then unzip it onto the SD card. The page runs the same converters on your computer with Pyodide and ffmpeg.wasm, so nothing is uploaded and nothing is installed. It needs a desktop browser and about 1.5 GB of free disk space while it works; Chrome and Edge can also write the files straight into a folder such as the SD card. How it works and how it is checked against the Docker packer: [tools/packer-web/README.md](tools/packer-web/README.md).
+
+**With Docker.** The packer also runs in a container with everything it needs, so the only thing to install is Docker. The image holds the converters from this repository and nothing from the game.
 
 **macOS and Linux**
 
@@ -273,9 +275,11 @@ port/source/          the 3DS engine (C, libctru and citro3d)
   *.v.pica              vertex shaders
 port/meta/            CIA banner, icon and RSF
 tools/sh2conv/        the converters from the PC formats to the pack
-tools/make_pack.sh    runs every converter in order
+tools/make_pack.sh    runs sh2conv/pack.py, the step list both packers share
 tools/packer/         the packer image
 tools/lr3ds/          headless test runner
+tools/packer-web/     the browser packer's tests and bundler (the page is site/packer.html)
+tools/texenc/         tex3ds's texture encoders, built to WebAssembly for the browser packer
 tests/playtest/       playthrough scripts (the whole game, every ending, the bosses) and their runners
 sh2-3ds-port-kit/     reverse-engineering tools: labels, Ghidra scripts, version detection
 docs/RESEARCH.md      how the exe was mapped, key addresses, the work log

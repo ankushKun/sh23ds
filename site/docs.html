@@ -35,6 +35,7 @@
     </a>
     <nav class="nav" aria-label="Site">
       <a href="install.html">Install</a>
+      <a href="packer.html">Packer</a>
       <a href="roadmap.html">Roadmap</a>
       <a href="docs.html" aria-current="page">Docs</a>
       <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
@@ -106,9 +107,11 @@
         <section class="doc-section prose" id="layout" aria-labelledby="d-layout">
           <h2 class="doc-title" id="d-layout">Repository</h2>
           <pre class="code">port/                 the 3DS engine: source/, meta/, build.sh, package.sh
-tools/sh2conv/        converters from the PC formats to the pack
-tools/make_pack.sh    runs every converter in order
+tools/sh2conv/        converters from the PC formats to the pack; pack.py is the step list
+tools/make_pack.sh    runs pack.py natively
 tools/packer/         the packer image (Dockerfile, entry point)
+tools/packer-web/     the browser packer's tests (the page is site/packer.html)
+tools/texenc/         tex3ds's texture encoders, built to WebAssembly
 sh2-3ds-port-kit/     reverse-engineering kit: labels, Ghidra scripts
 docs/RESEARCH.md      how the exe was mapped, key addresses, the work log
 site/                 this website, deployed by GitHub Pages</pre>
@@ -267,6 +270,7 @@ lighting.txt chrlight.txt  room and character lighting</pre>
         </a>
         <nav class="nav" aria-label="Footer">
           <a href="install.html">Install</a>
+          <a href="packer.html">Packer</a>
           <a href="roadmap.html">Roadmap</a>
           <a href="docs.html" aria-current="page">Docs</a>
           <a href="https://github.com/ankushKun/sh23ds/releases">Releases</a>
