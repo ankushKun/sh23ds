@@ -3,6 +3,7 @@
 # folder at /out. The result is /out/3ds/sh23ds/, ready to copy to the root of the SD card.
 # Set KEEP_EXTRAS=1 to keep the inspection files (the png folders and the .json files, about 0.6 GB).
 # If a run stops partway, the same command picks up where it stopped; set FRESH=1 to start over.
+# Set HALF_MOVIES=1 to add the half-size movies the Old 3DS profile plays (about 75 MB more).
 # A game folder with the Enhanced Edition's sh2e folder (its Image, FMV and Audio Enhancement Packs
 # and Essential Files) gives the improved files (tools/sh2conv/EE_PACKS.md); SH2EE=0 ignores them.
 set -e

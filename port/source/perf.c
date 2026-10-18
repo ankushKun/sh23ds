@@ -1,20 +1,15 @@
 #include "perf.h"
+#include "audio.h"
+#include "profile.h"
 #include <citro3d.h>
 #include <malloc.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
-// Memory split. The CIA runs in the New 3DS's 124 MB mode (package.sh, APP_SYSTEM_MODE_EXT), and
-// libctru's default split of it gives the linear heap 32 MB and malloc the rest, about 91 MB. The
-// port is the other way round: textures, vertex and index buffers and sound buffers all live in
-// linear memory, while malloc held at most 3.3 MB in the measurements (port/PERFORMANCE.md). The
-// tile reader thread can add a few MB per queued tile on top (an .s3m of up to 1.6 MB and the
-// textures the cache lacks), so malloc gets a fixed 32 MB and libctru gives the linear heap
-// whatever is left, about 90 MB in 124 MB mode. A 3dsx started in a smaller mode gets a smaller
-// linear heap the same way; libctru only stops if the 32 MB themselves do not fit.
-u32 __ctru_heap_size = 32 * 1024 * 1024;
-extern u32 __ctru_linear_heap_size;
+// Memory split: profile.c sizes the malloc heap from the memory the process has (32 MB in the New
+// 3DS's 124 MB mode, 15 MB in the Old 3DS's 64 MB mode) and gives the linear heap the rest.
+extern u32 __ctru_heap_size, __ctru_linear_heap_size;
 
 static struct {
 	char pack[96];
@@ -31,6 +26,9 @@ static struct {
 	// ms, and a write in the middle of a frame would show up as the very hitch being measured
 	char log[4096];
 	int loglen;
+	// low-water marks between two mem.txt lines (memlog): the area change lines alone miss the
+	// peaks of streaming, cutscenes and movies
+	u32 lin_min, heap_used_max;
 } P;
 
 static void log_add(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
@@ -104,11 +102,23 @@ void perf_frame_end(const char* where)
 	P.frames++;
 	P.total++;
 	// single slow frames are what the player feels as a hitch, so they get a line of their own
-	if (P.log_frames && upd + ren > 25.0f) {
+	// slow: half a refresh over the frame's time (25 ms at 60 fps, 41.7 ms with the 30 fps cap)
+	float slow = 1000.0f / (float)profile_frame_rate() + 8.3f;
+	if (P.log_frames && upd + ren > slow) {
 		log_add("%-10s slow frame %lu: upd %5.2f render %5.2f", where, (unsigned long)P.total, upd, ren);
 		for (int i = 0; i < P.nparts; i++)
 			log_add("  %s %.2f", P.part[i].name, P.part[i].ms);
 		log_add("\n");
+	}
+	if (P.log_mem) {
+		u32 lf = linearSpaceFree();
+		if (!P.lin_min || lf < P.lin_min)
+			P.lin_min = lf;
+		if ((P.total & 15) == 0) {
+			struct mallinfo mi = mallinfo();
+			if ((u32)mi.uordblks > P.heap_used_max)
+				P.heap_used_max = (u32)mi.uordblks;
+		}
 	}
 	P.upd_sum += upd, P.ren_sum += ren, P.cpu_sum += cpu, P.gpu_sum += gpu;
 	if (upd > P.upd_max) P.upd_max = upd;
@@ -121,9 +131,10 @@ void perf_frame_end(const char* where)
 	snprintf(P.status, sizeof P.status, "upd %4.1f/%4.1f ren %4.1f gpu %4.1f ms", P.upd_sum / n, P.upd_max,
 	         P.ren_sum / n, P.gpu_sum / n);
 	if (P.log_frames) {
-		log_add("%-10s upd %5.2f max %5.2f  render %5.2f max %5.2f  c3d cpu %5.2f gpu %5.2f max %5.2f  frame max %5.2f\n",
+		log_add("%-10s upd %5.2f max %5.2f  render %5.2f max %5.2f  c3d cpu %5.2f gpu %5.2f max %5.2f  frame max %5.2f"
+		        "  lin %lu  music %d%%\n",
 		        where, P.upd_sum / n, P.upd_max, P.ren_sum / n, P.ren_max, P.cpu_sum / n, P.gpu_sum / n, P.gpu_max,
-		        P.tot_max);
+		        P.tot_max, (unsigned long)(linearSpaceFree() >> 10), audio_decode_load());
 		log_flush();
 	}
 	P.frames = 0;
@@ -162,11 +173,19 @@ const char* mem_log(const char* what)
 		snprintf(path, sizeof path, "%s/mem.txt", P.pack);
 		FILE* f = fopen(path, "a");
 		if (f) {
-			fprintf(f, "%-16s linear %6lu KB of %lu  vram %5lu KB  heap %6lu KB of %lu (malloc arena %lu, in use %lu)\n",
-			        what, (unsigned long)(linearSpaceFree() >> 10), (unsigned long)(__ctru_linear_heap_size >> 10),
+			u32 lf = linearSpaceFree();
+			if (!P.lin_min || lf < P.lin_min)
+				P.lin_min = lf;
+			if ((u32)mi.uordblks > P.heap_used_max)
+				P.heap_used_max = (u32)mi.uordblks;
+			fprintf(f, "%-16s linear %6lu KB of %lu  vram %5lu KB  heap %6lu KB of %lu (malloc arena %lu, in use %lu)"
+			        "  since last: linear min %lu, malloc max %lu\n",
+			        what, (unsigned long)(lf >> 10), (unsigned long)(__ctru_linear_heap_size >> 10),
 			        (unsigned long)(vramSpaceFree() >> 10), (unsigned long)(heap_free >> 10),
 			        (unsigned long)(__ctru_heap_size >> 10), (unsigned long)(mi.arena >> 10),
-			        (unsigned long)(mi.uordblks >> 10));
+			        (unsigned long)(mi.uordblks >> 10), (unsigned long)(P.lin_min >> 10),
+			        (unsigned long)(P.heap_used_max >> 10));
+			P.lin_min = P.heap_used_max = 0;
 			fclose(f);
 		}
 	}

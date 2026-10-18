@@ -1,6 +1,7 @@
 # sh23ds port status
 
-Goal: Silent Hill 2 Director's Cut (PC) running natively on New 3DS (real hardware and Azahar), as an
+Goal: Silent Hill 2 Director's Cut (PC) running natively on New 3DS and, with lighter settings, the original
+3DS (real hardware and Azahar), as an
 installable `.cia` / `.3dsx` that uses the player's own game data. The Enhanced Edition fixes are to be
 folded in where they apply.
 
@@ -46,7 +47,8 @@ mipmaps); `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `debug.txt` optional (re
   into sddata.bin and voice.afs, DirectSound-style volume and distance curve, door open/close/unlock/jam/lock
   sets, footsteps per floor material from the .cld, pickup, save, menu sounds. Verified by WAV capture
   (cross-correlation 0.99+ against the source PCM)
-- `.cia` / `.3dsx` packaging (124 MB ext memory, 804 MHz, L2 cache); `tools/make_pack.sh` builds the SD pack
+- `.cia` / `.3dsx` packaging (New 3DS: 124 MB ext memory, 804 MHz, L2 cache; Old 3DS: the normal 64 MB mode);
+  `tools/make_pack.sh` builds the SD pack
   from the user's own install (checks the DC exe MD5); verified 2026-10-17 by a from-scratch build that reproduces the
   working pack file for file
 - Debug: `debug.txt` keys `rendermode`, `batch`, `freeze`, `debughud`, `ambient`, `brightness`,
@@ -239,6 +241,15 @@ Known differences from the PC that are left:
   PC's message (0x9445f4 = 3).
 * The scripted Maria escort, the "near / far from Maria" counters and the damage counters are not
   representative in the teleport chapters, so the ending tests set those counters.
+- Old 3DS support (`profile.c`, see `port/OLD3DS.md`): the console is detected at start-up and picks the
+  Old 3DS or New 3DS profile (Auto / Old / New in `options.txt` and the options screens), with a
+  quality level (low: two streamed tiles, half the fog sprites, no character shadows, fewer character
+  lights, the half-size movie set if packed, a 30 fps cap), a controls layout (`controls_layout()`, which
+  controls.c reads) and a frame rate option. The malloc / linear split
+  follows the memory the process has, and room textures load from their second mip level when the
+  linear heap is under 32 MB. In Azahar's Old 3DS model the 64 MB CIA
+  passes the 11 smoke scenarios and all 570 warp autotest destinations, peaking at 15.5 MB of linear
+  memory.
 
 ## Not done yet
 
@@ -248,7 +259,8 @@ Known differences from the PC that are left:
 2. Climbing creepers stay on one straight wall segment (the PC follows the room mesh round corners and onto
    other faces)
 3. Drop shadows and shadows from lights other than the flashlight; the fog layer's wall test and blow points
-4. Testing on a real New 3DS (core 2 audio thread, SD read times, stencil shadows, perflog numbers); enemy
+4. Testing on a real New 3DS (core 2 audio thread, SD read times, stencil shadows, perflog numbers) and on a
+   real Old 3DS (frame times at 268 MHz, music on core 0, movie decoding, the Circle Pad Pro); enemy
    models and stage events still load during the black frame of a room change
 
 ## Decomp status

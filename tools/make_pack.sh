@@ -122,6 +122,12 @@ if step movies "movies (MPEG-1 + MP2 for movie.c; needs ffmpeg)"; then
 	$PY "$ROOT/tools/sh2conv/movies.py" --data "$DATA" --out "$OUT"
 	touch "$STEPS/movies"
 fi
+# HALF_MOVIES=1: also a half-size set in movie/half/ (about 75 MB more) that the Old 3DS profile plays
+# (port/OLD3DS.md). It is a step of its own, so an existing pack can get it with the same command.
+if [ "${HALF_MOVIES:-0}" = 1 ] && step halfmovies "half-size movies for the Old 3DS (needs ffmpeg)"; then
+	$PY "$ROOT/tools/sh2conv/movies.py" --data "$DATA" --out "$OUT" --half
+	touch "$STEPS/halfmovies"
+fi
 if step sound "sound effects, footstep materials, per-stage BGM tables"; then
 	$PY "$ROOT/tools/sh2conv/sound.py" --data "$DATA" --exe "$GAME/sh2pc.exe" --out "$OUT/sound"
 	touch "$STEPS/sound"

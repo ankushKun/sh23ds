@@ -1,4 +1,5 @@
 #include "optmenu.h"
+#include "profile.h"
 #include "controls.h"
 #include "events.h"
 #include "font.h"
@@ -52,6 +53,11 @@ static const char* const FRAMING[2] = { "Full Width", "4:3" };
 static const char* const RUN_BUTTON[2] = { "Hold", "Toggle" };
 static const char* const TIMING[2] = { "PC", "Hold A" };
 static const char* const SWAP[2] = { "Normal", "Swapped" };
+// the hardware profile's rows (profile.c): three values each, Auto first
+static const char* const HARDWARE[3] = { "Auto", "Old 3DS", "New 3DS" };
+static const char* const QUALITY[3] = { "Auto", "Low", "High" };
+static const char* const FRAMES[3] = { "Auto", "30 fps", "60 fps" };
+#define OWN3(name, text, field, texts) add(K_LIST, -1, name, -1, text, &s_live->field, 0, 2, NULL, texts, 0)
 
 static const char* msg(int n, const char* fallback)
 {
@@ -84,7 +90,8 @@ static const Key s_keys[] = {
 	K("bloodcolor", blood, 0, 3), K("bulletadjust", bullet, 1, 3), K("messagestop", msg_top, 0, 1),
 	K("ps2flashlight", ps2_flash, 0, 1), K("ps2noise", noise_ps2, 0, 1), K("ps2camera", ps2_camera, 0, 1),
 	K("cutscenefov", cutscene_fov, 0, 1), K("togglerun", toggle_run, 0, 1), K("holdstomp", hold_stomp, 0, 1),
-	K("swapattack", swap_attack, 0, 1),
+	K("swapattack", swap_attack, 0, 1), K("hwprofile", hwprofile, 0, 2), K("quality", quality, 0, 2),
+	K("framerate", framerate, 0, 2), K("ctrllayout", ctrllayout, 0, 2),
 };
 
 void opt_load(Options* o, const char* path)
@@ -171,7 +178,18 @@ static void build(void)
 		OWN("Noise Style", "Enhanced Edition: the PS2's darker grain", noise_ps2, PC_PS2);
 		OWN("Camera Speed", "Enhanced Edition: the PS2's camera speed", ps2_camera, PC_PS2);
 		OWN("Cutscene View", "Enhanced Edition: keep the 4:3 framing in scenes", cutscene_fov, FRAMING);
-		// the Old 3DS profile's Hardware and Quality rows go here once profile.h is in the tree
+		// the hardware profile (profile.c): what Auto means on this console is in the help line
+		{
+			static char hw[80], q[80], fr[80];
+			bool n = profile_console_new();
+			snprintf(hw, sizeof hw, "Auto: this console (%s 3DS)", n ? "New" : "Old");
+			snprintf(q, sizeof q, "Low: lighter scenes, no shadows (Auto: %s)",
+			         profile_new() ? "High" : "Low");
+			snprintf(fr, sizeof fr, "30 fps keeps frames even (Auto: %d fps)", profile_frame_rate());
+			OWN3("Hardware", hw, hwprofile, HARDWARE);
+			OWN3("Quality", q, quality, QUALITY);
+			OWN3("Frame Rate", fr, framerate, FRAMES);
+		}
 		break;
 	case PG_CONTROL:
 		// the PC's key setup becomes the port's: the buttons of each action (controls.c), then the
@@ -180,7 +198,12 @@ static void build(void)
 		OWN("Run Button", "Enhanced Edition: B starts and stops running", toggle_run, RUN_BUTTON);
 		OWN("Heavy Attack", "Enhanced Edition: hold A to stomp or swing heavy", hold_stomp, TIMING);
 		OWN("Light / Heavy", "Enhanced Edition: swap the light and heavy swings", swap_attack, SWAP);
-		// the Old 3DS profile's Controls layout row goes here once profile.h is in the tree
+		// which buttons the bindings may use: the Old 3DS layout has no ZL, ZR or C-Stick
+		{
+			static char lay[80];
+			snprintf(lay, sizeof lay, "Old 3DS: no ZL, ZR or C-Stick (Auto: %s 3DS)", profile_console_new() ? "New" : "Old");
+			OWN3("Layout", lay, ctrllayout, HARDWARE);
+		}
 		break;
 	}
 }

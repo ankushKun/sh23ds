@@ -4,9 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tex3ds.h>
+#include "profile.h"
 
 #define TEXCACHE_MAX 512
-#define TEXCACHE_BUDGET (12u << 20)     // bytes of texture kept from rooms visited earlier
+// bytes of texture kept from rooms visited earlier: 12 MB, 6 MB with less memory (profile.c)
+#define TEXCACHE_BUDGET profile_texcache_budget()
 
 typedef struct {
 	u32 id;                 // 0: free slot
@@ -92,6 +94,26 @@ int texcache_ids(const char* area, u32* out, int max)
 	return n;
 }
 
+// With little memory (profile_tex_half) room textures are kept from their second mip level: the
+// .t3x files carry the whole chain, so the copy of levels 1.. is the same texture at half the width
+// and height in a quarter of the memory, with no second texture pack. Textures under 16 pixels stay
+// as they are.
+static void tex_halve(C3D_Tex* t)
+{
+	if (t->maxLevel < 1 || t->width < 16 || t->height < 16)
+		return;
+	C3D_Tex h;
+	C3D_TexInitParams p = { t->width / 2, t->height / 2, t->maxLevel - 1, t->fmt, GPU_TEX_2D, false };
+	if (!C3D_TexInitWithParams(&h, NULL, p))
+		return;
+	u32 size = 0;
+	const void* level1 = C3D_TexGetImagePtr(t, t->data, 1, &size);
+	memcpy(h.data, level1, h.size);       // levels 1.. are contiguous and as long as h's whole chain
+	C3D_TexFlush(&h);
+	C3D_TexDelete(t);
+	*t = h;
+}
+
 static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const RoomTexBlob* tex, int ntex)
 {
 	if (strcmp(area, s_cache_area) != 0) {
@@ -133,6 +155,8 @@ static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const R
 	if (!t3x)
 		return NULL;
 	Tex3DS_TextureFree(t3x);
+	if (profile_tex_half())
+		tex_halve(&e->tex);
 	e->bytes = e->tex.size * 4 / 3;      // level 0 plus the mipmap chain
 	C3D_TexSetFilter(&e->tex, GPU_LINEAR, GPU_LINEAR);
 	C3D_TexSetFilterMipmap(&e->tex, GPU_LINEAR);

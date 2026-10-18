@@ -1,5 +1,6 @@
 #include "chrlight.h"
 #include "textcache.h"
+#include "profile.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -338,6 +339,8 @@ void chrlight_at(const float pos[3], bool james)
 	}
 	qsort(pick, n, sizeof pick[0], by_influence);
 	int room = CL_EXTRA - (L.flash.on && !james ? 1 : 0);
+	if (room > profile_chr_point_lights())   // fewer on the low quality level (profile.c)
+		room = profile_chr_point_lights();
 	int e = 0;
 	for (int i = 0; i < n && e < room; i++)
 		if (pick[i].influence > 0.0f)

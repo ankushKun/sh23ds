@@ -31,3 +31,5 @@ float audio_voice_position(void);   // seconds heard, < 0 before it starts
 void audio_update(void);
 
 const char* audio_status(void);
+// Percent of one core the music decoding took since the last call (-1: nothing decoded).
+int audio_decode_load(void);

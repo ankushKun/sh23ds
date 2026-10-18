@@ -2,7 +2,7 @@
 """Re-encode Silent Hill 2 (PC Director's Cut) Bink movies for sh23ds (port/source/movie.c).
 
   movies.py [--data <game data dir>] [--out pack] [--only toilet,open] [--trailers]
-            [--fit pillarbox|crop] [--q 3] [--abr 128] [-j N]
+            [--fit pillarbox|crop] [--q 3] [--abr 128] [--half] [-j N]
 
 Needs ffmpeg with the Bink decoder (Homebrew's ffmpeg has it). Writes
   <out>/movie/<name>.mpg   MPEG-1 program stream: mpeg1video at 29.97 fps plus one MP2 stream per
@@ -13,6 +13,9 @@ Needs ffmpeg with the Bink decoder (Homebrew's ffmpeg has it). Writes
 With the Enhanced Edition's FMV Enhancement Pack (or its Credits package) installed, the source is
 its sh2e/movie/<name>.bik (ee.py): Bink 1 like the originals, at 1920x1080 or 1920x1230 and partly
 59.94 fps, with the same audio tracks. picture() fits any size and -r keeps 29.97 fps.
+  <out>/movie/half/<name>.mpg   with --half: the same at half the width and height (200x120 or
+                           160x120) for the Old 3DS profile (port/OLD3DS.md), which plays them at
+                           twice the size and so decodes a quarter of the pixels
 
 Why this format: the 3DS has no Bink decoder, and pl_mpeg (single header, MIT) decodes both MPEG-1
 video and MP2 audio from one program stream with little code. MPEG-1 at 400x240 is cheap enough for
@@ -63,8 +66,17 @@ def probe(path):
     return v['width'], v['height'], float(j['format']['duration']), na
 
 
-def picture(w, h, fit):
+def picture(w, h, fit, half=False):
     """Encoded size and the ffmpeg filter that makes it (sizes stay multiples of 16 for MPEG-1)."""
+    if half:
+        # half of the full-size picture, rounded to whole 8 pixel blocks (pl_mpeg pads to 16)
+        fw, fh, _ = picture(w, h, fit)
+        hw, hh = fw // 2 // 8 * 8, fh // 2 // 8 * 8
+        vf = 'scale=%d:%d:flags=lanczos' % (hw, hh)
+        if fit == 'crop' and w * SCREEN_H < h * SCREEN_W:
+            sh = round(h * hw / w / 2) * 2
+            vf = 'scale=%d:%d:flags=lanczos,crop=%d:%d' % (hw, sh, hw, hh)
+        return hw, hh, vf
     if w * SCREEN_H >= h * SCREEN_W:                 # 5:3 or wider: fill the width
         eh = min(SCREEN_H, round(h * SCREEN_W / w / 16) * 16)
         return SCREEN_W, eh, 'scale=%d:%d:flags=lanczos' % (SCREEN_W, eh)
@@ -75,9 +87,9 @@ def picture(w, h, fit):
     return ew, SCREEN_H, 'scale=%d:%d:flags=lanczos' % (ew, SCREEN_H)
 
 
-def convert(name, src, dst, args):
+def convert(name, src, dst, args, half=False):
     w, h, dur, na = probe(src)
-    ew, eh, vf = picture(w, h, args.fit)
+    ew, eh, vf = picture(w, h, args.fit, half)
     tracks = min(TRACKS.get(name, 1), na)
     cmd = ['ffmpeg', '-v', 'error', '-y', '-i', src, '-map', '0:v:0']
     for t in range(tracks):
@@ -103,6 +115,8 @@ def main():
     ap.add_argument('--abr', type=int, default=128, help='MP2 kbit/s for the stereo pair')
     ap.add_argument('--rate', type=int, default=32000, choices=[32000, 44100, 48000])
     ap.add_argument('--force', action='store_true', help='re-encode even when up to date')
+    ap.add_argument('--half', action='store_true',
+                    help='also write movie/half/ at half size for the Old 3DS profile')
     ap.add_argument('-j', type=int, default=max(1, (os.cpu_count() or 2) // 2))
     args = ap.parse_args()
 
@@ -141,6 +155,21 @@ def main():
         for r in ex.map(lambda j: convert(j[0], j[1], j[2], args) + (j[3],), jobs):
             print('%-10s %dx%d %6.1f s  %d track(s)  %5.1f MB  from %s' % (r[0], r[1], r[2], r[3], r[4], r[5] / 1e6, r[6]))
             done.append(r)
+    if args.half:
+        half_dir = os.path.join(out_dir, 'half')
+        os.makedirs(half_dir, exist_ok=True)
+        hjobs = []
+        for n in names:
+            src = os.path.join(src_dir, n + '.bik')
+            if 'ee' in globals():
+                src = ee.file(src)      # the Enhanced Edition's movie when it is installed
+            dst = os.path.join(half_dir, n + '.mpg')
+            if os.path.exists(src) and (args.force or not os.path.exists(dst) or
+                                        os.path.getmtime(dst) < os.path.getmtime(src)):
+                hjobs.append((n, src, dst))
+        with concurrent.futures.ThreadPoolExecutor(args.j) as ex:
+            for r in ex.map(lambda j: convert(j[0], j[1], j[2], args, True), hjobs):
+                print('half %-10s %dx%d %5.1f MB' % (r[0], r[1], r[2], r[5] / 1e6))
 
     # Keep lines for movies converted earlier that this run did not touch
     for n, w, h, dur, tracks, size, origin in done:

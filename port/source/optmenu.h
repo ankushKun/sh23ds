@@ -45,6 +45,12 @@ typedef struct {
 	u8 toggle_run;       // EE "EnableToggleSprint"
 	u8 hold_stomp;       // EE hold A to stomp
 	u8 swap_attack;      // EE light and heavy attacks swapped
+	// the hardware profile (profile.c, port/OLD3DS.md): 0 Auto, then Old 3DS / Low / 30 fps or
+	// New 3DS / High / 60 fps
+	u8 hwprofile;        // Advanced Options "Hardware"
+	u8 quality;          // Advanced Options "Quality"
+	u8 framerate;        // Advanced Options "Frame Rate"
+	u8 ctrllayout;       // Control Options "Layout"
 } Options;
 
 typedef struct {

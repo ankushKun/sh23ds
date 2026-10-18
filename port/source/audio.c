@@ -1,4 +1,5 @@
 #include "audio.h"
+#include "profile.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -67,6 +68,7 @@ static LightLock s_req_lock;         // requests from the main thread
 static LightEvent s_wake;
 static volatile bool s_quit;
 static int s_core = -1;
+static volatile u64 s_load_ticks, s_load_audio;   // music decoding cost (audio_decode_load)
 
 enum { REQ_NONE, REQ_STOP, REQ_PLAY };
 typedef struct {
@@ -130,9 +132,12 @@ static void thread_start(void)
 	s32 prio = 0x30;
 	svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
 	s_quit = false;
-	for (int core = 2; core >= -2 && !s_thread; core -= 4) {
+	// core 2 on a New 3DS, core 0 on an Old 3DS (profile_music_core says why)
+	for (int core = profile_music_core(); !s_thread; core = -2) {
 		s_thread = threadCreate(refill_thread, NULL, 16 * 1024, prio + 1, core, false);
 		s_core = core;
+		if (core == -2)
+			break;
 	}
 }
 
@@ -334,26 +339,32 @@ static void restart(Stream* s, u32 sample)
 }
 
 // Decodes 32 samples of one layer's frame group and adds them, times gain (16.16), into acc.
+// Two nibbles per byte and the version test outside the loop: this runs for every sample of every
+// layer, which is most of the music thread's time on an Old 3DS.
+static inline s32 adx_clamp(s32 v) { return v > 32767 ? 32767 : v < -32768 ? -32768 : v; }
+
 static void decode_layer(Layer* l, const u8* fr, s32 acc[32][MAX_CH], s32 gain)
 {
+	const s32 c1 = l->coef1, c2 = l->coef2;
+	const bool v3 = l->v3, mono = l->channels == 1;
 	for (int c = 0; c < l->channels; c++) {
 		const u8* f = fr + 18 * c;
-		int scale = (s16)be16(f) + 1;
+		const s32 scale = (s16)be16(f) + 1;
 		s32 h1 = l->hist1[c], h2 = l->hist2[c];
-		for (int i = 0; i < 32; i++) {
-			int nib = (i & 1) ? (f[2 + i / 2] & 0xF) : (f[2 + i / 2] >> 4);
-			if (nib & 8)
-				nib -= 16;
-			s32 v = l->v3 ? nib * scale + ((l->coef1 * h1) >> 12) + ((l->coef2 * h2) >> 12)
-			              : nib * scale + ((l->coef1 * h1 + l->coef2 * h2) >> 12);
-			if (v > 32767) v = 32767;
-			if (v < -32768) v = -32768;
-			h2 = h1;
-			h1 = v;
-			s32 g = (s32)(((s64)v * gain) >> 16);
-			acc[i][c] += g;
-			if (l->channels == 1)
-				acc[i][1] += g;
+		for (int i = 0; i < 32; i += 2) {
+			s32 b = f[2 + i / 2];
+			s32 nib[2] = { (s32)((u32)b << 24) >> 28, (s32)((u32)b << 28) >> 28 };
+			for (int k = 0; k < 2; k++) {
+				s32 v = v3 ? nib[k] * scale + ((c1 * h1) >> 12) + ((c2 * h2) >> 12)
+				           : nib[k] * scale + ((c1 * h1 + c2 * h2) >> 12);
+				v = adx_clamp(v);
+				h2 = h1;
+				h1 = v;
+				s32 g = (s32)(((s64)v * gain) >> 16);
+				acc[i + k][c] += g;
+				if (mono)
+					acc[i + k][1] += g;
+			}
 		}
 		l->hist1[c] = h1;
 		l->hist2[c] = h2;
@@ -389,7 +400,16 @@ static u32 decode(Stream* s, s16* out, u32 n, float volume)
 		for (int i = 0; i < s->nlayers; i++) {
 			Layer* l = &s->layer[i];
 			float vol = from[i] + (l->target - from[i]) * t;    // ramp across the buffer
-			decode_layer(l, fr[i], acc, (s32)(vol * volume * 65536.0f));
+			s32 gain = (s32)(vol * volume * 65536.0f);
+			if (gain == 0 && from[i] == 0.0f && l->target == 0.0f) {
+				// A layer faded out for the whole buffer adds nothing: skip its decoding (most of the
+				// cost with five-layer AIX music on an Old 3DS). Its predictor restarts from zero
+				// when it fades back in, an error that dies out within a few dozen samples while
+				// the fade is still near silence.
+				l->hist1[0] = l->hist1[1] = l->hist2[0] = l->hist2[1] = 0;
+				continue;
+			}
+			decode_layer(l, fr[i], acc, gain);
 		}
 		for (int i = 0; i < 32; i++)
 			for (int c = 0; c < MAX_CH; c++) {
@@ -568,7 +588,13 @@ static void chan_update(Chan* c)
 		c->played += w->nsamples;   // finished (0 for a buffer that never played)
 		w->nsamples = 0;
 		s16* pcm = (s16*)w->data_vaddr;
+		u64 t0 = svcGetSystemTick();
 		u32 n = decode(&c->s, pcm, BUF_SAMPLES, c->volume);
+		if (c == &s_music && c->s.rate) {
+			// share of one core spent decoding music: decode time over the time the samples last
+			s_load_ticks += svcGetSystemTick() - t0;
+			s_load_audio += (u64)n * SYSCLOCK_ARM11 / c->s.rate;
+		}
 		if (!n) {
 			c->playing = false;
 			return;
@@ -590,3 +616,10 @@ void audio_update(void)
 }
 
 const char* audio_status(void) { return s_status; }
+
+int audio_decode_load(void)
+{
+	u64 t = s_load_ticks, a = s_load_audio;
+	s_load_ticks = s_load_audio = 0;
+	return a ? (int)(t * 100 / a) : -1;
+}

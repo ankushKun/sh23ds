@@ -23,8 +23,8 @@ Switches in `debug.txt` on the SD card (`sdmc:/3ds/sh23ds/debug.txt`):
 | Line | Effect |
 | --- | --- |
 | `debughud 1` | bottom screen debug page, with the last second of timings and the free memory |
-| `perflog 1` | appends a line per second to `perf.txt`, plus a line for every frame over 25 ms (with the time of each named part of that frame) and one per streamed tile |
-| `memlog 1` | appends the free linear, VRAM and heap memory to `mem.txt` at boot and after every area change |
+| `perflog 1` | appends a line per 60 frames to `perf.txt` (with the free linear memory and the music decoding's share of a core), plus a line for every frame half a refresh over its time (25 ms at 60 fps, 41.7 ms with the 30 fps cap), with the time of each named part of that frame, and one per streamed tile |
+| `memlog 1` | appends the free linear, VRAM and heap memory to `mem.txt` at boot and after every area change, with the lowest linear free and the highest malloc use since the line before |
 | `memtest N` | warps through ten rooms of different areas N times, one every 150 frames, and logs memory after each (implies `memlog`) |
 | `streamsync 1` | reads streamed tiles, a door's destination and its tiles on the main loop as before, for comparison |
 | `sfxsync 1` | reads a sound effect's sample on the main loop at its first play, as before |
@@ -164,9 +164,9 @@ Debug spawns (`spawn` in debug.txt) still load everything in their first frame.
 | --- | --- | --- | --- |
 | main | 0 | libctru default | game, drawing, GPU uploads |
 | tile reader (`stream.c`) | 0 | main + 1 | reads `.s3m`, `.s3l`, uncached `.t3x` and the footstep `.sfm` of a requested tile into malloc'ed buffers |
-| music refill (`audio.c`) | 2, else 0 | main + 1 | ADX/AIX decoding into the ndsp wave buffers of the music and voice channels, and starting and stopping their streams |
+| music refill (`audio.c`) | 2 (New 3DS), else 0 | main + 1 | ADX/AIX decoding into the ndsp wave buffers of the music and voice channels, and starting and stopping their streams |
 | sound effect reader (`sfx.c`) | 0 | main + 1 | reads a sound effect's sample from `se.bnk` into the buffer the main thread allocated for it |
-| movie decoder and audio (`movie.c`) | 2, else 0 | main + 2 / + 1 | only while a movie plays |
+| movie decoder and audio (`movie.c`) | 2, else 0 (Old 3DS: picture on 0, sound on 1) | main + 2 / + 1 | only while a movie plays |
 
 The tile reader spends almost all its time blocked in the file system, so core 0 is fine for it.
 The music thread asks for core 2, the New 3DS's spare core, like the movie threads do; if the kernel
@@ -193,13 +193,14 @@ with them for the same reason.
 
 ## Memory
 
-The CIA is built for the 124 MB mode (`package.sh`: `APP_SYSTEM_MODE_EXT=124MB`). libctru's default
-split of that gives the linear heap 32 MB and malloc about 91 MB, the wrong way round for this port:
-every texture, vertex and index buffer and sound buffer is in linear memory, and malloc held at most
-3.7 MB in any measurement. `perf.c` now sets `__ctru_heap_size` to 32 MB and libctru gives the
-linear heap the rest, about 90.9 MB in 124 MB mode. The 32 MB leave room for the tile reader's
-buffers (an `.s3m` of up to 1.6 MB plus textures per queued tile). A 3dsx started from a smaller
-memory mode simply gets a smaller linear heap.
+The CIA is built for the 124 MB mode on the New 3DS (`package.sh`: `APP_SYSTEM_MODE_EXT=124MB`) and the
+normal 64 MB mode on the Old 3DS. libctru's default split of the 124 MB gives the linear heap 32 MB and
+malloc about 91 MB, the wrong way round for this port: every texture, vertex and index buffer and sound
+buffer is in linear memory, and malloc held at most 3.7 MB in any measurement. `profile.c` replaces
+libctru's heap set-up and sizes malloc from the memory the process has: 32 MB in the 124 MB mode, which
+leaves the linear heap about 90.6 MB, and 15 MB in the Old 3DS's 64 MB mode (47.4 MB linear). The 32
+MB leave room for the tile reader's buffers (an `.s3m` of up to 1.6 MB plus textures per queued tile).
+The Old 3DS numbers are in `OLD3DS.md`.
 
 Free memory as `memtest 2` logged it (KB, right after each area change; the run ended during the
 second round, after seventeen doors):

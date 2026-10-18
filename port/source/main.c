@@ -41,6 +41,7 @@
 #include "areaidx.h"
 #include "stream.h"
 #include "perf.h"
+#include "profile.h"
 #include "gamecam.h"
 #include "game/view/sh2cam.h"
 #include "map.h"
@@ -209,7 +210,7 @@ static void list_rooms(void)
 // room (s_cur) is the one James stands in; it gives the light record and footstep materials.
 
 #define MAX_NB 4
-#define STREAM_DIST 7000.0f          // load a touching tile when James is this close to it
+// how near a touching tile has to be to load, and how many stay resident: profile.c (quality level)
 static Room s_nb[MAX_NB];
 static Collision s_nb_col[MAX_NB];
 static int s_nb_idx[MAX_NB];         // index into s_rooms
@@ -390,12 +391,12 @@ static bool stream_update_ex(bool sync)
 		if (j == s_room || !rooms_touch(s_room, j))
 			continue;
 		float d = room_dist(j, s_px, s_pz);
-		if (d > STREAM_DIST)
+		if (d > profile_stream_dist())
 			continue;
-		int k = nwant < MAX_NB ? nwant++ : -1;
-		if (k < 0) {              // keep the nearest MAX_NB
+		int k = nwant < profile_max_neighbours() ? nwant++ : -1;
+		if (k < 0) {              // keep the nearest few (4 on the high quality level, profile.c)
 			int far = 0;
-			for (int i = 1; i < MAX_NB; i++)
+			for (int i = 1; i < nwant; i++)
 				if (wdist[i] > wdist[far]) far = i;
 			if (wdist[far] <= d)
 				continue;
@@ -3101,6 +3102,7 @@ static void options_apply(void)
 	audio_set_output(s_opt.speaker);
 	map_set_open_zoomed(s_opt.map_zoom == 0);
 	noise_set(s_opt.noise, s_opt.bright, s_opt.noise_ps2);
+	profile_set_choices(s_opt.hwprofile, s_opt.quality, s_opt.ctrllayout, s_opt.framerate);   // profile.c
 	s_env_dirty = true;
 }
 
@@ -3286,7 +3288,7 @@ static bool title_update(u32 down)
 		printf("\x1b[25;2HEndings: %-30.30s", line);
 	}
 	if (!s_is_new3ds)
-		printf("\x1b[24;3HMade for the New 3DS: expect slowdown.");
+		printf("\x1b[24;3HOld 3DS: lower detail (Options).");
 	printf("\x1b[27;2HD-pad: choose   A: select   START: exit");
 	return true;
 }
@@ -3607,15 +3609,13 @@ static void pt_frame(u32* down, u32* held, float dt)
 
 int main(void)
 {
-	bool isNew3ds = false;
-	APT_CheckNew3DS(&isNew3ds);
-	s_is_new3ds = isNew3ds;
-	if (isNew3ds)
-		osSetSpeedupEnable(true);
+	profile_init(PACK_DIR "/options.txt");   // Old / New 3DS profile, clock, core 1 (profile.c)
+	s_is_new3ds = profile_console_new();
 
 	gfxInitDefault();
 	consoleInit(GFX_BOTTOM, NULL);
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
+	profile_apply_frame_rate();          // 30 fps on the low quality level (profile.c)
 	audio_init();
 	sfx_init();
 	bgm_init();
@@ -3746,6 +3746,7 @@ int main(void)
 	}
 	perf_set_log(s_perflog, s_memlog || s_memtest);
 	mem_log("boot");
+	perf_event("boot", "%s", profile_status());
 	load_title();
 	if (s_autotest)
 		autotest_begin();

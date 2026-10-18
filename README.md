@@ -9,7 +9,7 @@
 
 <p align="center">
   <img alt="Version 0.1.0" src="https://img.shields.io/badge/version-0.1.0-8fa3b3?style=for-the-badge">
-  <img alt="New Nintendo 3DS" src="https://img.shields.io/badge/platform-New%203DS-c4453a?style=for-the-badge">
+  <img alt="New Nintendo 3DS and Nintendo 3DS" src="https://img.shields.io/badge/platform-New%203DS%20%7C%203DS-c4453a?style=for-the-badge">
   <img alt="GPLv3 license" src="https://img.shields.io/badge/license-GPLv3-5b7083?style=for-the-badge">
   <img alt="In development" src="https://img.shields.io/badge/status-in%20development-d9b26a?style=for-the-badge">
 </p>
@@ -73,8 +73,8 @@ The repository and the releases contain **no game files**. You need the PC relea
       The PS2 flashlight, the room lighting fix, the fog and lighting record fixes, draw distance, the script fixes, hold-to-stomp, the low-health cross and more. Every EE option and what the port does with it is in <a href="port/EE_FIXES.md">EE_FIXES.md</a>.
     </td>
     <td valign="top">
-      <h4>⚡ Made for the New 3DS</h4>
-      804 MHz with the L2 cache and the 124 MB memory mode, music decoded on the second core, open areas streamed tile by tile on a worker thread, and textures in ETC1 with mipmaps.
+      <h4>⚡ Made for the New 3DS, plays on the original</h4>
+      804 MHz with the L2 cache and the 124 MB memory mode, music decoded on the second core, open areas streamed tile by tile on a worker thread, and textures in ETC1 with mipmaps. An original 3DS gets its own profile with lighter settings and a steady 30 fps.
     </td>
   </tr>
 </table>
@@ -83,7 +83,7 @@ The repository and the releases contain **no game files**. You need the PC relea
 
 You need:
 
-- A **New Nintendo 3DS, New 3DS XL or New 2DS XL** running Luma3DS custom firmware, with FBI or the Homebrew Launcher. Not set up yet? Follow [3ds.hacks.guide](https://3ds.hacks.guide/) first. The original 3DS and 2DS don't have the speed or memory this port is made for.
+- A **New Nintendo 3DS, New 3DS XL or New 2DS XL**, or an **original 3DS, 3DS XL or 2DS**, running Luma3DS custom firmware, with FBI or the Homebrew Launcher. Not set up yet? Follow [3ds.hacks.guide](https://3ds.hacks.guide/) first. The New models give the best results. On an original 3DS the game picks its Old 3DS profile by itself: fewer fog sprites and streamed town tiles, no character shadows, simpler character lighting and 30 fps (see [port/OLD3DS.md](port/OLD3DS.md)).
 - Your own copy of **Silent Hill 2 PC, Director's Cut**. The packer checks that `sh2pc.exe` has the MD5 `f3f5360298b6d0f6f2e09cf24a0925d1`, the unmodified retail Director's Cut build.
 - About **1.3 GB free** on the SD card, and a computer with [Docker](https://www.docker.com/products/docker-desktop/) to build the game data.
 
@@ -109,7 +109,7 @@ sdmc:/
 ```
 
 > [!NOTE]
-> The CIA asks the system for the 124 MB memory mode and the 804 MHz clock with the L2 cache. The `.3dsx` gets whatever the Homebrew Launcher was started with, so the CIA is the better choice on a console.
+> The CIA asks a New 3DS for the 124 MB memory mode and the 804 MHz clock with the L2 cache, and runs in the normal 64 MB mode on an original 3DS. The `.3dsx` gets whatever the Homebrew Launcher was started with, so the CIA is the better choice on a New 3DS.
 
 ### Controls
 
@@ -126,6 +126,8 @@ sdmc:/
 | Touch screen | the map |
 | START | pause: map, memos, brightness, controls, run, flashlight and message options, quit to title |
 | SELECT | debug information on the bottom screen |
+
+*Advanced Options* sets the hardware profile (Auto, Old 3DS, New 3DS), the quality level and the frame rate, and *Control Options* the button layout. Every action above works on an original 3DS, which has no ZL, ZR or C-Stick; [port/OLD3DS.md](port/OLD3DS.md) lists the Old and New 3DS layouts.
 
 ## 📦 Build the game data
 
@@ -223,12 +225,12 @@ A text file at `sdmc:/3ds/sh23ds/debug.txt` changes how the game starts, one set
 | `perflog 1` / `memlog 1` / `memtest <n>` | frame time breakdown, memory use, a memory stress test |
 | `streamsync 1` | load streamed tiles on the main thread, to compare with the worker |
 | `autotest warps <first> <count>` | load every door and warp destination in turn and log the result |
-| `pt <command>` | a playtest script line: `ev <n>`, `use <item>`, `combine <a> <b>`, `press <buttons>`, `answer <k>`, `kill`, `attack`, `expect flag <n> <0\|1>`, `save` / `load <name>`, `fast 1` and more, logged to `ptlog.txt` (see [`playtest.c`](port/source/playtest.c)) |
+| `pt <command>` | a playtest script line: `ev <n>`, `use <item>`, `combine <a> <b>`, `press <buttons>`, `answer <k>`, `kill`, `attack`, `expect flag <n> <0\|1>`, `save` / `load <name>`, `fast 1`; on foot with `walkmode 1` (then `ev <n> [@stage]` walks there through the doors), `walkto <x y z>`, `blocked <x y z>`, `collect`, `fight [s] [radius] [flag n]` with James' own weapons, `cube <outer> <inner>` and more, logged to `ptlog.txt` (see [`playtest.c`](port/source/playtest.c)) |
 | `rendermode <n>` / `batch <n>` / `freeze 1` / `ambient <percent>` | renderer experiments |
 
 ### In an emulator
 
-[Azahar](https://azahar-emu.org/) runs the port. Set the system to New 3DS, put the game data in its virtual SD card under `3ds/sh23ds/` (the `sdmc` folder in Azahar's user directory), and add any file named `3ds/dspfirm.cdc`, since Azahar's audio doesn't need the real firmware. Then open `port/sh23ds.3dsx` or install the CIA.
+[Azahar](https://azahar-emu.org/) runs the port. Set the system to New 3DS (or Old 3DS to try the Old 3DS profile), put the game data in its virtual SD card under `3ds/sh23ds/` (the `sdmc` folder in Azahar's user directory), and add any file named `3ds/dspfirm.cdc`, since Azahar's audio doesn't need the real firmware. Then open `port/sh23ds.3dsx` or install the CIA.
 
 If the top screen stays black in the desktop app, try switching the graphics API between Vulkan and OpenGL, or clearing Azahar's shader cache for title `0000000000000000`. A `dumpframe` line in `debug.txt` tells you whether the game drew anything.
 
@@ -304,6 +306,7 @@ Working in Azahar: the whole game from the prologue to every ending, Born From a
 Still to do:
 
 - [ ] A test pass on a real New 3DS: frame times, SD card read times, audio on the second core
+- [ ] A test pass on a real original 3DS: frame times at 268 MHz, music and movie decoding, the Circle Pad Pro
 - [ ] Drop shadows and shadows from lights other than the flashlight
 - [ ] Climbing creepers that follow the room round corners, as on the PC
 - [ ] The music box's three figure boxes
@@ -322,7 +325,7 @@ From your own copy of the PC game. This project doesn't host, link to or share g
 <details>
 <summary><b>Does it run on an original 3DS or 2DS?</b></summary>
 <br>
-No. The port uses the New 3DS's 804 MHz mode, its L2 cache and its extra memory, and the game wouldn't fit or keep up without them.
+Yes, with lighter settings. The game detects the console and switches to its Old 3DS profile: two streamed tiles instead of four in the open areas, half the fog sprites, no character shadows, fewer character lights and a 30 fps cap for even frame pacing. It fits in the original 3DS's normal 64 MB application memory, so the console doesn't restart into an extended memory mode. *Advanced Options* switches between the Old 3DS and New 3DS profiles, the quality level and the frame rate, and *Control Options* has the button layout. This has been tested in Azahar's Old 3DS model only, not on a real console yet; [port/OLD3DS.md](port/OLD3DS.md) has the details.
 </details>
 
 <details>

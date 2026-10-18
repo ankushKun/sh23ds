@@ -5,6 +5,7 @@
 #include <string.h>
 #include "movie_shbin.h"
 #include "sfx.h"
+#include "profile.h"
 
 // pl_mpeg is plain C without SIMD; -O3 lets GCC unroll its IDCT and motion compensation loops.
 #pragma GCC push_options
@@ -296,6 +297,17 @@ bool movie_start(const char* name)
 	int track;
 	resolve(name, file, sizeof file, &track);
 	snprintf(path, sizeof path, MOVIE_DIR "/%s.mpg", file);
+	if (profile_movie_scale() > 1) {
+		// the low quality level plays the half-size set when the pack has it (movies.py --half):
+		// a quarter of the pixels to decode, drawn at twice the size
+		char lo[96];
+		snprintf(lo, sizeof lo, MOVIE_DIR "/half/%s.mpg", file);
+		FILE* f = fopen(lo, "rb");
+		if (f) {
+			fclose(f);
+			snprintf(path, sizeof path, "%s", lo);
+		}
+	}
 
 	s_vplm = plm_create_with_filename(path);
 	s_aplm = s_vplm ? plm_create_with_filename(path) : NULL;
@@ -332,7 +344,8 @@ bool movie_start(const char* name)
 		if (ok) {
 			memset(s_tex[i].data, 0, s_tex[i].size);         // black outside the picture
 			GSPGPU_FlushDataCache(s_tex[i].data, s_tex[i].size);
-			C3D_TexSetFilter(&s_tex[i], GPU_NEAREST, GPU_NEAREST);    // drawn 1:1
+			bool scaled = s_w * 2 <= 400 && s_h * 2 <= 240;          // a half-size movie
+			C3D_TexSetFilter(&s_tex[i], scaled ? GPU_LINEAR : GPU_NEAREST, scaled ? GPU_LINEAR : GPU_NEAREST);
 			C3D_TexSetWrap(&s_tex[i], GPU_CLAMP_TO_BORDER, GPU_CLAMP_TO_BORDER);
 			s_tex[i].border = 0;
 		}
@@ -392,11 +405,16 @@ bool movie_start(const char* name)
 	s_abufs = 0;
 	s_audio_eof = !s_has_audio;
 	s_go = false;
-	for (int core = 2; core >= -2 && !s_vthread; core -= 4) {
+	// On an Old 3DS the picture decodes on core 0, where the main thread only waits for the vertical
+	// blank during a movie, and the sound on core 1 (the share profile.c asked for), whose 30 % would
+	// be tight for the picture (port/OLD3DS.md).
+	for (int pass = 0; pass < 2 && !s_vthread; pass++) {
+		int core = pass ? -2 : profile_console_new() ? 2 : -2;
+		int acore = pass ? -2 : profile_console_new() ? 2 : profile_helper_core();
 		s_core_req = core;
 		s_vthread = threadCreate(decode_thread, NULL, 64 * 1024, prio + 2, core, false);
 		if (s_vthread && s_has_audio) {
-			s_athread = threadCreate(audio_thread, NULL, 32 * 1024, prio + 1, core, false);
+			s_athread = threadCreate(audio_thread, NULL, 32 * 1024, prio + 1, acore, false);
 			if (!s_athread) {
 				s_quit = true;               // both or neither on this core
 				threadJoin(s_vthread, U64_MAX);
@@ -634,12 +652,16 @@ void movie_draw(void)
 		return;
 	// one quad over the whole screen; outside the picture the texture is black (cleared texels on
 	// the right and bottom, the black border colour on the left and top)
-	float x0 = (400 - s_w) / 2, y0 = (240 - s_h) / 2;
-	float u0 = -x0 / TEX_W, u1 = (400.0f - x0) / TEX_W;
+	// a half-size movie (Old 3DS profile) is drawn at twice its size, filtered
+	int k = 1;
+	while ((k + 1) * s_w <= 400 && (k + 1) * s_h <= 240)
+		k++;
+	float x0 = (400 - k * s_w) / 2, y0 = (240 - k * s_h) / 2;
+	float u0 = -x0 / k / TEX_W, u1 = (400.0f - x0) / k / TEX_W;
 	// The start of texture memory (the picture's first row) is the top, near t = 1. A test pattern in
 	// Azahar showed screen line k sampling memory row k - 1 with the plain mapping, so it is nudged by
 	// one texel: lines 1..239 now show rows 1..239 exactly and line 0 samples a cleared (black) row.
-	float v0 = 1.0f + (y0 - 1.0f) / TEX_H, v1 = 1.0f - (241.0f - y0) / TEX_H;
+	float v0 = 1.0f + (y0 - 1.0f) / k / TEX_H, v1 = 1.0f - (241.0f - y0) / k / TEX_H;
 	QuadVertex q[4] = {
 		{ 0.0f, 240.0f, u0, v0 }, { 0.0f, 0.0f, u0, v1 },
 		{ 400.0f, 240.0f, u1, v0 }, { 400.0f, 0.0f, u1, v1 },
