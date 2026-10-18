@@ -47,42 +47,118 @@ static const JAnim J_FALL = { 256, 280, 0, 1024 };    // 112
 static const JAnim J_KICK = { 682, 701, 0, 768 };     // 132 (hit frames 7..10)
 static const JAnim J_STOMP = { 702, 719, 0, 512 };    // 133 (hit frames 3..9)
 
-// Plank (grip 5)
-static const JAnim P_RAISE[2] = { { 722, 733, 0, 2048 }, { 734, 745, 0, 2048 } };     // 351, 353
-static const JAnim P_LOWER[2] = { { 722, 733, 0, -1794 }, { 734, 745, 0, -1794 } };   // 352, 354
-static const JAnim P_READY[2] = { { 746, 755, 1, 320 }, { 756, 765, 1, 320 } };       // 359, 360
-static const JAnim P_SWING[2] = { { 776, 797, 0, 1536 }, { 810, 831, 0, 1536 } };     // 363, 369
-static const JAnim P_COMBO[2] = { { 780, 797, 0, 1536 }, { 814, 831, 0, 1536 } };     // 365, 371
-static const JAnim P_REBOUND[2] = { { 776, 797, 0, -1024 }, { 810, 831, 0, -1024 } }; // 364, 370
-// The plank and Maria's knife (grip 10, table 0x6cf454, 21201..21232) share this layout except
-// for the follow-through and the downswing, which start two frames earlier with the knife.
-static const JAnim P_RECOVERS[2][2] = {
-	{ { 800, 809, 0, 1024 }, { 834, 843, 0, 1536 } },       // 367, 373
-	{ { 798, 809, 0, 1024 }, { 832, 843, 0, 1536 } },       // 21217, 21223
-};
-static const JAnim P_DOWNSWINGS[2][2] = {
-	{ { 846, 873, 0, 1024 }, { 876, 903, 0, 1024 } },       // 375, 379
-	{ { 844, 873, 0, 1024 }, { 874, 903, 0, 1024 } },       // 21225, 21229
-};
-#define P_RECOVER (P_RECOVERS[s_maria])
-#define P_DOWNSWING (P_DOWNSWINGS[s_maria])
-
 typedef struct { int id; float ap, sp, min_range, max_range; u8 first, last; } AttackInfo;
-// Swing, short swing and downswing: the plank's attacks 12..14 and the knife's 28..30 (same frame
-// windows, less power, shorter reach and no push).
-static const AttackInfo ATK_MELEE[2][3] = {
-	{ { 12, 100.0f, 80.0f, -150.0f, 350.0f, 12, 15 }, { 13, 80.0f, 80.0f, -150.0f, 350.0f, 8, 11 },
-	  { 14, 140.0f, 80.0f, -150.0f, 350.0f, 8, 10 } },
-	{ { 28, 60.0f, 0.0f, -100.0f, 250.0f, 12, 15 }, { 29, 35.0f, 0.0f, -100.0f, 250.0f, 8, 11 },
-	  { 30, 60.0f, 0.0f, -100.0f, 250.0f, 8, 10 } },
-};
-#define ATK_SWING (ATK_MELEE[s_maria][0])
-#define ATK_COMBO (ATK_MELEE[s_maria][1])
-#define ATK_DOWN (ATK_MELEE[s_maria][2])
 // Kicks are attacks 31..35 and stomps 36..40 (0x5569b0 adds 0x1f or 0x24 to DAT_01fbacb4); every
-// one is a kind 1 finish with the same power, only the frame window differs.
-static const AttackInfo ATK_KICK = { 31, 9999.9f, 0.1f, 0.0f, 350.0f, 7, 10 };
-static const AttackInfo ATK_STOMP = { 36, 9999.9f, 0.1f, 0.0f, 350.0f, 3, 9 };
+// one is a kind 1 finish with the same power, only the frame window differs. The kick type follows
+// the weapon (0x53b190): 0 bare hands, the handgun and the spray, 1 the long guns, 2 the plank and
+// the pipe, 3 the great knife, 4 the chainsaw.
+static const AttackInfo ATK_KICKS[5] = {
+	{ 31, 9999.9f, 0.1f, 0.0f, 350.0f, 7, 10 }, { 32, 9999.9f, 0.1f, 0.0f, 350.0f, 7, 10 },
+	{ 33, 9999.9f, 0.1f, 0.0f, 350.0f, 7, 10 }, { 34, 9999.9f, 0.1f, 0.0f, 350.0f, 9, 9 },
+	{ 35, 9999.9f, 0.1f, 0.0f, 350.0f, 7, 11 },
+};
+static const AttackInfo ATK_STOMPS[5] = {
+	{ 36, 9999.9f, 0.1f, 0.0f, 350.0f, 3, 9 }, { 37, 9999.9f, 0.1f, 0.0f, 350.0f, 3, 9 },
+	{ 38, 9999.9f, 0.1f, 0.0f, 350.0f, 3, 9 }, { 39, 9999.9f, 0.1f, 0.0f, 350.0f, 3, 9 },
+	{ 40, 9999.9f, 0.1f, 0.0f, 350.0f, 3, 9 },
+};
+#define ATK_KICK (ATK_KICKS[0])
+#define ATK_STOMP (ATK_STOMPS[0])
+
+// Melee weapons: the clips of each grip's table and its attacks (sh2_attack_list 0x6ec568). Index
+// [s_side] is the shoulder. "light" is request 3 (0x533ff0: a light press), "heavy" request 4 (a
+// hard press), "extra" request 5 (the pipe's lunge, the chainsaw's thrust). A clip with end 0 is
+// not there.
+enum { MK_PLANK, MK_PIPE, MK_NATA, MK_CSAW };
+typedef struct {
+	u8 kind, kick;
+	JAnim raise[2], lower[2], ready[2];
+	JAnim light[2], combo[2], rebound[2], recover[2], heavy[2], extra[2];
+	AttackInfo a_light[2], a_combo, a_heavy[2], a_extra;
+	int snd_swing, snd_hit;
+	u8 f_light[2], f_combo, f_heavy[2], f_extra;    // frame of the swing sound and the effort (0x549e20)
+} MeleeDef;
+
+static const MeleeDef MELEE_PLANK = {
+	MK_PLANK, 2,
+	{ { 722, 733, 0, 2048 }, { 734, 745, 0, 2048 } }, { { 722, 733, 0, -1794 }, { 734, 745, 0, -1794 } },  // 351, 353 / 352, 354
+	{ { 746, 755, 1, 320 }, { 756, 765, 1, 320 } },                                                      // 359, 360
+	{ { 776, 797, 0, 1536 }, { 810, 831, 0, 1536 } }, { { 780, 797, 0, 1536 }, { 814, 831, 0, 1536 } },   // 363, 369 / 365, 371
+	{ { 776, 797, 0, -1024 }, { 810, 831, 0, -1024 } }, { { 800, 809, 0, 1024 }, { 834, 843, 0, 1536 } }, // 364, 370 / 367, 373
+	{ { 846, 873, 0, 1024 }, { 876, 903, 0, 1024 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },                // 375, 379
+	{ { 12, 100.0f, 80.0f, -150.0f, 350.0f, 12, 15 }, { 12, 100.0f, 80.0f, -150.0f, 350.0f, 12, 15 } },
+	{ 13, 80.0f, 80.0f, -150.0f, 350.0f, 8, 11 },
+	{ { 14, 140.0f, 80.0f, -150.0f, 350.0f, 8, 10 }, { 14, 140.0f, 80.0f, -150.0f, 350.0f, 8, 10 } }, { 0 },
+	11027, 11032, { 0, 0 }, 0, { 0, 0 }, 0,
+};
+// Maria's knife (grip 10, table 0x6cf454, 21201..21232): the plank's layout, the follow-through and
+// the downswing two frames earlier, attacks 28..30
+static const MeleeDef MELEE_KNIFE = {
+	MK_PLANK, 0,
+	{ { 722, 733, 0, 2048 }, { 734, 745, 0, 2048 } }, { { 722, 733, 0, -1794 }, { 734, 745, 0, -1794 } },
+	{ { 746, 755, 1, 320 }, { 756, 765, 1, 320 } },
+	{ { 776, 797, 0, 1536 }, { 810, 831, 0, 1536 } }, { { 780, 797, 0, 1536 }, { 814, 831, 0, 1536 } },
+	{ { 776, 797, 0, -1024 }, { 810, 831, 0, -1024 } }, { { 798, 809, 0, 1024 }, { 832, 843, 0, 1536 } },
+	{ { 844, 873, 0, 1024 }, { 874, 903, 0, 1024 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	{ { 28, 60.0f, 0.0f, -100.0f, 250.0f, 12, 15 }, { 28, 60.0f, 0.0f, -100.0f, 250.0f, 12, 15 } },
+	{ 29, 35.0f, 0.0f, -100.0f, 250.0f, 8, 11 },
+	{ { 30, 60.0f, 0.0f, -100.0f, 250.0f, 8, 10 }, { 30, 60.0f, 0.0f, -100.0f, 250.0f, 8, 10 } }, { 0 },
+	17034, 17035, { 0, 0 }, 0, { 0, 0 }, 0,
+};
+// Steel pipe (grip 6, table 0x6cf04c, 401..432): attacks 15 swing, 16 short swing, 17 overhead, 18
+// lunge; swing sound and effort on frames 8, 2, 15 (13 the effort), 8 (7); hit 11040
+static const MeleeDef MELEE_PIPE = {
+	MK_PIPE, 2,
+	{ { 722, 731, 0, 2048 }, { 732, 741, 0, 2048 } }, { { 722, 731, 0, -2048 }, { 732, 741, 0, -2048 } },  // 401, 403 / 402, 404
+	{ { 742, 751, 1, 256 }, { 752, 761, 1, 256 } },                                                      // 405, 406
+	{ { 772, 795, 0, 1536 }, { 807, 830, 0, 1536 } }, { { 778, 795, 0, 1536 }, { 813, 830, 0, 1536 } },   // 409, 415 / 411, 417
+	{ { 772, 795, 0, -768 }, { 807, 830, 0, -768 } }, { { 796, 806, 0, 1536 }, { 831, 841, 0, 1536 } },   // 410, 416 / 413, 419
+	{ { 842, 876, 0, 1792 }, { 877, 911, 0, 1792 } }, { { 912, 941, 0, 1024 }, { 942, 971, 0, 1024 } },   // 421, 425 / 429, 431
+	{ { 15, 120.0f, 100.0f, -150.0f, 540.0f, 10, 12 }, { 15, 120.0f, 100.0f, -150.0f, 540.0f, 10, 12 } },
+	{ 16, 96.0f, 100.0f, -150.0f, 540.0f, 4, 6 },
+	{ { 17, 160.0f, 100.0f, -150.0f, 540.0f, 15, 17 }, { 17, 160.0f, 100.0f, -150.0f, 540.0f, 15, 17 } },
+	{ 18, 130.0f, 50.0f, -150.0f, 540.0f, 8, 10 },
+	11027, 11040, { 8, 8 }, 2, { 15, 15 }, 8,
+};
+// Great knife (grip 8, table 0x6cf1dc, 451..466): one swing from each shoulder in turn, attacks 19 /
+// 20 and the heavier 21 / 22 by shoulder, reach 725, no combo; sound 11039 on frames 8 / 11 and
+// 17 / 18; hit 11038
+static const MeleeDef MELEE_NATA = {
+	MK_NATA, 3,
+	{ { 742, 753, 0, 1024 }, { 722, 741, 0, 1024 } }, { { 742, 753, 0, -1024 }, { 722, 741, 0, -1024 } },  // 453, 451 / 454, 452
+	{ { 774, 783, 1, 256 }, { 784, 793, 1, 256 } },                                                      // 457, 458
+	{ { 829, 863, 0, 768 }, { 794, 828, 0, 768 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },                  // 461, 459
+	{ { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	{ { 904, 943, 0, 768 }, { 864, 903, 0, 768 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },                  // 465, 463
+	{ { 19, 600.0f, 0.0f, 0.0f, 725.0f, 10, 14 }, { 20, 600.0f, 0.0f, 0.0f, 725.0f, 13, 17 } }, { 0 },
+	{ { 21, 1000.0f, 0.0f, 0.0f, 725.0f, 17, 18 }, { 22, 1000.0f, 0.0f, 0.0f, 725.0f, 18, 19 } }, { 0 },
+	11039, 11038, { 8, 11 }, 0, { 17, 18 }, 0,
+};
+// Chainsaw (grip 7, table 0x6cf2ac, 551..573): the saw (attack 23, frames 12..27 of a 50 frame clip)
+// and the thrust (24); the engine revs (11044) as James raises it and runs (11045) while he saws;
+// the cut 11046. No fuel: the PC never runs it dry.
+static const MeleeDef MELEE_CSAW = {
+	MK_CSAW, 4,
+	{ { 762, 786, 0, 1280 }, { 728, 746, 0, 1280 } }, { { 787, 798, 0, -2048 }, { 747, 758, 0, -2048 } },  // 555, 551 / 558, 554
+	{ { 812, 821, 1, 2048 }, { 802, 811, 1, 2048 } },                                                    // 560, 559
+	{ { 892, 941, 0, 1024 }, { 842, 891, 0, 1024 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },                // 567, 565
+	{ { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
+	{ { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }, { { 967, 991, 0, 1024 }, { 942, 966, 0, 1024 } },                // 571, 569
+	{ { 23, 250.0f, 0.0f, 0.0f, 525.0f, 12, 27 }, { 23, 250.0f, 0.0f, 0.0f, 525.0f, 12, 27 } }, { 0 },
+	{ { 0 }, { 0 } }, { 24, 300.0f, 0.0f, 0.0f, 525.0f, 6, 13 },
+	11045, 11046, { 0, 0 }, 0, { 0, 0 }, 0,
+};
+static const MeleeDef* const MELEE_ALL[] = { &MELEE_PLANK, &MELEE_KNIFE, &MELEE_PIPE, &MELEE_NATA, &MELEE_CSAW };
+
+// Hyper spray (grip 4, table 0x6cedec, 501..516): raise 501, aim 505, spray 508 (attack 8, frames
+// 8..25), spraying on 509 (attack 9, frames 2..19) while the button stays down, 510 when the can is
+// empty. The can holds 20 seconds of spray (PlayerInit 0x533ad0); spraying uses it up in real time,
+// costs James a point of health a second on normal and hard (0x545260), and an empty can is gone.
+static const JAnim S_SPRAY = { 742, 767, 0, 1536 };     // 508
+static const JAnim S_AGAIN = { 748, 767, 0, 1536 };     // 509
+static const JAnim S_EMPTY = { 768, 799, 0, 1536 };     // 510
+static const AttackInfo ATK_SPRAY[2] = { { 8, 1.0f, 5.0f, 0.0f, 1000.0f, 8, 25 }, { 9, 1.0f, 5.0f, 0.0f, 1000.0f, 2, 19 } };
+#define SPRAY_FULL 20.0f
 
 // Enhanced Edition "EnableHoldToStomp" (Patches/HoldToStomp.cpp, zlib licence) and
 // "SwapLightHeavyAttack" (Patches/SwapLightHeavyAttack.cpp, zlib licence), both by Murugo and on by
@@ -98,9 +174,11 @@ static bool s_charge_stomp;       // the pending choice is kick/stomp (else ligh
 
 // Weapons. Guns: raise / lower / aim hold / shot / reload entries of their pjames table, the attack,
 // the clip (the rounds a box gives in ItemGet 0x49e310) and the SE ids.
-// James has W_NONE..W_RIFLE and Maria (Born From a Wish) W_MNONE..W_KNIFE, the rows 10..12 of the
-// PC's weapon file table (0x88d2f0).
-enum { W_NONE, W_PLANK, W_HANDGUN, W_SHOTGUN, W_RIFLE, W_MNONE, W_COLT, W_KNIFE, W_COUNT };
+// James has W_NONE..W_SPRAY and Maria (Born From a Wish) W_MNONE..W_KNIFE, the rows 10..12 of the
+// PC's weapon file table (0x88d2f0). The grip -> item table (0x534240): 4 hyper spray 12, 5 plank
+// 13, 6 steel pipe 14, 7 chainsaw 16, 8 great knife 15.
+enum { W_NONE, W_PLANK, W_HANDGUN, W_SHOTGUN, W_RIFLE, W_PIPE, W_NATA, W_CSAW, W_SPRAY, W_MNONE, W_COLT, W_KNIFE,
+       W_COUNT };
 typedef struct {
 	const char* name;
 	const char* anm;          // chr/<player dir>/<anm>.s3a
@@ -127,6 +205,12 @@ static const WeaponDef WEAPONS[W_COUNT] = {
 		{ 722, 741, 0, 2048 }, { 722, 741, 0, -1792 }, { 741, 741, 0, 0 },     // 301, 302
 		{ 741, 771, 0, 1280 }, { 772, 811, 0, 1536 }, 17, 1,                  // 303, 304
 		{ 6, 500.0f, 150.0f, -350.0f, 9000.0f, 0, 10 }, 11048, 11049, 11050 },
+	[W_PIPE] = { "steel pipe", "jms_wppipe", "wp_pipe", 14, 0, 0, 0, 6 },
+	[W_NATA] = { "great knife", "jms_wpnata", "wp_nata", 15, 0, 0, 0, 8 },
+	[W_CSAW] = { "chainsaw", "jms_wpcsaw", "wp_csaw", 16, 0, 0, 0, 7 },
+	// the spray's raise, lower and aim are 501, 502 and 505; it fires through M_SPRAY
+	[W_SPRAY] = { "hyper spray", "jms_wpsp", "wp_sp", 12, 0, 0, 0, 4,
+		{ 722, 731, 0, 1280 }, { 722, 731, 0, -1280 }, { 732, 741, 1, 256 } },
 	// Maria's revolver (grip 9, table 0x6cf3cc: 21103 raise, 21105 aim, 21107 shot, 21109 reload)
 	// fires attack 26 with shot SE 0x2b14 (0x543778). Its reload fills it to 10 like the handgun
 	// (ItemEventCheck 0x49e6a0) and plays 0x2b15 on frame 21 of 21109 (0x549500).
@@ -154,11 +238,11 @@ typedef struct {
 } PlayerDef;
 
 static const PlayerDef PLAYERS[2] = {
-	{ "jms", "wp", "hll_jms", 35, W_NONE, W_RIFLE, { 450.0f, 975.0f, 1550.0f }, 11020, 4, 11024 },
+	{ "jms", "wp", "hll_jms", 35, W_NONE, W_SPRAY, { 450.0f, 975.0f, 1550.0f }, 11020, 4, 11024 },
 	{ "xmar", "xmar", "lxx_mar", 32, W_MNONE, W_KNIFE, { 300.0f, 650.0f, 930.0f }, 17029, 5, 19041 },
 };
 
-enum { M_FREE, M_RAISE, M_READY, M_SWING, M_REBOUND, M_RECOVER, M_LOWER, M_SHOT, M_RELOAD, M_STOMP,
+enum { M_FREE, M_RAISE, M_READY, M_SWING, M_REBOUND, M_RECOVER, M_LOWER, M_SHOT, M_RELOAD, M_STOMP, M_SPRAY,
        M_HURT, M_HELD, M_DYING, M_DEAD };
 
 static Character* s_james;       // main's player model: James, or Maria in Born From a Wish
@@ -179,6 +263,12 @@ static const JAnim* s_cur;
 static float s_frame;
 static bool s_end;
 static const AttackInfo* s_atk;
+static bool s_atk_heavy;                // the swing is the heavy one (a downed enemy's finish)
+static int s_snd_frame = -1;            // the frame of the clip the swing sound waits for
+static float s_spray = SPRAY_FULL;      // seconds of spray left in the can (0x1fbacf0)
+static bool s_spray_again;              // the spray button stayed down: 509 follows
+static float s_body_pos[3];             // James' feet this frame, for positional sounds
+static bool s_run_held;                 // run held this frame (the pipe's swing on hard)
 static bool s_hit_any, s_fired, s_reloaded;
 // 0x544d43: the ap of James' attack that struck the room instead of a character this frame (PC
 // 0x1d82478, read by stage code through 0x544fd0: the well wall at the bottom of the hole)
@@ -196,6 +286,7 @@ static void* s_flash_vbo;               // linear memory, muzzle flash quads (S3
 static char s_line[48];
 static const Collision* s_col;          // the room, for shots
 static Enemy* s_target;                 // the locked target (0x1fbacc4), see find_target
+static bool s_god;                      // debug.txt "god 1": blows do not reach James (for testing)
 // A Flesh Lip that kills James in its hold carries the body up into the dark (see
 // combat_carry_james)
 static bool s_carried;
@@ -208,9 +299,10 @@ static float clip_blend(const JAnim* a)
 {
 	if (a == &J_STAND || a == &J_WALK || a == &J_RUN)
 		return 8.0f / 30.0f;
-	for (int i = 0; i < 2; i++)
-		if (a == &P_RAISE[i] || a == &P_LOWER[i] || a == &P_READY[i])
-			return 8.0f / 30.0f;
+	for (unsigned m = 0; m < sizeof MELEE_ALL / sizeof MELEE_ALL[0]; m++)
+		for (int i = 0; i < 2; i++)
+			if (a == &MELEE_ALL[m]->raise[i] || a == &MELEE_ALL[m]->lower[i] || a == &MELEE_ALL[m]->ready[i])
+				return 8.0f / 30.0f;
 	for (int w = 0; w < W_COUNT; w++)
 		if (a == &WEAPONS[w].raise || a == &WEAPONS[w].lower || a == &WEAPONS[w].aim)
 			return 8.0f / 30.0f;
@@ -258,7 +350,28 @@ static const WeaponDef* wdef(void) { return &WEAPONS[s_weapon]; }
 static const PlayerDef* pdef(void) { return &PLAYERS[s_maria]; }
 static bool is_gun(void) { return wdef()->clip > 0; }
 static bool is_bare(void) { return s_weapon == W_NONE || s_weapon == W_MNONE; }
-static bool is_melee(void) { return s_weapon == W_PLANK || s_weapon == W_KNIFE; }
+static bool is_melee(void)
+{
+	return s_weapon == W_PLANK || s_weapon == W_KNIFE || s_weapon == W_PIPE || s_weapon == W_NATA || s_weapon == W_CSAW;
+}
+static const MeleeDef* md(void)
+{
+	switch (s_weapon) {
+	case W_PIPE: return &MELEE_PIPE;
+	case W_NATA: return &MELEE_NATA;
+	case W_CSAW: return &MELEE_CSAW;
+	case W_KNIFE: return &MELEE_KNIFE;
+	default: return &MELEE_PLANK;
+	}
+}
+static int kick_type(void)
+{
+	switch (s_weapon) {
+	case W_SHOTGUN: case W_RIFLE: return 1;
+	case W_PLANK: case W_PIPE: case W_NATA: case W_CSAW: return md()->kick;
+	default: return 0;
+	}
+}
 static int bare(void) { return pdef()->first; }
 
 // ---------------------------------------------------------------- ammo and ownership
@@ -341,8 +454,8 @@ static bool load_weapon(int w)
 		snprintf(dir, sizeof dir, "%s/chr/%s", s_pack, pdef()->wdir);
 		s_wmodel_ok = chr_load(&s_wmodel, dir, d->mdl, err, sizeof err);
 		if (s_wmodel_ok) {
-			if (w == W_PLANK || w == W_KNIFE)
-				plank_segment();
+			if (w == W_PLANK || w == W_KNIFE || w == W_PIPE || w == W_NATA || w == W_CSAW)
+				plank_segment();       // the blade or shaft: hand to its far end
 			else if (s_wmodel.n_bones > 1)
 				bind_pos(&s_wmodel, 1, s_muzzle);
 		}
@@ -527,7 +640,7 @@ bool combat_dead(void) { return (s_mode == M_DEAD && s_dead_t > 1.5f && !s_carri
 EnPlayer combat_enplayer(const CombatBody* b, bool light)
 {
 	EnPlayer p = { *b->x, *b->y, *b->z, *b->yaw, light, s_mode < M_DYING,
-	               (s_mode == M_SWING && s_atk == &ATK_DOWN) || s_mode == M_STOMP };
+	               (s_mode == M_SWING && s_atk_heavy) || s_mode == M_STOMP };
 	return p;
 }
 
@@ -560,6 +673,8 @@ float combat_low_health_alpha(float dt)
 // beginner it also drains by itself.
 void combat_grab_james(float meter)
 {
+	if (s_god)
+		return;
 	if (s_mode >= M_DYING)
 		return;
 	s_mode = M_HELD;
@@ -615,9 +730,13 @@ void combat_hold_damage(float ap, float dt)
 	}
 }
 
+void combat_set_god(bool on) { s_god = on; }
+
 void combat_damage_james(int attack_id, float ap, float from_x, float from_z)
 {
 	(void)from_x, (void)from_z;
+	if (s_god)
+		return;
 	if (s_mode >= M_DYING || s_mode == M_HELD || s_invuln > 0.0f)
 		return;
 	s_hp -= s_test_god ? 0.0f : ap;
@@ -837,7 +956,7 @@ static void swing_hits(const CombatBody* b)
 		s_hit[i] = true;
 		s_hit_any = true;
 		// the hit (0x5350d0): the plank's 11032, the knife's 17035, both at 0.8
-		sfx_play(s_maria ? 17035 : 11032, 0.8f, 0.0f);
+		sfx_play(md()->snd_hit, 0.8f, 0.0f);
 		float sgn = s_side == 0 ? -0.5f : 0.5f;    // the side the blow travels toward
 		enemy_damage(e, s_atk->id, s_atk->ap, s_atk->sp, fx + rx * sgn, fz + rz * sgn);
 	}
@@ -845,31 +964,123 @@ static void swing_hits(const CombatBody* b)
 
 static void start_swing(const CombatBody* b, bool combo, bool heavy)
 {
+	const MeleeDef* m = md();
 	float ang = 0.0f;
 	Enemy* t = find_target(b, &ang, 4000.0f);
 	memset(s_hit, 0, sizeof s_hit);
 	s_hit_any = false;
 	s_swing_wall = false;
 	s_combo_req = false;
-	// heavy: the plank's attack 14 (request 4); a downed target also gets it (port choice, as a
-	// level swing passes over a body on the floor)
-	if (heavy || (t && enemy_is_down(t) && t->p_dist < 1400.0f)) {
-		s_atk = &ATK_DOWN;
-		play(&P_DOWNSWING[s_side]);
-	} else if (combo) {
-		s_atk = &ATK_COMBO;
-		play(&P_COMBO[s_side]);
+	s_atk_heavy = false;
+	s_snd_frame = -1;
+	int side = s_side;
+	if (m->kind == MK_PLANK) {
+		// heavy: the plank's attack 14 (request 4); a downed target also gets it (port choice, as a
+		// level swing passes over a body on the floor)
+		if (heavy || (t && enemy_is_down(t) && t->p_dist < 1400.0f)) {
+			s_atk = &m->a_heavy[side], s_atk_heavy = true;
+			play(&m->heavy[side]);
+		} else if (combo) {
+			s_atk = &m->a_combo;
+			play(&m->combo[side]);
+		} else {
+			s_atk = &m->a_light[side];
+			play(&m->light[side]);
+		}
+	} else if (m->kind == MK_PIPE) {
+		// 0x533ff0 grip 6: a hard press is the overhead (request 4, attack 17); a light one the lunge
+		// (5, attack 18), except on hard with run held or a combo pressed, which is the swing (3,
+		// attacks 15 / 16)
+		if (heavy) {
+			s_atk = &m->a_heavy[side], s_atk_heavy = true;
+			play(&m->heavy[side]);
+			s_snd_frame = m->f_heavy[side];
+		} else if (combo) {
+			s_atk = &m->a_combo;
+			play(&m->combo[side]);
+			s_snd_frame = m->f_combo;
+		} else if (enemy_difficulty() >= 3 && s_run_held) {
+			s_atk = &m->a_light[side];
+			play(&m->light[side]);
+			s_snd_frame = m->f_light[side];
+		} else {
+			s_atk = &m->a_extra;
+			play(&m->extra[side]);
+			s_snd_frame = m->f_extra;
+		}
+	} else if (m->kind == MK_NATA) {
+		// 0x533ff0 grip 8: light 3 or hard 4, attacks 19 / 20 or 21 / 22 by shoulder (0x5569b0)
+		s_atk = heavy ? &m->a_heavy[side] : &m->a_light[side];
+		s_atk_heavy = heavy;
+		play(heavy ? &m->heavy[side] : &m->light[side]);
+		s_snd_frame = heavy ? m->f_heavy[side] : m->f_light[side];
 	} else {
-		s_atk = &ATK_SWING;
-		play(&P_SWING[s_side]);
+		// chainsaw, 0x533ff0 grip 7: light 3 saws (attack 23), hard or pressed again 5 thrusts (24)
+		if (heavy || combo) {
+			s_atk = &m->a_extra;
+			play(&m->extra[side]);
+		} else {
+			s_atk = &m->a_light[side];
+			play(&m->light[side]);
+		}
+		s_atk_heavy = heavy || combo;
+		sfx_play_at(m->snd_swing, 0.7f, s_body_pos);   // the engine at work (0x52fae0)
 	}
 	s_mode = M_SWING;
 	if (s_maria) {
 		// the knife's swish 0x428a with one of her two efforts 0x4286 / 0x4287 (0x549500)
 		sfx_play(17034, 1.0f, 0.0f);
 		sfx_play(17030 + (rand() & 1), 0.9f, 0.0f);
-	} else {
+	} else if (m->kind == MK_PLANK) {
 		sfx_play(11027, 1.0f, 0.0f);     // melee swing
+	}
+}
+
+// 0x549e20: the swing sound and James' effort (11018 or 11019 at up to 0.7) once the clip reaches
+// the weapon's frame
+static void swing_sound(void)
+{
+	if (s_snd_frame < 0 || !s_cur || s_frame - s_cur->start < s_snd_frame)
+		return;
+	s_snd_frame = -1;
+	sfx_play_at(md()->snd_swing, 0.9f, s_body_pos);
+	sfx_play_at(11018 + (rand() & 1), 0.7f * (float)rand() / (float)RAND_MAX, s_body_pos);
+}
+
+static float ray_enemy(const float o[3], const float d[3], float t0, float t1, Enemy** hit);
+
+// 0x545260: the hyper spray's cone. Five rays from the can along James' aim, out to the attack's
+// reach (shorter and weaker once less than ten seconds are left), each enemy struck once a spray.
+static void spray_hits(const CombatBody* b, const AttackInfo* a)
+{
+	float f = s_frame - s_cur->start;
+	if (f < a->first || f > a->last + 0.99f)
+		return;
+	float k = s_spray < 10.0f ? s_spray * 0.1f : 1.0f;
+	float reach = a->max_range * k;
+	chr_pose(s_james, &s_anim, s_frame);
+	float o[3];
+	to_world(b, s_muzzle, o);
+	static const float fan[5][2] = { { 0, 0 }, { 0.12f, 0 }, { -0.12f, 0 }, { 0, 0.1f }, { 0, -0.1f } };
+	for (int r = 0; r < 5; r++) {
+		float yaw = *b->yaw + fan[r][0], d[3] = { sinf(yaw) * cosf(fan[r][1]), -sinf(fan[r][1]), cosf(yaw) * cosf(fan[r][1]) };
+		float lim = reach;
+		if (s_col) {
+			float ex = o[0] + d[0] * reach, ez = o[2] + d[2] * reach;
+			col_clamp_ray(s_col, o[0], o[2], &ex, &ez, o[1]);
+			lim = hypotf(ex - o[0], ez - o[2]);
+		}
+		Enemy* e;
+		ray_enemy(o, d, 0.0f, lim, &e);
+		if (!e)
+			continue;
+		int i = 0;
+		while (i < enemy_count() && enemy_get(i) != e)
+			i++;
+		if (i >= ENEMY_MAX || s_hit[i])
+			continue;
+		s_hit[i] = true;
+		enemy_damage(e, a->id, a->ap * k, a->sp * k, d[0], d[2]);
 	}
 }
 
@@ -985,7 +1196,7 @@ static Enemy* stomp_target(const CombatBody* b)
 static void start_stomp(bool stomp)
 {
 	s_mode = M_STOMP;
-	s_stomp_atk = stomp ? &ATK_STOMP : &ATK_KICK;
+	s_stomp_atk = stomp ? &ATK_STOMPS[kick_type()] : &ATK_KICKS[kick_type()];
 	memset(s_hit, 0, sizeof s_hit);
 	play(stomp ? &J_STOMP : &J_KICK);
 }
@@ -1095,6 +1306,12 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	if (s_flash > 0.0f)
 		s_flash -= dt;
 	step(dt);
+	s_body_pos[0] = *b->x, s_body_pos[1] = *b->y, s_body_pos[2] = *b->z;
+	s_run_held = (held & KEY_B) != 0;
+	if (s_weapon == W_CSAW && (s_mode == M_FREE || s_mode == M_LOWER) && sfx_playing(11044)) {
+		sfx_stop(11044);                // 0x549e20: the engine dies down once the saw is lowered
+		sfx_stop(11045);
+	}
 	const WeaponDef* w = wdef();
 	switch (s_mode) {
 	case M_FREE:
@@ -1108,7 +1325,9 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 				s_mode = M_READY;          // bare hands: nothing to raise
 			} else if (is_melee()) {
 				s_mode = M_RAISE;
-				play(&P_RAISE[s_side]);
+				play(&md()->raise[s_side]);
+				if (s_weapon == W_CSAW)
+					sfx_play_at(11044, 0.7f, s_body_pos);   // 0x52fae0: the engine starts as he raises it
 			} else {
 				s_mode = M_RAISE;
 				play(&w->raise);
@@ -1120,7 +1339,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	case M_RAISE:
 		if (s_end) {
 			s_mode = M_READY;
-			play(is_melee() ? &P_READY[s_side] : &w->aim);
+			play(is_melee() ? &md()->ready[s_side] : &w->aim);
 		}
 		break;
 	case M_READY:
@@ -1128,7 +1347,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			s_charge = -1.0f;
 			if (is_bare()) { s_mode = M_FREE; play(&J_STAND); return false; }
 			s_mode = M_LOWER;
-			play(is_melee() ? &P_LOWER[s_side] : &w->lower);
+			play(is_melee() ? &md()->lower[s_side] : &w->lower);
 			break;
 		}
 		// 0x54f100: the strafe buttons move the lock to the nearest other enemy on that side
@@ -1152,7 +1371,9 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			break;
 		}
 		if (down & KEY_A) {
-			if ((is_bare() || is_gun()) && stomp_target(b)) {
+			bool stomps = is_bare() || is_gun() || s_weapon == W_SPRAY || s_weapon == W_PIPE ||
+			              s_weapon == W_NATA || s_weapon == W_CSAW;   // 0x5569b0: a body at his feet
+			if (stomps && stomp_target(b)) {
 				if (s_hold_to_stomp)
 					s_charge = 0.0f, s_charge_stomp = true;
 				else
@@ -1162,6 +1383,14 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 					s_charge = 0.0f, s_charge_stomp = false;
 				else
 					start_swing(b, false, true);
+			} else if (s_weapon == W_SPRAY) {
+				// 0x5569b0 grip 4: attack 8, or the empty can's pfft (10)
+				s_mode = M_SPRAY;
+				s_spray_again = false;
+				memset(s_hit, 0, sizeof s_hit);
+				play(s_spray > 0.0f ? &S_SPRAY : &S_EMPTY);
+				if (s_spray > 0.0f)
+					sfx_play_at(11047, s_spray < 10.0f ? s_spray * 0.05f : 0.5f, s_body_pos);
 			} else if (is_gun()) {
 				if (loaded() > 0) {
 					s_mode = M_SHOT;
@@ -1181,8 +1410,8 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			// James can step toward or away from the target with the weapon up (no running)
 			float fwd = cp->dy / 156.0f;
 			if (fabsf(fwd) < 0.15f) {
-				if (s_cur != &P_READY[s_side])
-					play(&P_READY[s_side]);
+				if (s_cur != &md()->ready[s_side])
+					play(&md()->ready[s_side]);
 				break;
 			}
 			float speed = fwd > 0.0f ? 500.0f * fwd : 350.0f * fwd;
@@ -1251,7 +1480,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			s_mode = (held & KEY_R) ? M_READY : M_FREE;
 			if (s_mode == M_READY && !is_bare()) {
 				s_mode = M_RAISE;
-				play(is_melee() ? &P_RAISE[s_side] : &w->raise);
+				play(is_melee() ? &md()->raise[s_side] : &w->raise);
 			} else {
 				play(&J_STAND);
 			}
@@ -1260,33 +1489,48 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		}
 		break;
 	}
-	case M_SWING:
+	case M_SWING: {
+		const MeleeDef* m = md();
 		if (down & KEY_A)
 			s_combo_req = true;
+		swing_sound();
 		swing_hits(b);
-		if (s_hit_any && s_atk != &ATK_DOWN) {
-			// 0x52fae0: a swing that connects plays back (entries 364 / 370 from the same frame)
+		if (s_hit_any && !s_atk_heavy && m->rebound[s_side].end && s_cur != &m->extra[s_side]) {
+			// 0x52fae0: a swing that connects plays back (the plank's 364 / 370 from the same frame)
 			s_mode = M_REBOUND;
-			play_from(&P_REBOUND[s_side], s_frame);
+			play_from(&m->rebound[s_side], s_frame);
 			break;
 		}
 		if (s_end) {
 			s_atk = NULL;
-			if (s_cur == &P_DOWNSWING[s_side]) {
+			if (m->kind == MK_NATA) {
+				// the great knife: the next swing comes from the other shoulder
+				s_side ^= 1;
 				s_mode = M_READY;
-				play(&P_READY[s_side]);
+				play(&m->ready[s_side]);
+			} else if (m->kind == MK_CSAW) {
+				if (s_combo_req && (held & KEY_R) && s_cur == &m->light[s_side]) {
+					start_swing(b, true, false);   // pressed again while sawing: the thrust
+				} else {
+					s_mode = M_READY;
+					play(&m->ready[s_side]);
+				}
+			} else if (s_atk_heavy || s_cur == &m->extra[s_side] || !m->recover[s_side].end) {
+				s_mode = M_READY;
+				play(&m->ready[s_side]);
 			} else if (s_combo_req && (held & KEY_R)) {
 				// 0x5569b0: with the button pressed again during a swing (DAT_01fbad19) the next
-				// attack is the short swing (attack 13) from the other shoulder, without the
-				// follow-through in between
+				// attack is the short swing (attack 13 for the plank, 16 for the pipe) from the other
+				// shoulder, without the follow-through in between
 				s_side ^= 1;
 				start_swing(b, true, false);
 			} else {
 				s_mode = M_RECOVER;
-				play(&P_RECOVER[s_side]);
+				play(&m->recover[s_side]);
 			}
 		}
 		break;
+	}
 	case M_REBOUND:
 		if (down & KEY_A)
 			s_combo_req = true;
@@ -1296,7 +1540,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 				start_swing(b, true, false);
 			} else {
 				s_mode = M_READY;
-				play(&P_READY[s_side]);
+				play(&md()->ready[s_side]);
 			}
 		}
 		break;
@@ -1311,13 +1555,51 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		if (s_end) {
 			s_side ^= 1;
 			s_mode = M_READY;
-			play(&P_READY[s_side]);
+			play(&md()->ready[s_side]);
 		}
 		break;
+	case M_SPRAY: {
+		// 0x545260: the can empties in real time while the spray is out; normal and hard cost James
+		// health as well
+		const AttackInfo* a = s_cur == &S_AGAIN ? &ATK_SPRAY[1] : &ATK_SPRAY[0];
+		if (held & KEY_A)
+			s_spray_again = true;
+		else
+			s_spray_again = false;
+		if (s_cur != &S_EMPTY) {
+			float f = s_frame - s_cur->start;
+			if (f >= a->first && f <= a->last + 0.99f && s_spray > 0.0f) {
+				spray_hits(b, a);
+				s_spray -= dt;
+				if (enemy_difficulty() > 1 && s_hp > 1.0f)
+					s_hp -= dt;
+			}
+		}
+		turn_to_target(b, cp, dt, 1000.0f);
+		if (s_spray <= 0.0f && s_cur != &S_EMPTY) {
+			// the can is spent: the PC takes the item away (0x49e620)
+			sfx_stop(11047);
+			s_spray = SPRAY_FULL;
+			ev_give_item(12, -ev_item_count(12));
+			load_weapon(bare());
+			return false;
+		}
+		if (s_end) {
+			if (s_spray_again && s_cur != &S_EMPTY && (held & KEY_R)) {
+				memset(s_hit, 0, sizeof s_hit);
+				play(&S_AGAIN);
+			} else {
+				sfx_stop(11047);
+				s_mode = (held & KEY_R) ? M_READY : M_LOWER;
+				play(s_mode == M_READY ? &w->aim : &w->lower);
+			}
+		}
+		break;
+	}
 	case M_LOWER:
 		if (held & KEY_R) {
 			s_mode = M_RAISE;
-			play(is_melee() ? &P_RAISE[s_side] : &w->raise);
+			play(is_melee() ? &md()->raise[s_side] : &w->raise);
 			break;
 		}
 		if (s_end) { s_mode = M_FREE; play(&J_STAND); return false; }
@@ -1368,6 +1650,8 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	*held_out = held & ~(KEY_A | KEY_B);
 	return true;
 }
+
+int combat_grip(void) { return s_ok ? WEAPONS[s_weapon].grip : 0; }
 
 bool combat_james_free(void) { return !s_ok || s_mode == M_FREE; }
 
@@ -1434,8 +1718,8 @@ void combat_draw_weapon(int uBones)
 const char* combat_status(void)
 {
 	static const char* names[] = { "free", "raise", "ready", "swing", "rebound", "recover", "lower",
-	                               "shot", "reload", "stomp", "hurt", "held", "dying", "dead" };
-	snprintf(s_line, sizeof s_line, "HP%3.0f %s", s_hp, names[s_mode]);
+	                               "shot", "reload", "stomp", "spray", "hurt", "held", "dying", "dead" };
+	snprintf(s_line, sizeof s_line, "HP%3.0f %s g%d", s_hp, names[s_mode], WEAPONS[s_weapon].grip);
 	return s_line;
 }
 

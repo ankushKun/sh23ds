@@ -1728,6 +1728,7 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	in.camera_yaw = gamecam_yaw();
 	in.hp_frac = combat_hp() / JAMES_HP_MAX;
 	in.maria = combat_own_footsteps();
+	in.drag = combat_grip() == 8;
 	// 0x5422b0: an enemy is about (the PC's battle flag 0x400; here one that has seen or heard James)
 	for (int i = 0; i < enemy_count() && !in.enemy_near; i++) {
 		const Enemy* e = enemy_get(i);
@@ -1773,6 +1774,10 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 		float feet[3] = { s_px, s_py, s_pz };
 		sfx_footstep(mo.step_volume, feet);
 		blood_footstep(feet, s_yaw);    // a step in a pool leaves footprints after it (blood.c)
+	}
+	if (mo.scrape) {
+		float feet[3] = { s_px, s_py, s_pz };
+		sfx_play_at(11067, 0.3f, feet);     // 0x2b3b: the great knife dragged along the floor
 	}
 }
 
@@ -3553,6 +3558,7 @@ static void draw_top_text(void)
 // It works under emulators' hardware renderers (the CPU read makes them flush the GPU surface) and
 // on a console, so a black screen can be told apart from missing data.
 static bool s_debug_newgame;
+static int s_debug_weapon;           // debug.txt "weapon <item>": equipped on the first free frame
 static u32 s_dump_frames[8];
 static int s_ndump;
 
@@ -3816,6 +3822,7 @@ int main(void)
 			if (!strcmp(key, "batch")) s_only_batch = val;
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
 			if (!strcmp(key, "debughud")) s_debug_hud = val != 0;
+			if (!strcmp(key, "god")) combat_set_god(val != 0);   // enemy blows do not reach James
 			if (!strcmp(key, "logos") && !val) titlemenu_no_boot();   // no start-up screens
 			if (!strcmp(key, "bloodtest")) s_blood_test = val != 0;
 			if (!strcmp(key, "results")) s_debug_results = val;
@@ -3866,6 +3873,7 @@ int main(void)
 			while (fgets(line, sizeof line, dbg)) {
 				if (sscanf(line, "flag %d %d", &a, &b) == 2) ev_flag_set(a, b != 0);
 				if (sscanf(line, "item %d %d", &a, &b) == 2) ev_give_item(a, b);
+				if (sscanf(line, "weapon %d", &a) == 1) s_debug_weapon = a;   // equip this item once in play
 				if (sscanf(line, "hp %d", &a) == 1) combat_set_hp((float)a);   // e.g. the low health cross
 				prog_debug_line(line);
 			}
@@ -4094,6 +4102,8 @@ int main(void)
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held;
 					combat_set_sight(s_env.dark, s_flash_on);
+					if (s_debug_weapon && combat_equip_item(s_debug_weapon))
+						s_debug_weapon = 0;
 					if (!combat_update(&body, &cp, gdown, move_keys(gheld, gdown, &cp), dt, s_have_col ? &s_col : NULL,
 					                   &free_held)) {
 						player_update(&cp, free_held, dt);
@@ -4290,7 +4300,7 @@ int main(void)
 			else
 				printf("james  not loaded                     \n");
 			printf("audio  %-30s\n", audio_status());
-			printf("%-12s%-26.26s\n", combat_status(), enemy_status());
+			printf("%-16.16s%-22.22s\n", combat_status(), enemy_status());
 			printf("%-38s\n", bgm_status());
 			printf("stage  %2d %-16.16s ev%3d #%-3d\n", ev_stage(), ev_stage_name(), ev_count(), s_last_event);
 			printf("pos    %7.0f %6.0f %7.0f      \n", s_px, s_py, s_pz);

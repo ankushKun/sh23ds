@@ -2116,8 +2116,7 @@ static void nse_attack(Enemy* e, const EnPlayer* p, float dt)          // 0x4ba9
 	recover_endurance(e, dt);
 }
 
-// 0x4badc0: stands dazed. Only the hyper spray (attack ids 8 / 9) sends a nurse here, and that item
-// is not in the port yet, so this is kept for completeness.
+// 0x4badc0: stands dazed. Only the hyper spray (attack ids 8 / 9) sends a nurse here (enemy_damage).
 static void nse_confuse(Enemy* e, const EnPlayer* p, float dt)
 {
 	(void)p;
@@ -5892,6 +5891,14 @@ void enemy_damage(Enemy* e, int attack_id, float ap, float sp, float dir_x, floa
 		return;
 	if (attack_id >= 31 && attack_id <= 40 && !enemy_is_down(e))
 		return;          // stomps only count on a body on the floor (0x4a8d80)
+	if (attack_id == 8 || attack_id == 9) {
+		// the hyper spray (kind 7) does no harm to these: it sends them to their "confuse" state, in
+		// which a nurse stands dazed (0x4badc0) and a Lying Figure or a Mannequin backs off
+		if ((e->kind == EN_KIND_SCU || e->kind == EN_KIND_MKN || e->kind == EN_KIND_NSE) && !enemy_is_down(e))
+			go(e, SCU_CONFUSE);
+		if (e->kind == EN_KIND_SCU || e->kind == EN_KIND_MKN || e->kind == EN_KIND_NSE)
+			return;
+	}
 	play_at(e, e->kind == EN_KIND_MKN ? 12503 + (int)(rnd() * 1.99f)
 	         : e->kind == EN_KIND_NSE ? 12113 + (int)(rnd() * 3.99f)
 	         : e->kind == EN_KIND_TYU ? 12208 + (int)(rnd() * 5.99f)

@@ -49,6 +49,15 @@ static const Clip C_LSWALK = { 125, 540, 563, 1, 1536 };
 static const Clip C_RSRUN = { 126, 564, 587, 1, 2048 };
 static const Clip C_LSRUN = { 127, 588, 611, 1, 2048 };
 
+// The great knife's lurching drag: speed (m/s) by frame of the walking, backing and strafing
+// clips (0x54b3b0, 0x54b580, 0x54b750), the blade scraping on 5 and 18 (0x549e20)
+static const float DRAG_WALK[24] = { 0.9f, 1.05f, 0.45f, 0.25f, 0.3f, 0.9f, 1.05f, 1.2f, 1.425f, 1.5f, 1.425f, 1.35f,
+                                     0.975f, 0.6f, 0.25f, 0.15f, 0.3f, 0.6f, 0.9f, 0.975f, 1.05f, 1.2f, 1.35f, 1.05f };
+static const float DRAG_BACK[24] = { 0.9f, 1.05f, 1.2f, 0.0f, 0.3f, 0.9f, 1.05f, 1.2f, 1.35f, 1.425f, 1.35f, 1.2f,
+                                     0.975f, 0.75f, 0.525f, 0.075f, 0.0f, 0.3f, 0.45f, 0.675f, 1.35f, 1.2f, 1.35f, 1.05f };
+static const float DRAG_SIDE[24] = { 0.9f, 1.05f, 0.45f, 0.15f, 0.0f, 0.9f, 1.05f, 1.2f, 1.425f, 1.5f, 1.425f, 1.35f,
+                                     0.975f, 0.75f, 0.525f, 0.075f, 0.0f, 0.0f, 0.225f, 0.675f, 0.9f, 1.2f, 1.35f, 1.05f };
+
 // 0x6cf878: the states each state may change to (bit = MV_* index)
 #define B(s) (1u << (s))
 #define FREE_GO (B(MV_LROUND) | B(MV_RROUND) | B(MV_BACK) | B(MV_WALK) | B(MV_LSWALK) | B(MV_RSWALK) | \
@@ -231,7 +240,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	ty = ty > 1.0f ? 1.0f : ty;
 	int turn = tx > 0.0f ? (in->x > 0.0f ? 1 : -1) : 0;    // +1 right
 	bool fwd = ty > 0.0f && in->y > 0.0f, back = ty > 0.0f && in->y < 0.0f;
-	bool run = in->run;
+	bool run = in->run && !in->drag;           // 0x52e110: no running with the great knife
 
 	if (in->control == MOVE_2D) {
 		// Directional Style, the PC's 2D type (0x547bf0, 0x546760, 0x548bf0): the stick's direction
@@ -302,6 +311,8 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 
 	// the state's mover
 	float maria = in->maria ? 0.8f : 1.0f;
+	int drag_i = (int)(M.frame - M.clip->start);
+	drag_i = drag_i < 0 ? 0 : drag_i > 23 ? 23 : drag_i;
 	float off_to = 0.0f, rate = 0.0f;
 	switch (M.state) {
 	case MV_STAND: case MV_RELAX: case MV_TIRED: case MV_ALERT: {
@@ -316,22 +327,25 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	case MV_LROUND: case MV_RROUND:
 		M.spd -= 10.0f * dt;
 		if (M.spd < 0.0f) M.spd = 0.0f;
-		rate = 2.4f * tx * (run ? 1.5f : 1.0f);
+		rate = in->drag ? 1.0f * tx : 2.4f * tx * (run ? 1.5f : 1.0f);   // 0x54bbb0 grip 8
 		off_to = M.off;
 		break;
 	// the port reads the circle pad only, so these are the PC's analog branches: the tilt sets the
 	// walking pace at once and the running pace James speeds up or slows down to
 	case MV_WALK:
-		M.spd = ty * 1.5f;
-		rate = 1.9f * tx;
+		M.spd = in->drag ? DRAG_WALK[drag_i] : ty * 1.5f;
+		rate = (in->drag ? 0.875f : 1.9f) * tx;
 		break;
 	case MV_BACK:
-		M.spd = ty * 1.2f;
-		rate = 1.3f * tx;
+		M.spd = in->drag ? DRAG_BACK[drag_i] : ty * 1.2f;
+		rate = (in->drag ? 0.65f : 1.3f) * tx;
 		off_to = PI;
 		break;
 	case MV_LSWALK: case MV_RSWALK:
-		ramp(1.3f, 1.7f, 3.4f, dt);
+		if (in->drag)
+			M.spd = DRAG_SIDE[drag_i];
+		else
+			ramp(1.3f, 1.7f, 3.4f, dt);
 		rate = 1.9f * tx;
 		off_to = M.state == MV_LSWALK ? PI / 2.0f : -PI / 2.0f;
 		break;
@@ -360,7 +374,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 		break;
 	case MV_LTURN: case MV_RTURN: {
 		M.spd = 0.0f;
-		float step = 5.4977875f * dt;
+		float step = (in->drag ? 4.712389f : 5.4977875f) * dt;   // 0x54f160: slower with the great knife
 		M.turned += step;
 		if (M.turned >= PI) {
 			*yaw = M.turn_to;
@@ -413,7 +427,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	{
 		int a = -1, b2 = -1;
 		if (M.state == MV_LROUND || M.state == MV_RROUND) a = 6, b2 = 13;
-		else if (moving(M.state)) a = 5, b2 = 17;
+		else if (moving(M.state)) a = in->drag ? 3 : 5, b2 = in->drag ? 14 : 17;   // grip 8: 3 and 14
 		float r0 = f0 - c->start, r1 = M.frame - c->start;
 		for (int i = 0; i < 2 && a >= 0; i++) {
 			float k = i ? (float)b2 : (float)a;
@@ -421,6 +435,11 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 			               : (r0 < k && r1 >= k) || (r1 < r0 && (r0 < k || r1 >= k));
 			if (hit && !out->clip_changed)
 				out->step = true;
+			// the great knife scrapes along on 5 and 18 of the walking clips (0x549e20)
+			float g = i ? 18.0f : 5.0f;
+			if (in->drag && moving(M.state) && !out->clip_changed &&
+			    ((r0 < g && r1 >= g) || (r1 < r0 && (r0 < g || r1 >= g))))
+				out->scrape = true;
 		}
 		out->step_volume = M.state >= MV_RSWALK && M.state <= MV_RSRUN ? 0.8f : 0.5f;
 	}

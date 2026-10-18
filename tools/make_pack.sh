@@ -59,16 +59,17 @@ if step james "James"; then
 	printf 'idle 0 50 1\nwalk 51 91 1\nrun 92 170 1\n' > "$OUT/chr/jms/clips.txt"
 	touch "$STEPS/james"
 fi
-if step characters "enemies and weapons (Lying Figure, Mannequin, wooden plank, James' plank moves)"; then
+if step characters "enemies and weapons (Lying Figure, Mannequin, James' weapons and their moves)"; then
 	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" jms hll_jms.mdl jms_basic1.anm jms_wpkaku.anm jms_wpnone.anm \
-		jms_wphand.anm jms_wpshot.anm jms_wprifl.anm
+		jms_wphand.anm jms_wpshot.anm jms_wprifl.anm jms_wppipe.anm jms_wpnata.anm jms_wpcsaw.anm jms_wpsp.anm
 	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" scu scu.mdl scu.anm
 	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" mkn mkn.mdl mkn.anm
 	$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" wp wp_kakuzai.mdl
 	for c in "nse nse.mdl nse.anm" "xoo xoo.mdl xoo.anm" "tyu tyu.mdl tyu.anm" "red red.mdl red.anm" \
 	         "mar lll_mar.mdl lll_mar.anm" "pap pap.mdl pap.anm" "oni oni.mdl oni.anm" "bos bos.mdl bos.anm" \
 	         "arm arm.mdl arm.anm" "ike ike.mdl ike.anm" "edi lll_edi.mdl lll_edi.anm" \
-	         "wp wp_handgun.mdl" "wp wp_shotgun.mdl" "wp wp_riflgun.mdl"; do
+	         "wp wp_handgun.mdl" "wp wp_shotgun.mdl" "wp wp_riflgun.mdl" "wp wp_pipe.mdl" "wp wp_nata.mdl" \
+	         "wp wp_csaw.mdl" "wp wp_sp.mdl"; do
 		$PY "$ROOT/tools/sh2conv/chr.py" "$DATA" "$OUT" $c
 	done
 	# Mary's moths (camera-facing quads with the PC's wing-beat texture) and the creeper nests

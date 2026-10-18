@@ -933,10 +933,116 @@ In the emulator (a temporary log, removed again, and `.enemytest/shots`):
 * `m8f612` .. `m8f640` (ru25, a debug wall nest above the door): the shot nest releases a creeper
   that falls (state 7.10) from y -900 to the floor (y -17).
 
+## Batch C3: the steel pipe, the great knife, the chainsaw and the hyper spray
+
+James now has every weapon of the PC (combat.c). The models and James' moves for them come from
+`wp_pipe` / `wp_nata` / `wp_csaw` / `wp_sp` and `jms_wppipe` / `jms_wpnata` / `jms_wpcsaw` /
+`jms_wpsp.anm` (added to make_pack.sh's characters step; the `rwp_` variants are not used, as for the
+other weapons). The stage programs already hand them out (prog_town.c, prog_prison.c): the pipe
+from the car in stage 14, the great knife in stage 34, the chainsaw at the grave and the spray in
+stage 2 on later playthroughs. They are items 14, 15, 16 and 12 (0x534240), so they show in the
+item list and on the touch screen with their own names and models, and "use" equips them.
+
+Each melee weapon's clips are its row of the PC tables (0x52fae0 / 0x531a00 with the tables at
+0x6cf04c, 0x6cf1dc, 0x6cf2ac), its attacks the PC's (sh2_attack_list 0x6ec568):
+
+| Weapon (grip) | Light press | Hard press | Notes |
+| --- | --- | --- | --- |
+| Steel pipe (6) | lunge 429 / 431, attack 18 (130, reach 540, frames 8..10) | overhead 421 / 425, attack 17 (160, frames 15..17) | on hard with run held the swing 409 / 415 (15, 120, frames 10..12) and its follow-up 411 / 417 (16, 96, frames 4..6) instead of the lunge (0x533ff0); a swing that connects plays back; hit 11040 |
+| Great knife (8) | swing 461 / 459, attacks 19 / 20 by shoulder (600, reach 725) | heavy 465 / 463, attacks 21 / 22 (1000) | one swing from each shoulder in turn, no follow-up; swing sound 11039 on frames 8 / 11 and 17 / 18; dragged at the speeds of 0x54b3b0, no running, slower turns; hit 11038 |
+| Chainsaw (7) | saw 567 / 565, attack 23 (250, reach 525, frames 12..27) | thrust 571 / 569, attack 24 (300, frames 6..13) | pressed again while sawing: the thrust; the engine revs (11044) on raising and runs (11045) in each cut, stops when lowered; no fuel; cut 11046 |
+| Hyper spray (4) | spray 508, attack 8 (frames 8..25), 509 (attack 9) while the button stays down | | 20 seconds a can, used up while it sprays; costs James a point of health a second on normal and hard; empty, the can is gone (0x545260); hiss 11047 |
+
+The swing sound and James' effort (11018 / 11019) play on the clip's frame from 0x549e20. A body
+on the floor gets a kick or stomp (with each weapon's kick type, 0x53b190) instead of a swing, as on
+the PC; the plank keeps its downswing there. The spray (attack kind 7) hurts nobody: it puts Lying
+Figures, Mannequins and nurses in their "confuse" state, where the nurse stands dazed (0x4badc0)
+and the others back off. Its mist (0x4a4c00) is drawn since batch C4.
+
+In the emulator (`.enemytest/shots/ctl`, debug.txt `weapon <item>` equips, `god 1` keeps the
+enemies' blows off James):
+
+* `w7_680` .. `w7_722`: the pipe's overhead takes a Lying Figure from 681 to 521 (160) and knocks
+  it down; the lunge before it fell short.
+* `w11_598` .. `w11_662`: the great knife's light swing takes a nurse from 778 to 178 (600) and
+  knocks her down; held A over her body then stomps her (0).
+* `w12_566` .. `w12_846`: the chainsaw saws a nurse from 778 to 528 (250), the thrust takes her to
+  228 (300).
+* `w13`: the spray puts a nurse in state 5 (dazed) with no damage; James goes from 100 to 98 while
+  spraying (normal).
+* `dr1`: with the great knife in hand and B held James still walks, at the drag's changing pace
+  (1.2, 0.6, 0.25 m/s on the debug page).
+* Not seen: the pickups themselves. The pipe's car event (stage 14, cc41 event 12, a look at its two
+  segments) did not fire from a debug spawn at the car in four tries, so it may need state that a
+  spawn does not set; the others were not tried.
+
+## Batch C4: the pickups in normal play, and the spray's mist
+
+All four weapon pickups fire from a normal approach. Nothing in the game state was missing for
+the pipe: the look test (events.c `look_segment`) only passes on the side a segment faces, with
+cross(B - A, P - A) >= 0, and every C3 debug spawn stood on the far side of the car. Event 12's
+segments, (-70704, 62170) -> (-70141, 61844) -> (-70383, 61424), face +x and +z, toward the pump,
+so James has to walk up to the car from that side and look at it. Under each pickup:
+
+| Weapon | Event | Gate | Where James stands | Seen |
+| --- | --- | --- | --- | --- |
+| Steel pipe (14) | stage 14 event 12, s14 #20 | flag 168 clear (set by taking it); needs light | on the car's +x / +z side, facing it, e.g. (-70250, 62250) facing 180 | a playtest walk from `c04.sav` gets "I got a steel pipe." |
+| Great knife (15) | stage 34 event 4, s34 #2 | flag 316 clear | in front of (21369, -100063) -> (20905, -100244) -> (20615, -99490), e.g. (21228, -100386) facing -21 | the playthrough's own c08 run, and a spawn |
+| Chainsaw (16) | stage 4 event 20, s04 #5 | flag 12 set, flag 38 clear | on the -z side of the grave's segment (-61100, -850) -> (-61450, -850), e.g. (-61275, -1100) facing 0 | a spawn with `flag 12 1` |
+| Hyper spray (12) | stage 2 event 8, s02 #2 | flag 631 set, flag 632 clear | on the -x side of (10155, 9850) -> (10155, 10149) in the trailer (er05), e.g. (9905, 10000) facing 90 | a spawn with `flag 631 1` (and `flag 32 1`, or the prologue plays first) |
+
+The chainsaw and the spray only need their unlock flags, which FlagInit (prog.c `prog_new_game`)
+sets from the clear data on a New Game after a clear:
+
+* flag 12 (chainsaw): any of the Leave, In Water or Maria endings seen before.
+* flag 631 (hyper spray): a game cleared on hard action level (clear bit 0x80), or on normal (0x40)
+  with two clears or more, or three clears of any kind.
+
+So a clear save whose clear data has those bits, loaded from the title, lines both up.
+
+### The spray's mist (mist.c)
+
+The PC's puff (effect 0x1f): 0x4a4c00 spawns it, 0x4a3f60 moves it, 0x4a4170 draws it. The spray
+(0x545260) posts one each 60 Hz tick from the can toward the end of its reach plus 150, with the
+life argument 12:
+
+* The vector gets up to 50 of jitter on each axis (0x4489a0, small values far likelier); its length
+  is the puff's speed, and it is then normalised.
+* Phase 0, ticks 0..3 (ftol(0.3 * 12)): 0.3 of the speed of travel; alpha 0 -> 32, size 0 -> 0.2.
+* Phase 1, ticks 3..7 (ftol(0.6 * 12)): another 0.3 of the speed every 3 ticks, sinking 100 a second;
+  alpha 32, size 0.2 * (1 + f).
+* Phase 2, ticks 7..14: 0.5 of the speed over 7 ticks, still sinking; alpha 32 -> 0, size
+  0.4 -> 0.8. Then it is freed, so about 14 puffs are out while James sprays.
+
+Each puff is a camera-facing disc of radius speed * size * 0.25: a 16-point fan whose centre
+carries the alpha (vertex alpha * a / 64) and whose rim has none. Its texture is effect texture 2
+(0x4c9b20(2), file id 0x2c1a, data/pic/effect/poison.tbn2, a cloud in the alpha), sampled around a
+random point with radius 0.125. The colour is 0xffc0c0c0 with its bytes scaled by 1, 144/128 and
+160/128, which gives (192, 216, 240): a pale blue-white. ui.py's `write_mist` converts the texture's
+alpha to pack/effect/mist.t3x (A8, 128 x 128); mist.c draws it with ordinary alpha blending and keeps
+only the texture's alpha, the PC's tint standing in for its brown RGB.
+
+The PC changes the spray's colour by the rank of the last clear (0x1dbeb89, set by 0x539dd0 from
+the 0..100 score of 0x539bf0): 20 or less 0xff400040, under 80 the grey above, under 100 0xff40c0c0,
+100 0xff40ff40. The port has no ranking yet, so it stays grey; `mist_set_color` takes the tier once
+it does.
+
+In the emulator:
+
+* `ptr` (`.enemytest/shots/ctl/ptr_ptlog.txt`): `pt walkmode 1`, `pt load c04`, `pt ev 12` walks
+  James from cc11 to the car and the pipe is his at 255.7 s ("I got a steel pipe.", flag 168,
+  item 14 0 -> 1, the expect passes).
+* `pk9b_560` .. `pk9b_790`: the spray's program runs in the trailer and the can is gone from the
+  table.
+* `mi1_600` .. `mi1_700`: spraying a nurse at cb47, the cloud leaves the can and spreads past her;
+  the debug page counts 14 puffs.
+
 ## Testing keys (debug.txt, read by enemy_init)
 
 * `action <0..3>`: action level (main.c reads the same key for new games; 0 beginner: one hit knocks a
   figure down and it never gets up).
+* `weapon <item>` (main.c): equips that weapon item on the first free frame; `god 1`: enemy blows
+  and grabs do not reach James.
 * `enemy <kind hex> <x> <z> <yaw degrees> [status]`: an extra enemy, spawned in whichever room has a
   floor under (x, z), e.g. `enemy 200 -50000 -63000 0` puts a Lying Figure in the ap06 corridor.
 
@@ -972,6 +1078,10 @@ Batch 5: `.enemytest/main_hooks.diff` (paths `port/source/main.c`) from `.enemyt
 `combat_own_footsteps()` (Maria's steps come from combat.c), and `options_load` / `options_save` keep
 `bulletadjust` (`ev_set_bullet_adjust` / `ev_bullet_adjust`).
 
+Batch C4 (`.enemytest/c4/apply_main.py main.c`): `mist_init` after `blood_init`, `mist_clear` after
+`blood_clear` on a room load, `mist_update` after `blood_update`, `mist_draw` after `blood_draw`, and the
+debug page's blood line gets the puff count.
+
 Everything else goes through the existing calls: Maria is updated and drawn from `enemy_update` /
 `enemy_draw`, placed from `enemy_room_enter`, reset in `combat_reset`, and her death shows up in
 `combat_dead()`. Kills call `prog_stat_kill(attack id)` where the killed bit is set (the results
@@ -987,8 +1097,7 @@ screen counts shot and beaten kills apart, and the ending score counts both).
   not leave by the room's three exits.
 * Creeper climbing works on the collision's vertical wall segments, so a creeper crosses inside and
   outside corners but cannot climb from a wall onto the ceiling or onto sloped faces (the S3L has no
-  ceilings); the ceiling creeper keeps its height. The nurse's and the oni's hyper spray reactions
-  (the item is not in the port).
+  ceilings); the ceiling creeper keeps its height. The oni's hyper spray reaction.
 * Maria: alert / discover (she looks at enemies and points), the one-step shuffle, James' friendly
   fire (0.1 x in 0x52d280); type 1 (the resting rooms) shows her standing, since lll_mar.anm has no
   lying pose; the appear point list only fits rooms the port loads whole (a spot in another piece of

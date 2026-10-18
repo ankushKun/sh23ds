@@ -50,6 +50,9 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 
 // When armed, James is animated from the plank animation set: returns the pose to use.
 bool combat_james_anim(const Anim** anim, float* frame);
+// gWeaponHandGrip of the weapon in hand: 0 none, 1 handgun, 2 shotgun, 3 rifle, 4 hyper spray, 5 plank,
+// 6 steel pipe, 7 chainsaw, 8 great knife (9, 10 Maria's).
+int combat_grip(void);
 // True while combat leaves James' legs to move.c (nothing readied): his clips then come from
 // move_last(), played on the anim combat_james_anim gives.
 bool combat_james_free(void);
@@ -66,6 +69,9 @@ void combat_set_sight(bool dark, bool flashlight);
 // items lying about) in his sight that the room does not hide. False: nothing, or he is busy
 // (kicking, hurt, held, dying).
 bool combat_look_target(const CombatBody* b, const float (*pts)[3], int npts, float out[3]);
+
+// Testing (debug.txt "god 1"): enemy blows do not reach James.
+void combat_set_god(bool on);
 
 // Called by enemies when an attack reaches James.
 void combat_damage_james(int attack_id, float ap, float from_x, float from_z);

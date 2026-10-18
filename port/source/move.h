@@ -21,6 +21,7 @@ typedef struct {
 	bool wall_ahead;          // a wall within 250 straight ahead (0x536a20): walk, do not run
 	float hp_frac;            // health / full health: how long James can run flat out
 	bool maria;               // Born From a Wish: Maria plays, at 0.8 of James' speed
+	bool drag;                // the great knife in hand: dragged, no running (0x54b3b0, 0x52e110)
 	bool enemy_near;          // an enemy is about (0x5422b0): standing still he looks round, not relaxes
 } MoveInput;
 
@@ -42,6 +43,7 @@ typedef struct {
 	u16 from_start;           // length) plays on at the same step while it fades out
 	bool step;                // a foot came down this frame (0x54a9a0's frames of the clip)
 	float step_volume;        // 0.5 walking, 0.8 running
+	bool scrape;              // the dragged great knife scrapes the floor this frame
 	bool backward;            // the clip plays from its end (none does now)
 } MoveOut;
 
