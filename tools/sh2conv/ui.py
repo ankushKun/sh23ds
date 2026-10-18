@@ -9,7 +9,8 @@ a 512x128 strip around the lettering, RGB565 without mipmaps.
 Also writes the save screen's backgrounds (data/menu/mc/savebg.tbn2, James, and savebg2.tbn2,
 Maria; 512x512 DXT3 squeezed to 512x256 RGB565 like the stills: pack/ui/savebg.t3x, savebg2.t3x)
 and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg), and the options
-screens' texts (option_msg_e.mes as pack/events/option.msg).
+screens' texts (option_msg_e.mes as pack/events/option.msg) and the blood effects' texture
+(pack/effect/blood.t3x, see write_blood).
 
 Also writes the PC's text font (pack/ui/font.t3x and font.bin, see write_font), which the exe carries
 compressed; pass --exe to read another sh2pc.exe than the default one.
@@ -199,6 +200,21 @@ def write_save_screen(data, pack):
     print('wrote ui/savebg.t3x, ui/savebg2.t3x and events/mcard.msg')
 
 
+def write_blood(data, pack):
+    """The blood effects' texture (data/pic/effect/bloodtex0.tbn2, 512x512 DXT3: white with the
+    splashes, spots, footprints and pool clouds in the alpha; the Blood Color tints it): A4 at
+    256x256 as pack/effect/blood.t3x."""
+    img = load_tex(os.path.join(data, 'pic', 'effect', 'bloodtex0.tbn2')).convert('RGBA')
+    os.makedirs(os.path.join(pack, 'effect'), exist_ok=True)
+    png, t3x = 'effect/blood.png', 'effect/blood.t3x'
+    img.resize((256, 256), Image.LANCZOS).save(os.path.join(pack, png))
+    if os.path.exists(os.path.join(pack, t3x)):
+        os.remove(os.path.join(pack, t3x))
+    encode_textures([(png, t3x, True)], pack, fmt='a4', mipmaps=False)
+    os.remove(os.path.join(pack, png))
+    print('wrote', t3x)
+
+
 def write_options(data, pack):
     """The options screens' texts (0x461600 / 0x464eb0 draw option_msg_e.mes by number)."""
     import sh2mes
@@ -223,6 +239,7 @@ def main():
     write_font(pack, exe_path)
     write_save_screen(data, pack)
     write_options(data, pack)
+    write_blood(data, pack)
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
     logo = os.path.join(data, 'pic', 'etc', 'sh2dc.tex')
     img = ee.like_original(load_tex(logo), logo).convert('RGB')

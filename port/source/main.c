@@ -31,6 +31,7 @@
 #include "clearsave.h"
 #include "savescreen.h"
 #include "noise.h"
+#include "blood.h"
 #include "optmenu.h"
 #include "stagemdl.h"
 #include "touchui.h"
@@ -584,6 +585,7 @@ static void load_current(void)
 		perf_part("ld_tiles", t0);
 		t0 = svcGetSystemTick();
 		enemy_room_enter(ev_stage(), s_have_col ? &s_col : NULL);
+		blood_clear();
 		perf_part("ld_enemy", t0);
 		t0 = svcGetSystemTick();
 		gamecam_load_area(PACK_DIR, s_areas[s_area], (const char (*)[16])s_rooms, s_nrooms);
@@ -1622,6 +1624,77 @@ static u32 move_keys(u32 held, u32 down, const circlePosition* cp)
 	return held;
 }
 
+// View Control (0x5342b0): Normal shows the search view while the look button is held (0x1fbab13),
+// Switch turns it on and off with each press (0x52e110 flips 0x1fba8fb); neither while a stage
+// program holds James (the PC's player flags 0x6000).
+static bool search_view(u32 held, u32 down)
+{
+	static bool on;
+	if (s_opt.view == 0) {
+		on = false;
+		return (held & GK_LOOK) != 0;
+	}
+	if (down & GK_LOOK)
+		on = !on;
+	return on && !(prog_running() && prog_player_locked());
+}
+
+// The blood a fight leaves (blood.c). The PC posts the splash from the hit (0x5431b1 calls
+// 0x4c7d40 with the enemy and the attack); here a hit shows as the enemy's health going down once
+// enemy.c has applied what combat.c handed it, with its last attack id and hit-back direction. A
+// death starts the pool (enDyingExec 0x4a96c0 posts it at the start, not for Eddie).
+static bool s_blood_test;       // debug.txt "bloodtest": a splash and a pool beside James every 2 s
+
+static void blood_frame(float dt)
+{
+	if (s_blood_test && dt > 0.0f) {
+		static float t, at[3];
+		if ((t -= dt) <= 0.0f) {
+			t = 2.0f;
+			// 700 to one side of James as the camera sees him, the other side the next time
+			const float* eye = gamecam_eye();
+			float dx = s_px - eye[0], dz = s_pz - eye[2], d = sqrtf(dx * dx + dz * dz);
+			d = d > 1.0f ? 1.0f / d : 0.0f;
+			dx *= d, dz *= d;
+			static float side = 700.0f;
+			side = -side;
+			at[0] = s_px - dz * side, at[1] = s_py, at[2] = s_pz + dx * side;
+			float pos[3] = { at[0], at[1] - 500.0f, at[2] }, dir[3] = { dx, 0.0f, dz };
+			blood_hit(pos, dir, 0x13, at, at[1]);
+			blood_pool(at);
+		}
+	}
+	static float last_hp[ENEMY_MAX];
+	static bool seen[ENEMY_MAX], dead[ENEMY_MAX];
+	static const float* owner[ENEMY_MAX];
+	for (int i = 0; i < ENEMY_MAX; i++) {
+		Enemy* e = enemy_get(i);
+		if (!e) {
+			if (owner[i])
+				blood_forget(owner[i]);
+			owner[i] = NULL;
+			seen[i] = false;
+			continue;
+		}
+		bool d = e->hp <= 0.0f;
+		if (seen[i] && e->hp < last_hp[i] - 0.001f) {
+			float tall = e->tall > 0.0f ? e->tall : 800.0f;
+			float pos[3] = { e->x, e->y - tall * 0.6f, e->z };
+			float dir[3] = { e->hbx, 0.0f, e->hbz };
+			if (fabsf(dir[0]) + fabsf(dir[2]) < 1e-4f)
+				dir[0] = e->x - s_px, dir[2] = e->z - s_pz;
+			blood_hit(pos, dir, e->last_atk, &e->x, e->y);
+		}
+		if (seen[i] && d && !dead[i] && e->kind != EN_KIND_EDI)
+			blood_pool(&e->x);
+		last_hp[i] = e->hp;
+		dead[i] = d;
+		seen[i] = true;
+		owner[i] = &e->x;
+	}
+	blood_update(dt);
+}
+
 // James' legs (move.c, the PC's lower-body states): the circle pad walks and turns, the game keys
 // (controls.c) run, strafe and turn round. held is the game keys still free (combat.c took its own).
 static void player_update(const circlePosition* cp, u32 held, float dt)
@@ -2253,6 +2326,24 @@ static void ui_program_2d(const C3D_Mtx* ortho)
 	use_world_program();
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, ortho);
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, &id);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uGain, 0.0f, 0.0f, 0.0f, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uAmb, 0.0f, 0.0f, 0.0f, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uVgain, 1.0f, 1.0f, 1.0f, 1.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uBase, 0.0f, 0.0f, 0.0f, 0.0f);
+}
+
+// The floor under a pool or a stain (blood.c), from the room's collision.
+static bool blood_floor(float x, float z, float y_ref, float* y)
+{
+	return s_have_col && col_floor(&s_col, x, z, y_ref, 600.0f, y);
+}
+
+// The same for world-space triangles (blood.c): the scene's projection and view.
+static void ui_program_flat(const C3D_Mtx* proj, const C3D_Mtx* view)
+{
+	use_world_program();
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, proj);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, view);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uGain, 0.0f, 0.0f, 0.0f, 0.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uAmb, 0.0f, 0.0f, 0.0f, 0.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uVgain, 1.0f, 1.0f, 1.0f, 1.0f);
@@ -3103,6 +3194,7 @@ static void options_apply(void)
 	audio_set_output(s_opt.speaker);
 	map_set_open_zoomed(s_opt.map_zoom == 0);
 	noise_set(s_opt.noise, s_opt.bright, s_opt.noise_ps2);
+	blood_set_color(s_opt.blood);
 	profile_set_choices(s_opt.hwprofile, s_opt.quality, s_opt.ctrllayout, s_opt.framerate);   // profile.c
 	s_env_dirty = true;
 }
@@ -3634,6 +3726,7 @@ int main(void)
 	map_init(ui_draw);
 	font_init(PACK_DIR, ui_draw_font);
 	noise_init();
+	blood_init(PACK_DIR, ui_program_flat, blood_floor);
 
 	options_load();     // debug.txt below may override
 	controls_init(PACK_DIR);            // the player's button bindings (controls.txt)
@@ -3684,6 +3777,7 @@ int main(void)
 			if (!strcmp(key, "batch")) s_only_batch = val;
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
 			if (!strcmp(key, "debughud")) s_debug_hud = val != 0;
+			if (!strcmp(key, "bloodtest")) s_blood_test = val != 0;
 			if (!strcmp(key, "results")) s_debug_results = val;
 			if (!strcmp(key, "itemget") && s_debug_nitemget < 8) s_debug_itemget[s_debug_nitemget++] = val;
 			if (!strcmp(key, "ambient")) s_ambient = val / 100.0f;     // percent
@@ -3958,6 +4052,7 @@ int main(void)
 					enemy_update(&ep, dt);
 					head_update(&cp, gheld, dt, !prog_running() || !prog_player_locked());
 				}
+				blood_frame(dt);
 				if (combat_dead()) {     // game over
 					enter_title();
 					continue;
@@ -4017,7 +4112,7 @@ int main(void)
 			}
 			float fovy;
 			u64 tb = svcGetSystemTick();
-			gamecam_update(&gp, dt, (gheld & GK_LOOK) != 0, &mv, &fovy);
+			gamecam_update(&gp, dt, search_view(gheld, gdown), &mv, &fovy);
 			perf_part("cam", tb);
 			s_chr_nofog = ee_final_boss_nofog(gamecam_eye()[1]);
 			memcpy(s_fogf.eye, gamecam_eye(), sizeof s_fogf.eye);
@@ -4064,6 +4159,7 @@ int main(void)
 				draw_james(&proj, &mv);     // same light environment as the room
 			C3D_LightEnvBind(NULL);
 			shadow_draw(&proj, &mv, &ortho);
+			blood_draw(&proj, &mv);      // the floor's pools and stains, the spray (blood.c)
 			if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && s_opt.fog)
 				fog_frame(&proj, &mv, &ortho, s_paused ? 0.0f : dt);
 			float black = s_fade > demo_fade() ? s_fade : demo_fade();
@@ -4149,6 +4245,7 @@ int main(void)
 			printf("%-38s\n", fog_status());
 			printf("%-38s\n", perf_status());
 			printf("%-38s\n", shadow_status());
+			printf("%-38s\n", blood_status());
 			printf("%-38.38s\n", sfx_status());
 		}
 		pause_draw();

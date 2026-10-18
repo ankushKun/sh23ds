@@ -10,6 +10,7 @@ static C3D_Tex s_tex[2];
 static int s_cur;
 static bool s_ready, s_on;
 static V* s_quad;
+static float* s_movie_quad;      // 4 corners of x, y, u, v for movie.c's program
 static u32 s_color;              // TEV constant, 0xAABBGGRR
 static u32 s_rand = 0x2545f491;
 static u8 s_pair[16];            // four random bits -> two texels
@@ -60,6 +61,9 @@ void noise_exit(void)
 	C3D_TexDelete(&s_tex[0]);
 	C3D_TexDelete(&s_tex[1]);
 	linearFree(s_quad);
+	if (s_movie_quad)
+		linearFree(s_movie_quad);
+	s_movie_quad = NULL;
 	s_ready = false;
 }
 
@@ -108,13 +112,8 @@ static void refill(C3D_Tex* t)
 	C3D_TexFlush(t);
 }
 
-void noise_draw(void)
+static void states(C3D_Tex* t)
 {
-	if (!noise_on())
-		return;
-	s_cur ^= 1;
-	C3D_Tex* t = &s_tex[s_cur];
-	refill(t);
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
 	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	C3D_CullFace(GPU_CULL_NONE);
@@ -131,8 +130,40 @@ void noise_draw(void)
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 	C3D_TexEnvInit(C3D_GetTexEnv(2));
 	C3D_TexBind(0, t);
+}
+
+void noise_draw(void)
+{
+	if (!noise_on())
+		return;
+	s_cur ^= 1;
+	C3D_Tex* t = &s_tex[s_cur];
+	refill(t);
+	states(t);
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, s_quad, sizeof(V), 4, 0x3210);
 	C3D_DrawArrays(GPU_TRIANGLES, 0, 6);
+}
+
+void noise_draw_movie(float x0, float y0, float x1, float y1)
+{
+	// the PC draws its grain over the movies too (0x4781e0 runs in every frame); the Enhanced
+	// Edition limits it to the picture (IDirect3DDevice8.cpp, the FMV vertex)
+	if (!noise_on())
+		return;
+	if (!s_movie_quad && !(s_movie_quad = linearAlloc(16 * sizeof(float))))
+		return;
+	s_cur ^= 1;
+	C3D_Tex* t = &s_tex[s_cur];
+	refill(t);
+	float u1 = (x1 - x0) / SIZE, v1 = (y1 - y0) / SIZE;
+	const float q[16] = { x0, y1, 0, v1, x0, y0, 0, 0, x1, y1, u1, v1, x1, y0, u1, 0 };
+	memcpy(s_movie_quad, q, sizeof q);
+	GSPGPU_FlushDataCache(s_movie_quad, sizeof q);
+	states(t);
+	C3D_BufInfo* bi = C3D_GetBufInfo();
+	BufInfo_Init(bi);
+	BufInfo_Add(bi, s_movie_quad, 4 * sizeof(float), 2, 0x10);
+	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
 }

@@ -1,4 +1,5 @@
 #include "movie.h"
+#include "noise.h"
 #include "touchui.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -693,6 +694,8 @@ void movie_draw(void)
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 	C3D_TexBind(0, &s_tex[s_front]);
 	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
+	// the Noise Effect over the picture (noise.c), y up as the quad above
+	noise_draw_movie(x0, y0, 400.0f - x0, 240.0f - y0);
 }
 
 static void print_stats(void)

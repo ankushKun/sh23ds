@@ -509,9 +509,65 @@ seconds (the other side the next time), for screenshots; the debug page shows a 
 with the splashes, sprites, stains and pools alive and the vertices drawn. Subtracted blood only
 shows where there is light to take away: in the dark it is as invisible as on the PC. `ui.py` writes the texture as `pack/effect/blood.t3x` (A4, 256x256). Up to 8
 splashes, 96 sprites, 64 stains and 24 pools at once, drawn in two batches after the shadows
-(about 200 quads at the most), so the Old 3DS hardly notices. Not ported: class 7 and class 4 (the
-room variants of the splash and the pool, 0x4c71e0 / 0x4c73a0 pick them), the distance fade of the
-pools (0x4cde00), footprints (class 15) and the blood the enemies' own attacks leave.
+(about 200 quads at the most), so the Old 3DS hardly notices.
+
+Room variants and footprints:
+
+* Class 7 (0x4e9d70, rooms 7, 8 and 0x21 in 0x4c7d40) is the splash whose drops (class 15, 0x4cc2d0)
+  find the floor with a ray (0x526560) instead of taking y 0 for it, for rooms whose floor is not
+  at 0. The port's drops always land on the collision floor and the splash follows the enemy in
+  all three axes, so both splashes are the one here.
+* 0x4c73a0 picks the pool by room (the PC room id, `bgm_room_id`): none in rooms 7 and 0x21; class 4
+  (0x4eafd0) in 0x62, 0x7a, 0x7c, 0x7e, 0x80, 0x82, 0x85, 0xab, 0xb6..0xb9, 0xbb and in 0x63 above
+  y -128: six drops (class 14, 0x4ccd20) thrown out at random angles that go when they reach the
+  floor, as those floors hold no pool; the class 3 pool everywhere else.
+* Footprints: James' steps go through class 1 (0x4ebe70, posted by 0x4c7780 from his foot code),
+  which looks for a pool under the foot (0x4ce2c0); a step in one starts class 8 (0x4e95f0) with a
+  count of 5, and every later step leaves a class 9 print (0x4cb930: bloodtex0's shoe prints, the
+  64x64 cells at (0, 384) and (64, 384), turned along the walk, left and right in turn, ten
+  seconds and then 0.01 alpha a tick). `blood_footstep` from move.c's footstep frames; the prints
+  fade one a step, the splash of the step into the pool (class 6) is not drawn.
+
+Not ported: the pools' distance fade (0x4cde00) and the blood the enemies' own attacks leave.
+
+## Title screens
+
+The PC's title (Event/title.c, as its asserts name it; 0x4972a0 loads data/pic/etc/start00.tex
+and start01.tex, the latter the older menu's sprite sheet the Director's Cut no longer draws) is a
+row of texts in the small font (0x47f350) over start00, drawn as one picture over the whole 4:3
+screen (0x496dd0). `titlemenu.c` draws them on the top screen and lists them on the touch screen:
+
+* Menu (0x4976b0 / 0x496280): LOAD and CONTINUE when there are saves (0x4959d0), NEW GAME,
+  OPTIONS, MOVIES, EXIT (option_msg_e.mes 238..243), centred at x 256 from y 284 in steps of 22,
+  each at its own place (with no saves the list starts at NEW GAME's place), grey 0x7f at alpha
+  0x70 in PS2 units and the chosen one again at full alpha a pixel up and left. CONTINUE is chosen
+  when there are saves, NEW GAME otherwise. LOAD opens the file list, CONTINUE loads the file
+  played longest (the port's saves carry no date), EXIT leaves the game. The touch list adds the
+  port's room viewer at the end.
+* NEW GAME goes to the scenarios (0x4979c0 / 0x4968c0): MAIN SCENARIO: Letter From Silent Heaven and
+  SUB SCENARIO: Born From A Wish (252 / 253) at x 234, y 324 and 350, the Director's Cut way into
+  Born From a Wish. Then the levels (0x497bb0, 0x497fc0): ACTION LEVEL (246) at x 128 with HARD,
+  NORMAL, EASY, BEGINNER (248..251) and RIDDLE LEVEL (247) at x 384 with HARD, NORMAL, EASY, from y
+  290 and 322, the column being chosen bright, NORMAL first (0x496070, 0x495f60); the main scenario
+  takes the action level and then the riddle level, Born From a Wish only the action level, in the
+  middle (0x496490). B goes back a screen; a minute without a key on a level screen goes back to
+  the menu (0x495fc0). Starting plays SE 15002 while the title fades out, as before.
+* MOVIES: the Movie Menu (210), the PC's list (214..237, files from the exe's movie table) of the
+  movies the pack has (`movie_exists`), played with movie_play.
+
+`ui.py` writes start00 as `pack/ui/start00.t3x` (RGB565, 512x256). Not ported: the menu's
+pulsing glow sprite (0x4960d0 from start01) and the minute's attract mode from the menu.
+
+## Game over
+
+The PC's game over is event 0xd (0x498780, after James' death animation): the sound stops
+(command 0x3f4) and SE 60143 plays, voice.afs 143; on black, 0x496ee0 shows data/pic/etc/
+gameover1.tex's "GAME OVER" (160x48, centred): a second of nothing, up by 2 a tick to 0x60, two
+seconds, down by 4 a tick, with three copies (the picture's rows 0, 48 and 96) moving up and down by
+rand() % 30 - 15 lines every frame round a steady one; then the screen fades and 0x401fc0 goes to
+the title. `gameover.c` does the same between `combat_dead()` and `enter_title()`. `ui.py` writes
+the picture's top left quarter as `pack/ui/gameover.t3x` and copies voice 143 (demos.py's
+`copy_voice`).
 
 ## Text on the top screen
 
