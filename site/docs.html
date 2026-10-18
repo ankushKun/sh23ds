@@ -183,12 +183,12 @@ cd sh23ds
         </section>
 <section class="card" id="headless">
           <h2>Headless runs <a class="anchor" href="#headless" aria-label="Link to this section">#</a></h2>
-          <p><code>tools/lr3ds</code> is a small libretro frontend for macOS that runs a build in Azahar’s libretro core without a window, with the software renderer, the New 3DS model, scripted input and screenshots at chosen frames. Its SD card is <code>.lr3ds/save/Azahar/sdmc/</code>, so the pack goes in <code>.lr3ds/save/Azahar/sdmc/3ds/sh23ds/</code>.</p>
+          <p><code>tools/lr3ds</code> is a small libretro frontend for macOS that runs a build in Azahar’s libretro core without a window, with the software renderer, the New 3DS model (<code>LR3DS_MODEL="Old 3DS"</code> for the original), scripted input and screenshots at chosen frames. Its SD card is <code>.lr3ds/save/Azahar/sdmc/</code>, so the pack goes in <code>.lr3ds/save/Azahar/sdmc/3ds/sh23ds/</code>.</p>
           <div class="code"><pre><code>clang -O2 -Wall -o tools/lr3ds/lr3ds tools/lr3ds/lr3ds.c -framework OpenGL
 export AZAHAR_CORE=/path/to/azahar_libretro.dylib
 tools/lr3ds/run.sh 600 --frames 600 --shot 590:/tmp/title.bmp
 tools/lr3ds/smoke.sh</code></pre></div>
-          <p><code>run.sh</code> takes a timeout in seconds and then any of these options. <code>smoke.sh</code> runs eleven scripted scenes, from the title screen to a save point, and writes a contact sheet to <code>.lr3ds/smoke/</code>. Run it before every pull request.</p>
+          <p><code>run.sh</code> takes a timeout in seconds and then any of these options. <code>smoke.sh</code> runs twelve scripted scenes, from the title screen to the pause menu, and writes a contact sheet to <code>.lr3ds/smoke/</code>. Run it before every pull request.</p>
           <div class="table-wrap">
             <table class="table">
               <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
