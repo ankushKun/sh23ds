@@ -92,7 +92,10 @@ static void refill_thread(void* arg)
 {
 	(void)arg;
 	for (;;) {
-		LightEvent_Wait(&s_wake);
+		// woken by the main loop each frame, and every 20 ms on its own: a frame that takes longer
+		// than the four buffers last (a scene or an area loading, seconds on a console's SD card)
+		// used to leave the DSP with nothing to play until it ended
+		LightEvent_WaitTimeout(&s_wake, 20 * 1000000LL);
 		if (s_quit)
 			break;
 		LightLock_Lock(&s_lock);
