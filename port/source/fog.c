@@ -6,6 +6,7 @@
 #include <tex3ds.h>
 #include "fog_shbin.h"
 #include "quality.h"
+#include "perf.h"
 
 // The PC fog particle layer, ported from the Director's Cut exe (static analysis; the PS2 beta's
 // Fog/fog.c gives the names and the FOG_WORK layout, which the PC keeps at 0x1f63b20..0x1f7d2cc).
@@ -899,6 +900,43 @@ static void move_all(void)
 
 // ---------------------------------------------------------------- places
 
+// The .fcl files are small (50 KB together), so fog_init reads them all: a mode change in the
+// first frame after a warp then costs no SD card read (22 ms in Azahar, more on a console).
+static const char* const FCL_NAMES[] = { "caGB", "cbGB", "ccGB", "cdGB", "obGB", "park", "ccnw", "psGB",
+                                         "rrGB", "maGB" };
+#define FCL_COUNT (int)(sizeof FCL_NAMES / sizeof FCL_NAMES[0])
+static struct { u8* data; long size; } s_fcl[FCL_COUNT];
+
+static void fcl_read_all(void)
+{
+	for (int i = 0; i < FCL_COUNT; i++) {
+		char path[160];
+		snprintf(path, sizeof path, "%s/fog/%s.fcl", F.pack, FCL_NAMES[i]);
+		FILE* f = fopen(path, "rb");
+		if (!f)
+			continue;
+		fseek(f, 0, SEEK_END);
+		long n = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		u8* d = n > 0 ? malloc(n) : NULL;
+		if (d && fread(d, 1, n, f) == (size_t)n) {
+			s_fcl[i].data = d;
+			s_fcl[i].size = n;
+		} else {
+			free(d);
+		}
+		fclose(f);
+	}
+}
+
+static void fcl_free_all(void)
+{
+	for (int i = 0; i < FCL_COUNT; i++) {
+		free(s_fcl[i].data);
+		s_fcl[i].data = NULL;
+	}
+}
+
 static bool load_fcl(const char* name)
 {
 	free(F.fcl);
@@ -906,22 +944,16 @@ static bool load_fcl(const char* name)
 	F.areas = NULL;
 	F.envs = NULL;
 	F.nareas = F.nenvs = 0;
-	char path[160];
-	snprintf(path, sizeof path, "%s/fog/%s.fcl", F.pack, name);
-	FILE* f = fopen(path, "rb");
-	if (!f)
+	int k = 0;
+	while (k < FCL_COUNT && strcmp(FCL_NAMES[k], name))
+		k++;
+	if (k == FCL_COUNT || !s_fcl[k].data || s_fcl[k].size < 12)
 		return false;
-	fseek(f, 0, SEEK_END);
-	long n = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	F.fcl = malloc(n);
-	if (!F.fcl || fread(F.fcl, 1, n, f) != (size_t)n) {
-		fclose(f);
-		free(F.fcl);
-		F.fcl = NULL;
+	long n = s_fcl[k].size;
+	F.fcl = malloc(n);               // the copy is the mode's own (freed on the next change)
+	if (!F.fcl)
 		return false;
-	}
-	fclose(f);
+	memcpy(F.fcl, s_fcl[k].data, n);
 	// FUN_004838a0: walls (12 and 24 bytes), objects (16 bytes each, two kinds), areas (10 bytes),
 	// then the FOG_ENV_DATA records, 4-byte aligned
 	const u16* h = (const u16*)F.fcl;
@@ -993,7 +1025,10 @@ static void enter_mode(int mode)
 	else if (mode >= 0x66 && mode <= 0x68) name = "psGB";
 	else if (mode >= 0x69 && mode <= 0x6e) name = "rrGB";
 	else if (mode >= 0x6f && mode <= 0x76) name = "maGB";
-	if (!name || !load_fcl(name)) {
+	u64 t0 = svcGetSystemTick();
+	bool ok = name && load_fcl(name);
+	perf_part("fog_fcl", t0);
+	if (!ok) {
 		free(F.fcl);
 		F.fcl = NULL;
 		F.global = 0xff;
@@ -1006,8 +1041,10 @@ static void enter_mode(int mode)
 		set_partnum(0);
 	if (mode >= 0x6f)
 		fog_set_color(0x80, 0x80, 0x80, 0x80);
+	t0 = svcGetSystemTick();
 	if (mode != 0x65)
 		gather_objects();
+	perf_part("fog_obj", t0);
 	if (mode > 0x68)
 		F.flag |= FL_SKIP;
 	if (mode >= 0x6f)
@@ -1449,6 +1486,7 @@ bool fog_init(const char* pack_dir)
 	F.ibuf = linearAlloc(((FOG_MAX + BLOW_MAX) * 12 + 6) * sizeof(u16));
 	F.blow_room = -1;
 	blow_load();
+	fcl_read_all();
 	F.ready = F.vbuf && F.ibuf;
 	return F.ready;
 }
@@ -1463,6 +1501,7 @@ void fog_exit(void)
 	linearFree(F.vbuf);
 	linearFree(F.ibuf);
 	free(F.fcl);
+	fcl_free_all();
 	F.ready = false;
 }
 

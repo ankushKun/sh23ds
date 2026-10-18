@@ -1,4 +1,5 @@
 #include "room.h"
+#include "sdsim.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -149,7 +150,9 @@ static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const R
 		FILE* f = fopen(path, "rb");
 		if (!f)
 			return NULL;
+		sdsim_open();
 		t3x = Tex3DS_TextureImportStdio(f, &e->tex, NULL, false);
+		sdsim_read((u32)ftell(f));
 		fclose(f);
 	}
 	if (!t3x)
@@ -194,6 +197,8 @@ bool room_load(Room* room, const char* pack, const char* area, const char* name,
 		return false;
 	}
 	fclose(f);
+	sdsim_open();
+	sdsim_read((u32)size);
 	return room_load_mem(room, pack, area, name, data, size, NULL, 0, err, errlen);
 }
 

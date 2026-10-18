@@ -1,4 +1,5 @@
 #include "audio.h"
+#include "sdsim.h"
 #include "profile.h"
 #include <math.h>
 #include <stdio.h>
@@ -284,6 +285,7 @@ static bool aix_fill(Stream* s, bool first)
 		}
 		if (fread(l->buf, 1, payload, s->f) != payload)
 			return false;
+		sdsim_read(payload);
 		l->len = payload;
 		l->pos = 0;
 		if (!l->channels) {
@@ -304,6 +306,7 @@ static bool read_frame_group(Stream* s, u8 out[MAX_LAYERS][18 * MAX_CH])
 		u32 frame = s->sample_pos / 32;
 		if (fseek(s->f, s->data_start + frame * need, SEEK_SET))
 			return false;
+		sdsim_read(need);
 		return fread(out[0], 1, need, s->f) == need;
 	}
 	while (s->layer[0].pos + 18 * s->layer[0].channels > s->layer[0].len)
@@ -467,6 +470,7 @@ static bool play_unlocked(Chan* c, const char* path, float volume, float layer0)
 	if (!s_ok)
 		return false;
 	Stream* s = &c->s;
+	sdsim_open();
 	s->f = fopen(path, "rb");
 	if (!s->f) {
 		snprintf(s_status, sizeof s_status, "missing %s", path);

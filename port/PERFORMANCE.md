@@ -136,11 +136,11 @@ What changed:
   and `areaidx.c` reads that one file (falling back to the single files for rooms it does not list).
 - **Door prefetch.** When a door's fade starts, the destination room's `.s3m`, `.s3l`, textures and
   footstep table go to the tile reader thread (`warp_prefetch`), and the black screen waits for them
-  (frames keep coming, music keeps playing, at most 3 seconds) before `load_current` takes them with
+  (frames keep coming, music keeps playing, at most 6 seconds) before `load_current` takes them with
   `stream_take_named` and does only the GPU side.
 - **Tiles after the warp.** In the town the touching tiles were loaded inside the warp frame (1.1 s
   for cb03). After a door they now come in through the reader thread while the fade stays black
-  until they are resident (`s_arrival`, at most 3 seconds).
+  until they are resident (`s_arrival`, at most 6 seconds).
 
 - **Stage files, enemy models and the area's index.** A door into another stage or area now also
   hands the reader thread the stage's event files (`s<NN>.s3e`, `.msg`), the `.s3c`, `.s3a` and `.kg1`
@@ -192,6 +192,14 @@ twice. A tile that left the wanted set while it was being read is thrown away. O
 Dropped tiles go to a short list and are freed right after the next `C3D_FrameBegin`, which has
 waited for the GPU to finish the frame that may still have drawn them; the texture cache trim waits
 with them for the same reason.
+
+Two rooms of the town's list are not blocks of its grid: cb90 (a quad 500 units across) and cb99
+(a dark sphere 5000 across), both centred on the world origin. Their boxes touch the four blocks
+round the origin, so they used to stream in as neighbours: at cb03 cb99 drew a black wedge over the
+street, and the two took places from real blocks (cb12 was left out there). `room_is_block` now
+leaves out any room no wider than 6000 units that is centred on the origin; small real blocks such
+as cb66 lie far from it. The neighbour culling (`room_visible`) also no longer tests a box with
+corners behind the eye against the side planes, where their x and y flip sign.
 
 ## Memory
 
@@ -294,8 +302,9 @@ The same walk on the final build (rebased on batch 17 and the map part switches)
 picture: citro3d 2.99 ms on the New 3DS model and 2.41 on the Old, and one slow frame each, the
 first (37 and 53 ms).
 
-The first frame after a warp is still slow because the fog loads its area's `.fcl` there (24 to 33
-ms); the screen is black for it, and it only delays the fade-in by that much.
+That first frame was the fog reading its area's `.fcl` (22 ms of `fog_fcl` in the perflog parts,
+24 to 33 ms in all). The ten `.fcl` files are 50 KB together, so `fog_init` now reads them all at
+start-up and a mode change only copies one; the walk from cb03 then has no slow frame at all.
 
 ### What changed
 
@@ -361,13 +370,46 @@ vertical blank, which is the slack), `r_map` (the room), `r_chr` (James, enemies
 town the camera (0.9 ms) and the fog (1.3 ms) are the biggest parts after citro3d's own command
 building.
 
+## Slow SD cards
+
+Azahar reads the host's disk, far faster than a console reads its SD card (roughly 5 to 10 MB/s,
+less with many small files). `sdthrottle KB/s [open ms]` in `debug.txt` (`source/sdsim.c`) makes the
+readers sleep for the time a console would take on top of what Azahar charges: the tile and file
+reader (`stream.c`), the sound effect reader, the music thread, and the main loop's own fallback
+reads (`chr.c`, `room.c`). The open time stands for the directory lookup of each file and defaults
+to 8 ms. Every warp now logs how long the black screen waited for the door's read ahead and whether
+it all came in (`warp` lines), and when the arrival's tiles were in (`arrival` lines); a tile or a
+stage model logs how far from James it was when it was set up.
+
+At 5000 KB/s and 8 ms a file:
+
+- **Town walk** (cb03 to cb28, New 3DS model): no slow frame. A tile's read on the reader thread
+  went from 400 to 700 ms, which it has time for: tiles still joined 4400 to 4700 units away, in the
+  fog, and the stage models were set up 14000 to 16800 away, just as they come into range.
+- **Door warps** (`memtest 1` from er05 through ten rooms of different areas): every door's read
+  ahead was in before the fade ended, after 0.9 to 2.2 s of black (the cap was 3 s then), and the town's
+  neighbouring tiles were in 0.5 s after that. The models placed near the arrival loaded with the
+  room. The load frames themselves (behind the black) are 50 to 125 ms.
+
+At 2000 KB/s and 15 ms a file, a slow card's worst case, the black screen's caps (3 s for the read
+ahead, 3 s more for the tiles) were too short: ps189's read ahead was not all in after 3 s, so its
+load read the rest itself behind the black, and at cb03 the fade began 3 s after the room loaded
+with the last tile still on its way; it joined half a second later, 2100 units from James, while
+the screen faded in. Both caps are now 6 s (`READ_AHEAD_MAX`, `ARRIVAL_MAX`). With them every door
+of the same sample was in before the fade ended: the read ahead after 0.9 to 3.3 s, the cb03 tiles
+3.3 s after the load. The load frames behind the black stay at 55 to 140 ms. `memtest` also waits
+now for each door to finish before the next, so a slow card does not stack its warps.
+
+Nothing in the town walk or the doors showed pop-in at either speed once the caps were raised, so
+nothing had to be read ahead earlier or loaded smaller. A real card's speed with small files is the
+number to check on hardware, since it sets the open time.
+
 ## Not done
 
 - Nothing here has been run on a console yet. Worth checking there: that the audio line says
   core 2, the perf.txt numbers for the town walk, and how long the tile reads take on a real SD
   card (the reader thread has 7000 units of walking, a few seconds, to finish one).
 - The warp autotest calls `apply_warp` without a door's read ahead, so its load frames read
-  everything from the SD card (its measuring window starts after them), and the fog reads its
-  area's `.fcl` in the first frame after any warp (24 to 33 ms, while the screen is still black).
+  everything from the SD card (its measuring window starts after them).
 - Azahar does not time the GPU. The town at 60 fps and the fog-heavy rooms are where a console
   would show it first; `quality.h` has the knobs to turn down.

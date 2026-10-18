@@ -24,6 +24,8 @@
 #include "prog.h"
 #include "sfx.h"
 #include "stream.h"
+#include "bgm.h"
+#include "perf.h"
 
 #define PI 3.14159265f
 #define MAX_LIST 512
@@ -3973,7 +3975,14 @@ static void oni_update(Enemy* e, const EnPlayer* p, const EnPlayer* james, float
 		reset_damage(e);
 		return;
 	}
-	if (e->ctrl == 4) {
+	// Enhanced Edition HospitalChaseFix (Patches/HospitalChase.cpp, zlib licence): once James is past
+	// x 33185 in the otherworld hallway (room 0x5b), the chase's Pyramid Head goes to control 5,
+	// which does nothing (0x4bb600); EE's note calls it the fix of the elevator stabbing animation
+	if (e->ctrl == 4 && james->x > 33185.0f && bgm_room_id(ev_glb_crd(), james->x, james->z) == 0x5b)
+		e->ctrl = 5;
+	if (e->ctrl == 5) {
+		// control 5: no steering
+	} else if (e->ctrl == 4) {
 		oni_chase_event(e, p, james, dt);
 	} else {
 		if (e->timer2 > 0) e->timer2 -= (int)(dt * 60.0f + 0.5f);
@@ -5519,6 +5528,8 @@ static bool load_model(int m)
 		return false;
 	}
 	s_mdl[m].loaded = true;
+	if (!s_load_now)
+		perf_event("enemy", "%s set up during play", MODEL_NAME[m]);
 	return true;
 }
 

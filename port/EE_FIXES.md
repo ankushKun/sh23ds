@@ -39,7 +39,7 @@ coordinates.
 | Option | EE file | Status | Where / why |
 | --- | --- | --- | --- |
 | FixTownGateEvents (messages) | Patches/Langs.cpp (PatchTownGateEvents) | ported | `events.c` `apply_ee_fixes()`: once flag 251 is set the PC calls the Wood Side gate (stage 5 event 11) and the Heaven's Night back alley gate (stage 14 event 10) jammed with a broken lock, although James walked through both. They now show stage messages 0 and 78 without the jam sound |
-| FixTownGateEvents (lock model) | same, 0x596090 | left out | Hides the gate's lock through map-part visibility; the port has no map-part switching |
+| FixTownGateEvents (lock model) | same, 0x596090 | ported | `stageparts.c` stage 13: part 0x2e takes variant 0 where the PC sets 1 (the byte EE changes at 0x596090), the gate's lock model |
 | FixChainsawSpawn | Patches/PreventChainsawSpawn.cpp | ported | `prog.c` `prog_new_game`: the PC also set flag 12 (the chainsaw at the grave) on a first playthrough at beginner or easy action level (0x48b018); that branch is gone, so the chainsaw is a New Game+ reward |
 | ChangeClosetSpawn | Patches/ChangeClosetSpawn.cpp | ported | `prog_apart.c` `s09_first_meet_trihead`: after the room 307 scene James stands inside the closet (z -101525, yaw 0.3) so the key catches the eye. EE's FOV reset is not needed because `gamecam` takes the FOV from the roads every frame |
 | FireEscapeKeyFix | Patches/FireEscapeKey.cpp | ported (data) | `events.c`: clears the needs-light bit of the fire escape key (stage 9 event 6) and the key behind the bars (stage 8 event 0). No visible effect yet, because `trigger_pass` does not test that bit |
@@ -47,20 +47,21 @@ coordinates.
 | WoodsideRoom205Fix | WoodsideMannequinState.cpp, RotatingMannequinGlitch.cpp | already covered | The PC bug is stale state on a resident mannequin; the port spawns it fresh on every room entry and has no type-6 "lies in wait" state |
 | FixCreatureVehicleSpawn | CreatureVehicleSpawn.cpp | already covered | The PC sets a stale bit in the wait-under-car state (0x4c5740); the port's `SCU_WAITCAR` never sets it |
 | MariaSpawnFix | MariaSpawnFix.cpp | already covered | The PC reused Maria's saved position (0x934c00); `maria.c` places her from the appear table or at James' side |
-| ClosetCutsceneFix | ClosetCutscene.cpp | left out | Bar blur, noise layer and flashlight in the closet scene; `demo.c` draws no blur or noise overlay |
+| ClosetCutsceneFix | ClosetCutscene.cpp | left out | It darkens and blurs the closet bars through the PC's blur object (the port has no blur pass) and turns the flashlight off while the scene's position word (read at 0x4a005c) is -22256.6, which the port's scene player does not keep |
 | ClosetCutsceneBonusAudio, ClosetRoomEnhanced, DogRoomEnhanced, MariaCutsceneReplacement, CockroachesReplacement, EddieLauraCutscene | the files of the same names | left out | Need EE's own sounds, models or extended scene data |
-| FixFinalBossRoom | FinalBossRoomFix.cpp | left out | Draw cutoffs in the final boss fight, which the port does not have |
-| HospitalChaseFix | HospitalChase.cpp | left out | The elevator chase (0x209) is not ported |
-| TeddyBearLookFix | TeddyBearLookFix.cpp | left out | No head look-at and no Model_List props in the port |
+| FixFinalBossRoom | FinalBossRoomFix.cpp | already covered | The PC stops drawing the lower walkway, floor and black box above a height (-8000, -4000, -12000) and EE moves the cutoffs out of the way while James is below -14600; the port draws the whole room with no such cutoffs |
+| HospitalChaseFix | HospitalChase.cpp | ported | `enemy.c` `oni_update`: past x 33185 in the otherworld hallway (room 0x5b) the chase's Pyramid Head goes to control 5 (0x4bb600, which does nothing), as EE writes to the first enemy slot, so its elevator stabbing animation is not steered |
+| TeddyBearLookFix | TeddyBearLookFix.cpp | already covered | EE stops James looking at the locker room teddy bear (kind 0x727) once he has the bent needle; the port's look targets (`combat_look_target`) are enemies, Maria and items lying about, never stage models |
 | PistonRoomFix | PistonRoom.cpp | left out | The labyrinth pistons are not animated |
-| PuzzleAlignmentFixes | PuzzleAlignmentFixes.cpp | left out | Puzzle overlay sprites (coins, gravestone boards) are not drawn |
-| OldManCoinFix | OldManCoinFix.cpp | left out | Visibility of a Model_List coin; the port draws no props (the pickup already needs flag 95) |
+| PuzzleAlignmentFixes | PuzzleAlignmentFixes.cpp | ported | `prog_overlay.c`: the gravestone boards (still and memo 54) use EE's matched texture rectangles and, turned, EE's corners; the coins in the room 105 cabinet use each coin's whole cell and one rectangle per hole |
+| OldManCoinFix | OldManCoinFix.cpp | ported | `stagemdl.c` `read_list`: the Old Man Coin in the garbage chute (stage 13, kind 0x71f) needs flag 0x5f (the canned juice thrown down) to show, as its pickup already does |
 | RowboatAnimationFix, RowboatSpawnFix (with the Great Knife boat speed) | RowboatAnimation.cpp, RowboatSpawn.cpp, RowboatFix.cpp | left out | No boat ride yet (`s38_embark_boat` skips it) |
-| PyramidHeadRotationFix (always on) | PyramidHeadRotationFix.cpp | left out | `s44_trihead_dead` does not create the two bodies yet; when it does, give them rotation y -1.75 and 2.9 |
-| PrisonerTimer, HoldDamage, WaterMoveSpeedFix | the files of the same names | left out | The prisoner footsteps (0x4ae0f0), hold attacks and the in-water walk speed are not ported; port logic is time based, so the 60 fps parts will not be needed |
+| PyramidHeadRotationFix (always on) | PyramidHeadRotationFix.cpp | already covered | The PC's `s44_trihead_dead` creates the two bodies with no rotation and EE gives them -1.75 and 2.9; the port places them from their Enemy_List rows (stage 44 ids 15 and 16, flag 483) with the rows' own facing |
+| PrisonerTimer, WaterMoveSpeedFix | the files of the same names | left out | The prisoner footsteps (0x4ae0f0) and the in-water walk speed are not ported; port logic is time based, so the 60 fps parts will not be needed |
+| HoldDamage | HoldDamage.cpp | already covered | `combat.c` `combat_hold_damage` already drains by the attack power times dt times 30, the scaling EE adds |
 | GameLoadFix, QuickSaveTweaks, QuickSaveCancelFix, GameLoadFlashFix | SaveGame.cpp, QuickLoadGame.cpp, QuickSaveTweaks.cpp, QuickSaveCancelFix.cpp | not applicable | Quick save and Game Results files; the port saves only at save points and loads Maria's model on demand |
 | SpeedrunMode | (Settings) | left out | Off by default in EE |
-| IncreaseBlood | BloodSize.cpp | left out | No blood pools |
+| IncreaseBlood | BloodSize.cpp | ported (pool size) | `blood.c` `POOL_KEY`: the third key's size (0x8956e4) is 1 instead of 0.8, so a dead enemy's pools grow to their original size. EE's position tweaks for room 205 and the flesh room edit the PC's room effect tables (0x958f64 and the code at 0x4ce133), which the port does not have |
 
 ### Audio
 
@@ -71,10 +72,11 @@ coordinates.
 | MenuSoundsFix | MenuSounds.cpp | ported | `main.c` `pause_update`: changing a value (brightness, controls, run) plays the cursor sound; moves, confirm and cancel already had sounds |
 | FixInventoryBGM | PatchInventoryBGM.cpp | already covered | The PC refreshes its music areas (0x5187e0) only in some menu states; `bgm_update` recomputes them every frame |
 | FlashlightToggleSFX | PlayWavSound.cpp | already covered | X plays SE 18001/18000 from the game's own data (EE ships WAVs) |
-| SpecificSoundLoopFix | SpecificSoundLoopFix.cpp | left out | Chainsaw (0x54a5b2) and moth loops; the port has neither |
+| SpecificSoundLoopFix | SpecificSoundLoopFix.cpp | already covered | The PC's wrong branch at 0x54a5b2 left the chainsaw sound running and its moth sound restarted after the item screen; the port stops the engine sounds (11044, 11045) when the saw is lowered (`combat.c`) and gives the moths no sound loop |
 | FixLyingFigureFootsteps | PlayWavSound.cpp | left out | Needs EE's `machi.wav`; enemies are frozen during scenes in the port, so the scene has no steps to fix |
 | AudioClipDetection | Wrappers/dsound | left out | Relies on DirectSound's volume ramp; on ndsp it would need a per-frame fade in the DSP callback |
-| ChainsawSoundFix, LabyrinthElevatorVolumeFix | the files of the same names | left out | No chainsaw; the labyrinth elevator stage code (0x582f30) is not ported (when it is, use dt and drop the 0.8 volume factor) |
+| ChainsawSoundFix | ChainsawSoundFix.cpp | already covered (hit) / left out (idle loop) | The hit sound plays once per enemy per swing in the port (`combat.c` `s_hit`), which is EE's first-frame-only rule. The rest fades in and trims the 48 kHz idle loop (0x1642) and the crank (0x14e8); the port's chainsaw has no idle loop, only the rev (11044) and the running sound (11045) |
+| LabyrinthElevatorVolumeFix | LabyrinthElevatorVolumeFix.cpp | left out | The labyrinth elevator stage code (0x582f30) is not ported (when it is, use dt and drop the 0.8 volume factor) |
 | MusicBoxVolume | MusicBoxVolume.cpp | left out | Needs EE's re-authored `hotel/bgm_112.aix` |
 | PlayUnusedAudio, VHSAudioFix | PlayUnusedAudio.cpp, VHSAudio.cpp | left out | Off by default in EE; VHSAudioFix needs EE's FMV pack |
 | EnableMasterVolume | dsound | not applicable | The 3DS has a hardware volume slider |
@@ -88,7 +90,7 @@ coordinates.
 | PS2CameraSpeed | WidescreenFixesPack | ported, option | `sh2cam.c`: the PC limits the watch pitch speed to 1.106 indoors and 1.555 outdoors (0x51bb81/0x51bb95) and the vertical approach to accel_y x abs(dy) (0x51c080), which makes the camera float and bounce. The port uses 4.0 and 3 x abs(dy) as WSFix does; `ps2camera 0` restores the PC |
 | FastTransitions | WidescreenFixesPack | already covered | Forces 0.5 s fades (PC default 1.2 s at 0x4ee620); the port's fades are already 0.25 s out and 0.33 s in |
 | EnableToggleSprint | InputTweaks.cpp | already covered | Pause menu "Run: toggle B" |
-| RestoreSearchCamMovement | ControllerTweaks.cpp | left out | The port has no search camera yet; the New 3DS C-stick would drive it |
+| RestoreSearchCamMovement | ControllerTweaks.cpp | left out | It puts the search view on the right stick; on the 3DS the C-Stick already carries the quick turn, strafing and the map (`controls.c`), so this is for the controls work to decide |
 | DPadMovementFix, Southpaw, GamepadControlsFix, ReplaceButtonText, RestoreVibration, PadNumber, RemoveForceFeedbackFilter | ControllerTweaks.cpp, dinput8 | not applicable | PC gamepad mapping and rumble |
 
 ### HUD, menus, movies and scenes
@@ -106,7 +108,7 @@ coordinates.
 | RestoreBrightnessSelector | | already covered | Pause menu and D-pad, levels 1..7 |
 | FmvSubtitlesSyncFix, FmvSubtitlesNoiseFix | FmvSubtitles.cpp | left out | The port draws no movie subtitles (if added, time them in the movie's 29.97 fps frames) |
 | FixMemoFading, MemoScreenFix | MemoFix.cpp | left out | The PC fades only the bottom layer of a memo (0x498cbd); the port's memo list is text |
-| FixElevatorCursorColor | ElevatorCursorColorFix.cpp | left out | Puzzle overlay sprites are not drawn |
+| FixElevatorCursorColor | ElevatorCursorColorFix.cpp | already covered | The hotel employee elevator's buttons are picked in a text panel (`prog_hotel.c` `s41_elevator`), so there is no PC cursor sprite whose colour could go wrong |
 | FixDrawingTextLine | d3d8 wrapper | not applicable | Thickens a 1-pixel line in the hospital diary at high PC resolutions; the port shows memo text, not the PC page |
 | FixHangOnEsc, PauseScreenFix, FixSaveBGImage, FixFMVResetIssue | HangOnEsc.cpp, PauseScreen.cpp, SaveBGImage.cpp, d3d8 wrapper | not applicable | Screen grabs and D3D texture pools; the port renders the game behind its pause and has a text save prompt |
 | DisableShadowCutscene | DisableShadowCutscene.cpp | not applicable | The port draws no shadows in cutscenes |
@@ -142,9 +144,11 @@ coordinates.
 | HotelWaterFix, WaterEnhancedRender, WaterDrawOrderFix | HotelWater.cpp, WaterEnhancement.cpp, WaterDrawOrderFix.cpp | left out | The PC water renderer (0x4d....) is not ported |
 | RainParticles | Patches/RainParticles.cpp | left out | No rain |
 | FlashlightReflection | Patches/FlashlightReflection.cpp | left out | Needs EE's reflection assets and a reflection pass |
-| PS2StyleNoiseFilter, IncreaseNoiseEffectRes, FmvSubtitlesNoiseFix | PS2NoiseFilter.cpp | left out | No film grain filter in the port |
+| PS2StyleNoiseFilter | PS2NoiseFilter.cpp | ported | `noise.c` `noise_set`: with Noise Style on PS2 (the default; `optmenu.c` "ps2noise") the grey byte is divided by 7.4, 0x22 replaces 0xff past the ramp's knee and the alpha base is 0x1d7, as EE patches 0x47cb8a, 0x47cbaf and 0x47834d |
+| IncreaseNoiseEffectRes | PS2NoiseFilter.cpp | already covered | The port's noise texture is drawn one texel per pixel over the 400 x 240 screen |
+| FmvSubtitlesNoiseFix | FmvSubtitles.cpp | left out | The port draws no movie subtitles |
 | JamesTextureFix | Patches/JamesTexture.cpp | left out | Needs EE's replacement jacket texture 9980 |
-| MothDrawOrderFix | Patches/MothDrawOrder.cpp | left out | No moths |
+| MothDrawOrderFix | Patches/MothDrawOrder.cpp | already covered | The PC sorts the moths into its translucent depth list with a wrong index; the port draws the final boss's moths as opaque models in its own pass (`enemy.c` `moths_draw`) |
 | UseBestGraphics | (dllmain) | already covered | The port has no graphics options; everything it draws is always on |
 | FixMissingWallChunks, WhiteShaderFix | d3d8 wrapper | not applicable | NVIDIA / Direct3D 9 driver issues |
 
@@ -165,7 +169,7 @@ coordinates.
 | ImproveStorageSupport | 2TBHardDriveFix.cpp | not applicable | Windows free-space check |
 | AutoUpdateModule, UseCustomModFolder, CheckForAdminAccess, CheckCompatibilityMode, CreateLocalFix, DisableSafeMode, DisableScreenSaver, NoCDPatch, SteamCrashFix, DisableGameUX, SingleCoreAffinityLegacy, LoadPlugins, LoadFromScriptsOnly, LoadD3d8FromScriptsFolder, LoadModulesFromMemory, DisableLogging, EnableDebugOverlay, EnableInfoOverlay, EnableScreenshots, HookWndProc, HookDirectInput, DelayedStart, ValidateBinary, ReplaceWindowTitle, LaunchAsAdmin | dllmain.cpp and the files of the same names | not applicable | Launcher, Windows and module housekeeping |
 | PatchBinary (always on) | PatchBinary.cpp | not applicable | Text spacing of the PC control options menu and a DC call fix; the health cross animation reversal is listed with the HUD options |
-| MapMeshToggle | MapMeshToggle.cpp | left out | Shows or hides map parts by game flag (hospital garden, room 312, hospital 3F, town lake); the port has no map-part visibility switching yet |
+| MapMeshToggle | MapMeshToggle.cpp | ported | `stageparts.c`: the motorhome hint before the apartments (stage 2), Blue Creek 1F after meeting Eddie (10), the hospital garden while James has the blue gem (22), the otherworld lobby in the third chase scene (23), the 3F ring door (25), the lake after the blue gem and in the Rebirth epilogue (38) and the room 312 hint (42). While the room 312 hint shows, EE also writes flag 0x2d6 into the low half of that room's event 19 flag word, and `events.c` `ev_set_flag_lo` does the same |
 | MapTranscription (always on) | MapTranscription.cpp | already covered | 60 fps timing of the map marker animation; `map.c` is time based |
 
 ## Options for the 3DS player

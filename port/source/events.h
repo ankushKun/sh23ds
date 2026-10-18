@@ -69,6 +69,9 @@ bool ev_info_of(int stage, int i, EvInfo* out);
 bool ev_flag(int n);
 void ev_flag_set(int n, bool v);
 bool ev_have_item(int item);
+// The low half of an event's flag word (its second flag test), for stage code that changes it
+// (Enhanced Edition MapMeshToggle: room 312).
+void ev_set_flag_lo(int index, u16 lo);
 int ev_item_count(int item);
 // Where the stage's items still lying about are (for James' head turning to them), up to max.
 int ev_items_lying(float (*out)[3], int max);

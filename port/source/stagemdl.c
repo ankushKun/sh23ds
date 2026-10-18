@@ -121,6 +121,11 @@ static void read_list(void)
 		           &l->pos[0], &l->pos[1], &l->pos[2], &l->rot[0], &l->rot[1], &l->rot[2]) != 12)
 			continue;
 		l->stage = (s16)st, l->kind = (u16)kind, l->flag_off = (u16)off, l->flag_on = (u16)on;
+		// Enhanced Edition OldManCoinFix (Patches/OldManCoinFix.cpp, zlib licence): the Old Man Coin
+		// in the garbage chute outside Wood Side (stage 13) shows only once James has thrown the
+		// canned juice down it (flag 0x5f), as its pickup already requires
+		if (st == 13 && kind == 0x71f && off == 0x76 && on == 0)
+			l->flag_on = 0x5f;
 		s_nall++;
 	}
 	fclose(f);
@@ -197,6 +202,8 @@ void stagemdl_turn(int kind, float rx, float ry, float rz)
 	s_turn[k].r[0] = rx, s_turn[k].r[1] = ry, s_turn[k].r[2] = rz;
 }
 
+static float s_dist;               // how far the place being loaded is from James (for the log)
+
 static bool load_model(Model* m)
 {
 	int loaded = 0, oldest = -1;
@@ -224,8 +231,8 @@ static bool load_model(Model* m)
 		return false;
 	}
 	m->chr = c;
-	perf_event("stagemdl", "%s/%s set up in %.1f ms, %d of %d loaded", m->folder, m->name,
-	           perf_ms(svcGetSystemTick() - t0), loaded + 1, s_nmodels);
+	perf_event("stagemdl", "%s/%s set up in %.1f ms, %d of %d loaded, %.0f away", m->folder, m->name,
+	           perf_ms(svcGetSystemTick() - t0), loaded + 1, s_nmodels, s_dist);
 	return true;
 }
 
@@ -364,6 +371,7 @@ void stagemdl_preload(int stage, float x, float z)
 		float d2;
 		if (m->chr || m->failed || !shown(p, x, z, &d2) || d2 > SM_RANGE * SM_RANGE)
 			continue;
+		s_dist = sqrtf(d2);
 		if (load_model(m))
 			m->used = s_frame;
 	}
@@ -407,6 +415,7 @@ void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 			if (st == -1 || (st >= 0 && stream_files_busy()))
 				continue;
 			loaded_one = true;
+			s_dist = sqrtf(d2);
 			if (!load_model(m))
 				continue;
 		}

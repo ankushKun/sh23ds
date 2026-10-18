@@ -1,4 +1,5 @@
 #include "stream.h"
+#include "sdsim.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,7 @@ static struct {
 
 static u8* read_file(const char* path, long* size)
 {
+	sdsim_open();
 	FILE* f = fopen(path, "rb");
 	if (!f)
 		return NULL;
@@ -44,6 +46,8 @@ static u8* read_file(const char* path, long* size)
 		d = NULL;
 	}
 	fclose(f);
+	if (d)
+		sdsim_read((u32)n);
 	*size = d ? n : 0;
 	return d;
 }

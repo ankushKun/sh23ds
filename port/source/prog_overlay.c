@@ -143,14 +143,19 @@ static void ov_coins(void)
 	const u8* t = table("coin", 68);
 	if (!t)
 		return;
-	const u8* uv = t + 60;
-	float w = t[66], h = t[67];
 	for (int hole = 0; hole < 5; hole++)
 		for (int c = 0; c < 3; c++) {
 			if (!p_flag(126 + 5 * c + hole))
 				continue;
-			float x = S16(t, 2 * (hole + 5 * c)) / 16.0f, y = S16(t, 2 * (hole + 5 * c) + 1) / 16.0f;
-			rect(x, y, x + w, y + h, uv[2 * c], uv[2 * c + 1], uv[2 * c] + w - 1, uv[2 * c + 1] + h - 1, 1.0f);
+			// Enhanced Edition PuzzleAlignmentFixes (CoinPuzzleFix, zlib licence): each coin's whole
+			// 64 texel cell, and one rectangle per hole that fills the slot, whichever coin is in it
+			// (1/16 units; the PC's own are the table's: a 48 x 64 texel cell from each coin's corner)
+			static const s16 EE_UV[3][4] = { { 0, 1055, 1024, 2075 }, { 0, 0, 1024, 1024 }, { -4, 2082, 1028, 3108 } };
+			static const s16 EE_XY[5][4] = { { -3160, -708, -2090, 362 }, { -1790, -682, -720, 388 },
+			                                 { -414, -650, 656, 420 }, { 962, -612, 2032, 458 },
+			                                 { 2348, -580, 3418, 490 } };
+			rect(EE_XY[hole][0] / 16.0f, EE_XY[hole][1] / 16.0f, EE_XY[hole][2] / 16.0f, EE_XY[hole][3] / 16.0f,
+			     EE_UV[c][0] / 16.0f, EE_UV[c][1] / 16.0f, EE_UV[c][2] / 16.0f, EE_UV[c][3] / 16.0f, 1.0f);
 			break;
 		}
 }
@@ -287,8 +292,19 @@ static void ov_tombstone(void)
 		float x[4], y[4];
 		for (int i = 0; i < 4; i++)
 			x[i] = cx[r][i] ? X1 : X0, y[i] = cy[r][i] ? Y1 : Y0;
-		quad(x, y, U16(t, 4 * b) / 16.0f, U16(t, 4 * b + 1) / 16.0f, U16(t, 4 * b + 2) / 16.0f,
-		     U16(t, 4 * b + 3) / 16.0f, 1.0f);
+		// Enhanced Edition PuzzleAlignmentFixes (Patches/PuzzleAlignmentFixes.cpp, GravestoneBoardsFix,
+		// zlib licence): the three boards' texture rectangles matched to each other, and the turned
+		// ones' corners moved to fill the stone's cavity (1/16 units as in the tables)
+		static const s16 EE_UV[3][4] = { { 2581, -5, 5126, 3320 }, { 3, 1, 2548, 3320 }, { 3, 3316, 2542, 6636 } };
+		static const s16 EE_XY[3][4][2] = {
+			{ { 1355, -2030 }, { 1355, 1158 }, { -1313, -2030 }, { -1313, 1158 } },   // turned right
+			{ { 1287, 1262 }, { -1267, 1262 }, { 1287, -2066 }, { -1267, -2066 } },   // upside down
+			{ { -1353, 1176 }, { -1353, -2005 }, { 1315, 1176 }, { 1315, -2005 } },   // turned left
+		};
+		if (r > 0)
+			for (int i = 0; i < 4; i++)
+				x[i] = EE_XY[r - 1][i][0] / 16.0f, y[i] = EE_XY[r - 1][i][1] / 16.0f;
+		quad(x, y, EE_UV[b][0] / 16.0f, EE_UV[b][1] / 16.0f, EE_UV[b][2] / 16.0f, EE_UV[b][3] / 16.0f, 1.0f);
 	}
 }
 

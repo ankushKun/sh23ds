@@ -1,4 +1,5 @@
 #include "sfx.h"
+#include "sdsim.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -169,6 +170,7 @@ static void reader(void* arg)
 			Loaded* l = &s_loaded[s];
 			u32 bytes = b->frames * 2;
 			bool ok = !fseek(R.bank, s_data_offset + b->offset, SEEK_SET) && fread(l->pcm, 1, bytes, R.bank) == bytes;
+			sdsim_read(bytes);
 			l->state = ok ? L_DONE : L_FAILED;
 		}
 	}

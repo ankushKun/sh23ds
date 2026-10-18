@@ -65,6 +65,12 @@ void ev_flag_set(int n, bool v)
 }
 
 bool ev_have_item(int item) { return ev_item_count(item) > 0; }
+
+void ev_set_flag_lo(int index, u16 lo)
+{
+	if (index >= 0 && (u32)index < s_nev)
+		s_ev[index].flag = (s_ev[index].flag & 0xffff0000u) | lo;
+}
 int ev_item_count(int item) { return item > 0 && item < 256 ? s_items_held[item] : 0; }
 
 int ev_items_lying(float (*out)[3], int max)

@@ -121,7 +121,9 @@ static float attack_speed(int id, bool* melee)
 static const float POOL_ROW[5][3] = { { 0, 1, 2 }, { 0, 2, 4 }, { 1, 2, 4 }, { 2, 3, 4 }, { 1.6f, 3, 5 } };
 // 0x895678: the pools' full size (x, z) per size variant; keys 0x8956c8 (time, size, colour)
 static const float POOL_SIZE[5][2] = { { 400, 400 }, { 350, 400 }, { 400, 350 }, { 300, 400 }, { 400, 300 } };
-static const float POOL_KEY[4][3] = { { 0, 0, 0 }, { 2, 0.3f, 0 }, { 8, 0.8f, 0.35f }, { 16, 1, 1 } };
+// Enhanced Edition IncreaseBlood (Patches/BloodSize.cpp, zlib licence) sets the third key's size
+// (0x8956e4) from 0.8 to 1: a dead enemy's pools grow back to their original size
+static const float POOL_KEY[4][3] = { { 0, 0, 0 }, { 2, 0.3f, 0 }, { 8, 1.0f, 0.35f }, { 16, 1, 1 } };
 // 0x895e08 and keys 0x895e88 for the stains (their start colour fraction is 0, size 0.7)
 static const float STAIN_SIZE[5][2] = { { 40, 40 }, { 30, 35 }, { 35, 30 }, { 35, 32 }, { 30, 30 } };
 static const float STAIN_KEY[4][3] = { { 0, 0.7f, 0 }, { 1, 0.85f, 0 }, { 3, 0.95f, 0.35f }, { 7, 1, 1 } };

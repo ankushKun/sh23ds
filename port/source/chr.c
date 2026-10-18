@@ -5,6 +5,7 @@
 #include <string.h>
 #include <tex3ds.h>
 #include "stream.h"
+#include "sdsim.h"
 
 typedef struct {
 	char magic[4];
@@ -19,6 +20,7 @@ static void* read_file(const char* path, long* size)
 	void* pre = stream_take_file(path, size);   // read ahead for a door (main.c warp_prefetch)
 	if (pre || asked)
 		return pre;                  // asked for and still NULL: the reader found no such file
+	sdsim_open();
 	FILE* f = fopen(path, "rb");
 	if (!f)
 		return NULL;
@@ -31,6 +33,8 @@ static void* read_file(const char* path, long* size)
 		d = NULL;
 	}
 	fclose(f);
+	if (d)
+		sdsim_read((u32)*size);
 	return d;
 }
 
@@ -97,7 +101,9 @@ bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t
 			FILE* f = fopen(path, "rb");
 			if (!f)
 				continue;
+			sdsim_open();
 			t = Tex3DS_TextureImportStdio(f, &c->tex[i], NULL, false);
+			sdsim_read((u32)ftell(f));
 			fclose(f);
 		}
 		if (!t)

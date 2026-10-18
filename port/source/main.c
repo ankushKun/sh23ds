@@ -45,6 +45,7 @@
 #include "chrlight.h"
 #include "shadow.h"
 #include "quality.h"
+#include "sdsim.h"
 #include "areaidx.h"
 #include "stream.h"
 #include "perf.h"
@@ -218,6 +219,14 @@ static void list_rooms(void)
 
 #define MAX_NB 4
 // how near a touching tile has to be to load, and how many stay resident: profile.c (quality level)
+// The town's list also has two rooms at the world origin that are not blocks of its grid: cb90 (a
+// 500 unit quad) and cb99 (a dark sphere 5000 across, 308 vertices). Their boxes touch the four
+// blocks round the origin, so they streamed in as neighbours: cb99 drew a black wedge over the
+// street by cb03 and both took places from the real blocks (cb12 was left out there). A room no
+// wider than SMALL_TILE either way and centred on the origin is not a block (small real blocks such
+// as cb66 lie far from it) and is never streamed as one.
+#define SMALL_TILE 6000.0f
+
 static Room s_nb[MAX_NB];
 static Collision s_nb_col[MAX_NB];
 static int s_nb_idx[MAX_NB];         // index into s_rooms
@@ -244,6 +253,13 @@ static void room_bounds_load(void)
 }
 
 static bool room_has_bounds(int i) { return s_room_bb[i][3] > s_room_bb[i][0] && s_room_bb[i][5] > s_room_bb[i][2]; }
+
+static bool room_is_block(int j)
+{
+	const float* bb = s_room_bb[j];
+	float cx = 0.5f * (bb[0] + bb[3]), cz = 0.5f * (bb[2] + bb[5]);
+	return !(bb[3] - bb[0] <= SMALL_TILE && bb[5] - bb[2] <= SMALL_TILE && fabsf(cx) < 100.0f && fabsf(cz) < 100.0f);
+}
 
 static bool rooms_touch(int i, int j)
 {
@@ -383,8 +399,8 @@ static bool neighbour_add_job(StreamJob* j, const int* want, int nwant)
 	j->sfm = NULL;
 	s_nb_idx[k] = j->key;
 	s_nnb++;
-	perf_event(j->name, "tile joined: read %.1f ms on the reader thread, %d textures; %.1f ms on the main loop",
-	           perf_ms(j->read_ticks), j->ntex, perf_ms(svcGetSystemTick() - t0));
+	perf_event(j->name, "tile joined: read %.1f ms on the reader thread, %d textures; %.1f ms on the main loop, %.0f away",
+	           perf_ms(j->read_ticks), j->ntex, perf_ms(svcGetSystemTick() - t0), room_dist(j->key, s_px, s_pz));
 	stream_release(j);
 	return true;
 }
@@ -397,7 +413,8 @@ static bool s_async_arrival;         // set by apply_warp around its room load
 static bool s_arrival;               // tiles of the last warp still on their way
 static float s_arrival_t;
 static int s_tiles_missing;          // wanted touching tiles that are not resident yet
-#define ARRIVAL_MAX 3.0f
+#define ARRIVAL_MAX 6.0f             // 3 s was too short for a slow card (PERFORMANCE.md, Slow SD cards)
+#define READ_AHEAD_MAX 6.0f
 
 // Loads the touching tiles near James and drops the far ones. Returns true when the set changed.
 // sync: read the files now (room loads); otherwise the reader thread fetches them and they join a
@@ -411,6 +428,8 @@ static bool stream_update_ex(bool sync)
 	for (int j = 0; j < s_nrooms; j++) {
 		if (j == s_room || !rooms_touch(s_room, j))
 			continue;
+		if (!room_is_block(j))
+			continue;                    // not a block of the grid (cb90, cb99)
 		float d = room_dist(j, s_px, s_pz);
 		if (d > quality()->tile_distance)   // quality.h (profile.c sets it)
 			continue;
@@ -748,14 +767,17 @@ static void warp_prefetch(const char* map, int stage, const float* pos)
 	stagemdl_prefetch(stage, pos[0], pos[2], stream_want_file);   // the models placed near the arrival
 }
 
-// The black screen waits (frames keep coming) until the prefetch is in, at most 3 seconds, so the
+// The black screen waits (frames keep coming) until the prefetch is in, at most READ_AHEAD_MAX, so the
 // room load itself only does the GPU side.
 static bool warp_ready(float dt)
 {
 	int area = s_warp.map[0] ? map_area(s_warp.map) : -1;
 	bool busy = (area >= 0 && stream_named_busy(s_areas[area], s_warp.map)) || stream_files_busy();
-	if (s_warp_wait >= 3.0f || !busy)
+	if (s_warp_wait >= READ_AHEAD_MAX || !busy) {
+		perf_event("warp", "%s: read ahead %s after %.2f s of black", s_warp.map[0] ? s_warp.map : "-",
+		           busy ? "NOT in" : "in", s_warp_wait);
 		return true;
+	}
 	s_warp_wait += dt;
 	return false;
 }
@@ -850,8 +872,16 @@ static void memtest_step(u32 frame)
 		{ 6, "ap38", -20024, 101015, 180 }, { 27, "hp230", 19600, -260505, 0 }, { 14, "ca14", -10000, -8000, 0 },
 		{ 40, "rr49", -130000, 59250, 0 },
 	};
-	if (s_memtest <= 0 || s_state != ST_GAME || frame < 120 || frame % 150)
+	// one step 150 frames after the last door is through (fade, read ahead and arrival), so a slow
+	// SD card (debug.txt "sdthrottle") does not stack the warps
+	static u32 s_next = 120;
+	if (s_memtest <= 0 || s_state != ST_GAME)
 		return;
+	if (s_warp_pending || s_arrival || s_fade > s_fade_target + 0.02f)
+		s_next = frame + 150;
+	if (frame < s_next)
+		return;
+	s_next = frame + 150;
 	if (s_memtest_step >= s_memtest * 10) {
 		if (s_memtest_step++ == s_memtest * 10)
 			mem_log("memtest done");
@@ -2257,7 +2287,11 @@ static bool room_visible(const Room* r, const C3D_Mtx* clip)
 		out[2] += q.y < -q.w, out[3] += q.y > q.w;
 		out[4] += q.w <= 0.0f;     // behind the eye (depth is left alone: the tilted projection's sign)
 	}
-	for (int i = 0; i < 5; i++)
+	if (out[4] == 8)
+		return false;
+	if (out[4])
+		return true;               // corners behind the eye flip x and y: only a box wholly ahead is tested
+	for (int i = 0; i < 4; i++)
 		if (out[i] == 8)
 			return false;
 	return true;
@@ -3958,6 +3992,11 @@ int main(void)
 			if (!strcmp(key, "memlog")) s_memlog = val != 0;
 			if (!strcmp(key, "memtest")) s_memtest = val;
 			if (!strcmp(key, "streamsync")) s_stream_sync = val != 0;
+			if (!strcmp(key, "sdthrottle")) {   // sdthrottle KB/s [open ms]: a console-like SD card (sdsim.h)
+				int kb = 0, open_ms = -1;
+				sscanf(line, "%*s %d %d", &kb, &open_ms);
+				sdsim_set(kb, open_ms < 0 ? 8 : open_ms);
+			}
 			if (!strcmp(key, "shadowdebug")) shadow_debug(val);
 			if (!strcmp(key, "fogdebug")) fog_debug(val);
 			if (!strcmp(key, "fogsprites") || !strcmp(key, "shadows") || !strcmp(key, "framecap") ||
@@ -4041,7 +4080,7 @@ int main(void)
 	}
 	perf_set_log(s_perflog, s_memlog || s_memtest);
 	mem_log("boot");
-	perf_event("boot", "%s", profile_status());
+	perf_event("boot", "%s, %s", profile_status(), sdsim_status());
 	load_title();
 	if (s_autotest)
 		autotest_begin();
@@ -4293,8 +4332,11 @@ int main(void)
 
 		perf_part("game", t_part);
 		t_part = svcGetSystemTick();
-		if (s_arrival && (s_tiles_missing == 0 || s_arrival_t >= ARRIVAL_MAX))
+		if (s_arrival && (s_tiles_missing == 0 || s_arrival_t >= ARRIVAL_MAX)) {
 			s_arrival = false;
+			perf_event("arrival", "%s: %s after %.2f s more of black", s_rooms[s_room],
+			           s_tiles_missing ? "tiles still missing" : "tiles in", s_arrival_t);
+		}
 		if (s_state == ST_GAME && !s_paused && ((frame % 8) == 0 || s_arrival)) {
 			primary_update();    // walked onto a neighbouring tile
 			if (stream_update_ex(s_stream_sync)) {   // load / drop touching tiles around James

@@ -3,6 +3,10 @@
 // stage's switches are listed here by the room (0x495220) and the flags the PC tests; the walls the
 // same functions add are in prog_stagefn.c.
 //
+// Enhanced Edition's MapMeshToggle (Patches/MapMeshToggle.cpp, zlib licence) adds switches the PC
+// leaves out: the motorhome hint (stage 2), Blue Creek 1F (10), the hospital garden (22), the
+// otherworld lobby (23), the hospital 3F ring door (25), the lake (38) and room 312 (42).
+//
 // "on" ids take a mask bit, "off" ids are listed with none (bit -1), which shows only variant 0.
 // The town's per-tile code (stages 5, 14 and 54) runs for the 3 x 3 tiles around James; a switch
 // keyed by a tile's id only reaches that tile, so listing every tile's switch each frame is the
@@ -84,6 +88,10 @@ void stageparts_tick(int stage, int room, float dt)
 	L.n = 0;
 	s_glb = ev_glb_crd();
 	switch (stage) {
+	case 2:   // no display function on the PC; EE MapMeshToggle gives the motorhome one
+		if (room == 0x05)
+			on(0x05, f(0x31) ? -1 : 0);   // EE: the hint until James has been through the apartment gate
+		break;
 	case 3:   // 0x5a1520
 		by(3, f(24), -1, 0);
 		break;
@@ -136,7 +144,9 @@ void stageparts_tick(int stage, int room, float dt)
 		if (room == 0x24 && scene())
 			s_knife_floor = false;
 		if (room == 0x22) {
-			by(0x4e, f(142), 0, 1);
+			// EE MapMeshToggle replaces this room's list (the PC's 0x4e switch) with part 0x5c,
+			// variant 1 once James has met Eddie (flag 0x55)
+			on(0x5c, f(0x55) ? 1 : 0);
 		} else if (room == 0x24) {
 			on(0x57, -1);
 			if (!f(85) || f(109))
@@ -163,7 +173,9 @@ void stageparts_tick(int stage, int room, float dt)
 		if (room != 7) {
 			if (f(95))
 				on(0x2e, 2);
-			on(0x2e, 1);
+			// Enhanced Edition FixTownGateEvents (Patches/Langs.cpp PatchTownGateEvents, zlib licence)
+			// changes this variant from 1 to 0 (the byte at 0x596090): the gate's lock model
+			on(0x2e, 0);
 		}
 		break;
 	case 14:  // 0x594e10 and its tile helpers
@@ -203,12 +215,26 @@ void stageparts_tick(int stage, int room, float dt)
 	case 22:  // 0x58c040
 		if (room == 0x30)
 			by(0x27, f(213), -1, 0);
-		else if (room == 0x49)
+		else if (room == 0x49) {
 			by(0xab, f(214), 0, -1);
+			on(0xaa, ev_have_item(0x4e) ? 0 : -1);   // EE MapMeshToggle: shown while James has the blue gem
+		}
+		break;
+	case 23:  // no display function on the PC; EE MapMeshToggle gives the lobby one (room 0x4d)
+		if (room == 0x4d)
+			on(0x97, scene_no(0x32) ? 1 : 0);   // variant 1 during the third chase scene
 		break;
 	case 25:  // 0x589fa0
 		if (room == 0x54)
 			on(0xd3, !f(232) ? -1 : f(240) ? 0 : 1);
+		else if (room == 0x57) {           // EE MapMeshToggle: the rings placed on the door (flags 0xe3, 0xe4)
+			if (f(0xe3))
+				on(0xd6, 0);
+			if (f(0xe4))
+				on(0xd6, 1);
+			if (!f(0xe3) && !f(0xe4))
+				on(0xd6, -1);
+		}
 		break;
 	case 26:  // 0x588bf0
 		if (room == 0x46) {
@@ -284,6 +310,10 @@ void stageparts_tick(int stage, int room, float dt)
 			on(0x55, 0);
 		}
 		break;
+	case 38:  // 0x57eeb0 sets no parts on the PC; EE MapMeshToggle adds the lake's two
+		on(0x01, f(0x2d5) ? 0 : -1);       // after the blue gem's first use
+		on(0x0b, scene_no(0x61) ? 3 : -1); // the Rebirth epilogue
+		break;
 	case 39:  // 0x57db00
 		if (room == 0xa5) {
 			if (f(386)) {
@@ -319,6 +349,11 @@ void stageparts_tick(int stage, int room, float dt)
 		if (room == 0xa2) {
 			by(0x5c, f(475), -1, 0);
 			by(0x5d, f(475), 1, 0);
+			// EE MapMeshToggle: the hint in room 312 after the blue gem's second use, until the tape;
+			// while it shows, the room's event 19 also tests flag 0x2d6 (EE writes the PC's word)
+			bool hint = f(0x2d6) && !f(0x1db);
+			on(0x5b, hint ? 0 : -1);
+			ev_set_flag_lo(19, hint ? 0x2d6 : 0);
 		} else if (room == 0xa3) {
 			by(0x5a, f(473), 1, 0);
 		}
