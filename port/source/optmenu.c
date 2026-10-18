@@ -251,13 +251,11 @@ static void touch(void)
 
 static void go(int page, int sel)
 {
-	if (s_page == PG_BUTTONS && page != PG_BUTTONS)
-		touchui_menu_close(TOUI_PAUSE);         // controls.c's page used the pause menu's slot
 	s_page = page;
 	if (page == PG_BUTTONS) {
-		// controls.c's Buttons page draws the bottom screen itself
-		touchui_menu_close(TOUI_OPTIONS);
+		// controls.c's Buttons page draws the bottom screen itself, in this screen's menu slot
 		touchui_box(NULL, NULL, 0);
+		controls_menu_slot(TOUI_OPTIONS);
 		controls_menu_open();
 		controls_menu_draw();
 		return;

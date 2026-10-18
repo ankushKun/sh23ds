@@ -62,6 +62,11 @@ void combat_draw_weapon(int uBones);
 // on to them, 0x52f2c0).
 void combat_set_sight(bool dark, bool flashlight);
 
+// What James' head turns to (0x535720): the locked target, else the nearest enemy or point (people,
+// items lying about) in his sight that the room does not hide. False: nothing, or he is busy
+// (kicking, hurt, held, dying).
+bool combat_look_target(const CombatBody* b, const float (*pts)[3], int npts, float out[3]);
+
 // Called by enemies when an attack reaches James.
 void combat_damage_james(int attack_id, float ap, float from_x, float from_z);
 // Grabs: James is held until he struggles free (the meter is in seconds of frame time, see

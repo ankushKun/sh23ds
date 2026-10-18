@@ -43,6 +43,7 @@ static const Clip C_RTURN = { 109, 171, 190, 0, 2048 };
 static const Clip C_LTURN = { 110, 191, 210, 0, 2048 };
 static const Clip C_TIRED[2] = { { 113, 281, 300, 1, 1024 }, { 114, 301, 320, 1, 1024 } };
 static const Clip C_RELAX[3] = { { 115, 321, 350, 0, 384 }, { 116, 351, 380, 0, 384 }, { 117, 381, 410, 0, 384 } };
+static const Clip C_ALERT = { 118, 411, 440, 0, 384 };
 static const Clip C_RSWALK = { 124, 516, 539, 1, 1536 };
 static const Clip C_LSWALK = { 125, 540, 563, 1, 1536 };
 static const Clip C_RSRUN = { 126, 564, 587, 1, 2048 };
@@ -53,7 +54,7 @@ static const Clip C_LSRUN = { 127, 588, 611, 1, 2048 };
 #define FREE_GO (B(MV_LROUND) | B(MV_RROUND) | B(MV_BACK) | B(MV_WALK) | B(MV_LSWALK) | B(MV_RSWALK) | \
                  B(MV_RUN1) | B(MV_LSRUN) | B(MV_RSRUN) | B(MV_LTURN) | B(MV_RTURN))
 static const u32 STATE_NEXT[MV_COUNT] = {
-	[MV_STAND] = FREE_GO | B(MV_RELAX) | B(MV_TIRED),
+	[MV_STAND] = FREE_GO | B(MV_RELAX) | B(MV_TIRED) | B(MV_ALERT),
 	[MV_RELAX] = FREE_GO | B(MV_STAND),
 	[MV_TIRED] = FREE_GO | B(MV_STAND),
 	[MV_LROUND] = FREE_GO | B(MV_STAND),
@@ -69,11 +70,12 @@ static const u32 STATE_NEXT[MV_COUNT] = {
 	[MV_LSRUN] = B(MV_STAND) | B(MV_WALK) | B(MV_LSWALK) | B(MV_RUN1) | B(MV_LSRUN),
 	[MV_RSRUN] = B(MV_STAND) | B(MV_WALK) | B(MV_RSWALK) | B(MV_RUN1) | B(MV_RSRUN),
 	[MV_LTURN] = 0, [MV_RTURN] = 0,      // the turn runs to its end
+	[MV_ALERT] = FREE_GO | B(MV_STAND),
 };
 
 static const char* const NAMES[MV_COUNT] = { "stand", "relax", "tired", "lround", "rround", "back", "walk",
                                              "lswalk", "rswalk", "run1", "run2", "run3", "lsrun", "rsrun",
-                                             "lturn", "rturn" };
+                                             "lturn", "rturn", "alert" };
 
 static struct {
 	int state, prev;
@@ -82,6 +84,8 @@ static struct {
 	float stam;           // 30 fps frames run (0x1fbacf4)
 	float still;          // seconds standing (0x1fbacd0, for the relax idles)
 	float turned, turn_to;// the 180 turn so far, and the yaw it ends on
+	float cam_lock, stick_at_lock;   // the PC 2D type's camera yaw and stick angle, held across cuts
+	bool cam_locked;
 	u32 allow;            // 0x1fba900: the states this one may change to (STATE_NEXT, then the runs)
 	const Clip* clip;
 	float frame;
@@ -123,18 +127,13 @@ static bool phase_kept(int to, u16 from)
 	return false;
 }
 
-static const Clip* state_clip(int s, bool maria)
+// Maria's anm (xmar_wp*) holds the same base moves at the same frames as James' (her feet move the
+// same way through 104..127), and 0x531a00 picks them from the one table for both.
+static const Clip* state_clip(int s)
 {
-	if (maria) {
-		// Born From a Wish: Maria's anm has the stand, walk and run of the base table only
-		switch (s) {
-		case MV_WALK: case MV_LSWALK: case MV_RSWALK: case MV_BACK: return &C_WALK;
-		case MV_RUN1: case MV_RUN2: case MV_RUN3: case MV_LSRUN: case MV_RSRUN: return &C_RUN3;
-		default: return &C_STAND;
-		}
-	}
 	switch (s) {
 	case MV_RELAX: return &C_RELAX[rand() % 3];
+	case MV_ALERT: return &C_ALERT;
 	case MV_TIRED: return &C_TIRED[0];
 	case MV_LROUND: return &C_LROUND;
 	case MV_RROUND: return &C_RROUND;
@@ -234,24 +233,36 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	bool fwd = ty > 0.0f && in->y > 0.0f, back = ty > 0.0f && in->y < 0.0f;
 	bool run = in->run;
 
-	if (in->camera_relative) {
-		// 2D type (the port's own): the stick says where on screen; James turns to it and walks
-		float mag = sqrtf(in->x * in->x + in->y * in->y);
+	if (in->control == MOVE_2D) {
+		// Directional Style, the PC's 2D type (0x547bf0, 0x546760, 0x548bf0): the stick's direction
+		// on screen, taken from the camera James saw when he pushed it. After a camera cut that direction holds
+		// until the stick turns more than 30 degrees or comes back to the middle, so he does not
+		// spin round at the cut. He turns towards it at 20 x 0.3235 of the difference a second
+		// and walks or runs along the way he faces, as fast as the stick is tilted.
+		float mx = in->x, my = in->y, mag = sqrtf(mx * mx + my * my);
 		turn = 0;
-		fwd = back = false;
+		back = false;
 		tx = 0.0f;
-		if (mag > 0.2f) {
-			float want = in->camera_yaw + atan2f(in->x, in->y);
-			float d = wrap(want - *yaw), step = 7.0f * dt;
-			*yaw += d > step ? step : d < -step ? -step : d;
-			fwd = fabsf(d) < 1.2f;
-			ty = mag > 1.0f ? 1.0f : mag;
+		fwd = mag > 0.2f;
+		if (!fwd) {
+			M.cam_locked = false;
+		} else {
+			float sa = atan2f(mx, my);
+			if (!M.cam_locked || fabsf(wrap(sa - M.stick_at_lock)) >= 0.5236f) {
+				M.cam_lock = in->camera_yaw;
+				M.stick_at_lock = sa;
+				M.cam_locked = true;
+			}
+			float want = M.cam_lock + sa, d = wrap(want - *yaw);
+			float k = 20.0f * 0.32345787f * dt;
+			*yaw += d * (k > 1.0f ? 1.0f : k);
+			ty = mag / 0.79f > 1.0f ? 1.0f : mag / 0.79f;
 		}
 	}
 
 	// 0x54e0f0: the state for this frame
-	bool sl = in->strafe_l && !in->maria, sr = in->strafe_r && !in->maria;
-	bool quick = !in->maria && (in->turn180 || (sl && sr && (in->strafe_l_down || in->strafe_r_down)));
+	bool sl = in->strafe_l, sr = in->strafe_r;
+	bool quick = in->turn180 || (sl && sr && (in->strafe_l_down || in->strafe_r_down));
 	int want = -1;
 	if (M.state == MV_LTURN || M.state == MV_RTURN) {
 		want = M.state;
@@ -278,12 +289,12 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 		want = turn < 0 ? MV_LROUND : MV_RROUND;
 	if (want < 0) {
 		// stand, relax after 10 s still, or breathe hard after a long run
-		if (M.state == MV_RELAX && M.clip->end > M.frame)
-			want = MV_RELAX;
-		else if (M.stam > limit / 3.0f && !in->maria)
+		if ((M.state == MV_RELAX || M.state == MV_ALERT) && M.clip->end > M.frame)
+			want = M.state;
+		else if (M.stam > limit / 3.0f)
 			want = MV_TIRED;
-		else if (M.state == MV_STAND && M.still >= 10.0f && !in->maria)
-			want = MV_RELAX;
+		else if (M.state == MV_STAND && M.still >= 10.0f)
+			want = in->enemy_near ? MV_ALERT : MV_RELAX;   // 0x54e0f0 (0x5422b0: an enemy about)
 		else
 			want = MV_STAND;
 	}
@@ -293,7 +304,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	float maria = in->maria ? 0.8f : 1.0f;
 	float off_to = 0.0f, rate = 0.0f;
 	switch (M.state) {
-	case MV_STAND: case MV_RELAX: case MV_TIRED: {
+	case MV_STAND: case MV_RELAX: case MV_TIRED: case MV_ALERT: {
 		M.still += dt;
 		M.stam -= dt * 30.0f;
 		if (M.stam < 0.0f) M.stam = 0.0f;
@@ -363,7 +374,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	}
 	}
 
-	if (!in->camera_relative && turn)
+	if (in->control == MOVE_TANK && turn)
 		*yaw -= (float)turn * rate * dt;      // right turns lower the port's yaw
 	// the direction of travel eases between the gaits' offsets (0x54ef10, 4 rad/s)
 	if (moving(M.state) && moving(M.prev)) {
@@ -381,7 +392,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	out->state = M.state;
 
 	// the clip and its frame
-	const Clip* c = state_clip(M.state, in->maria);
+	const Clip* c = state_clip(M.state);
 	if (M.state == MV_RELAX && (M.clip->id < 115 || M.clip->id > 117))
 		set_clip(c, M.state, out);
 	else if (M.state == MV_TIRED)
@@ -392,7 +403,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	float fps = c->speed / 2048.0f * 30.0f;
 	if (M.state == MV_WALK || M.state == MV_BACK)
 		fps *= ty;                            // 0x54bd70 / 0x54c0e0: the clip slows with the tilt
-	bool rev = in->maria && M.state == MV_BACK;
+	bool rev = false;
 	float f0 = M.frame;
 	M.frame += (rev ? -fps : fps) * dt;
 	float len = (float)(c->end - c->start + 1);

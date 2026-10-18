@@ -25,6 +25,8 @@ static struct {
 	bool dirty;
 	char label[40];
 	char rows[N_MENU_ACTS + 2][40];
+	int slot;                   // the touchui menu the page uses (TOUI_PAUSE unless told otherwise)
+	bool slot_set;
 } C;
 
 #if !__has_include("profile.h")
@@ -271,7 +273,8 @@ void controls_menu_draw(void)
 	rows[N_MENU_ACTS] = "Defaults";
 	rows[N_MENU_ACTS + 1] = "Back";
 	static const TouiButton back[1] = { { "Back", KEY_B } };
-	touchui_menu(TOUI_PAUSE, L() ? "Buttons (New 3DS)" : "Buttons (Old 3DS)", rows, N_MENU_ACTS + 2, &C.sel, back, 1);
+	touchui_menu(C.slot_set ? C.slot : TOUI_PAUSE, L() ? "Buttons (New 3DS)" : "Buttons (Old 3DS)", rows,
+	             N_MENU_ACTS + 2, &C.sel, back, 1);
 	if (!C.dirty)
 		return;
 	C.dirty = false;
@@ -284,3 +287,14 @@ void controls_menu_draw(void)
 		printf("\x1b[%d;3H%c %-34.34s", 18 + i - first, i == C.sel ? '>' : ' ', rows[i]);
 	printf("\x1b[29;1H%-40s", C.capture ? " Press the button (START: keep)" : " A: change  Y: default  B: back");
 }
+
+// ---------------------------------------------------------------- for the Options screen
+
+void controls_menu_slot(int toui_id)
+{
+	C.slot = toui_id;
+	C.slot_set = true;
+}
+
+void controls_draw_options(void) { controls_menu_draw(); }
+bool controls_handle(u32 down) { return controls_menu_update(down); }

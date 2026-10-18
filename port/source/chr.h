@@ -67,6 +67,11 @@ typedef struct {
 	bool have_last;
 	const Anim* sync;                                  // see chr_blend_start_sync
 	float sync_from, sync_to, sync_len;
+	// The head turned on top of the clip (James looking at what is near, 0x535720): yaw (left
+	// positive) and pitch (up positive) in model space, the head bone taking all of it and the
+	// neck bone `neck_share` more. Bones < 0: none.
+	int look_head, look_neck;
+	float look_yaw, look_pitch, neck_share;
 } ChrBlend;
 void chr_blend_start(ChrBlend* b, float seconds);
 // The PC's mode 10 (walk, run and strafe clips into each other): the old clip, starting at frame

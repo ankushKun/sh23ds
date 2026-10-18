@@ -6,6 +6,7 @@
 //     --press A-B:BUTTONS   hold buttons from frame A to B, e.g. 120-125:A or 300-400:UP+B
 //     --touch A-B:X,Y       touch the bottom screen at (X,Y) in 320x240 coordinates
 //     --analog A-B:X,Y      hold the circle pad (left stick) at X,Y in -1..1 (Y up positive)
+//     --cstick A-B:X,Y      hold the C-Stick (the right stick) at X,Y in -1..1 (Y up positive)
 //     --opt key=value       core option override (repeatable)
 //     --list-options        print the core's options and values, then continue
 //     --sys DIR / --save DIR  system and save directories (default ./lr3ds_sys, ./lr3ds_save)
@@ -126,7 +127,7 @@ static int pixfmt = PIX_0RGB1555;
 static unsigned frame_no;
 
 #define MAX_EVENTS 128
-static struct { unsigned a, b; uint32_t buttons; int tx, ty; bool touch, analog; float ax, ay; } events[MAX_EVENTS];
+static struct { unsigned a, b; uint32_t buttons; int tx, ty; bool touch, analog, cstick; float ax, ay; } events[MAX_EVENTS];
 static int nevents;
 static struct { unsigned frame; char path[1024]; } shots[64];
 static int nshots;
@@ -328,16 +329,22 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 	if (port) return 0;
 	uint32_t held = 0;
 	int tx = -1, ty = -1;
-	float ax = 0, ay = 0;
+	float ax = 0, ay = 0, cx = 0, cy = 0;
 	for (int i = 0; i < nevents; i++)
 		if (frame_no >= events[i].a && frame_no <= events[i].b) {
 			held |= events[i].buttons;
 			if (events[i].touch) { tx = events[i].tx; ty = events[i].ty; }
 			if (events[i].analog) { ax = events[i].ax; ay = events[i].ay; }
+			if (events[i].cstick) { cx = events[i].ax; cy = events[i].ay; }
 		}
 	if (device == DEV_ANALOG && index == 0) {
 		if (id == 0) return (int16_t)(ax * 32767);
 		if (id == 1) return (int16_t)(-ay * 32767);   // libretro: down is positive
+		return 0;
+	}
+	if (device == DEV_ANALOG && index == 1) {     // RETRO_DEVICE_INDEX_ANALOG_RIGHT: Azahar's C-Stick
+		if (id == 0) return (int16_t)(cx * 32767);
+		if (id == 1) return (int16_t)(-cy * 32767);
 		return 0;
 	}
 	if (device == DEV_JOYPAD) {
@@ -398,16 +405,18 @@ int main(int argc, char **argv)
 			if (!c) continue;
 			shots[nshots].frame = atoi(argv[i]);
 			snprintf(shots[nshots++].path, 1024, "%s", c + 1);
-		} else if ((!strcmp(argv[i], "--press") || !strcmp(argv[i], "--touch") || !strcmp(argv[i], "--analog")) &&
-		           i + 1 < argc && nevents < MAX_EVENTS) {
+		} else if ((!strcmp(argv[i], "--press") || !strcmp(argv[i], "--touch") || !strcmp(argv[i], "--analog") ||
+		            !strcmp(argv[i], "--cstick")) && i + 1 < argc && nevents < MAX_EVENTS) {
 			bool touch = !strcmp(argv[i], "--touch"), analog = !strcmp(argv[i], "--analog");
+			bool cstick = !strcmp(argv[i], "--cstick");
 			char *spec = argv[++i];
 			unsigned a = 0, b = 0;
 			char rest[128] = "";
 			if (sscanf(spec, "%u-%u:%127s", &a, &b, rest) != 3) { fprintf(stderr, "bad %s\n", spec); return 2; }
 			events[nevents].a = a; events[nevents].b = b; events[nevents].touch = touch;
 			events[nevents].analog = analog;
-			if (analog) sscanf(rest, "%f,%f", &events[nevents].ax, &events[nevents].ay);
+			events[nevents].cstick = cstick;
+			if (analog || cstick) sscanf(rest, "%f,%f", &events[nevents].ax, &events[nevents].ay);
 			else if (touch) sscanf(rest, "%d,%d", &events[nevents].tx, &events[nevents].ty);
 			else events[nevents].buttons = parse_buttons(rest);
 			nevents++;

@@ -657,26 +657,68 @@ void combat_set_sight(bool dark, bool flashlight)
 	s_light = flashlight;
 }
 
-static bool in_sight(const CombatBody* b, const Enemy* e)
+static bool in_sight_at(const CombatBody* b, float x, float z)
 {
 	int mode = !s_dark ? 0 : s_maria ? 3 : s_light ? 1 : 2;
 	int lvl = enemy_difficulty();
 	lvl = lvl < 0 ? 0 : lvl > 4 ? 4 : lvl;
 	float fx = sinf(*b->yaw), fz = cosf(*b->yaw);
 	float lc = LOOK_AREA[mode][lvl] * 500.0f, fr = FEEL_RADIUS[mode][lvl] * 500.0f, fc = FEEL_CENTRE[mode] * 500.0f;
-	float d_look = hypotf(e->x - (*b->x + fx * lc), e->z - (*b->z + fz * lc));
-	float d_feel = hypotf(e->x - (*b->x + fx * fc), e->z - (*b->z + fz * fc));
+	float d_look = hypotf(x - (*b->x + fx * lc), z - (*b->z + fz * lc));
+	float d_feel = hypotf(x - (*b->x + fx * fc), z - (*b->z + fz * fc));
 	return d_look <= lc || d_feel <= fr;
 }
 
+static bool in_sight(const CombatBody* b, const Enemy* e) { return in_sight_at(b, e->x, e->z); }
+
 // 0x542060: nothing of the room between James' chest and the enemy
-static bool clear_line(const CombatBody* b, const Enemy* e)
+static bool clear_line_to(const CombatBody* b, float x, float z)
 {
 	if (!s_col)
 		return true;
-	float ex = e->x, ez = e->z, d = hypotf(ex - *b->x, ez - *b->z);
+	float ex = x, ez = z, d = hypotf(ex - *b->x, ez - *b->z);
 	col_clamp_ray(s_col, *b->x, *b->z, &ex, &ez, *b->y - 900.0f);
 	return hypotf(ex - *b->x, ez - *b->z) >= d - 1.0f;
+}
+
+static bool clear_line(const CombatBody* b, const Enemy* e) { return clear_line_to(b, e->x, e->z); }
+
+bool combat_look_target(const CombatBody* b, const float (*pts)[3], int npts, float out[3])
+{
+	if (s_mode == M_STOMP || s_mode >= M_HURT)
+		return false;                    // 0x535720: not while kicking, hurt, held or dying
+	if (s_target && enemy_alive(s_target) && in_sight(b, s_target)) {
+		float cx, cz, r, top, bottom;
+		enemy_hit_cylinder(s_target, &cx, &cz, &r, &top, &bottom);
+		out[0] = cx, out[1] = top + 0.15f * (bottom - top), out[2] = cz;
+		return true;
+	}
+	// 0x542860: the nearest candidate (0x542300 lists enemies, people and items in his look and feel
+	// areas) that nothing of the room hides
+	float bd = 1e9f;
+	bool found = false;
+	for (int i = 0; i < enemy_count(); i++) {
+		Enemy* e = enemy_get(i);
+		if (!enemy_alive(e) || !in_sight(b, e))
+			continue;
+		float d = hypotf(e->x - *b->x, e->z - *b->z);
+		if (d >= bd || !clear_line(b, e))
+			continue;
+		float cx, cz, r, top, bottom;
+		enemy_hit_cylinder(e, &cx, &cz, &r, &top, &bottom);
+		out[0] = cx, out[1] = top + 0.15f * (bottom - top), out[2] = cz;
+		bd = d;
+		found = true;
+	}
+	for (int i = 0; i < npts; i++) {
+		float d = hypotf(pts[i][0] - *b->x, pts[i][2] - *b->z);
+		if (d >= bd || d < 100.0f || !in_sight_at(b, pts[i][0], pts[i][2]) || !clear_line_to(b, pts[i][0], pts[i][2]))
+			continue;
+		memcpy(out, pts[i], sizeof(float) * 3);
+		bd = d;
+		found = true;
+	}
+	return found;
 }
 
 static float angle_to(const CombatBody* b, const Enemy* e)

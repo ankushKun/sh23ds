@@ -52,5 +52,13 @@ void controls_menu_open(void);
 bool controls_menu_update(u32 down);
 void controls_menu_draw(void);
 const char* controls_menu_label(void);     // the pause menu line
+// The same page inside an Options screen (the programs agent's optmenu.c): which touchui menu slot
+// it draws into (TOUI_PAUSE by default), and the names that screen calls: controls_menu_open() when
+// the page opens, then controls_handle(down) each frame (false once the player backs out) and
+// controls_draw_options().
+void controls_menu_slot(int toui_id);
+void controls_draw_options(void);
+bool controls_handle(u32 down);
+
 // One line per action of the active layout for the help screen ("Run  B / ZR").
 int controls_help(char lines[][40], int max);

@@ -1237,7 +1237,7 @@ static C3D_LightLutDA s_flash_da;
 static C3D_FogLut s_fog_lut;
 static bool s_flash_on = true;
 static float s_ambient = -1.0f;      // debug.txt "ambient" (percent): overrides the record Ambient
-static int s_controls;              // 0 = 3D (tank, PC default), 1 = 2D (camera relative)
+static int s_controls;              // move.h MOVE_*: 0 Rotational (3D, tank, PC default), 1 Directional (2D)
 static bool s_toggle_run;           // B toggles running (Enhanced Edition option)
 static bool s_ps2_flash = true;     // Enhanced Edition PS2 flashlight brightness (pause menu)
 static bool s_run_pressed;          // B went down this frame (for the toggle)
@@ -1606,10 +1606,15 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	in.strafe_r_down = in.strafe_r && !(s_prev_held & GK_STRAFE_R);
 	in.turn180 = (held & GK_TURN180) && !(s_prev_held & GK_TURN180);
 	s_prev_held = held;
-	in.camera_relative = s_controls == 1;
+	in.control = s_controls;
 	in.camera_yaw = gamecam_yaw();
 	in.hp_frac = combat_hp() / JAMES_HP_MAX;
 	in.maria = combat_own_footsteps();
+	// 0x5422b0: an enemy is about (the PC's battle flag 0x400; here one that has seen or heard James)
+	for (int i = 0; i < enemy_count() && !in.enemy_near; i++) {
+		const Enemy* e = enemy_get(i);
+		in.enemy_near = enemy_alive(e) && !enemy_is_down(e) && e->alert > 0.0f && e->p_dist < 8000.0f;
+	}
 	if (s_have_col) {
 		// 0x536a20: a wall within 250 of a 900 probe ahead stops a run before it starts
 		float ex = s_px + sinf(s_yaw) * 900.0f, ez = s_pz + cosf(s_yaw) * 900.0f;
@@ -1641,6 +1646,43 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 		float feet[3] = { s_px, s_py, s_pz };
 		sfx_footstep(mo.step_volume, feet);
 	}
+}
+
+// James' head (0x535720): it turns to the locked target or to the nearest enemy, person or item he
+// can see, and with the look key held it follows the circle pad. The angles ease towards their aim
+// at 20 x 0.3235 of the gap a second (0x5343e0) and stop at 0.8 to either side, 0.5 up, 0.4 down.
+static float s_look_yaw, s_look_pitch;
+
+static void head_update(const circlePosition* cp, u32 gheld, float dt, bool on)
+{
+	float ty = 0.0f, tp = 0.0f;
+	int st = move_last()->state;
+	if (on && st != MV_RELAX && st != MV_ALERT) {
+		if (gheld & GK_LOOK) {
+			float x = cp->dx / 156.0f, y = cp->dy / 156.0f;
+			ty = -x * 0.8f;                    // the stick right turns the head right (yaw down)
+			tp = y * (ty >= 0.0f ? 0.4f : 0.5f);
+		} else {
+			static float pts[33][3];
+			int n = ev_items_lying(pts, 32);
+			CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
+			EnPlayer jp = combat_enplayer(&body, s_flash_on), mp;
+			if (maria_target(&jp, &mp))
+				pts[n][0] = mp.x, pts[n][1] = mp.y - 800.0f, pts[n][2] = mp.z, n++;
+			float at[3];
+			if (combat_look_target(&body, (const float (*)[3])pts, n, at)) {
+				float dx = at[0] - s_px, dz = at[2] - s_pz;
+				ty = remainderf(atan2f(dx, dz) - s_yaw, 2.0f * (float)M_PI);
+				tp = atan2f((s_py - 800.0f) - at[1], hypotf(dx, dz));   // Y points down
+			}
+		}
+	}
+	ty = ty < -0.8f ? -0.8f : ty > 0.8f ? 0.8f : ty;
+	tp = tp < -0.4f ? -0.4f : tp > 0.5f ? 0.5f : tp;
+	float k = 20.0f * 0.32345787f * dt;
+	k = k > 1.0f ? 1.0f : k;
+	s_look_yaw += (ty - s_look_yaw) * k;
+	s_look_pitch += (tp - s_look_pitch) * k;
 }
 
 // Character shadows this frame (shadow.c): in the dark rooms the PC casts stencil shadows from
@@ -1719,6 +1761,13 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 		s_jlegs = legs;
 		s_janim = anim;
 	}
+	// the head and neck bones: James' hll_jms 15 and 8, Maria's lxx_mar 9 and 6
+	bool jms = s_james.n_bones == 41, mar = s_james.n_bones == 36;
+	s_jblend.look_head = jms ? 15 : mar ? 9 : -1;
+	s_jblend.look_neck = jms ? 8 : mar ? 6 : -1;
+	s_jblend.neck_share = 0.2f;
+	s_jblend.look_yaw = demo_active() ? 0.0f : s_look_yaw;
+	s_jblend.look_pitch = demo_active() ? 0.0f : s_look_pitch;
 	chr_pose_blend(&s_james, anim, frame, &s_jblend, s_anim_dt);
 	// Characters are lit like the PC's (chrlight.c: the room's character lights, the strongest
 	// point and spot lights near each character, ambient 2.1 x Ambient + 0.3 x level). Full bright
@@ -3853,6 +3902,7 @@ int main(void)
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					EnPlayer ep = combat_enplayer(&body, s_flash_on);
 					enemy_update(&ep, dt);
+					head_update(&cp, gheld, dt, !prog_running() || !prog_player_locked());
 				}
 				if (combat_dead()) {     // game over
 					enter_title();
@@ -4005,20 +4055,18 @@ int main(void)
 				printf("\x1b[%d;1H%40s", r, "");
 		}
 		if ((frame % 30) == 1 && !hud) {
-			printf("\x1b[2;3HSILENT HILL 2");
-			printf("\x1b[5;3HCircle Pad  walk / turn");
-			printf("\x1b[6;3HB (hold)    run");
-			printf("\x1b[7;3HA           check, open, next");
-			printf("\x1b[8;3HX           flashlight %-3s", s_flash_on ? "on" : "off");
-			printf("\x1b[11;3HY           items");
-			printf("\x1b[12;3HD-pad       brightness %d   ", s_bright);
+			// the help: the live bindings of the layout in use (controls.c), then James' state
+			char help[12][40];
+			int nh = controls_help(help, 12);
+			printf("\x1b[2;3HSILENT HILL 2  (%s)            ", controls_layout() == CONTROLS_LAYOUT_NEW ? "New 3DS" : "Old 3DS");
+			printf("\x1b[3;3H%-37.37s", "Circle Pad  walk / turn");
+			for (int i = 0; i < nh && i < 11; i++)
+				printf("\x1b[%d;3H%-37.37s", 4 + i, help[i]);
+			printf("\x1b[15;3HSTART pause, SELECT twice debug      ");
 			float hp = combat_hp();
-			printf("\x1b[15;3HCondition   %-8s", hp > 70.0f ? "Fine" : hp > 35.0f ? "Caution" : "Danger");
-			printf("\x1b[9;3HSTART       pause");
-			printf("\x1b[10;3HSELECT      debug info");
-			printf("\x1b[13;3HR + A, L    attack, next weapon");
-			printf("\x1b[16;3HWeapon      %s", combat_weapon_line());
-			printf("\x1b[14;3HHealth      %3.0f   ", combat_hp());
+			printf("\x1b[16;3HHealth %3.0f %-8s flashlight %-3s  ", hp, hp > 70.0f ? "Fine" : hp > 35.0f ? "Caution" : "Danger",
+			       s_flash_on ? "on" : "off");
+			printf("\x1b[17;3HWeapon %-30.30s", combat_weapon_line());
 		}
 		if ((frame % 30) == 1 && hud) {
 			s_hud_shown = true;
@@ -4032,7 +4080,7 @@ int main(void)
 			       (unsigned long)s_col.n_floors, (unsigned long)s_col.n_walls);
 			printf("%-38s\n", mem_log(NULL));
 			if (s_have_james)
-				printf("%-30.30s %5.2f \n", move_status(), s_yaw);
+				printf("%-26.26s%5.2f %5.2f \n", move_status(), s_yaw, s_look_yaw);   // facing, head
 			else
 				printf("james  not loaded                     \n");
 			printf("audio  %-30s\n", audio_status());

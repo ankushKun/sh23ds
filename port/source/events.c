@@ -67,6 +67,18 @@ void ev_flag_set(int n, bool v)
 bool ev_have_item(int item) { return ev_item_count(item) > 0; }
 int ev_item_count(int item) { return item > 0 && item < 256 ? s_items_held[item] : 0; }
 
+int ev_items_lying(float (*out)[3], int max)
+{
+	int n = 0;
+	for (u32 i = 0; i < s_nitems && n < max; i++) {
+		const ItemRec* it = &s_items[i];
+		if (ev_flag(it->flag) || ev_flag(it->flag + 1))
+			continue;              // not offered, or picked up (items_update)
+		memcpy(out[n++], it->pos, sizeof it->pos);
+	}
+	return n;
+}
+
 void ev_give_item(int item, int n)
 {
 	if (item > 0 && item < 256)

@@ -258,15 +258,41 @@ static bool pose_locals(const Character* c, const Anim* a, float frame, Mtx34* o
 	return true;
 }
 
-static void pose_finish(Character* c, const Mtx34* local)
+// world = R(about the bone's joint) * world, so the bone and everything below it turn
+static void turn_about_joint(Mtx34* w, float yaw, float pitch)
+{
+	float cy = cosf(yaw), sy = sinf(yaw), cp = cosf(pitch), sp = sinf(pitch);
+	// R = Ry(yaw) * Rx(pitch); Rx(p) tips +z towards -y (up, Y points down), Ry turns +z towards +x
+	float R[3][3] = {
+		{ cy, sy * sp, sy * cp },
+		{ 0.0f, cp, -sp },
+		{ -sy, cy * sp, cy * cp },
+	};
+	Mtx34 o = *w;
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			o.m[i][j] = R[i][0] * w->m[0][j] + R[i][1] * w->m[1][j] + R[i][2] * w->m[2][j];
+	*w = o;      // the joint (column 3) stays where it is
+}
+
+static void pose_finish_look(Character* c, const Mtx34* local, const ChrBlend* look)
 {
 	static Mtx34 world[CHR_MAX_BONES];
 	for (u32 b = 0; b < c->n_bones; b++) {
 		if (c->parents[b] == 255) world[b] = local[b];
 		else mul34(&world[b], &world[c->parents[b]], &local[b]);
+		if (look && (look->look_yaw != 0.0f || look->look_pitch != 0.0f)) {
+			if ((int)b == look->look_neck)
+				turn_about_joint(&world[b], look->look_yaw * look->neck_share, look->look_pitch * look->neck_share);
+			else if ((int)b == look->look_head)
+				turn_about_joint(&world[b], look->look_yaw * (1.0f - look->neck_share),
+				                 look->look_pitch * (1.0f - look->neck_share));
+		}
 		mul34(&c->skin[b], &world[b], &c->inv_bind[b]);
 	}
 }
+
+static void pose_finish(Character* c, const Mtx34* local) { pose_finish_look(c, local, NULL); }
 
 void chr_pose(Character* c, const Anim* a, float frame)
 {
@@ -347,7 +373,7 @@ void chr_pose_blend(Character* c, const Anim* a, float frame, ChrBlend* b, float
 	}
 	memcpy(b->last, local, sizeof(Mtx34) * c->n_bones);
 	b->have_last = true;
-	pose_finish(c, local);
+	pose_finish_look(c, local, b);
 }
 
 void chr_draw(Character* c, int uBones)

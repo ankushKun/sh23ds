@@ -408,9 +408,11 @@ the title an "Options" row (the PC's title has OPTIONS too).
   runs and B walks; Analog: a full tilt of the Circle Pad runs), View Control (Normal / Switch),
   Blood Color (Normal, Green, Violet, Black) and, once a game has been cleared (0x1dbeb85),
   Bullet Adjust (x1 to x3, wrapping as on the PC). Weapon Control and Walk/Run Control reach the
-  game as the keys `combat.c` and the movement read (`move_keys` in main.c). View Control has no
-  search view to turn round and Blood Color no blood effects to colour yet; both are kept and saved
-  for when they come.
+  game as the keys `combat.c` and the movement read (`move_keys` in main.c). View Control is how
+  the look button (controls.c's GK_LOOK: ZL on the New 3DS layout, L on the Old) brings up the
+  search view, sh2cam's far view: Normal while it is held, Switch on and off with each press
+  (0x5342b0 picks 0x1fbab13 or the toggle 0x1fba8fb that 0x52e110 flips; `search_view` in
+  main.c). Blood Color tints the blood (see Blood).
 * ADVANCED OPTIONS (message 167): Brightness Level opens its screen; Noise Effect (Off / On, off
   by default as on the PC), Shadows (Off / On, 0xa35ffc: 0x5a8370 draws no character shadows when
   off), Fog (Simple / Complex, 0xa35ff8: 0x476ff0 runs the fog particle layer only on Complex).
@@ -462,8 +464,49 @@ grain; the port offers it as Noise Style, PS2 by default as in the EE. Here the 
 luminance with the same four levels (the tint goes into the TEV constant, MODULATE2X into the
 TEV's x2 scale), refilled from a xorshift every frame into one of two textures in turn, drawn one
 texel per pixel after the scene and the fades and under the text, and not over still pictures
-(the EE takes it off those). The PC also lays it over the movies; the port's movie player does
-not draw it.
+(the EE takes it off those). The PC also lays it over the movies; `movie.c` draws it there too
+(`noise_draw_movie`), on the picture only as the Enhanced Edition does (it keeps the grain off the
+black bars).
+
+## Blood
+
+The PC's fight blood is a set of Effect2 classes (the PS2 beta's `hh_class_blood_*`), registered
+by 0x4ca720 in a table of 57 at 0x893798 ({prefix, main, suffix} per class) and started with
+`HH_Effect_Object_Impact_Post` (0x4cadc0) through small wrappers. `blood.c` ports what a fight
+shows:
+
+* Hit splash: the hit code (0x5431b1) calls 0x4c7d40 with the enemy and the attack id, which posts
+  class 5 (0x4eac00, class 7 in rooms 7, 8 and 0x21) at the enemy with the hit direction
+  normalised times the attack's speed (500 to 3000, melee hits thrown back towards the attacker,
+  always upwards). For half a second it follows the enemy and lets out class 11 (0x4cee80)
+  sprites: spray, up to 8 every 1/160 s along the direction, and drops, up to 6 every 1/15 s
+  straight out (0, -500, 0) (0x8a1314, 0x8a1324), each turned a little at random (0x4ea6b0). A
+  sprite is a quarter of `bloodtex0.tbn2` (the spray clusters, top left or top right, eight ways
+  round, 0x8957a8) on a camera-facing 50-unit quad, moving by v t + 2692.31 * 2 t^2 (0x4ce740,
+  the speed scaled 0.549 / 1.099 / 0.549 by 0x4ce6f0). Spray grows from 0.8 to 7 times while its
+  alpha falls from 80 to 0 in 0.375 s; drops grow from 0.8 to 2 in 0.6 s and fall, and where one
+  reaches the floor it leaves a stain (class 10, 0x4cf710: one of five sizes 30 to 40, keys
+  0x895e88, thirty seconds and then faded out).
+* Pool: enDyingExec (0x4a96c0) posts class 3 (0x4eb460) at the start of every death but Eddie's:
+  three class 12 (0x4ce260) pools start at one of five sets of times (0x8a133c, up to 5 s), each
+  at a random angle 50 to 200 from the body and turning with it, one of four shapes (a square or
+  three ten-point fans, 0x895150..0x8953b0) and five sizes up to 400 (0x895678), growing over 16
+  seconds (keys 0x8956c8: 30 % at 2 s, 80 % at 8 s) and darkening from 2 s on.
+* Stains and pools use a round blob the PC makes at start-up (0x507930: 64x64, 255 * (1 - r^2)^4).
+* Colour: with blend-op support (0xa35f9c is D3DPMISCCAPS_BLENDOP, any PC since) everything is
+  subtracted from the picture (D3DBLENDOP_REVSUBTRACT), in colours chosen by the Blood Color
+  (0x4c7bd0 hands it to the seven classes): spray (40, 255, 230) for red, (180, 4, 150) green,
+  (24, 230, 23) violet, (194, 210, 180) black (0x8959f0); stains and pools go from (64, 180, 150)
+  to (96, 255, 230) and the like (0x8955a0 / 0x8955e0). The 3DS blends the same way
+  (GPU_BLEND_REVERSE_SUBTRACT).
+
+The port posts from main.c (`blood_frame`): an enemy's health going down after `enemy_update` is a
+hit (its `last_atk` and hit-back direction, the point at 0.6 of its height), its health reaching
+zero the pool. `ui.py` writes the texture as `pack/effect/blood.t3x` (A4, 256x256). Up to 8
+splashes, 96 sprites, 64 stains and 24 pools at once, drawn in two batches after the shadows
+(about 200 quads at the most), so the Old 3DS hardly notices. Not ported: class 7 and class 4 (the
+room variants of the splash and the pool, 0x4c71e0 / 0x4c73a0 pick them), the distance fade of the
+pools (0x4cde00), footprints (class 15) and the blood the enemies' own attacks leave.
 
 ## Text on the top screen
 

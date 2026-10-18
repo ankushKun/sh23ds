@@ -64,6 +64,8 @@ bool ev_flag(int n);
 void ev_flag_set(int n, bool v);
 bool ev_have_item(int item);
 int ev_item_count(int item);
+// Where the stage's items still lying about are (for James' head turning to them), up to max.
+int ev_items_lying(float (*out)[3], int max);
 // Item combinations (PC 0x891858 / 0x49e900): the result id for up to three items (0 unused), 0 if
 // they do not combine; whether James has a result's parts; ItemLose of an item or a result's parts.
 int ev_combine(int a, int b, int c);
