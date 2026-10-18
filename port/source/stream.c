@@ -54,6 +54,8 @@ static void read_job(StreamJob* j)
 	char path[192];
 	snprintf(path, sizeof path, "%s/bg/%s/%s.s3m", W.pack, j->area, j->name);
 	j->s3m = read_file(path, &j->s3m_size);
+	if (j->s3m)
+		room_prepare(j->s3m, j->s3m_size);   // the index rebase, off the main thread
 	snprintf(path, sizeof path, "%s/bg/%s/%s.s3l", W.pack, j->area, j->name);
 	j->s3l = read_file(path, &j->s3l_size);
 	snprintf(path, sizeof path, "%s/sound/floor/%s.sfm", W.pack, j->name);
@@ -383,6 +385,21 @@ void* stream_take_file(const char* path, long* size)
 			return NULL;
 		svcSleepThread(2000000);
 	}
+}
+
+int stream_file_state(const char* path)
+{
+	if (!W.ready)
+		return -2;
+	int state = -1;
+	LightLock_Lock(&W.lock);
+	for (int i = 0; i < FILES && state < 0; i++) {
+		const FileJob* f = &W.file[i];
+		if (f->state != J_FREE && !strcmp(f->path, path))
+			state = f->state == J_DONE ? 1 : 0;
+	}
+	LightLock_Unlock(&W.lock);
+	return state;
 }
 
 bool stream_files_busy(void)

@@ -23,12 +23,14 @@ Switches in `debug.txt` on the SD card (`sdmc:/3ds/sh23ds/debug.txt`):
 | Line | Effect |
 | --- | --- |
 | `debughud 1` | bottom screen debug page, with the last second of timings and the free memory |
-| `perflog 1` | appends a line per 60 frames to `perf.txt` (with the free linear memory and the music decoding's share of a core), plus a line for every frame half a refresh over its time (25 ms at 60 fps, 41.7 ms with the 30 fps cap), with the time of each named part of that frame, and one per streamed tile |
+| `perflog 1` | appends a line per 60 frames to `perf.txt` (with the free linear memory and the music decoding's share of a core), plus a line for every frame half a refresh over its time (25 ms at 60 fps, 41.7 ms with the 30 fps cap), with the time of each named part of that frame, one per streamed tile and stage model, and after each per-60-frames line a `parts` line with every named part's average and worst over those frames |
 | `memlog 1` | appends the free linear, VRAM and heap memory to `mem.txt` at boot and after every area change, with the lowest linear free and the highest malloc use since the line before |
 | `memtest N` | warps through ten rooms of different areas N times, one every 150 frames, and logs memory after each (implies `memlog`) |
 | `streamsync 1` | reads streamed tiles, a door's destination and its tiles on the main loop as before, for comparison |
 | `sfxsync 1` | reads a sound effect's sample on the main loop at its first play, as before |
 | `shadowdebug N` | character shadows: 1 shows the volumes in red, 2 darkens every changed stencil count, 6 turns them off |
+| `autotest warps F N perf` | the warp autotest over destinations F to F+N-1, measuring each room once: 90 frames from the 10th after the load, logged to `autotest.txt` as a `perf` line (frames, slowest frame, frames over 17 and 33 ms, average update and citro3d time, most work in one frame). Rooms listed in `autoperf_seen.txt` on the SD card are skipped, and each measured one is added, so a long sweep can run in short pieces |
+| `fogsprites N`, `shadows 0/1`, `framecap 0/30/60`, `tiledist N` | override one `quality.h` knob (see Frame rate) for a test |
 
 The log lines are kept in memory and written once a second, after the frame's timing has been
 taken, because an SD card write costs tens of milliseconds and would otherwise show up as the very
@@ -227,10 +229,145 @@ in linear memory) rather than anything tied to rooms. The extra 59 KB in ap06 is
 the first room visited. VRAM stays at 5394 KB free throughout; malloc stays between 2.7 and 2.8 MB
 in use, with a peak arena of 3.7 MB.
 
+## Frame rate
+
+The goal here was a steady frame rate everywhere: an even 30 fps at least, 60 where the frame fits,
+and no frame after a room load longer than 33 ms in the warp autotest. In Azahar both models now get
+there. What Azahar cannot say is how long the PICA takes to draw a frame, so the fill-rate costs
+(fog sprites, shadow volumes, translucent layers) still need a console; the knobs for them are in
+`quality.h` below.
+
+### Every room
+
+`autotest warps 0 570 perf` (see Measuring) warps through all 570 door destinations and measures
+each room once, 90 frames from the 10th after the load. Rooms that a second door leads to are
+skipped, which leaves 229 rooms on the New 3DS model. The New 3DS sweep ran in pieces of 3,000
+frames over a day in which `main` kept moving, so 134 rooms were measured on the batch 5 tree with
+the first of these changes and the other 95 on the tree just before the save files; the rooms that
+were slow then were measured again on the final build.
+
+| Model, profile | Rooms | Slowest frame | Rooms with a frame over 17 ms | Over 33 ms | Update, median (worst) | citro3d CPU, median (worst) | Most work in a frame |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| New 3DS, high quality, 60 fps | 229 | 17.2 ms (cc53, cb03, cb47), 18.9 in cb68 on the final build | 1 | 0 | 0.82 (1.46, cb67) ms | 1.48 (4.86, hp198) ms | 12.7 ms (cc53, a town tile joining) |
+| Old 3DS, low quality, 30 fps | 228 | 35.7 ms (cc53), 34.9 (cb68, ap104), every other room 33.8 or less | (all, at 30 fps) | 3 rooms, one frame each, none near a miss (50 ms) | 0.86 (1.44, cb67) ms | 1.23 (2.94, cb67) ms | 9.2 ms (ps67) |
+
+On the Old 3DS profile every frame lasts two vertical blanks, 33.3 ms, so the measure there is a
+missed blank, which would show as 50 ms. None did; the three frames of 34.9 to 35.7 ms are a frame
+that ended a little after its blank and the next that ended correspondingly early, with 5 to 8 ms of
+work in them. The Old 3DS sweep ran on the final build, in three pieces side by side; 221 of its
+rooms are the same as the New 3DS sweep's and 7 are rooms the playthrough batches' door changes now
+lead to.
+
+"Work" is the update plus citro3d's CPU time, the part of a frame that does not wait for the vertical
+blank: it has to stay under 16.7 ms for 60 fps. Half the rooms need under 2.5 ms of the 16.7, the
+hospital's busiest (hp198, hp202) about 5, and the town peaks at 12.7 ms in the frame where a tile's
+geometry joins. In Azahar's count that is about the Old 3DS CPU (268 MHz at roughly one tick per
+instruction); a New 3DS at 804 MHz with its L2 cache has about three times that, so the New 3DS has
+a wide margin on the CPU side and the open question is the GPU.
+
+The first New 3DS sweep found three rooms over 33 ms, and each was a load in a frame of play:
+
+- **cb68, 445 ms**: an enemy kind that came in with a streamed town tile after the warp read its
+  model, animation and textures on the main loop. Enemy models now go through the reader thread
+  (below); the room measures 18.9 ms at worst.
+- **ps67, 33.7 ms**: the warp puts James in ps66's record but on ps67's floor, so the primary tile
+  swapped in the first frames, and `sfx_floor_load` probed the SD card for a floor table ps67 does
+  not have (23 ms in Azahar). A tile whose reader found no `.sfm` is now remembered as having none;
+  the room measures 16.9 ms.
+- **cb02, 34.4 ms**: the same enemy load as cb68. The door that led there now leads to cc11 (the
+  playthrough batches changed it); cc11 measures 16.9 ms. No door in the current tree leads to cb02 itself.
+
+### Walking the town
+
+The town walk from Measuring (cb03 west through cb11 to cb19, 1,500 frames of running, perflog on),
+with the same `main` with and without these changes. Old 3DS is the Old 3DS profile (low quality,
+30 fps), so its frames are 33.3 ms when they make their two blanks.
+
+| Model | Build | Update | citro3d CPU, median second | Typical second's slowest frame | Slow frames |
+| --- | --- | --- | --- | --- | --- |
+| New 3DS | before | 1.15 ms | 3.84 ms | 17.1 ms | 10: 83 to 211 ms in the first five frames, then 106, 123, 136 and 141 ms (stage models) and 29 ms (a tile joining) |
+| New 3DS | after | 1.15 ms | 2.98 ms | 16.9 ms | 1: 46 ms in the first frame, behind the fade |
+| Old 3DS | before | 1.21 ms | 3.11 ms | 34.2 ms | 9: 87 to 217 ms in the first five frames, then 140 to 157 ms (stage models) |
+| Old 3DS | after | 1.22 ms | 2.43 ms | 33.7 ms | 1: 58 ms in the first frame, behind the fade |
+
+The same walk on the final build (rebased on batch 17 and the map part switches) gave the same
+picture: citro3d 2.99 ms on the New 3DS model and 2.41 on the Old, and one slow frame each, the
+first (37 and 53 ms).
+
+The first frame after a warp is still slow because the fog loads its area's `.fcl` there (24 to 33
+ms); the screen is black for it, and it only delays the fade-in by that much.
+
+### What changed
+
+1. **Stage models off the main loop.** `stagemdl_draw` loaded a placed model (the town's items, the
+   hotel's music box and the like) the first time one came within 14000 units, one per frame, inside
+   the render section: 58 to 217 ms each in Azahar, mostly SD reads. Now a door's read ahead (`warp_prefetch`)
+   asks the reader thread for the models placed within range of where James arrives (`.s3c`, its
+   textures and its `.kg1`), and the room load sets them up behind the fade from what it read
+   (`stagemdl_preload`). A model that comes into range later is asked for from 17000 units on
+   and set up once its files are in, one a frame: 0.1 to 1.7 ms. `stagemdl.txt` is read once
+   instead of at every stage change. A load no longer drops a model that is in range but later in the
+   list, which made the town reload the same few models every second or so.
+2. **Enemy models off the main loop.** A kind that arrives with a streamed tile (the town) used to
+   read its model on the main loop when it spawned. `enemy.c` now asks the reader thread for the
+   files and spawns it a few frames later, once they are in; at a room entry, behind the fade, the
+   model still loads at once from the door's read ahead. `chr.c` no longer looks on the SD card for a
+   file the reader was asked for and did not find (a model without a `.kg1`).
+3. **Tile joins spread over frames.** The reader thread now also rebases a tile's indices
+   (`room_prepare`), and the main thread puts the tile's textures into the cache about 2 ms a frame
+   (`room_tex_warm`) before its geometry joins in a frame of its own. The geometry frame is 1 to
+   4.8 ms in the town (it was 4 to 7.2 ms with the textures).
+4. **Fewer state changes.** Room batches keep the texenv, material, texture and alpha test of the
+   batch before when they match, and character draws skip a palette upload that matches the one just
+   sent and only rebind the texture, texenv and alpha test when they change. citro3d's CPU time in
+   the town fell from 3.8 to 3.0 ms on the New 3DS model and from 3.1 to 2.4 on the Old.
+5. **Frame pacing.** `perf_pace` runs after every frame. With a fixed cap (30 or 60) it sets
+   `C3D_FrameRate` once; with `frame_cap` 0 it runs at 60 while the frames' work fits and drops to
+   an even 30 when frames keep missing (four in a row with more than 15.5 ms of work, or more of them
+   spread out),
+   going back to 60 after two seconds in which every frame would fit with room to spare (11 ms).
+   That avoids the judder of frames alternating between one and two vertical blanks. The New 3DS
+   profile's Auto frame rate uses it; the Old 3DS profile's 30 fps cap and an explicit 60 are fixed.
+
+### Quality knobs
+
+`quality.h` holds what trades looks for frame time. `profile.c` sets it from the hardware profile
+and the quality level (`profile_apply_quality`, at start and on every change in the System page),
+debug.txt can override one knob for a test, and the subsystems read only `quality()`:
+
+| Knob | High (New 3DS) | Low (Old 3DS) | Read by |
+| --- | --- | --- | --- |
+| `fog_sprites` | 144 | 72 | `fog.c` `set_partnum` |
+| `stencil_shadows` | on | off | `shadow.c` `shadow_begin` |
+| `drop_shadows` | on | off | `main.c` `shadow_frame` |
+| `tile_distance` | 7000 | 5000 | `main.c` `stream_update_ex` |
+| `frame_cap` | 0 (60, an even 30 when it does not fit) | 30 | `perf_pace` |
+
+The fog sprites and the stencil shadows are the two likeliest to matter on a console's GPU: 144
+alpha-blended sprites can cover most of the top screen several times over, and each shadow volume
+is drawn twice into the stencil buffer. They are the first things to turn down if a console shows
+frames over budget that Azahar does not.
+
+### Per-part timing
+
+With `perflog 1` every 60-frame line is followed by a `parts` line, for example in the town:
+
+    cb11       parts  game 0.16/0.21  stream 0.01/0.22  cam 0.88/0.91  r_wait 12.24/12.54  r_map 0.57/0.61  r_chr 0.95/1.07  r_shadow 0.02/0.06  r_fog 1.26/1.40  r_end 0.38/0.42
+
+Each is the average and the worst of those frames in ms: the update's parts (`game`, `stream`,
+`join`, `cam`, ...), then the render's: `r_wait` (`C3D_FrameBegin` waiting for the GPU and the
+vertical blank, which is the slack), `r_map` (the room), `r_chr` (James, enemies, stage models),
+`r_shadow` (shadows and blood), `r_fog`, `r_ui`, `r_touch` and `r_end` (`C3D_FrameEnd`). In the
+town the camera (0.9 ms) and the fog (1.3 ms) are the biggest parts after citro3d's own command
+building.
+
 ## Not done
 
 - Nothing here has been run on a console yet. Worth checking there: that the audio line says
   core 2, the perf.txt numbers for the town walk, and how long the tile reads take on a real SD
   card (the reader thread has 7000 units of walking, a few seconds, to finish one).
-- Debug spawns still load everything in one frame, and enemy models that come in with a tile after
-  the warp (the town) are still read on the main loop.
+- The warp autotest calls `apply_warp` without a door's read ahead, so its load frames read
+  everything from the SD card (its measuring window starts after them), and the fog reads its
+  area's `.fcl` in the first frame after any warp (24 to 33 ms, while the screen is still black).
+- Azahar does not time the GPU. The town at 60 fps and the fog-heavy rooms are where a console
+  would show it first; `quality.h` has the knobs to turn down.

@@ -51,6 +51,13 @@ typedef struct {
 // when given, otherwise from the cache or the SD card. Main thread only (linear memory, C3D).
 bool room_load_mem(Room* room, const char* pack, const char* area, const char* name, u8* data, long size,
                    const RoomTexBlob* tex, int ntex, char* err, size_t errlen);
+// Puts a tile's read-ahead textures into the cache until svcGetSystemTick() passes deadline (at
+// least one), so that room_load_mem finds them there and a tile's uploads spread over a few frames.
+// True when every blob is in the cache. Main thread only.
+bool room_tex_warm(const char* pack, const char* area, const RoomTexBlob* tex, int ntex, u64 deadline);
+// Rebases an .s3m's indices to room-global vertex numbers in place, as room_load_mem would, and
+// marks it done (safe on any thread: the reader thread does it, so the join does not).
+void room_prepare(u8* data, long size);
 // The texture ids an .s3m uses (no allocation; safe on any thread).
 int room_texture_ids(const u8* data, long size, u32* out, int max);
 // Texture ids the cache holds for an area (a snapshot for the reader thread).

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "shadow_shbin.h"
-#include "profile.h"
+#include "quality.h"
 
 // How the PC does it (sh2pc.exe, Director's Cut):
 //   0x5aad70  every frame: the shadow light (0x47e000: the flashlight, or an event's light), then
@@ -135,7 +135,7 @@ void shadow_begin(const float pos[3], const float dir[3], float cone, float stre
 	S.drop = false;
 	S.ndv = S.dcasters = 0;
 	S.cast_ticks = 0;
-	S.on = S.ready && strength > 0.0f && S.debug != 6 && profile_shadows();   // off on the low quality level
+	S.on = S.ready && strength > 0.0f && S.debug != 6 && quality()->stencil_shadows;   // off on the low quality level (quality.h, set by profile.c)
 	if (!S.on)
 		return;
 	memcpy(S.light, pos, sizeof S.light);

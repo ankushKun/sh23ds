@@ -23,6 +23,7 @@
 #include "maria.h"
 #include "prog.h"
 #include "sfx.h"
+#include "stream.h"
 
 #define PI 3.14159265f
 #define MAX_LIST 512
@@ -5453,11 +5454,54 @@ static bool condition_ok(int cond)
 	}
 }
 
+static bool s_load_now;            // room entry, behind the fade: a model loads at once
+static bool s_spawn_again;         // a spawn waited for its model's files: spawn_list again
+
+static void want_model(int m, void (*want)(const char* path))
+{
+	const char* file = MODEL_FILE[m] ? MODEL_FILE[m] : MODEL_NAME[m];
+	char path[128];
+	snprintf(path, sizeof path, "%s/chr/%s/%s.s3c", s_pack, MODEL_NAME[m], file);
+	want(path);                     // the reader thread adds its textures
+	snprintf(path, sizeof path, "%s/chr/%s/%s.kg1", s_pack, MODEL_NAME[m], file);
+	want(path);
+	if (m != MDL_TY2 && m != MDL_TY3) {
+		snprintf(path, sizeof path, "%s/chr/%s/%s.s3a", s_pack, MODEL_NAME[m], file);
+		want(path);
+	}
+}
+
+// During play (a kind that comes in with a streamed tile) the reader thread brings a model's files
+// first and the spawn waits for them, so no frame waits for the SD card. True when load_model may
+// read now: at a room entry, without the reader thread, or when it has no free slot.
+static bool model_files_ready(int m)
+{
+	if (s_load_now)
+		return true;
+	const char* file = MODEL_FILE[m] ? MODEL_FILE[m] : MODEL_NAME[m];
+	char path[128];
+	snprintf(path, sizeof path, "%s/chr/%s/%s.s3c", s_pack, MODEL_NAME[m], file);
+	int st = stream_file_state(path);
+	if (st == -2)
+		return true;
+	if (st == -1) {
+		want_model(m, stream_want_file);
+		if (stream_file_state(path) == -1)
+			return true;                // the reader's list is full: read it here
+	} else if (st == 1 && !stream_files_busy()) {
+		return true;                    // in, with its textures
+	}
+	s_spawn_again = true;
+	return false;
+}
+
 // Loads a kind's model and animation the first time it is needed (kept until enemy_exit).
 static bool load_model(int m)
 {
 	if (s_mdl[m].tried)
 		return s_mdl[m].loaded;
+	if (!model_files_ready(m))
+		return false;
 	s_mdl[m].tried = true;
 	const char* name = MODEL_NAME[m];
 	const char* file = MODEL_FILE[m] ? MODEL_FILE[m] : name;
@@ -5633,20 +5677,9 @@ void enemy_prefetch_stage(int stage, void (*want)(const char* path))
 	for (u32 i = 0; i < sizeof SCRIPTS / sizeof SCRIPTS[0]; i++)
 		if (SCRIPTS[i].stage == stage)
 			need[SCRIPTS[i].model] = true;
-	for (int m = 0; m < MDL_COUNT; m++) {
-		if (!need[m] || s_mdl[m].tried)
-			continue;
-		const char* file = MODEL_FILE[m] ? MODEL_FILE[m] : MODEL_NAME[m];
-		char path[128];
-		snprintf(path, sizeof path, "%s/chr/%s/%s.s3c", s_pack, MODEL_NAME[m], file);
-		want(path);                     // the reader thread adds its textures
-		snprintf(path, sizeof path, "%s/chr/%s/%s.kg1", s_pack, MODEL_NAME[m], file);
-		want(path);
-		if (m != MDL_TY2 && m != MDL_TY3) {
-			snprintf(path, sizeof path, "%s/chr/%s/%s.s3a", s_pack, MODEL_NAME[m], file);
-			want(path);
-		}
-	}
+	for (int m = 0; m < MDL_COUNT; m++)
+		if (need[m] && !s_mdl[m].tried)
+			want_model(m, want);
 }
 
 // Spawns the stage's Enemy_List rows that stand on the loaded collision and are not there yet
@@ -5704,8 +5737,11 @@ void enemy_room_enter(int stage, const Collision* col)
 	s_col = col;
 	s_stage = stage;
 	maria_room_enter(col);
+	s_spawn_again = false;
+	s_load_now = true;
 	if (col)
 		spawn_list(stage, col);
+	s_load_now = false;
 }
 
 // Streamed open areas: the merged collision changed under the same pointer. Enemies whose floor
@@ -5730,6 +5766,10 @@ void enemy_stream_update(int stage, const Collision* col)
 void enemy_update(const EnPlayer* p, float dt)
 {
 	s_px = p->x, s_pz = p->z;
+	if (s_spawn_again && s_col) {
+		s_spawn_again = false;          // set again while a model's files are still on their way
+		spawn_list(s_stage, s_col);
+	}
 	moths_update(dt);
 	for (int i = 0; i < 8; i++)
 		if (s_comm[i].time > 0)

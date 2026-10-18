@@ -169,11 +169,10 @@ So even with a CPU four times slower than Azahar's count the main thread needs a
 at 25 %) and the stage model loads below. With the cap the frames that fit come at an even 33.3 ms
 instead of alternating between 16.7 and 33.3.
 
-What still hitches on both models, and is not this batch's code: `stagemdl_draw` (stagemdl.c) loads
-one stage-placed model per frame on the main thread, inside the render section: 58 to 185 ms each in
-Azahar, five in the first five frames of the town and one more whenever James walks into range of
-another. Most of it is SD reading, so it does not shrink with the CPU clock. Loading them with the
-room behind the fade, or through stream.c's reader thread, would remove the longest frames left.
+`stagemdl_draw` (stagemdl.c) used to load one stage-placed model per frame on the main thread,
+inside the render section: 58 to 185 ms each in Azahar, five in the first five frames of the town
+and one more whenever James walked into range of another. They now come through the reader thread
+and load behind the fade or in about a millisecond (PERFORMANCE.md, Frame rate).
 
 ### New 3DS profile
 

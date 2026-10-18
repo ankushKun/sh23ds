@@ -5,7 +5,7 @@
 #include <string.h>
 #include <tex3ds.h>
 #include "fog_shbin.h"
-#include "profile.h"
+#include "quality.h"
 
 // The PC fog particle layer, ported from the Director's Cut exe (static analysis; the PS2 beta's
 // Fog/fog.c gives the names and the FOG_WORK layout, which the PC keeps at 0x1f63b20..0x1f7d2cc).
@@ -250,7 +250,7 @@ static void set_partnum(int n)
 	if (n < 0)
 		n = 0;
 	F.npc = n;
-	int cap = profile_fog_sprites();          // FOG_MAX, or half on the low quality level
+	int cap = quality()->fog_sprites;        // quality.h: FOG_MAX, or half on the low quality level (profile.c)
 	if (cap > FOG_MAX) cap = FOG_MAX;
 	int sim = n < cap ? n : cap;
 	for (int i = F.nsim > 0 ? F.nsim : 0; i < sim; i++)

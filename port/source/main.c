@@ -42,6 +42,7 @@
 #include "move.h"
 #include "chrlight.h"
 #include "shadow.h"
+#include "quality.h"
 #include "areaidx.h"
 #include "stream.h"
 #include "perf.h"
@@ -330,8 +331,17 @@ static void neighbours_reap(void)
 	}
 }
 
+// A tile from the reader thread whose textures go into the cache a few a frame before it joins
+static StreamJob* s_join;
+static bool s_join_warm;             // its textures are all in the cache
+
 static void neighbours_clear(void)
 {
+	if (s_join) {
+		stream_release(s_join);
+		s_join = NULL;
+		s_join_warm = false;
+	}
 	if (s_nnb || s_ndead)
 		C3D_FrameSync();     // the GPU may still be reading them
 	while (s_nnb)
@@ -339,8 +349,8 @@ static void neighbours_clear(void)
 	neighbours_reap();
 }
 
-// Adds a tile the reader thread has read (stream.c); false when it is not wanted any more.
-static bool neighbour_add_job(StreamJob* j, const int* want, int nwant)
+// Whether a tile the reader thread has read is still wanted.
+static bool neighbour_job_wanted(const StreamJob* j, const int* want, int nwant)
 {
 	bool wanted = !strcmp(j->area, s_areas[s_area]) && s_nnb < MAX_NB;
 	for (int k = 0; k < s_nnb && wanted; k++)
@@ -348,6 +358,13 @@ static bool neighbour_add_job(StreamJob* j, const int* want, int nwant)
 	bool listed = false;
 	for (int i = 0; i < nwant; i++)
 		listed |= want[i] == j->key;
+	return wanted && listed;
+}
+
+// Adds a tile the reader thread has read (stream.c); false when it is not wanted any more.
+static bool neighbour_add_job(StreamJob* j, const int* want, int nwant)
+{
+	bool wanted = neighbour_job_wanted(j, want, nwant), listed = wanted;
 	char err[128];
 	int k = s_nnb;
 	u64 t0 = svcGetSystemTick();
@@ -360,10 +377,8 @@ static bool neighbour_add_job(StreamJob* j, const int* want, int nwant)
 	}
 	j->s3m = NULL;                       // room_load_mem took it
 	col_load_mem(&s_nb_col[k], j->s3l, j->s3l_size);
-	if (j->sfm) {
-		sfx_floor_put(j->name, j->sfm, j->sfm_size);
-		j->sfm = NULL;
-	}
+	sfx_floor_put(j->name, j->sfm, j->sfm_size);   // NULL too: a tile without one is not looked for again
+	j->sfm = NULL;
 	s_nb_idx[k] = j->key;
 	s_nnb++;
 	perf_event(j->name, "tile joined: read %.1f ms on the reader thread, %d textures; %.1f ms on the main loop",
@@ -395,7 +410,7 @@ static bool stream_update_ex(bool sync)
 		if (j == s_room || !rooms_touch(s_room, j))
 			continue;
 		float d = room_dist(j, s_px, s_pz);
-		if (d > profile_stream_dist())
+		if (d > quality()->tile_distance)   // quality.h (profile.c sets it)
 			continue;
 		int k = nwant < profile_max_neighbours() ? nwant++ : -1;
 		if (k < 0) {              // keep the nearest few (4 on the high quality level, profile.c)
@@ -419,10 +434,25 @@ static bool stream_update_ex(bool sync)
 		}
 	}
 	if (!sync) {
+		// A tile's textures go into the cache first, about 2 ms of them a frame, and its geometry
+		// joins in the frame after the last one, so no single frame takes all of a tile.
 		u64 t0 = svcGetSystemTick();
-		StreamJob* j;
-		while ((j = stream_take()) != NULL)
-			changed |= neighbour_add_job(j, want, nwant);
+		while (s_join || (s_join = stream_take()) != NULL) {
+			if (!neighbour_job_wanted(s_join, want, nwant) || !s_join->s3m) {
+				neighbour_add_job(s_join, want, nwant);   // hands it back
+				s_join = NULL;
+				continue;
+			}
+			if (!s_join_warm) {
+				s_join_warm = room_tex_warm(PACK_DIR, s_join->area, s_join->tex, s_join->ntex,
+				                            t0 + SYSCLOCK_ARM11 / 500);
+				break;                   // the geometry in a frame of its own
+			}
+			changed |= neighbour_add_job(s_join, want, nwant);
+			s_join = NULL;
+			s_join_warm = false;
+			break;                       // one tile a frame
+		}
 		perf_part("join", t0);
 	}
 	s_tiles_missing = 0;
@@ -689,7 +719,7 @@ static float s_warp_wait;            // time the black screen has waited for the
 
 // ...and, when the stage changes, its event files and the enemy models it needs (they used to be
 // read in the black frame of the load, 60..120 and up to 400 ms)
-static void warp_prefetch(const char* map, int stage)
+static void warp_prefetch(const char* map, int stage, const float* pos)
 {
 	s_warp_wait = 0.0f;
 	if (s_stream_sync)
@@ -712,6 +742,7 @@ static void warp_prefetch(const char* map, int stage)
 		stream_want_file(path);
 	}
 	enemy_prefetch_stage(stage, stream_want_file);
+	stagemdl_prefetch(stage, pos[0], pos[2], stream_want_file);   // the models placed near the arrival
 }
 
 // The black screen waits (frames keep coming) until the prefetch is in, at most 3 seconds, so the
@@ -796,6 +827,9 @@ static void apply_warp(void)
 			col_spawn(&s_col, s_px, s_pz, &s_px, &s_py, &s_pz);
 	}
 	s_async_arrival = false;
+	u64 ts = svcGetSystemTick();
+	stagemdl_preload(ev_stage(), s_px, s_pz);   // the placed models in range, behind the fade
+	perf_part("ld_stagemdl", ts);
 	stream_drop_files();                 // read ahead for enemies that did not come after all
 }
 
@@ -827,7 +861,7 @@ static void memtest_step(u32 frame)
 	snprintf(s_warp.map, sizeof s_warp.map, "%s", dest[i].map);
 	s_warp.pos[0] = dest[i].x, s_warp.pos[2] = dest[i].z;
 	s_warp.facing = dest[i].yaw * (float)M_PI / 180.0f;
-	warp_prefetch(s_warp.map, s_warp.stage);   // the way a door goes: prefetch, fade out, load, fade in
+	warp_prefetch(s_warp.map, s_warp.stage, s_warp.pos);   // the way a door goes: prefetch, fade out, load, fade in
 	s_warp_pending = true;
 }
 
@@ -1007,7 +1041,7 @@ static void events_update(u32 down)
 	if (a.kind == EV_WARP) {
 		s_warp = a;
 		s_warp_pending = true;
-		warp_prefetch(a.map, a.stage);
+		warp_prefetch(a.map, a.stage, a.pos);
 		sfx_door_open(a.door_sound, feet);
 	} else if (a.kind == EV_MESSAGE) {
 		show_message(a.text);
@@ -1834,11 +1868,16 @@ static void shadow_frame(bool paused)
 	// ShadowDarkNess get the drop shadows instead
 	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && (!s_env.dark || s_env.shadow == 0)) {
 		fade = 0.0f;
+		if (!quality()->drop_shadows) {
+			shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, 0.0f);
+			return;
+		}
 		const float* eye = gamecam_eye();
 		shadow_begin_drop(s_env.map_id, eye);
 		return;
 	}
-	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && s_chrflash.on && s_env.shadow != 0) {
+	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && s_chrflash.on && s_env.shadow != 0 &&
+	    quality()->stencil_shadows) {
 		int room = bgm_room_id(ev_glb_crd(), s_px, s_pz);
 		if (!paused)
 			fade = fade + 0.03f > 1.0f ? 1.0f : fade + 0.03f;
@@ -2131,17 +2170,34 @@ static u32 draw_room_group(const Room* r, int group)
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, r->vertices, ROOM_VERTEX_SIZE, 4, 0x3210);
+	// consecutive batches often share the texenv, the material constants, the texture and the
+	// alpha test: only what changes is set again (citro3d re-sends whatever is touched)
+	int env_mode = -1, alpha = -1;
+	const RoomMaterial* last_m = NULL;
+	const C3D_Tex* last_tex = NULL;
+	bool lit = s_cam.mode == CAM_PLAYER;
 	for (u32 i = 0; i < r->n_batches; i++) {
 		RoomBatch* b = &r->batches[i];
 		if ((int)b->group != group || b->hidden || (s_only_batch >= 0 && (int)i != s_only_batch))
 			continue;
 		RoomMaterial* m = &r->materials[b->material < r->n_materials ? b->material : 0];
 		bool textured = m->tex != NULL && s_render_mode == 0;
-		texenv(textured, group);
-		material_uniforms(m, s_cam.mode == CAM_PLAYER);
-		if (textured)
+		if ((int)textured != env_mode) {
+			texenv(textured, group);
+			env_mode = (int)textured;
+		}
+		if (!last_m || m->mode != last_m->mode || m->color != last_m->color)
+			material_uniforms(m, lit);
+		last_m = m;
+		if (textured && m->tex != last_tex) {
 			C3D_TexBind(0, m->tex);
-		C3D_AlphaTest(textured && (m->flags & 1), GPU_GREATER, 0x40);
+			last_tex = m->tex;
+		}
+		int a = textured && (m->flags & 1);
+		if (a != alpha) {
+			C3D_AlphaTest(a, GPU_GREATER, 0x40);
+			alpha = a;
+		}
 		C3D_DrawElements(GPU_TRIANGLES, b->index_count, C3D_UNSIGNED_SHORT, b->indices);
 		calls++;
 	}
@@ -3273,7 +3329,7 @@ static void title_start(int what)
 		char map[8];
 		memcpy(map, sv.map, sizeof map);
 		map[7] = 0;
-		warp_prefetch(map, sv.stage);
+		warp_prefetch(map, sv.stage, sv.pos);
 	}
 }
 
@@ -3611,6 +3667,9 @@ static void dump_frame(C3D_RenderTarget* top, u32 n)
 // of autotest.txt is written in two halves, the destination before the load and the result after
 // eight frames, so a crash leaves the destination it died on as the last, unfinished line.
 static int s_at_first, s_at_count = 100000, s_at_i, s_at_n, s_at_frame = -1;
+static bool s_at_perf;               // "autotest warps first count perf": 1.5 s of frame times per room
+static char s_at_seen[512][8];       // rooms measured already (perf mode)
+static int s_at_nseen;
 static u16 s_at_list[1024];          // stage << 10 | door index in the stage
 static FILE* s_at_log;
 static float s_at_ms;
@@ -3633,6 +3692,15 @@ static void autotest_begin(void)
 	}
 	s_at_i = s_at_first;
 	s_at_frame = -1;
+	if (s_at_perf) {
+		FILE* f = fopen(PACK_DIR "/autoperf_seen.txt", "r");
+		char line[32];
+		while (f && fgets(line, sizeof line, f) && s_at_nseen < 512)
+			if (sscanf(line, "%7s", s_at_seen[s_at_nseen]) == 1)
+				s_at_nseen++;
+		if (f)
+			fclose(f);
+	}
 	new_game();
 }
 
@@ -3662,6 +3730,19 @@ static void autotest_frame(u32* down, u32* held)
 			s_at_i++;
 			return;
 		}
+		if (s_at_perf) {
+			// perf mode measures each room once: the doors into a room it has seen are skipped,
+			// across runs too (autoperf_seen.txt on the SD)
+			bool dup = false;
+			for (int i = 0; i < s_at_nseen && !dup; i++)
+				dup = !strcmp(s_at_seen[i], a.map);
+			if (dup) {
+				s_at_i++;
+				return;
+			}
+			if (s_at_nseen < 512)
+				snprintf(s_at_seen[s_at_nseen++], sizeof s_at_seen[0], "%s", a.map);
+		}
 		fprintf(s_at_log, "%d st%d ev%d -> st%d %s (%.0f %.0f %.0f)", s_at_i, st, a.event, a.stage, a.map,
 		        a.pos[0], a.pos[1], a.pos[2]);
 		fflush(s_at_log);
@@ -3674,7 +3755,10 @@ static void autotest_frame(u32* down, u32* held)
 		s_at_frame = 0;
 		return;
 	}
-	if (++s_at_frame < 8)
+	++s_at_frame;
+	if (s_at_perf && s_at_frame == 10)
+		perf_window_reset();             // the load and its first frames are not counted
+	if (s_at_frame < (s_at_perf ? 100 : 8))
 		return;
 	float ny;
 	bool floor = s_have_col && col_floor(&s_col, s_px, s_pz, s_py, 600.0f, &ny);
@@ -3685,6 +3769,17 @@ static void autotest_frame(u32* down, u32* held)
 	        hypotf(s_px - s_warp.pos[0], s_pz - s_warp.pos[2]), gamecam_road_count(), gamecam_mv_type(),
 	        (unsigned long)s_cur.missing_textures, (unsigned long)(linearSpaceFree() / 1024),
 	        (unsigned long)(mi.uordblks / 1024), s_at_ms);
+	if (s_at_perf) {
+		PerfWindow w;
+		perf_window_get(&w);
+		fprintf(s_at_log, "  perf %s frames %d max %.1f over17 %d over33 %d upd %.2f cpu %.2f work %.1f\n", room,
+		        w.frames, w.max_ms, w.over17, w.over33, w.upd_avg, w.cpu_avg, w.max_work);
+		FILE* f = fopen(PACK_DIR "/autoperf_seen.txt", "a");   // measured: later runs skip it
+		if (f) {
+			fprintf(f, "%s\n", s_warp.map);
+			fclose(f);
+		}
+	}
 	fflush(s_at_log);
 	s_at_i++;
 	s_at_frame = -1;
@@ -3706,7 +3801,7 @@ static void pt_warp(int stage, const char* map, const float pos[3], float yaw)
 	memcpy(s_warp.pos, pos, sizeof s_warp.pos);
 	s_warp.facing = yaw;
 	s_warp_pending = true;
-	warp_prefetch(s_warp.map, s_warp.stage);
+	warp_prefetch(s_warp.map, s_warp.stage, s_warp.pos);
 }
 
 static void pt_use_item(int item) { s_use_item = item; }
@@ -3801,8 +3896,10 @@ int main(void)
 			}
 			if (!strcmp(key, "autotest")) {
 				char what[16] = "";
-				sscanf(line, "%*s %15s %d %d", what, &s_at_first, &s_at_count);
+				char mode[16] = "";
+				sscanf(line, "%*s %15s %d %d %15s", what, &s_at_first, &s_at_count, mode);
 				s_autotest = !strcmp(what, "warps");
+				s_at_perf = !strcmp(mode, "perf");
 				continue;
 			}
 			if (!strcmp(key, "movie")) {
@@ -3818,6 +3915,15 @@ int main(void)
 			if (!strcmp(key, "streamsync")) s_stream_sync = val != 0;
 			if (!strcmp(key, "shadowdebug")) shadow_debug(val);
 			if (!strcmp(key, "fogdebug")) fog_debug(val);
+			if (!strcmp(key, "fogsprites") || !strcmp(key, "shadows") || !strcmp(key, "framecap") ||
+			    !strcmp(key, "tiledist")) {
+				Quality q = *quality(); // quality.h knobs, normally the hardware profile's
+				if (!strcmp(key, "fogsprites")) q.fog_sprites = val;
+				if (!strcmp(key, "shadows")) q.stencil_shadows = q.drop_shadows = val != 0;
+				if (!strcmp(key, "framecap")) q.frame_cap = val;
+				if (!strcmp(key, "tiledist")) q.tile_distance = (float)val;
+				quality_set(&q);
+			}
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "batch")) s_only_batch = val;
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
@@ -4196,7 +4302,9 @@ int main(void)
 		}
 
 		perf_mark_render();
+		u64 tw = svcGetSystemTick();
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+		perf_part("r_wait", tw);          // the previous frame's GPU work and the vertical blank
 		neighbours_reap();
 		u32 clear = s_cam.mode == CAM_PLAYER ? ((u32)s_env.clear_rgb[0] << 24 | (u32)s_env.clear_rgb[1] << 16 |
 		                                       (u32)s_env.clear_rgb[2] << 8 | 0xFF) : CLEAR_COLOR;
@@ -4216,16 +4324,25 @@ int main(void)
 			C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, &mv);
 			Mtx_Multiply(&s_clip_mtx, &proj, &mv);
 			shadow_frame(s_paused);
+			u64 tr = svcGetSystemTick();
 			calls = draw_room();
+			perf_part("r_map", tr);
+			tr = svcGetSystemTick();
 			if (demo_active())
 				draw_demo(&proj, &mv);
 			else
 				draw_james(&proj, &mv);     // same light environment as the room
 			C3D_LightEnvBind(NULL);
+			perf_part("r_chr", tr);
+			tr = svcGetSystemTick();
 			shadow_draw(&proj, &mv, &ortho);
 			blood_draw(&proj, &mv);      // the floor's pools and stains, the spray (blood.c)
+			perf_part("r_shadow", tr);
+			tr = svcGetSystemTick();
 			if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && s_opt.fog)
 				fog_frame(&proj, &mv, &ortho, s_paused ? 0.0f : dt);
+			perf_part("r_fog", tr);
+			tr = svcGetSystemTick();
 			float black = s_fade > demo_fade() ? s_fade : demo_fade();
 			// Enhanced Edition "DisableRedCrossInCutScenes" (Patches/DisableRedCrossDuringCutscenes.cpp,
 			// zlib licence): no cross in scenes, still pictures, the item screen or while a stage
@@ -4251,10 +4368,16 @@ int main(void)
 			draw_top_text();
 			savescreen_draw_top();       // a save point's files over the room
 			font_flush();
+			perf_part("r_ui", tr);
 		}
+		u64 tt = svcGetSystemTick();
 		touchui_frame();
+		perf_part("r_touch", tt);
+		tt = svcGetSystemTick();
 		C3D_FrameEnd(0);
+		perf_part("r_end", tt);
 		perf_frame_end(s_nrooms ? s_rooms[s_room] : "-");
+		perf_pace(quality()->frame_cap);   // 60 while it fits, an even 30 when it does not
 		for (int i = 0; i < s_ndump; i++)
 			if (s_dump_frames[i] == frame)
 				dump_frame(top, frame);

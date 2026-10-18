@@ -60,6 +60,7 @@ void sfx_door_result(int set, SfxDoor which, const float pos[3]);
 // going from frame f0 to f1 (the clip loops between first and last).
 void sfx_floor_load(const char* map);
 // Hands over a tile's .sfm file read ahead (stream.c); sfx_floor_load uses it instead of the SD card.
+// data NULL: the tile has none, and sfx_floor_load does not look for it on the SD card either.
 void sfx_floor_put(const char* map, u8* data, long size);
 int sfx_floor_material(float x, float y, float z);
 void sfx_footsteps(const char* clip, int first, int last, float f0, float f1, bool backward, const float pos[3]);

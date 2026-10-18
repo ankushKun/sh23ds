@@ -6,7 +6,13 @@
 // lobby's music box (stage 40, model kind 0x524, data/chr/item/org.mdl converted by chr.py to
 // pack/chr/item/org.s3c) with its cylinder and figures turning while it plays (0x57b5c0).
 
-void stagemdl_update(int stage);                     // loads or frees the stage's models (stagemdl_draw does)
+void stagemdl_update(int stage);                     // sets up or frees the stage's models (stagemdl_draw does)
+// A door's read ahead (main.c warp_prefetch): asks the reader thread for the models placed within
+// range of where James arrives.
+void stagemdl_prefetch(int stage, float x, float z, void (*want)(const char* path));
+// The room load, behind the fade: loads the models in range of James there, from what the read
+// ahead brought, so none has to load in a frame of play.
+void stagemdl_preload(int stage, float x, float z);
 void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones);   // skin program and lights bound
 // 0x57b5c0 FUN(1, 15.0): one frame of the tune that opens the box (the right order); seconds is
 // the time since it started, or < 0 to put the parts back.

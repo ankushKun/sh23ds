@@ -197,6 +197,28 @@ bool room_load(Room* room, const char* pack, const char* area, const char* name,
 	return room_load_mem(room, pack, area, name, data, size, NULL, 0, err, errlen);
 }
 
+#define S3M_REBASED 0x80000000u    // version bit set by room_prepare (in memory only)
+
+void room_prepare(u8* data, long size)
+{
+	S3MHeader* h = (S3MHeader*)data;
+	if (size < (long)sizeof *h || memcmp(h->magic, "S3M1", 4) != 0 || h->version != 2)
+		return;
+	if (h->ofs_batches + h->n_batches * sizeof(RoomBatchFile) > (u32)size ||
+	    h->ofs_indices + h->n_indices * sizeof(u16) > (u32)size)
+		return;
+	const RoomBatchFile* fb = (const RoomBatchFile*)(data + h->ofs_batches);
+	u16* idx = (u16*)(data + h->ofs_indices);
+	for (u32 i = 0; i < h->n_batches; i++) {
+		if (fb[i].first_index + fb[i].index_count > h->n_indices)
+			return;                      // left to room_load_mem, which does the same
+	}
+	for (u32 i = 0; i < h->n_batches; i++)
+		for (u32 k = 0; k < fb[i].index_count; k++)
+			idx[fb[i].first_index + k] = (u16)(idx[fb[i].first_index + k] + fb[i].first_vertex);
+	h->version |= S3M_REBASED;
+}
+
 int room_texture_ids(const u8* data, long size, u32* out, int max)
 {
 	const S3MHeader* h = (const S3MHeader*)data;
@@ -328,12 +350,33 @@ static void parts_unregister(const RoomBatch* batches)
 			s_parts_maps[k].batches = NULL;
 }
 
+bool room_tex_warm(const char* pack, const char* area, const RoomTexBlob* tex, int ntex, u64 deadline)
+{
+	bool first = true;
+	for (int i = 0; i < ntex; i++) {
+		if (!tex[i].data)
+			continue;
+		bool have = false;
+		if (!strcmp(area, s_cache_area))
+			for (u32 k = 0; k < s_cached && !have; k++)
+				have = s_cache[k].id == tex[i].id;
+		if (have)
+			continue;
+		if (!first && svcGetSystemTick() >= deadline)
+			return false;
+		first = false;
+		texcache_get(pack, area, tex[i].id, tex, ntex);
+	}
+	return true;
+}
+
 bool room_load_mem(Room* room, const char* pack, const char* area, const char* name, u8* data, long size,
                    const RoomTexBlob* tex, int ntex, char* err, size_t errlen)
 {
 	memset(room, 0, sizeof *room);
 	S3MHeader* h = (S3MHeader*)data;
-	if (size < (long)sizeof *h || memcmp(h->magic, "S3M1", 4) != 0 || h->version != 2) {
+	bool rebased = size >= (long)sizeof *h && (h->version & S3M_REBASED);
+	if (size < (long)sizeof *h || memcmp(h->magic, "S3M1", 4) != 0 || (h->version & ~S3M_REBASED) != 2) {
 		char path[256];
 		snprintf(path, sizeof path, "%s/bg/%s/%s.s3m", pack, area, name);
 		free(data);
@@ -398,8 +441,11 @@ bool room_load_mem(Room* room, const char* pack, const char* area, const char* n
 		// Rebase to room-global vertex indices: every batch then draws from one vertex buffer
 		// binding, and no two batches share index values (a post-transform vertex cache keyed by
 		// index would otherwise hand later batches stale vertices from earlier ones).
-		for (u32 k = 0; k < b->index_count; k++)
-			b->indices[k] = (u16)(fidx[fb[i].first_index + k] + b->first_vertex);
+		if (rebased)
+			memcpy(b->indices, fidx + fb[i].first_index, b->index_count * sizeof(u16));
+		else
+			for (u32 k = 0; k < b->index_count; k++)
+				b->indices[k] = (u16)(fidx[fb[i].first_index + k] + b->first_vertex);
 	}
 	memcpy(room->vertices, data + h->ofs_vertices, h->n_vertices * ROOM_VERTEX_SIZE);
 	free(data);

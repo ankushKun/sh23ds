@@ -15,9 +15,10 @@ typedef struct {
 
 static void* read_file(const char* path, long* size)
 {
+	bool asked = stream_file_state(path) >= 0;
 	void* pre = stream_take_file(path, size);   // read ahead for a door (main.c warp_prefetch)
-	if (pre)
-		return pre;
+	if (pre || asked)
+		return pre;                  // asked for and still NULL: the reader found no such file
 	FILE* f = fopen(path, "rb");
 	if (!f)
 		return NULL;
@@ -381,30 +382,50 @@ void chr_draw(Character* c, int uBones)
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, c->vertices, CHR_VERTEX_SIZE, 5, 0x43210);
+	// Consecutive draws often use the same palette, texture and texenv: only what changes is sent
+	// (each palette slot is three uniform vectors, and citro3d re-sends whatever is written).
+	const ChrDraw* prev = NULL;
+	int env_mode = -1, tex_slot = -1, alpha = -1;
 	for (u32 i = 0; i < c->n_draws; i++) {
 		ChrDraw* d = &c->draws[i];
-		C3D_FVec* u = C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uBones, d->palette_count * 3);
-		for (u32 s = 0; s < d->palette_count; s++) {
-			const Mtx34* m = &c->skin[d->palette[s]];
-			for (int r = 0; r < 3; r++)
-				u[s * 3 + r] = FVec4_New(m->m[r][0], m->m[r][1], m->m[r][2], m->m[r][3]);
+		bool same_palette = prev && prev->palette_count >= d->palette_count &&
+		                    !memcmp(prev->palette, d->palette, d->palette_count);
+		if (!same_palette) {
+			C3D_FVec* u = C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, uBones, d->palette_count * 3);
+			for (u32 s = 0; s < d->palette_count; s++) {
+				const Mtx34* m = &c->skin[d->palette[s]];
+				for (int r = 0; r < 3; r++)
+					u[s * 3 + r] = FVec4_New(m->m[r][0], m->m[r][1], m->m[r][2], m->m[r][3]);
+			}
+			prev = d;
 		}
 		bool textured = d->texture_slot < c->n_textures && c->tex_ok[d->texture_slot];
-		C3D_TexEnv* env = C3D_GetTexEnv(0);
-		C3D_TexEnvInit(env);
-		if (textured) {
+		if (textured && (int)d->texture_slot != tex_slot) {
 			C3D_TexBind(0, &c->tex[d->texture_slot]);
-			C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_FRAGMENT_PRIMARY_COLOR, 0);
-			C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, 0, 0);
-			C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
-			C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-		} else {
-			C3D_TexEnvSrc(env, C3D_RGB, GPU_FRAGMENT_PRIMARY_COLOR, 0, 0);
-			C3D_TexEnvSrc(env, C3D_Alpha, GPU_PRIMARY_COLOR, 0, 0);
-			C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+			tex_slot = (int)d->texture_slot;
 		}
-		C3D_TexEnvInit(C3D_GetTexEnv(1));
-		C3D_AlphaTest(textured && (d->flags & 1), GPU_GREATER, 0x60);
+		if ((int)textured != env_mode) {
+			C3D_TexEnv* env = C3D_GetTexEnv(0);
+			C3D_TexEnvInit(env);
+			if (textured) {
+				C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_FRAGMENT_PRIMARY_COLOR, 0);
+				C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, 0, 0);
+				C3D_TexEnvFunc(env, C3D_RGB, GPU_MODULATE);
+				C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+			} else {
+				C3D_TexEnvSrc(env, C3D_RGB, GPU_FRAGMENT_PRIMARY_COLOR, 0, 0);
+				C3D_TexEnvSrc(env, C3D_Alpha, GPU_PRIMARY_COLOR, 0, 0);
+				C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+			}
+			if (env_mode < 0)
+				C3D_TexEnvInit(C3D_GetTexEnv(1));
+			env_mode = (int)textured;
+		}
+		int a = textured && (d->flags & 1);
+		if (a != alpha) {
+			C3D_AlphaTest(a, GPU_GREATER, 0x60);
+			alpha = a;
+		}
 		C3D_DrawElements(GPU_TRIANGLES, d->index_count, C3D_UNSIGNED_SHORT, d->indices);
 	}
 }

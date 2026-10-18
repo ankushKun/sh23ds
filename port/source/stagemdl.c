@@ -5,6 +5,8 @@
 #include "events.h"
 #include "prog_int.h"
 #include "playtest.h"
+#include "perf.h"
+#include "stream.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,12 +16,24 @@
 
 // The placed models of the current stage (pack/events/stagemdl.txt, tools/sh2conv/stagemodels.py):
 // the PC loads those in James' room (0x493430); the port draws the ones within SM_RANGE of him
-// (fog hides the rest) and loads a model the first time one of its places comes that close, one a
-// frame, keeping at most SM_LOADED models and dropping the one unused longest.
+// (fog hides the rest), keeping at most SM_LOADED models and dropping the one unused longest. The
+// ones in range where James arrives load with the room, behind the fade (stagemdl_preload); one
+// that comes into range later is read by the stream thread from SM_RANGE + SM_AHEAD on and set up
+// once its files are in, one a frame, so no frame of play waits for the SD card. The whole list is
+// read once, at the first stage, so a stage change does not read it again.
 #define SM_MAX_PLACES 128
 #define SM_MAX_MODELS 64
 #define SM_LOADED 20
 #define SM_RANGE 14000.0f
+#define SM_AHEAD 3000.0f
+#define SM_ALL 512
+
+typedef struct {
+	s16 stage;
+	u16 kind, flag_off, flag_on;
+	char folder[8], name[24];
+	float pos[3], rot[3];
+} Line;
 
 typedef struct {
 	u16 kind, flag_off, flag_on;
@@ -86,6 +100,37 @@ static void free_models(void)
 	bed_free();
 }
 
+static Line* s_all;
+static int s_nall = -1;           // -1 until stagemdl.txt is read
+
+static void read_list(void)
+{
+	if (s_nall >= 0)
+		return;
+	s_nall = 0;
+	FILE* f = fopen(PACK_DIR "/events/stagemdl.txt", "r");
+	if (!f)
+		return;
+	s_all = malloc(SM_ALL * sizeof *s_all);
+	char line[160];
+	while (s_all && fgets(line, sizeof line, f) && s_nall < SM_ALL) {
+		int st, off, on;
+		unsigned kind;
+		Line* l = &s_all[s_nall];
+		if (sscanf(line, "%d %x %7s %23s %d %d %f %f %f %f %f %f", &st, &kind, l->folder, l->name, &off, &on,
+		           &l->pos[0], &l->pos[1], &l->pos[2], &l->rot[0], &l->rot[1], &l->rot[2]) != 12)
+			continue;
+		l->stage = (s16)st, l->kind = (u16)kind, l->flag_off = (u16)off, l->flag_on = (u16)on;
+		s_nall++;
+	}
+	fclose(f);
+}
+
+static void model_path(const char* folder, const char* name, char* path, size_t len)
+{
+	snprintf(path, len, PACK_DIR "/chr/%s/%s.s3c", folder, name);
+}
+
 void stagemdl_update(int stage)
 {
 	if (stage == s_stage)
@@ -93,32 +138,50 @@ void stagemdl_update(int stage)
 	s_stage = stage;
 	free_models();
 	s_nplaces = 0;
-	FILE* f = fopen(PACK_DIR "/events/stagemdl.txt", "r");
-	if (!f)
-		return;
-	char line[160];
-	while (fgets(line, sizeof line, f) && s_nplaces < SM_MAX_PLACES) {
-		int st, off, on;
-		unsigned kind;
-		char folder[8], name[24];
-		Place p;
-		if (sscanf(line, "%d %x %7s %23s %d %d %f %f %f %f %f %f", &st, &kind, folder, name, &off, &on, &p.pos[0],
-		           &p.pos[1], &p.pos[2], &p.rot[0], &p.rot[1], &p.rot[2]) != 12 || st != stage)
+	read_list();
+	for (int i = 0; i < s_nall && s_nplaces < SM_MAX_PLACES; i++) {
+		const Line* l = &s_all[i];
+		if (l->stage != stage)
 			continue;
 		int m = 0;
-		while (m < s_nmodels && (strcmp(s_models[m].folder, folder) || strcmp(s_models[m].name, name)))
+		while (m < s_nmodels && (strcmp(s_models[m].folder, l->folder) || strcmp(s_models[m].name, l->name)))
 			m++;
 		if (m == s_nmodels) {
 			if (s_nmodels == SM_MAX_MODELS)
 				continue;
-			snprintf(s_models[m].folder, sizeof s_models[m].folder, "%s", folder);
-			snprintf(s_models[m].name, sizeof s_models[m].name, "%s", name);
+			snprintf(s_models[m].folder, sizeof s_models[m].folder, "%s", l->folder);
+			snprintf(s_models[m].name, sizeof s_models[m].name, "%s", l->name);
 			s_nmodels++;
 		}
-		p.kind = (u16)kind, p.flag_off = (u16)off, p.flag_on = (u16)on, p.model = (u8)m;
+		Place p;
+		memcpy(p.pos, l->pos, sizeof p.pos);
+		memcpy(p.rot, l->rot, sizeof p.rot);
+		p.kind = l->kind, p.flag_off = l->flag_off, p.flag_on = l->flag_on, p.model = (u8)m;
 		s_places[s_nplaces++] = p;
 	}
-	fclose(f);
+}
+
+void stagemdl_prefetch(int stage, float x, float z, void (*want)(const char* path))
+{
+	read_list();
+	char path[96];
+	for (int i = 0; i < s_nall; i++) {
+		const Line* l = &s_all[i];
+		float dx = l->pos[0] - x, dz = l->pos[2] - z;
+		if (l->stage != stage || dx * dx + dz * dz > SM_RANGE * SM_RANGE)
+			continue;
+		if (stage == s_stage) {          // loaded already?
+			bool have = false;
+			for (int m = 0; m < s_nmodels && !have; m++)
+				have = s_models[m].chr && !strcmp(s_models[m].folder, l->folder) && !strcmp(s_models[m].name, l->name);
+			if (have)
+				continue;
+		}
+		model_path(l->folder, l->name, path, sizeof path);
+		want(path);                      // the reader skips one it has queued already
+		memcpy(path + strlen(path) - 4, ".kg1", 4);   // the shadow model chr_load also reads
+		want(path);
+	}
 }
 
 void stagemdl_music_box(float seconds) { s_play = seconds; }
@@ -149,16 +212,20 @@ static bool load_model(Model* m)
 		chr_free(s_models[oldest].chr);
 		free(s_models[oldest].chr);
 		s_models[oldest].chr = NULL;
+		loaded--;
 	}
 	Character* c = malloc(sizeof *c);
 	char dir[64], err[64];
-	snprintf(dir, sizeof dir, PACK_DIR "/chr/%s", m->folder);
+	snprintf(dir, sizeof dir, PACK_DIR "/chr/%s", m->folder);   // chr_load takes what the reader read
+	u64 t0 = svcGetSystemTick();
 	if (!c || !chr_load(c, dir, m->name, err, sizeof err)) {
 		free(c);
 		m->failed = true;
 		return false;
 	}
 	m->chr = c;
+	perf_event("stagemdl", "%s/%s set up in %.1f ms, %d of %d loaded", m->folder, m->name,
+	           perf_ms(svcGetSystemTick() - t0), loaded + 1, s_nmodels);
 	return true;
 }
 
@@ -273,6 +340,35 @@ static void bed_draw(const C3D_Mtx* view, int uModelView, int uBones)
 	chr_draw(&s_bed.chr, uBones);
 }
 
+// Whether a place shows a model now (its flags, the cutscene), and its squared distance from x, z.
+static bool shown(const Place* p, float x, float z, float* d2)
+{
+	// The PC checks flag_off when it loads a room's models, so the figure boxes that flag 472
+	// (the right order) takes away stay for the tune they are part of.
+	bool tune = s_play >= 0.0f && p->kind >= 0x718 && p->kind <= 0x71a;
+	if ((p->flag_off && ev_flag(p->flag_off) && !tune) || (p->flag_on && !ev_flag(p->flag_on)))
+		return false;
+	if (demo_has_kind(p->kind))
+		return false;                // the cutscene moves its own copy
+	float dx = p->pos[0] - x, dz = p->pos[2] - z;
+	*d2 = dx * dx + dz * dz;
+	return true;
+}
+
+void stagemdl_preload(int stage, float x, float z)
+{
+	stagemdl_update(stage);
+	for (int i = 0; i < s_nplaces; i++) {
+		const Place* p = &s_places[i];
+		Model* m = &s_models[p->model];
+		float d2;
+		if (m->chr || m->failed || !shown(p, x, z, &d2) || d2 > SM_RANGE * SM_RANGE)
+			continue;
+		if (load_model(m))
+			m->used = s_frame;
+	}
+}
+
 void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 {
 	stagemdl_update(ev_stage());
@@ -283,27 +379,40 @@ void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 	float me[3], yaw;
 	p_player(me, &yaw);
 	bool loaded_one = false;
+	const float ahead = (SM_RANGE + SM_AHEAD) * (SM_RANGE + SM_AHEAD);
+	// first the loaded models in range or about to be: none of them is the one a load drops
+	for (int i = 0; i < s_nplaces; i++) {
+		float d2;
+		if (s_models[s_places[i].model].chr && shown(&s_places[i], me[0], me[2], &d2) && d2 <= ahead)
+			s_models[s_places[i].model].used = s_frame;
+	}
 	for (int i = 0; i < s_nplaces; i++) {
 		const Place* p = &s_places[i];
-		// The PC checks flag_off when it loads a room's models, so the figure boxes that flag 472
-		// (the right order) takes away stay for the tune they are part of.
-		bool tune = s_play >= 0.0f && p->kind >= 0x718 && p->kind <= 0x71a;
-		if ((p->flag_off && ev_flag(p->flag_off) && !tune) || (p->flag_on && !ev_flag(p->flag_on)))
+		float d2;
+		if (!shown(p, me[0], me[2], &d2) || d2 > ahead)
 			continue;
-		float dx = p->pos[0] - me[0], dz = p->pos[2] - me[2];
-		if (dx * dx + dz * dz > SM_RANGE * SM_RANGE)
-			continue;
-		if (demo_has_kind(p->kind))
-			continue;                // the cutscene moves its own copy
 		Model* m = &s_models[p->model];
 		if (!m->chr) {
 			if (m->failed || loaded_one)
+				continue;
+			// read by the stream thread first; set up (one a frame) once it and its textures are in
+			char path[96];
+			model_path(m->folder, m->name, path, sizeof path);
+			int st = stream_file_state(path);
+			if (st == -1) {
+				stream_want_file(path);
+				memcpy(path + strlen(path) - 4, ".kg1", 4);
+				stream_want_file(path);
+			}
+			if (st == -1 || (st >= 0 && stream_files_busy()))
 				continue;
 			loaded_one = true;
 			if (!load_model(m))
 				continue;
 		}
 		m->used = s_frame;
+		if (d2 > SM_RANGE * SM_RANGE)
+			continue;
 		C3D_Mtx model, mv;
 		Mtx_Identity(&model);
 		Mtx_Translate(&model, p->pos[0], p->pos[1], p->pos[2], true);

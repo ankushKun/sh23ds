@@ -3,6 +3,7 @@
 #include "profile.h"
 #include <citro3d.h>
 #include <malloc.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -24,8 +25,14 @@ static struct {
 	int nparts;
 	// perf.txt lines wait here and go out with the once-a-second line: a file write costs tens of
 	// ms, and a write in the middle of a frame would show up as the very hitch being measured
+	struct { const char* name; float sum, max; } psum[24];   // the parts over the second
+	int npsum;
 	char log[4096];
 	int loglen;
+	PerfWindow win;
+	float last_work;
+	int pace_fps, pace_over, pace_fit, pace_cap;
+	double win_upd, win_cpu;
 	// low-water marks between two mem.txt lines (memlog): the area change lines alone miss the
 	// peaks of streaming, cutscenes and movies
 	u32 lin_min, heap_used_max;
@@ -101,9 +108,22 @@ void perf_frame_end(const char* where)
 	float cpu = C3D_GetProcessingTime(), gpu = C3D_GetDrawingTime();
 	P.frames++;
 	P.total++;
+	for (int i = 0; i < P.nparts; i++) {
+		int k = 0;
+		while (k < P.npsum && P.psum[k].name != P.part[i].name)
+			k++;
+		if (k == P.npsum) {
+			if (P.npsum == 24)
+				continue;
+			P.psum[P.npsum].name = P.part[i].name, P.psum[P.npsum].sum = P.psum[P.npsum].max = 0.0f;
+			P.npsum++;
+		}
+		P.psum[k].sum += P.part[i].ms;
+		P.psum[k].max = fmaxf(P.psum[k].max, P.part[i].ms);
+	}
 	// single slow frames are what the player feels as a hitch, so they get a line of their own
 	// slow: half a refresh over the frame's time (25 ms at 60 fps, 41.7 ms with the 30 fps cap)
-	float slow = 1000.0f / (float)profile_frame_rate() + 8.3f;
+	float slow = 1000.0f / (float)(P.pace_fps ? P.pace_fps : profile_frame_rate()) + 8.3f;
 	if (P.log_frames && upd + ren > slow) {
 		log_add("%-10s slow frame %lu: upd %5.2f render %5.2f", where, (unsigned long)P.total, upd, ren);
 		for (int i = 0; i < P.nparts; i++)
@@ -120,6 +140,17 @@ void perf_frame_end(const char* where)
 				P.heap_used_max = (u32)mi.uordblks;
 		}
 	}
+	float wait = 0.0f;
+	for (int i = 0; i < P.nparts; i++)
+		if (!strcmp(P.part[i].name, "r_wait"))
+			wait += P.part[i].ms;
+	P.last_work = upd + ren - wait;
+	P.win.frames++;
+	P.win.over17 += upd + ren > 17.5f;
+	P.win.over33 += upd + ren > 34.0f;
+	P.win.max_ms = fmaxf(P.win.max_ms, upd + ren);
+	P.win.max_work = fmaxf(P.win.max_work, upd + cpu);
+	P.win_upd += upd, P.win_cpu += cpu;
 	P.upd_sum += upd, P.ren_sum += ren, P.cpu_sum += cpu, P.gpu_sum += gpu;
 	if (upd > P.upd_max) P.upd_max = upd;
 	if (ren > P.ren_max) P.ren_max = ren;
@@ -135,13 +166,65 @@ void perf_frame_end(const char* where)
 		        "  lin %lu  music %d%%\n",
 		        where, P.upd_sum / n, P.upd_max, P.ren_sum / n, P.ren_max, P.cpu_sum / n, P.gpu_sum / n, P.gpu_max,
 		        P.tot_max, (unsigned long)(linearSpaceFree() >> 10), audio_decode_load());
+		// the named parts: average over the second and the worst frame's share
+		if (P.npsum) {
+			log_add("%-10s parts", where);
+			for (int i = 0; i < P.npsum; i++)
+				if (P.psum[i].max >= 0.05f)
+					log_add("  %s %.2f/%.2f", P.psum[i].name, P.psum[i].sum / n, P.psum[i].max);
+			log_add("\n");
+		}
 		log_flush();
 	}
+	P.npsum = 0;
 	P.frames = 0;
 	P.upd_sum = P.upd_max = P.ren_sum = P.ren_max = P.cpu_sum = P.gpu_sum = P.gpu_max = P.tot_max = 0.0f;
 }
 
 const char* perf_status(void) { return P.status[0] ? P.status : "perf -"; }
+
+int perf_pace(int cap)
+{
+	int want = cap == 30 || cap == 60 ? cap : 0;
+	bool cap_changed = cap != P.pace_cap;   // the Options page (profile.c) may have set a rate meanwhile
+	P.pace_cap = cap;
+	if (!P.pace_fps)
+		P.pace_fps = 60;
+	if (!want) {
+		// over budget in 4 of the last frames or so: 30; back to 60 after 2 s that would all fit
+		if (P.last_work > 15.5f)
+			P.pace_over += 2;
+		else if (P.pace_over > 0)
+			P.pace_over--;
+		P.pace_fit = P.last_work < 11.0f ? P.pace_fit + 1 : 0;
+		want = P.pace_fps;
+		if (P.pace_fps == 60 && P.pace_over >= 8)
+			want = 30;
+		else if (P.pace_fps == 30 && P.pace_fit >= 120)
+			want = 60;
+	}
+	if (want != P.pace_fps || cap_changed) {
+		P.pace_fps = want;
+		P.pace_over = P.pace_fit = 0;
+		C3D_FrameRate((float)want);
+	}
+	return P.pace_fps;
+}
+
+void perf_window_reset(void)
+{
+	memset(&P.win, 0, sizeof P.win);
+	P.win_upd = P.win_cpu = 0.0;
+}
+
+void perf_window_get(PerfWindow* w)
+{
+	*w = P.win;
+	if (w->frames) {
+		w->upd_avg = (float)(P.win_upd / w->frames);
+		w->cpu_avg = (float)(P.win_cpu / w->frames);
+	}
+}
 
 float perf_ms(u64 ticks) { return ms(ticks); }
 

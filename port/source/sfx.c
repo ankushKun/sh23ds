@@ -655,8 +655,8 @@ void sfx_floor_load(const char* map)
 	if (!s_ok)
 		return;
 	for (int i = 0; i < FLOOR_CACHE; i++)
-		if (s_fcache[i].data && !strcmp(s_fcache[i].map, map)) {
-			floor_from_mem(s_fcache[i].data, s_fcache[i].size);
+		if (s_fcache[i].map[0] && !strcmp(s_fcache[i].map, map)) {
+			floor_from_mem(s_fcache[i].data, s_fcache[i].size);   // no data: the tile has none
 			return;
 		}
 	char path[96];

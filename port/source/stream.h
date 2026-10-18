@@ -51,5 +51,8 @@ void stream_flush(const char* area);
 void stream_want_file(const char* path);
 void* stream_take_file(const char* path, long* size);
 bool stream_files_busy(void);
+// 1 when a file asked for is read (stream_take_file will not wait), 0 while it is queued or being
+// read, -1 when nobody asked for it, -2 when there is no reader thread (read it yourself).
+int stream_file_state(const char* path);
 void stream_drop_files(void);           // what nobody took
 const char* stream_status(void);
