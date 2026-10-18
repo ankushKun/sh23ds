@@ -33,8 +33,8 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	sh23ds
 APP_TITLE	:=	Silent Hill 2 (sh23ds)
-APP_DESCRIPTION	:=	Native New 3DS port, uses your own game data
-APP_AUTHOR	:=	sh23ds
+APP_DESCRIPTION	:=	Native 3DS port, uses your own game data
+APP_AUTHOR	:=	ankushKun
 BUILD		:=	build
 SOURCES		:=	source source/game/view
 DATA		:=	data

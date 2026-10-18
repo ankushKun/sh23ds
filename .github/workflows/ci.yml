@@ -5,6 +5,7 @@ on:
     branches: [main]
     tags: ["v*"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -64,6 +65,22 @@ jobs:
       - name: Verify checksums
         run: cd dist && sha256sum -c sh23ds.sha256
 
+      # The notes are .github/releases/<tag>.md when it exists (what changed), then the install steps
+      # in .github/release-notes.md and the checksums.
+      - name: Release notes
+        run: |
+          {
+            if [ -f ".github/releases/${GITHUB_REF_NAME}.md" ]; then
+              cat ".github/releases/${GITHUB_REF_NAME}.md"; echo
+            fi
+            cat .github/release-notes.md
+            echo
+            echo '```'
+            cat dist/sh23ds.sha256
+            echo '```'
+          } > notes.md
+          cat notes.md
+
       # Published at once so releases/latest/download/... (the website's QR code) points at it.
       - name: Create the release
         env:
@@ -72,4 +89,5 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             dist/sh23ds.cia dist/sh23ds.3dsx dist/sh23ds.sha256 \
             --title "sh23ds ${GITHUB_REF_NAME}" \
-            --notes-file .github/release-notes.md
+            --notes-file notes.md \
+            --verify-tag

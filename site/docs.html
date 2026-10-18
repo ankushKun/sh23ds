@@ -169,9 +169,9 @@ cd sh23ds
           <p>The CIA asks for the 124 MB memory mode, the 804 MHz clock and the L2 cache (<code>port/package.sh</code>, through <code>port/meta/template.rsf</code>). The 3DSX gets whatever the Homebrew Launcher runs with.</p>
           <p>GitHub Actions byte-compiles the converters and builds the 3DSX and CIA on every push and pull request, keeping <code>dist/</code> as an artifact. To release:</p>
           <ol>
-            <li>Bump <code>VERSION</code> and commit.</li>
+            <li>Bump <code>VERSION</code>, write what changed in <code>.github/releases/v&lt;version&gt;.md</code> and commit.</li>
             <li>Push a matching tag, such as <code>v0.2.0</code>.</li>
-            <li>CI checks the tag against <code>VERSION</code>, verifies the checksums and publishes the release. The packer workflow pushes <code>ghcr.io/ankushkun/sh23ds-packer</code> with the same version and <code>latest</code>.</li>
+            <li>CI checks the tag against <code>VERSION</code>, verifies the checksums and publishes the release with those notes, the install steps and the checksums. The packer workflow pushes <code>ghcr.io/ankushkun/sh23ds-packer</code> with the same version and <code>latest</code>.</li>
           </ol>
           <div class="callout"><svg aria-hidden="true"><use href="#i-info"/></svg><p>GitHub creates a new container package as private. After the first packer push, make it public once in the package’s settings so players can pull it.</p></div>
           <p>The QR codes on the install guide point at <code>releases/latest/download/</code>, so they stay valid for every release. <code>tools/make_site_qr.py</code> regenerates them if the repository or asset names change.</p>

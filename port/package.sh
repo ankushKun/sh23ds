@@ -25,7 +25,7 @@ tool() { docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -v "$
 
 mkdir -p build
 tool bannertool makebanner -i meta/banner.png -a meta/banner.wav -o build/banner.bnr
-tool bannertool makesmdh -s "Silent Hill 2 (sh23ds)" -l "Native New 3DS port, uses your own game data" \
+tool bannertool makesmdh -s "Silent Hill 2 (sh23ds)" -l "Native 3DS port, uses your own game data" \
 	-p "ankushKun" -i meta/icon.png -f visible,nosavebackups -o build/icon.smdh
 tool makerom -f cia -o sh23ds.cia -elf sh23ds.elf -rsf meta/template.rsf \
 	-icon build/icon.smdh -banner build/banner.bnr -exefslogo -target t \

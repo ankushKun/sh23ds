@@ -196,7 +196,7 @@ cd sh23ds
 
 <br>
 
-GitHub Actions byte-compiles the converters and builds the 3DSX and CIA on every push and pull request, and keeps `dist/` as a build artifact. To release, bump `VERSION`, commit, and push a matching tag such as `v0.1.0`. The CI workflow checks that the tag matches `VERSION`, verifies the checksums and publishes the release. The packer workflow publishes `ghcr.io/ankushkun/sh23ds-packer` with the same version and `latest`. The website's QR code points at `releases/latest/download/sh23ds.cia`, so it stays valid for every release.
+GitHub Actions byte-compiles the converters and builds the 3DSX and CIA on every push and pull request, and keeps `dist/` as a build artifact. To release, bump `VERSION`, write what changed in `.github/releases/v<version>.md`, commit, and push a matching tag such as `v0.1.0`. The CI workflow checks that the tag matches `VERSION`, verifies the checksums and publishes the release with those notes, the install steps from `.github/release-notes.md` and the checksums. The packer workflow publishes `ghcr.io/ankushkun/sh23ds-packer` with the same version and `latest`. The website's QR code points at `releases/latest/download/sh23ds.cia`, so it stays valid for every release.
 
 </details>
 
