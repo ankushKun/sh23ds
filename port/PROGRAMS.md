@@ -76,7 +76,7 @@ The helpers in `prog.c` are the PC's `event_sub.c` functions:
 the employee elevator (0x57a4a0, flags 400 and 401) and the trunk's drums (EvStageInit 0x57a340),
 and in `prog_stagefn.c` the well wall (stage 30), the labyrinth lift (34), the corridor before the
 last door (44), Maria in the day room (20) and the small room functions of stages 16, 35 and 56
-(see STATUS.md, "Playthrough test").
+(see TESTING.md, "Playthrough suite").
 
 ## Pictures
 

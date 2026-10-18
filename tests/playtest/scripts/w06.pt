@@ -1,0 +1,90 @@
+# Brookhaven Hospital, front side: map, keys, the keypad, Maria, the roof, the box, the drain, the elevator, Laura
+debughud 1
+pt fast 1
+pt walkmode 1
+pt load w05
+pt god 1
+pt ev 4
+pt expect flag 27 1
+pt ev 7
+pt expect item 35 1
+pt ev 48
+pt expect stage 21
+pt ev 16
+pt expect stage 19
+pt ev 7
+pt expect item 36 1
+pt ev 6
+pt ev 2
+pt expect item 54 1
+pt ev 0
+pt expect item 6 1
+pt ev 20
+pt expect stage 21
+pt ev 17
+pt expect stage 20
+pt evgo 33
+pt until panel 20
+pt solve keypad
+pt idle
+pt expect flag 181 1
+pt ev 35
+pt ev 1
+pt expect flag 186 1
+pt expect flag 188 1
+pt expect flag 15 0
+pt ev 15
+pt expect item 34 1
+pt ev 47
+pt ev 18
+pt expect stage 21
+pt ev 4
+pt expect flag 199 1
+pt ev 5
+pt ev 8
+pt expect flag 200 1
+pt ev 0
+pt expect flag 201 1
+pt until flag 203 1 120
+pt until stage 20 60
+pt idle
+pt expect flag 206 1
+pt ev 21
+pt expect flag 190 1
+pt ev 26
+pt ev 3
+pt expect flag 192 1
+pt ev 27
+pt ev 19
+pt ev 35
+pt ev 59
+pt evgo 9
+pt until panel 30
+pt solve box
+pt idle
+pt expect flag 171 1
+pt expect item 53 1
+pt ev 60
+pt ev 41
+pt ev 13
+pt combine 53 54
+pt expect item 37 1
+pt expect item 53 0
+pt expect item 54 0
+pt ev 42
+pt ev 62
+pt expect flag 173 1
+pt ev 61
+pt expect stage 21
+pt evgo 18
+pt until panel 20
+pt press A
+pt idle
+pt until stage 18 20
+pt expect flag 176 1
+pt ev 50
+pt ev 0
+pt expect flag 207 1
+pt idle
+pt until stage 22 30
+pt save w06

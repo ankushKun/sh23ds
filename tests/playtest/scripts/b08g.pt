@@ -1,0 +1,190 @@
+# Town again: the wrench, the dig, the Historical Society, the prison, the labyrinth, Eddie
+debughud 1
+pt fast 1
+pt load c07
+pt god 1
+pt noenemies 1
+pt ev 6
+pt expect flag 261 1
+pt ev 7
+pt expect stage 5
+pt ev 0
+pt expect item 58 1
+pt ev 27
+pt expect stage 14
+pt ev 21
+pt expect flag 252 1
+pt ev 22
+pt expect item 40 1
+pt ev 40
+pt expect flag 259 1
+pt ev 39
+pt expect stage 28
+pt ev 2
+pt ev 13
+pt ev 16
+pt expect stage 29
+pt ev 4
+pt ev 8
+pt ev 1
+pt expect flag 265 1
+pt until stage 30 30
+pt idle
+pt expect flag 266 1
+pt ev 7
+pt walk 0 1 0.6
+pt attack 8
+pt idle
+pt attack 8
+pt idle
+pt expect flag 267 1
+pt until flag 268 1 30
+pt ev 8
+pt ev 11
+pt ev 13
+pt ev 16
+pt expect item 41 1
+pt expect flag 269 1
+pt ev 17
+pt expect flag 272 0
+pt prog panel 0 4 8
+pt evgo 18
+pt until panel 20
+pt press A
+pt press RIGHT
+pt press DOWN
+pt press A
+pt press RIGHT
+pt press DOWN
+pt press A
+pt idle
+pt expect flag 269 0
+pt ev 14
+pt ev 21
+pt expect flag 271 1
+pt ev 20
+pt expect flag 274 1
+pt until stage 31 30
+pt idle
+pt expect flag 276 1
+pt ev 2
+pt expect flag 28 1
+pt ev 3
+pt expect item 60 1
+pt ev 4
+pt expect item 61 1
+pt ev 6
+pt expect item 8 1
+pt ev 7
+pt expect item 63 1
+pt ev 59
+pt expect stage 32
+pt ev 0
+pt expect item 59 1
+pt ev 1
+pt expect item 64 1
+pt ev 42
+pt ev 50
+pt ev 3
+pt ev 4
+pt ev 5
+pt expect flag 304 1
+pt ev 10
+pt expect item 62 1
+pt ev 13
+pt expect flag 275 1
+pt ev 12
+pt expect stage 31
+pt ev 24
+pt combine 62 63 64
+pt expect flag 283 1
+pt ev 9
+pt expect flag 284 1
+pt until stage 33 30
+pt idle
+pt expect flag 305 1
+pt ev 3
+pt expect flag 306 1
+pt until flag 308 1 30
+pt idle
+pt ev 13
+pt expect flag 309 1
+pt ev 15
+pt expect flag 310 1
+pt until stage 34 30
+pt idle
+pt expect flag 311 1
+pt ev 3
+pt expect flag 312 1
+pt until flag 314 1 120
+pt ev 22
+pt ev 13
+pt ev 16
+pt ev 19
+pt ev 4
+pt expect item 15 1
+pt ev 20
+pt ev 17
+pt ev 14
+pt ev 11
+pt ev 6
+pt expect flag 327 1
+pt ev 24
+pt ev 8
+pt expect item 65 1
+pt ev 12
+pt ev 13
+pt ev 9
+pt expect flag 330 1
+pt ev 23
+pt expect stage 35
+pt noenemies 0
+pt ev 1
+pt ev 2
+pt expect flag 332 1
+pt until flag 333 1 30
+# a player's haul so far, well short of what the stages hold
+pt item 5 60
+pt item 7 30
+pt item 9 12
+pt item 1 3
+pt item 2 2
+pt fight 700 20000 flag 334
+pt until flag 335 1 60
+pt idle
+pt noenemies 1
+pt ev 14
+pt expect stage 36
+pt prog hangman 35465
+pt ev 30
+pt ev 0
+pt ev 24
+pt expect flag 343 1
+pt ev 1
+pt expect item 42 1
+pt ev 32
+pt expect flag 367 1
+pt ev 60
+pt ev 34
+pt expect flag 368 1
+pt until flag 369 1 30
+pt idle
+pt ev 63
+pt ev 52
+pt expect flag 372 1
+pt until stage 37 30
+pt idle
+pt noenemies 0
+pt ev 0
+pt expect flag 375 1
+pt fight 700 20000 flag 373
+pt until flag 376 1 60
+pt idle
+pt ev 2
+pt expect flag 377 1
+pt fight 700 20000 flag 374
+pt until flag 378 1 60
+pt idle
+pt ev 6
+pt expect stage 38
+pt save c08

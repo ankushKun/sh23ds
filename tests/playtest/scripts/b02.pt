@@ -1,0 +1,20 @@
+# Forest path, Angela at the graveyard, town east, the first monster, the Wood Side gate
+debughud 1
+pt fast 1
+pt load c01
+pt god 0
+pt ev 12
+pt expect flag 36 1
+pt ev 10
+pt expect stage 5
+pt ev 2
+pt expect flag 39 1
+pt ev 21
+pt expect flag 40 1
+pt expect item 13 1
+pt expect item 19 1
+pt god 0
+pt fight 120 3000
+pt idle
+pt expect flag 41 1
+pt expect flag 42 1

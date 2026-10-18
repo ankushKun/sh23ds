@@ -387,8 +387,7 @@ typedef struct {
 static const EvFix EE_FIXES[] = {
 	// "FireEscapeKeyFix" (Patches/FireEscapeKey.cpp): clears the needs-light bit (cond bit 2) of the
 	// fire escape key pickup in 3F (stage 9 event 6) and of the key behind the bars (stage 8
-	// event 0), so they work without the flashlight. trigger_pass does not test that bit yet, so
-	// this only matters once it does.
+	// event 0), so they work without the flashlight (trigger_pass tests the bit).
 	{ 9, 6, 0x20340004, 0x30000000, 0x0000c05c, 0x20340000, 0x30000000, 0x0000c05c },
 	{ 8, 0, 0x20004004, 0x30000000, 0x00004000, 0x20004000, 0x30000000, 0x00004000 },
 	// dllmain.cpp "Patching hotel map to not require the flashlight": the same bit on the hotel

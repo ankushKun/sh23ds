@@ -1,0 +1,51 @@
+# Town west: Rosewater Park, Maria, Pete's Bowl-o-Rama, Heaven's Night, to the hospital
+debughud 1
+pt fast 1
+pt walkmode 1
+pt load w04
+pt god 1
+pt ev 0
+pt expect flag 652 1
+pt ev 28
+pt expect flag 150 1
+pt ev 16
+pt expect flag 151 1
+pt ev 17
+pt expect flag 152 1
+pt expect flag 15 1
+pt ev 18
+pt expect flag 153 1
+pt ev 19
+pt expect flag 154 1
+pt ev 20
+pt expect flag 156 1
+pt ev 29
+pt expect flag 157 1
+pt idle
+pt expect stage 15
+pt ev 0
+pt idle
+pt expect flag 159 1
+pt ev 2
+pt expect flag 162 1
+pt ev 9
+pt ev 7
+pt expect stage 14
+pt ev 31
+pt expect flag 163 1
+pt ev 35
+pt expect flag 164 1
+pt ev 11
+pt expect stage 16
+pt ev 0
+pt expect flag 165 1
+pt ev 3
+pt expect flag 166 1
+pt ev 2
+pt expect stage 17
+pt ev 4
+pt ev 0
+pt expect stage 14
+pt ev 14
+pt expect stage 18
+pt save w05

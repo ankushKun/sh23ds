@@ -42,7 +42,7 @@ coordinates.
 | FixTownGateEvents (lock model) | same, 0x596090 | ported | `stageparts.c` stage 13: part 0x2e takes variant 0 where the PC sets 1 (the byte EE changes at 0x596090), the gate's lock model |
 | FixChainsawSpawn | Patches/PreventChainsawSpawn.cpp | ported | `prog.c` `prog_new_game`: the PC also set flag 12 (the chainsaw at the grave) on a first playthrough at beginner or easy action level (0x48b018); that branch is gone, so the chainsaw is a New Game+ reward |
 | ChangeClosetSpawn | Patches/ChangeClosetSpawn.cpp | ported | `prog_apart.c` `s09_first_meet_trihead`: after the room 307 scene James stands inside the closet (z -101525, yaw 0.3) so the key catches the eye. EE's FOV reset is not needed because `gamecam` takes the FOV from the roads every frame |
-| FireEscapeKeyFix | Patches/FireEscapeKey.cpp | ported (data) | `events.c`: clears the needs-light bit of the fire escape key (stage 9 event 6) and the key behind the bars (stage 8 event 0). No visible effect yet, because `trigger_pass` does not test that bit |
+| FireEscapeKeyFix | Patches/FireEscapeKey.cpp | ported (data) | `events.c`: clears the needs-light bit of the fire escape key (stage 9 event 6) and the key behind the bars (stage 8 event 0). `trigger_pass` tests the bit (an event with it needs James to see, `cond & 4`), so with the fix both keys can be taken without the flashlight, as in EE |
 | Hotel map without the flashlight (always on) | dllmain.cpp | ported (data) | Same bit on the hotel map pickup (stage 40 event 5) |
 | WoodsideRoom205Fix | WoodsideMannequinState.cpp, RotatingMannequinGlitch.cpp | already covered | The PC bug is stale state on a resident mannequin; the port spawns it fresh on every room entry and has no type-6 "lies in wait" state |
 | FixCreatureVehicleSpawn | CreatureVehicleSpawn.cpp | already covered | The PC sets a stale bit in the wait-under-car state (0x4c5740); the port's `SCU_WAITCAR` never sets it |
@@ -55,7 +55,7 @@ coordinates.
 | PistonRoomFix | PistonRoom.cpp | left out | The labyrinth pistons are not animated |
 | PuzzleAlignmentFixes | PuzzleAlignmentFixes.cpp | ported | `prog_overlay.c`: the gravestone boards (still and memo 54) use EE's matched texture rectangles and, turned, EE's corners; the coins in the room 105 cabinet use each coin's whole cell and one rectangle per hole |
 | OldManCoinFix | OldManCoinFix.cpp | ported | `stagemdl.c` `read_list`: the Old Man Coin in the garbage chute (stage 13, kind 0x71f) needs flag 0x5f (the canned juice thrown down) to show, as its pickup already does |
-| RowboatAnimationFix, RowboatSpawnFix (with the Great Knife boat speed) | RowboatAnimation.cpp, RowboatSpawn.cpp, RowboatFix.cpp | left out | No boat ride yet (`s38_embark_boat` skips it) |
+| RowboatAnimationFix, RowboatSpawnFix (with the Great Knife boat speed) | RowboatAnimation.cpp, RowboatSpawn.cpp, RowboatFix.cpp | left out | The ride is ported now (`boat.c`, programs batch 18), but these fixes are not applied to it yet and need checking against it; the Great Knife part needs a weapon test `boat.c` does not have |
 | PyramidHeadRotationFix (always on) | PyramidHeadRotationFix.cpp | already covered | The PC's `s44_trihead_dead` creates the two bodies with no rotation and EE gives them -1.75 and 2.9; the port places them from their Enemy_List rows (stage 44 ids 15 and 16, flag 483) with the rows' own facing |
 | PrisonerTimer, WaterMoveSpeedFix | the files of the same names | left out | The prisoner footsteps (0x4ae0f0) and the in-water walk speed are not ported; port logic is time based, so the 60 fps parts will not be needed |
 | HoldDamage | HoldDamage.cpp | already covered | `combat.c` `combat_hold_damage` already drains by the attack power times dt times 30, the scaling EE adds |
@@ -76,7 +76,7 @@ coordinates.
 | FixLyingFigureFootsteps | PlayWavSound.cpp | left out | Needs EE's `machi.wav`; enemies are frozen during scenes in the port, so the scene has no steps to fix |
 | AudioClipDetection | Wrappers/dsound | left out | Relies on DirectSound's volume ramp; on ndsp it would need a per-frame fade in the DSP callback |
 | ChainsawSoundFix | ChainsawSoundFix.cpp | already covered (hit) / left out (idle loop) | The hit sound plays once per enemy per swing in the port (`combat.c` `s_hit`), which is EE's first-frame-only rule. The rest fades in and trims the 48 kHz idle loop (0x1642) and the crank (0x14e8); the port's chainsaw has no idle loop, only the rev (11044) and the running sound (11045) |
-| LabyrinthElevatorVolumeFix | LabyrinthElevatorVolumeFix.cpp | left out | The labyrinth elevator stage code (0x582f30) is not ported (when it is, use dt and drop the 0.8 volume factor) |
+| LabyrinthElevatorVolumeFix | LabyrinthElevatorVolumeFix.cpp | left out | The lift's stage code is ported (`prog_stagefn.c`) without its sounds (0x4655 / 0x4656); when they are added, use dt and drop the 0.8 volume factor |
 | MusicBoxVolume | MusicBoxVolume.cpp | left out | Needs EE's re-authored `hotel/bgm_112.aix` |
 | PlayUnusedAudio, VHSAudioFix | PlayUnusedAudio.cpp, VHSAudio.cpp | left out | Off by default in EE; VHSAudioFix needs EE's FMV pack |
 | EnableMasterVolume | dsound | not applicable | The 3DS has a hardware volume slider |
@@ -107,7 +107,7 @@ coordinates.
 | MainMenuInstantLoadOptions, DisableLoadingPressReturnMessages | MainMenu.cpp, dllmain.cpp | already covered | The title lists every entry at once; no loading screens |
 | RestoreBrightnessSelector | | already covered | Pause menu and D-pad, levels 1..7 |
 | FmvSubtitlesSyncFix, FmvSubtitlesNoiseFix | FmvSubtitles.cpp | left out | The port draws no movie subtitles (if added, time them in the movie's 29.97 fps frames) |
-| FixMemoFading, MemoScreenFix | MemoFix.cpp | left out | The PC fades only the bottom layer of a memo (0x498cbd); the port's memo list is text |
+| FixMemoFading, MemoScreenFix | MemoFix.cpp | left out | The PC fades only the bottom layer of a memo (0x498cbd). The port draws the memo stills and overlays now (`prog_overlay.c`), but how its memo screen fades has not been checked against this |
 | FixElevatorCursorColor | ElevatorCursorColorFix.cpp | already covered | The hotel employee elevator's buttons are picked in a text panel (`prog_hotel.c` `s41_elevator`), so there is no PC cursor sprite whose colour could go wrong |
 | FixDrawingTextLine | d3d8 wrapper | not applicable | Thickens a 1-pixel line in the hospital diary at high PC resolutions; the port shows memo text, not the PC page |
 | FixHangOnEsc, PauseScreenFix, FixSaveBGImage, FixFMVResetIssue | HangOnEsc.cpp, PauseScreen.cpp, SaveBGImage.cpp, d3d8 wrapper | not applicable | Screen grabs and D3D texture pools; the port renders the game behind its pause and has a text save prompt |
@@ -138,7 +138,7 @@ coordinates.
 | FixAptClockFlashlight | Patches/FlashlightClockPush.cpp | left out | Keeps the event camera bits (0x934d94) through the failed clock push so the flashlight is drawn right; the port's flashlight has no event camera state |
 | SpecularFix | Patches/Specular.cpp, d3d8 wrapper | left out | No specular or environment map pass in the port |
 | EnableSoftShadows | Wrappers/d3d8/IDirect3DDevice8.cpp | ported (opacity and fading) | `shadow.c` `shadow_ee_opacity()` and `main.c` `shadow_frame()`: the stencil shadows (LIGHTING.md section 11) darken by EE's per-room opacity (170 of 255 by default) instead of the PC's halving, and fade in over about 33 frames when the flashlight comes on. The blur and the self shadows on characters are left out |
-| Room312ShadowFix, DisableShadowCutscene, BFaWAtticFix (shadow part) | Room312Shadow.cpp, DisableShadowCutscene.cpp, AtticShadowFixes.cpp | left out | They fix shadows of map objects and cutscenes, which the port does not draw |
+| Room312ShadowFix, DisableShadowCutscene, BFaWAtticFix (shadow part) | Room312Shadow.cpp, DisableShadowCutscene.cpp, AtticShadowFixes.cpp | left out | They fix shadows of map objects and cutscenes; the port's stencil and drop shadows are for characters in play only |
 | RestoreSpecialFX | Patches/SpecialFX.cpp | left out | Blur, bloom and the room 312 fog volume are post effects the port does not have |
 | RemoveEffectsFlicker | d3d8 wrapper | left out | Motion blur first frame; no motion blur |
 | HotelWaterFix, WaterEnhancedRender, WaterDrawOrderFix | HotelWater.cpp, WaterEnhancement.cpp, WaterDrawOrderFix.cpp | left out | The PC water renderer (0x4d....) is not ported |
@@ -225,9 +225,9 @@ The before/after pictures are in `.eetest/evidence/` (not in git).
 
 ## Not done yet, and why
 
-The PC fog particle layer is ported now (`fog.c`, see LIGHTING.md section 8), with the three EE
-options that adjust it. The PC's character lighting is ported too (`chrlight.c`, LIGHTING.md section 10). The other
-gaps are features the port does not have yet: drop shadows, shadows of map objects and in
-cutscenes, specular, water, scene fog and lights, Model_List props and
-map-part visibility, the boat, the bosses and the hospital chase. The events' needs-light bit is
-also not tested yet (FireEscapeKeyFix is in place for when it is).
+The options still marked "left out" wait on one of these: features the PC renderer has and the port
+does not (water, specular and environment maps, blur, bloom and motion blur, rain and smoke, 3D trees,
+event lights outside cutscenes, map-object and cutscene shadows, movie subtitles), PC stage code that
+is not ported (the scenes' fog callbacks, the Leave ending's data, the prisoner footsteps, the in-water
+walk speed, the labyrinth pistons), fixes not yet applied to code that now exists (the rowboat fixes,
+the memo fade), or EE's own assets. STATUS.md lists the same gaps in order of weight.

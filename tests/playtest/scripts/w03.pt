@@ -1,0 +1,85 @@
+# Wood Side apartments on foot, in the PC's order: 2F's flashlight, 3F west (Laura kicks the key,
+# the handgun), 2F (the cry, the 202 key, the clock key, the clock in 208), through 209 to the east
+# stairs and 3F east (Pyramid Head behind the bars, courtyard and fire escape keys), the
+# canned juice and the chute, the courtyard's coins, east 1F (Eddie)
+debughud 1
+pt fast 1
+pt walkmode 1
+pt load w02
+pt god 1
+pt ev 9
+pt expect stage 12
+pt ev 11
+pt expect flag 25 1
+# second floor first for the flashlight: the handgun lies in a dark room and needs its light (the
+# PC's event check, 0x48e560 with 0x47b1f0)
+pt ev 23
+pt expect stage 7
+pt ev 1
+pt expect item 18 1
+pt ev 63
+pt expect stage 12
+# third floor west: Laura and the key, the handgun
+pt ev 24
+pt expect stage 8
+pt ev 0
+pt expect flag 67 1
+pt ev 5
+pt ev 3
+pt expect item 4 1
+pt expect flag 68 1
+pt ev 10
+pt expect stage 12
+# second floor: the cry, room 208, room 202 and the clock key
+pt ev 23
+pt expect stage 7
+# (the cry: an enter trigger on the way)
+pt expect flag 69 1
+pt ev 7
+pt expect flag 71 1
+pt ev 9
+pt expect item 27 1
+pt ev 34
+pt expect flag 73 1
+pt ev 36
+pt ev 13
+pt expect flag 79 1
+pt expect item 28 1
+# the clock in 208, then through the hole to 209
+pt evgo 17
+pt until panel 30
+pt solve clock
+pt idle
+pt ev 22
+pt expect flag 82 1
+pt ev 28
+# 209, the north end of the hallway, the east stairs, third floor east
+pt ev 0 @9
+pt expect flag 91 1
+pt ev 5 @9
+pt expect item 29 1
+pt ev 6 @9
+pt expect item 30 1
+# the east stairwell's vending machine, the juice down the chute
+pt ev 3 @12
+pt expect item 49 1
+pt ev 11 @7
+pt expect flag 95 1
+# the courtyard: the coins of the old man and the snake
+pt ev 18 @12
+pt expect flag 90 1
+pt ev 17 @12
+pt expect stage 13
+pt ev 5
+pt expect item 51 1
+pt ev 7
+pt expect item 50 1
+# east 1F: Eddie
+pt ev 13
+pt expect stage 6
+pt ev 18
+pt expect flag 60 1
+pt ev 0
+pt expect flag 85 1
+pt idle
+pt save w03a

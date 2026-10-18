@@ -169,10 +169,14 @@ behaviour (layer 0 only), `audio_play_layers` starts everything silent for `bgm.
 ### Not ported
 
 - Situation pages 2 and 3 (low health, enemy near) and the stage `bgm_control` programs that return
-  pages 6 and up (fixed mixes at 0x8A9EB8); `bgm_set_situation` is there for when enemies exist.
-- Stage 15 waits for its stage program to start the music (`DAT_01F837D0`); the port keeps it silent.
-- Ducking during events and menus, and the BGM / SE option volumes (0x401 / 0x402).
-- The `.dat` files per building (see above).
+  pages 6 and up (fixed mixes at 0x8A9EB8). Enemies exist now, but nothing calls `bgm_set_situation`
+  yet, so the page never changes.
+- Stage 15 waits for its stage program to start the music (`DAT_01F837D0`, flag 159 in the port);
+  nothing sets it, so the stage stays silent.
+- Ducking during events and menus. (The BGM and SE volume options, 0x401 / 0x402, are in: Game
+  Options, `audio_set_gains` and `sfx_set_gain`; the cutscene voice follows the SE volume.)
+- Per-room footstep overrides (`sfx.c`, rooms 0x78, 0x2a, 0x46, 0x3e, 0xb8, 0x92..0xa3).
+- The `.dat` files per building (see above; the PC sound code doesn't read them either).
 
 ## Runtime on the 3DS
 

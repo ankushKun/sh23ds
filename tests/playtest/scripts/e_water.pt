@@ -1,0 +1,33 @@
+# water ending from the last door of the hotel (save c10)
+debughud 1
+pt fast 1
+pt prog clear 0 0 0
+pt load c10
+pt god 1
+pt flag 655 1
+pt flag 656 1
+pt flag 204 1
+pt flag 371 0
+pt flag 629 0
+pt flag 500 1
+pt flag 615 1
+pt flag 630 1
+pt flag 624 0
+pt prog score 1f7d9d4 0
+pt prog score 1f7d9d8 300
+pt prog score 1f7d9cc 0
+pt prog score 1f7d9d0 0
+pt prog puzzle 1b 10
+pt ev 4
+pt expect flag 620 1
+pt until stage 50 30
+pt idle
+pt ev 6
+pt expect flag 505 1
+pt kill 300 20000
+pt until flag 507 1 120
+pt kill 300 20000
+pt until flag 509 1 120
+pt idle title 300
+pt expect ending 4
+pt expect title

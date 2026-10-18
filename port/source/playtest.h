@@ -5,7 +5,7 @@
 // Playtest driver: runs a script of "pt ..." lines from debug.txt that plays the game the way a
 // player would (stands at an event's trigger, presses A, uses items, answers questions, skips
 // scenes, saves and loads), checks flags, items, stages and rooms, and logs everything that changes
-// to sdmc:/3ds/sh23ds/ptlog.txt. The critical-path test in .playtest/ is built on it. Off unless
+// to sdmc:/3ds/sh23ds/ptlog.txt. The playthrough suite in tests/playtest/ is built on it. Off unless
 // debug.txt has "pt" lines.
 
 enum { PT_TITLE, PT_GAME, PT_OTHER, PT_RESULTS };

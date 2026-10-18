@@ -1,0 +1,40 @@
+# maria ending from the last door of the hotel (save c10)
+debughud 1
+pt fast 1
+pt prog clear 0 0 0
+pt load c10
+pt god 1
+pt flag 655 1
+pt flag 656 0
+pt flag 204 0
+pt flag 371 1
+pt flag 629 1
+pt flag 500 0
+pt flag 615 0
+pt flag 630 0
+pt flag 624 0
+pt prog score 1f7d9d4 0
+pt prog score 1f7d9d8 0
+pt prog score 1f7d9cc 700
+pt prog score 1f7d9d0 0
+pt prog puzzle 1b 10
+pt ev 4
+pt expect flag 619 1
+pt until stage 49 30
+pt idle
+pt ev 6
+pt expect flag 505 1
+# a player's haul so far, well short of what the stages hold
+pt item 5 60
+pt item 7 30
+pt item 9 12
+pt item 1 3
+pt item 2 2
+pt fight 700 20000 flag 506
+pt until flag 507 1 120
+pt fight 700 20000 flag 508
+pt until flag 508 1 120
+pt wait 4
+pt idle title 300
+pt expect ending 2
+pt expect title

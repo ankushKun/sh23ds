@@ -1,0 +1,152 @@
+# Toluca Lake and the Lakeview Hotel to the 312 videotape, on foot in the PC's order: 1F (map, 312
+# key, the Fish key, Laura at the piano), the thinner in BF, 2F (the 204 key, the photo and the trunk,
+# Cinderella), the employee elevator down to the 1F west wing (stage 41 event 13 on flag 21), the
+# employee map, the videotape and the can opener, Snow White, BF's light bulb and bar key, the music
+# box, the stairway key, 3F and room 312
+debughud 1
+pt fast 1
+pt walkmode 1
+pt load w08
+pt god 1
+pt noenemies 1
+pt ev 2
+pt until stage 38 30
+# James rows (boat.c): 381 once the boat is at the hotel pier. The driver does not row: the
+# crossing is the one step it moves James (the boat comes with him) instead of walking
+pt walkmode 0
+pt ev 3
+pt walkmode 1
+pt idle
+pt expect flag 381 1
+pt ev 4
+pt expect item 67 1
+pt ev 5
+pt expect stage 40
+# 1F
+pt ev 5
+pt expect flag 30 1
+pt ev 7
+pt expect item 43 1
+pt ev 4
+pt expect item 47 1
+pt ev 2
+pt expect flag 395 1
+# BF: the thinner
+pt ev 49
+pt expect stage 39
+pt ev 0
+pt expect item 66 1
+# 2F: the 204 key, the photo and the trunk, Cinderella, the employee elevator
+pt ev 16
+pt expect stage 40
+pt ev 48
+pt expect stage 41
+pt ev 8
+pt ev 7
+pt expect item 44 1
+pt ev 27
+pt expect flag 397 1
+pt ev 29
+pt ev 1
+pt expect item 45 1
+pt ev 4
+pt evgo 3
+pt until panel 20
+pt press A
+pt idle
+pt expect flag 412 1
+pt evgo 5
+pt until panel 20
+pt solve trunk
+pt idle
+pt expect flag 413 1
+pt ev 6
+pt expect item 68 1
+pt ev 30
+pt ev 53
+pt expect flag 399 1
+pt ev 55
+pt evgo 12
+pt until panel 20
+pt press B
+pt idle
+pt expect flag 415 1
+pt evgo 17
+pt until panel 20
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press A
+pt press B
+pt idle
+pt expect flag 400 1
+pt evgo 12
+pt until panel 20
+pt press RIGHT
+pt press RIGHT
+pt press A
+pt idle
+pt until stage 40 30
+pt idle
+# the 1F west wing
+pt ev 6
+pt expect flag 31 1
+pt ev 29
+pt expect item 23 1
+pt expect item 70 1
+pt ev 54
+pt ev 31
+pt expect item 69 1
+# BF from the west: the light bulb, the bar key, the bar door
+pt ev 3 @39
+pt ev 4
+pt expect item 71 1
+pt ev 1
+pt expect item 46 1
+pt ev 9
+pt expect flag 386 1
+pt ev 6
+pt expect flag 387 1
+# the music box and the stairway key, 3F, room 312
+pt ev 16
+pt expect stage 40
+pt ev 48
+pt expect stage 41
+pt ev 16
+pt expect item 68 1
+pt expect item 67 1
+pt expect item 4 1
+pt ev 37
+pt expect stage 40
+pt solve orgel
+pt ev 11+1*$0
+pt ev 17+1*$1
+pt ev 23+1*$2
+pt expect flag 472 1
+pt ev 9
+pt expect item 48 1
+pt ev 48
+pt expect stage 41
+pt ev 39
+pt expect stage 42
+pt ev 6
+pt expect flag 473 1
+pt ev 10
+pt expect flag 474 1
+pt save w09v
+pt ev 0
+pt expect flag 476 1
+pt idle
+pt save w09

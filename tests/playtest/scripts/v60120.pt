@@ -1,0 +1,14 @@
+debughud 0
+pt fast 1
+pt load c10
+pt god 1
+pt noenemies 1
+pt flag 623 0
+pt flag 624 0
+pt wait 2
+pt walk 0 0.3 1
+pt wait 6
+pt expect flag 623 1
+pt shot
+pt wait 6
+pt shot

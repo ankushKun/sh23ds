@@ -305,16 +305,20 @@ How the converter finds things:
 
 ## Open issues
 
-- Light gains are a guess (colour x 0.5 x brightness, diffuse N.L); the character shader of the PC
-  was not traced, and the scene lights do not change the map.
+- Scene light gains are a guess (colour x 0.5 x brightness, diffuse N.L). The PC's character shader
+  is traced for play (`chrlight.c`), but scenes still use their own lights in `demo.c`, and the scene
+  lights do not change the map.
 - A model shared by two characters of one scene would show the second one's face on both (the
   vertex buffer is morphed in place); no scene shares a model that has clusters.
 - The transparent cluster maps (a few vertices on some models) are not morphed.
-- The voice-and-subtitle tracks of the Born From a Wish rooms and the hospital (voice_5718xx,
-  voice_5769b0, voice_591f20) are converted but no program asks for them yet.
+- voice_5769b0 and voice_591f20 play from the stage code (`prog_stagefn.c`). The Born From a Wish
+  tracks voice_571860, voice_571880 and voice_5718a0 (and voice_571a30, voice_577fa0) are converted
+  but nothing plays them; `prog_wish.c` treats 0x49fe30 as a BGM change, while `prog_stagefn.c` uses
+  the same function as the voice call, so those programs are the place to look.
 - The piano scene is split as on the PC: piano_lau_b, then Laura's letter from the stage program
   (step 0x18 of 0x57beb0), then piano_lau_e as its own request (`DEMO_LAURA_PIANO_END`).
-- The music box picks org_b; the PC program chooses org_a / org_b by its puzzle state (0x57c470).
+- The music box plays org_b when the puzzle is solved and org_a when not, as the PC program does
+  (0x57c470, `prog_hotel.c`).
 - Maria as the player model in Born From a Wish is done in `combat.c` (see ENEMIES.md, batch 4).
 - Motion ids whose first frame is not 0 would need the PC's stride arithmetic (FUN_00538920); no
   demo motion has one.

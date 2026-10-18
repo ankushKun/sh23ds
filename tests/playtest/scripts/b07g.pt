@@ -1,0 +1,18 @@
+# The otherworld hospital: Laura, the Flesh Lips, the storeroom key, Maria in the basement, the rings, the chase
+debughud 1
+pt fast 1
+pt load c06
+pt god 1
+# a player's haul so far, well short of what the stages hold (24 bullet boxes, 21 shell boxes, 37 health items)
+pt item 5 40
+pt item 7 24
+pt item 1 2
+pt item 2 1
+pt until flag 209 1 60
+pt god 1
+pt enemies
+pt fight 700 8000 flag 210
+pt enemies
+pt until flag 210 1 60
+pt until flag 212 1 60
+pt idle

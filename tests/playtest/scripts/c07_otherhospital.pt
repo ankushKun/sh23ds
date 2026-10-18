@@ -1,0 +1,102 @@
+# The otherworld hospital: Laura, the Flesh Lips, the storeroom key, Maria in the basement, the rings, the chase
+debughud 1
+pt fast 1
+pt load c06
+pt god 1
+pt until flag 209 1 60
+pt kill 120 8000
+pt until flag 210 1 60
+pt until flag 212 1 60
+pt idle
+pt expect flag 214 1
+pt ev 21
+pt ev 13
+pt expect stage 26
+pt evgo 25
+pt until panel 20
+pt press DOWN
+pt press A
+pt idle
+pt until stage 24 20
+pt ev 3
+pt expect item 55 1
+pt ev 4
+pt expect item 38 1
+pt ev 8
+pt expect stage 26
+pt evgo 25
+pt until panel 20
+pt press DOWN
+pt press DOWN
+pt press A
+pt idle
+pt until stage 25 20
+pt ev 17
+pt ev 18
+pt expect stage 26
+pt ev 12
+pt expect flag 222 1
+pt ev 14
+pt ev 7
+pt expect flag 223 1
+pt ev 5
+pt expect flag 224 1
+pt expect flag 15 1
+pt ev 6
+pt ev 10
+pt expect item 56 1
+pt ev 11
+pt ev 15
+pt ev 18
+pt expect stage 25
+pt ev 16
+pt ev 37
+pt expect stage 26
+pt evgo 25
+pt until panel 20
+pt press DOWN
+pt press A
+pt idle
+pt until stage 24 20
+pt expect flag 232 1
+pt ev 14
+pt ev 1
+pt expect item 57 1
+pt ev 13
+pt ev 8
+pt expect stage 26
+pt evgo 25
+pt until panel 20
+pt press DOWN
+pt press DOWN
+pt press A
+pt idle
+pt until stage 25 20
+pt ev 1
+pt expect flag 227 1
+pt expect flag 228 1
+pt ev 0
+pt expect stage 26
+pt ev 1
+pt expect flag 242 1
+pt ev 20
+pt expect stage 27
+pt ev 2
+pt ev 3
+pt ev 4
+pt ev 5
+pt ev 6
+pt ev 7
+pt expect flag 248 1
+pt until stage 23 30
+pt idle
+pt expect flag 249 1
+pt ev 1
+pt expect item 39 1
+pt expect flag 251 1
+pt ev 5
+pt expect flag 217 1
+pt ev 4
+pt expect stage 14
+pt idle
+pt save c07

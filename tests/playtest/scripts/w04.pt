@@ -1,0 +1,74 @@
+# The fire escape to Blue Creek, the safe, Angela, the coin desk, the Lyne house, the stairwell boss
+debughud 1
+pt fast 1
+pt walkmode 1
+pt load w03a
+pt god 1
+pt ev 17
+pt expect stage 12
+pt ev 29
+pt expect stage 7
+pt ev 31
+pt expect flag 93 1
+pt ev 30
+pt idle
+pt expect stage 11
+pt ev 3
+pt expect flag 102 1
+# the dial at 0 (flags 103..107): right turns it down, left up (0x5971a0)
+pt evgo 4
+pt until panel 20
+pt solve safe
+pt idle
+pt expect flag 108 1
+pt ev 31
+pt expect stage 12
+pt ev 31
+pt expect stage 10
+pt ev 26
+pt ev 10
+pt expect flag 109 1
+pt expect item 24 1
+pt ev 14
+pt expect item 52 1
+pt ev 12
+pt ev 27
+pt ev 22
+pt ev 7
+pt evgo 1
+pt until panel 20
+pt solve coin
+pt idle
+pt evgo 2
+pt until panel 20
+pt solve coin
+pt idle
+pt evgo 3
+pt until panel 20
+pt solve coin
+pt idle
+pt expect flag 142 1
+pt ev 4
+pt expect item 31 1
+pt ev 22
+pt ev 30
+pt expect stage 12
+pt ev 32
+pt expect stage 11
+pt ev 5
+pt expect flag 113 1
+pt ev 6
+pt ev 10
+pt expect item 32 1
+pt ev 7
+pt ev 18
+pt expect flag 115 1
+pt ev 19
+pt expect stage 12
+pt until flag 143 1 20
+pt kill 120 6000
+pt until flag 147 1 120
+pt idle
+pt ev 10
+pt expect stage 14
+pt save w04

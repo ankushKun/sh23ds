@@ -1,0 +1,23 @@
+# rebirth ending from the last door of the hotel (save c10)
+debughud 1
+pt fast 1
+pt prog clear 0 0 0
+pt load c10
+pt god 1
+pt item 74 1
+pt item 75 1
+pt item 76 1
+pt item 77 1
+pt ev 4
+pt expect flag 621 1
+pt until stage 51 30
+pt idle
+pt ev 6
+pt expect flag 505 1
+pt kill 300 20000
+pt until flag 507 1 120
+pt kill 300 20000
+pt until flag 508 1 120
+pt idle title 300
+pt expect ending 8
+pt expect title

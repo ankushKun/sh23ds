@@ -1,0 +1,60 @@
+# The otherworld hotel: the doctor's tape, Angela in the fire, the two Pyramid Heads, the eggs
+debughud 1
+pt fast 1
+pt load c09
+pt god 1
+pt noenemies 1
+pt ev 14
+pt expect stage 46
+pt ev 1
+pt expect stage 45
+pt ev 19
+pt ev 0
+pt expect flag 500 1
+pt ev 20
+pt ev 14
+pt ev 4
+pt ev 31
+pt ev 29
+pt expect stage 43
+pt ev 2
+pt evgo 0
+pt until panel 20
+pt press DOWN
+pt press DOWN
+pt press DOWN
+pt press A
+pt idle
+pt expect flag 479 1
+pt ev 4
+pt ev 6
+pt ev 9
+pt ev 16
+pt expect stage 47
+pt until flag 482 1 30
+pt idle
+pt ev 3
+pt expect stage 43
+pt ev 19
+pt expect stage 44
+pt ev 38
+pt noenemies 0
+pt ev 13
+pt expect flag 2241 1
+pt kill 120 8000
+pt until flag 483 1 120
+pt idle
+pt expect flag 484 1
+pt noenemies 1
+pt ev 9
+pt expect item 72 1
+pt ev 11
+pt expect item 73 1
+pt ev 21
+pt expect flag 497 1
+pt ev 28
+pt expect flag 498 1
+pt ev 18
+pt ev 6
+pt idle
+pt save c10

@@ -180,9 +180,11 @@ compares a run with ffmpeg's decode of the same `.mpg`:
 - Azahar does not implement `svcGetProcessorID`, so the `id` shown next to the core is meaningless there.
 - Line 0 of the picture is not shown (see Y2R). Hardware may sample the texture edge differently; if
   the picture sits one line high there, drop the nudge in `movie_draw`.
-- Only the stage program demos are hooked (toilet, hakaba, gero, knife, hei, deai). The endings
-  (`end_*`, `ending`, `water`, `end_wish`, `end_dog`, `credits`), `open_bgm` on the title, `open_voc`
-  and the boss movies (`flash`, `murder`, `rouya`, `saikai`, `korosu_*`) still need their callers.
+- Every movie has its caller now: the endings, `water` and `credits` through the scene sequences
+  in `demo.c` that the ending programs ask for, the boss and story movies (`flash`, `murder`,
+  `rouya`, `saikai`, `korosu_*`) the same way, and `open_bgm` / `open_voc` from the title's attract
+  mode and its Movie Menu.
+- The PC draws subtitles over some movies; the port draws none.
 - The PC's skip rules are not ported. It skips on its own button tests (0x43ded0) and treats `gero`
   differently; here A or START always skip.
 - The audio instance keeps a video decoder with three unused reference frames (about 430 KB of heap),

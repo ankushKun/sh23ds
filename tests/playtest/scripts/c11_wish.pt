@@ -1,0 +1,66 @@
+# Born From a Wish: Heaven's Night, the Baldwin mansion, the boards, the candle, Blue Creek, Ernest
+debughud 1
+pt fast 1
+pt prog clear 0 0 0
+pt wish
+pt idle 120
+pt expect stage 53
+pt expect flag 668 1
+pt ev 1
+pt expect item 17 1
+pt ev 3
+pt expect stage 54
+pt ev 1
+pt expect stage 55
+pt god 1
+pt noenemies 1
+pt ev 7
+pt expect flag 670 1
+pt ev 64
+pt expect item 80 1
+pt ev 65
+pt expect item 81 1
+pt save w1
+pt goto ma33 0 0 0 0 56
+pt ev 10
+pt expect flag 671 1
+pt ev 14
+pt ev 15
+pt ev 32
+pt expect item 79 1
+pt ev 45
+pt expect item 83 1
+pt ev 53
+pt expect flag 709 1
+pt ev 54
+pt expect flag 711 1
+pt expect item 84 1
+pt ev 56
+pt ev 39
+pt save w2
+pt goto ma57 0 0 0 0 55
+pt ev 67
+pt answer 0
+pt ev 68
+pt answer 3
+pt ev 69
+pt expect flag 704 1
+pt expect item 82 1
+pt goto ma29 0 0 0 0 56
+pt ev 33
+pt expect flag 705 1
+pt goto ma85 0 0 0 0 57
+pt ev 14
+pt expect stage 58
+pt ev 6
+pt expect flag 720 1
+pt expect item 85 1
+pt save w3
+pt goto ma01 0 0 0 0 55
+pt ev 53
+pt expect flag 718 1
+pt ev 55
+pt expect flag 721 1
+pt idle title 300
+pt expect ending 0x40
+pt expect title

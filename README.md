@@ -50,11 +50,11 @@ The repository and the releases contain **no game files**. You need the PC relea
   <tr>
     <td valign="top">
       <h4>🗝️ The whole game</h4>
-      Every stage program a player can reach: the puzzles, keys, elevators, questions, item uses, the endings and their score, the results screen, New Game+, and Born From a Wish with Maria as the player.
+      Every stage program a player can reach: the puzzles, keys, elevators, questions, item uses, the boat across the lake, the endings and their score, the results screen, New Game+, and Born From a Wish with Maria as the player.
     </td>
     <td valign="top">
       <h4>🔦 Enemies and bosses</h4>
-      Lying Figures, Mannequins, nurses, creepers on the floor, walls and ceiling, Pyramid Head's encounters, the Abstract Daddy, Eddie, the Flesh Lips and Mary, with melee, firearms, holds and the PC's damage values.
+      Lying Figures, Mannequins, nurses, creepers on the floor, walls and ceiling, Pyramid Head's encounters, the Abstract Daddy, Eddie, the Flesh Lips and Mary. James has the plank, steel pipe, great knife, chainsaw, Hyper Spray, handgun, shotgun and rifle, with the PC's attacks, holds and damage values.
     </td>
   </tr>
   <tr>
@@ -220,7 +220,10 @@ A text file at `sdmc:/3ds/sh23ds/debug.txt` changes how the game starts, one set
 | `movie <name>` | play a movie |
 | `newgame 1` | run New Game without pressing anything |
 | `results 1` / `itemget <id>` | open the results screen, after counting these item pickups |
-| `debughud 1` | the debug readout on the bottom screen (SELECT toggles it in game) |
+| `debughud 1` | start with the debug page on the bottom screen (SELECT twice shows or hides it in game) |
+| `viewer 1` | adds the room viewer to the title's touch list |
+| `logos 0` | skip the start-up screens |
+| `sdthrottle <KB/s> [open ms]` | simulate a console's slower SD card |
 | `dumpframe <n>` | save frame *n* as `frame_<n>.bmp` and its stats as text |
 | `perflog 1` / `memlog 1` / `memtest <n>` | frame time breakdown, memory use, a memory stress test |
 | `streamsync 1` | load streamed tiles on the main thread, to compare with the worker |
@@ -243,10 +246,11 @@ clang -O2 -Wall -o tools/lr3ds/lr3ds tools/lr3ds/lr3ds.c -framework OpenGL
 export AZAHAR_CORE=/path/to/azahar_libretro.dylib
 tools/lr3ds/run.sh 600 --frames 600 --shot 590:/tmp/title.bmp
 tools/lr3ds/run.sh 600 --frames 480 --press 300-303:A --analog 320-400:0,1 --shot 470:/tmp/walk.bmp
-tools/lr3ds/smoke.sh  # 11 scenarios from the title to a save point, with a contact sheet
+tools/lr3ds/smoke.sh  # 12 scenarios from the title to a save point, with a contact sheet
+tests/playtest/run_chain.sh  # the whole story by teleport, every ending, Born From a Wish
 ```
 
-`run.sh` uses `.lr3ds/save/Azahar/sdmc/` as the SD card, so the game data goes in `.lr3ds/save/Azahar/sdmc/3ds/sh23ds/`. Every option is listed at the top of [`lr3ds.c`](tools/lr3ds/lr3ds.c).
+`run.sh` uses `.lr3ds/save/Azahar/sdmc/` as the SD card, so the game data goes in `.lr3ds/save/Azahar/sdmc/3ds/sh23ds/`. Every option is listed at the top of [`lr3ds.c`](tools/lr3ds/lr3ds.c). [port/TESTING.md](port/TESTING.md) covers the smoke run, the warp autotest, the playthrough suite in `tests/playtest/` and what to check on a console.
 
 ## 🧭 Developing
 
@@ -272,6 +276,7 @@ tools/sh2conv/        the converters from the PC formats to the pack
 tools/make_pack.sh    runs every converter in order
 tools/packer/         the packer image
 tools/lr3ds/          headless test runner
+tests/playtest/       playthrough scripts (the whole game, every ending, the bosses) and their runners
 sh2-3ds-port-kit/     reverse-engineering tools: labels, Ghidra scripts, version detection
 docs/RESEARCH.md      how the exe was mapped, key addresses, the work log
 site/                 the website, published by GitHub Pages
@@ -287,7 +292,9 @@ The notes for each part live next to the code:
 
 | File | Covers |
 | --- | --- |
-| [port/STATUS.md](port/STATUS.md) | what works, what doesn't, how it was tested |
+| [port/STATUS.md](port/STATUS.md) | what works, what's left, in order of weight |
+| [port/TESTING.md](port/TESTING.md) | the smoke run, warp autotest, playthrough suite and console checks |
+| [port/ROADMAP.md](port/ROADMAP.md) | the workstreams and where each stands |
 | [port/PROGRAMS.md](port/PROGRAMS.md) | stage programs, puzzles, endings, results, debug keys for them |
 | [port/ENEMIES.md](port/ENEMIES.md) | enemies, bosses, combat |
 | [port/CUTSCENES.md](port/CUTSCENES.md), [port/MOVIES.md](port/MOVIES.md) | in-engine scenes and FMV |
@@ -305,12 +312,13 @@ Working in Azahar: the whole game from the prologue to every ending, Born From a
 
 Still to do:
 
-- [ ] A test pass on a real New 3DS: frame times, SD card read times, audio on the second core
+- [ ] A test pass on a real New 3DS: confirm the 0.1.2 console fixes, frame and GPU times, SD card read times, audio on the second core
 - [ ] A test pass on a real original 3DS: frame times at 268 MHz, music and movie decoding, the Circle Pad Pro
-- [ ] Drop shadows and shadows from lights other than the flashlight
-- [ ] Climbing creepers that follow the room round corners, as on the PC
-- [ ] The music box's three figure boxes
-- [ ] The fog layer's wall test and blow points
+- [ ] Music that changes with low health and nearby enemies, and quieter music in menus and events
+- [ ] The enemies' rarer moves (Mannequins dropping from the ceiling, confused enemies fighting each other) and Maria's smaller habits
+- [ ] Some rooms' own ambience and scripted details that the story doesn't depend on
+- [ ] Water, specular highlights, blur and bloom, rain and smoke
+- [ ] Subtitles over movies, and the PC's rules for skipping them
 
 The full list, with how each part was checked, is in [port/STATUS.md](port/STATUS.md). Bug reports are welcome in [Issues](https://github.com/ankushKun/sh23ds/issues). Please include your console model, your Luma3DS version and what you were doing.
 

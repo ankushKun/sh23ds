@@ -1,0 +1,25 @@
+# UFO ending (Director's Cut): the blue gem at the hospital, the lake and room 312
+debughud 1
+pt fast 1
+pt prog clear 0 0 0
+pt load c06
+pt god 1
+pt noenemies 1
+pt item 78 1
+pt ev 24
+pt expect flag 725 1
+pt load c08
+pt noenemies 1
+pt item 78 1
+pt flag 725 1
+pt ev 11
+pt expect flag 726 1
+pt load c09v
+pt noenemies 1
+pt item 78 1
+pt flag 725 1
+pt flag 726 1
+pt ev 21
+pt idle title 300
+pt expect ending 0x20
+pt expect title

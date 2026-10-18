@@ -8,6 +8,24 @@ has them, and a steadier frame rate.
 Each workstream has one owner (a subagent working in its own test folder) and a check that says when it
 is done. The main session merges every batch, builds, runs `tools/lr3ds/smoke.sh` and repackages the CIA.
 
+## Where phase 2 stands (2026-10-18, version 0.1.2)
+
+No workstream is closed by its own check yet, mostly because each check needs a real console or a run
+nobody has made. In Azahar:
+
+| Workstream | State | What is left |
+| --- | --- | --- |
+| 1. Playthrough | The critical path passes on foot on normal levels, with every ending and Born From a Wish; beginner, hard and extra riddle pass but for one walk step | The stage 43 step on non-normal levels; the easy action level; puzzles from real input |
+| 2. Touch screen | GPU-drawn play page, items, memos, map, pause menu and options; debug page behind SELECT twice | A picture for items with no model; the console flashes at boot |
+| 3. Controls and feel | Both layouts, remapping, the PC's locomotion, crossfades, quick turn, strafing, target lock | Stop animations; a check of the feel on a console |
+| 4. EE assets | The packer reads every pack that applies | A run with the real packs |
+| 5. Frame rate | No frame over 33 ms after a load in any room on either model | GPU time, which only a console shows |
+| 6. Old 3DS | Profile, memory, Low quality, controls; smoke and warp autotest pass on Azahar's Old 3DS model | Everything on a real Old 3DS |
+
+Next, in order: a console pass on a New 3DS and an original 3DS (TESTING.md, "On a console"), the
+playthrough gaps, then the PC logic in STATUS.md's "Gaps" section 3, starting with the enemy spawn
+conditions.
+
 ## 1. Full playthrough, 1:1 (owner: playthrough agent)
 
 The game must be completable without debug lines, in order, on every difficulty.

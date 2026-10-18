@@ -1,0 +1,19 @@
+# Prologue: the restroom, the observation deck, the car's map, the forest path
+debughud 1
+pt fast 1
+pt prog clear 0 0 0
+pt newgame
+pt walkmode 1
+pt idle 120
+pt expect flag 32 1
+pt expect stage 2
+pt ev 1
+pt idle
+pt expect stage 3
+pt expect flag 33 1
+pt ev 1
+pt expect flag 24 1
+pt ev 10
+pt expect stage 4
+pt shot
+pt save w01

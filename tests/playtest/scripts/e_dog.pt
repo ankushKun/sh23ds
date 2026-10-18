@@ -1,0 +1,17 @@
+# Dog ending: the dog key in the otherworld room 312 (New Game+ flag 11)
+debughud 1
+pt fast 1
+pt prog clear 0 0 0
+pt load c09
+pt god 1
+pt noenemies 1
+pt flag 11 1
+pt item 25 1
+pt ev 14
+pt expect stage 46
+pt ev 8
+pt expect flag 516 1
+pt ev 7
+pt idle title 300
+pt expect ending 0x10
+pt expect title
