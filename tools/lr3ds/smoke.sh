@@ -25,14 +25,14 @@ run() {   # name, debug.txt contents, frames, lr3ds options...
 }
 
 run title     "" 300
-run newgame   "debughud 1\n" 700 --press 300-303:A --press 330-333:DOWN --press 350-353:DOWN --press 370-373:A --press 540-543:A     # level screen, Start, then A skips toilet.bik
+run newgame   "debughud 1\n" 760 --press 300-303:DOWN --press 330-333:A --press 360-363:A --press 390-393:A --press 420-423:A --press 590-593:A     # menu on CONTINUE: down to NEW GAME, MAIN SCENARIO, action and riddle level, then A skips toilet.bik
 run deck      "debughud 1\nflag 32 1\nspawn er01 -19250 0 21250 90 2\n" 480 --analog 250-340:0,-1
 run door      "debughud 1\nspawn ap06 -49648 0 -66025 90 2\n" 560 --press 420-424:A
 run jammed    "debughud 1\nspawn ap38 -19625 0 99081 180 2\n" 480 --press 420-424:A
 run savepoint "debughud 1\nflag 32 1\nspawn er05 9850 0 10281 0 2\n" 660 --press 420-423:A --press 460-463:A --press 490-493:A --press 520-523:A --press 560-563:A --press 600-603:A
-run continue  "debughud 1\n" 560 --press 300-303:DOWN --press 320-323:DOWN --press 350-353:A --press 400-403:A   # A again loads the chosen file from the save list
+run continue  "debughud 1\n" 560 --press 300-303:A     # CONTINUE (the default with saves) loads the save with the most play time
 run heal      "debughud 1\nflag 32 1\nitem 1 2\nspawn er05 9850 0 10281 180 2\n" 520 --press 420-423:Y --press 450-453:A
-run wish      "debughud 1\n" 820 --press 300-303:DOWN --press 330-333:A --press 360-363:DOWN --press 380-383:DOWN --press 400-403:A
+run wish      "debughud 1\n" 840 --press 300-303:DOWN --press 330-333:A --press 360-363:DOWN --press 390-393:A --press 420-423:A     # NEW GAME, SUB SCENARIO, action level
 run cutscene  "debughud 1\nflag 32 1\nspawn er01 -19520 0 20430 -90 2\ndemo first_toilet 300\n" 520
 run pause     "flag 32 1\nspawn er05 9850 0 10281 180 2\n" 500 --press 420-423:START --press 450-453:DOWN
 

@@ -10,7 +10,8 @@ Also writes the save screen's backgrounds (data/menu/mc/savebg.tbn2, James, and 
 Maria; 512x512 DXT3 squeezed to 512x256 RGB565 like the stills: pack/ui/savebg.t3x, savebg2.t3x)
 and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg), and the options
 screens' texts (option_msg_e.mes as pack/events/option.msg) and the blood effects' texture
-(pack/effect/blood.t3x, see write_blood).
+(pack/effect/blood.t3x, see write_blood), and the title background, the game over text and its
+sound (see write_screens).
 
 Also writes the PC's text font (pack/ui/font.t3x and font.bin, see write_font), which the exe carries
 compressed; pass --exe to read another sh2pc.exe than the default one.
@@ -215,6 +216,30 @@ def write_blood(data, pack):
     print('wrote', t3x)
 
 
+def write_screens(data, pack, out_voice=True):
+    """The PC's title background (data/pic/etc/start00.tex, the menus are text over it:
+    pack/ui/start00.t3x, 512x512 DXT3 squeezed to 512x256 RGB565 like the stills), the game over
+    text (gameover1.tex: four "GAME OVER" of 160x48 in its top left quarter, pack/ui/gameover.t3x,
+    LA4 256x256) and the game over sound (voice.afs 143, SE 60143 in 0x498780)."""
+    os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
+    jobs = []
+    img = load_tex(os.path.join(data, 'pic', 'etc', 'start00.tex')).convert('RGB')
+    img.resize((512, 256), Image.LANCZOS).save(os.path.join(pack, 'ui', 'start00.png'))
+    jobs.append(('ui/start00.png', 'ui/start00.t3x', False, 'rgb565'))
+    img = load_tex(os.path.join(data, 'pic', 'etc', 'gameover1.tex')).convert('RGBA').crop((0, 0, 256, 256))
+    img.save(os.path.join(pack, 'ui', 'gameover.png'))
+    jobs.append(('ui/gameover.png', 'ui/gameover.t3x', True, 'la4'))
+    for png, t3x, alpha, fmt in jobs:
+        if os.path.exists(os.path.join(pack, t3x)):
+            os.remove(os.path.join(pack, t3x))
+        encode_textures([(png, t3x, alpha)], pack, fmt=fmt, mipmaps=False)
+        os.remove(os.path.join(pack, png))
+    if out_voice:
+        from demos import copy_voice
+        copy_voice(None, data, pack, 143, False)
+    print('wrote ui/start00.t3x, ui/gameover.t3x and sound/voice/143.adx')
+
+
 def write_options(data, pack):
     """The options screens' texts (0x461600 / 0x464eb0 draw option_msg_e.mes by number)."""
     import sh2mes
@@ -240,6 +265,7 @@ def main():
     write_save_screen(data, pack)
     write_options(data, pack)
     write_blood(data, pack)
+    write_screens(data, pack)
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
     logo = os.path.join(data, 'pic', 'etc', 'sh2dc.tex')
     img = ee.like_original(load_tex(logo), logo).convert('RGB')

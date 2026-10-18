@@ -18,6 +18,7 @@ void movie_exit(void);
 // onto another file's audio track the way Movie_BinkPlay (0x43d770) does it. Plain file names work too.
 // Returns false if the file is missing or unreadable.
 bool movie_start(const char* name);
+bool movie_exists(const char* name);    // the pack has the movie (the title's Movie Menu)
 // Once per frame, outside C3D_FrameBegin/End (stopping waits for the GPU). down: hidKeysDown().
 // A or START skips. False once the movie is over (it has stopped itself then).
 bool movie_update(u32 down);

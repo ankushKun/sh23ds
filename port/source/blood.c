@@ -8,7 +8,7 @@
 #define MAX_PART 96
 #define MAX_STAIN 64
 #define MAX_POOL 24
-#define MAX_VERTS ((MAX_PART + MAX_STAIN) * 6 + MAX_POOL * 24)
+#define MAX_VERTS ((MAX_PART + MAX_STAIN + 16) * 6 + MAX_POOL * 24)
 
 typedef struct { float x, y, z, u, v; u8 c[4]; s8 n[4]; } V;   // the world program's vertex
 
@@ -24,7 +24,8 @@ typedef struct {
 
 typedef struct {
 	bool on;
-	int mode;                    // 0 spray (fades out), 1 drop (falls, leaves a stain)
+	int mode;                    // 0 spray (fades out), 1 drop (falls, leaves a stain), 2 spurt (class 14:
+	                             // falls and is gone, the floors that hold no blood)
 	int kind;                    // one of the eight sprite placements (rand & 7)
 	float p0[3], vel[3], t;
 	float floor_y;
@@ -65,6 +66,15 @@ static Stain s_stain[MAX_STAIN];
 static Pool s_pool[MAX_POOL];
 static PoolSet s_set[MAX_POOL / 3];
 
+typedef struct {
+	bool on;
+	float x, y, z, rot, t, alpha;
+	int foot;                    // 0 left, 1 right print
+} Print;
+#define MAX_PRINT 16
+static Print s_print[MAX_PRINT];
+static int s_prints, s_foot;     // footprints still to leave (class 8's count, 5), the next foot
+
 // ---------------------------------------------------------------- the PC's tables
 
 // 0x8959f0: the sprites' colours subtracted from the picture, per Blood Color
@@ -83,9 +93,9 @@ static const float SPRITE_UV[8][4][2] = {
 };
 // 0x895a74 / 0x895a7c (size, times the quad), 0x8959dc / 0x8959e4 (alpha, 128 = full), curve
 // 0x895a84 / 0x895aa8 (the time to the end values), per mode
-static const float PART_SIZE[2][2] = { { 0.8f, 7.0f }, { 0.8f, 2.0f } };
-static const float PART_ALPHA[2][2] = { { 80.0f, 0.0f }, { 128.0f, 128.0f } };
-static const float PART_TIME[2] = { 0.375f, 0.6f };
+static const float PART_SIZE[3][2] = { { 0.8f, 7.0f }, { 0.8f, 2.0f }, { 0.8f, 2.0f } };
+static const float PART_ALPHA[3][2] = { { 80.0f, 0.0f }, { 128.0f, 128.0f }, { 128.0f, 128.0f } };
+static const float PART_TIME[3] = { 0.375f, 0.6f, 0.6f };
 // 0x4c7d40: the spray's speed per attack id; melee hits throw it back towards the attacker
 static float attack_speed(int id, bool* melee)
 {
@@ -219,6 +229,8 @@ void blood_clear(void)
 	memset(s_stain, 0, sizeof s_stain);
 	memset(s_pool, 0, sizeof s_pool);
 	memset(s_set, 0, sizeof s_set);
+	memset(s_print, 0, sizeof s_print);
+	s_prints = 0;
 }
 
 void blood_set_color(int color) { s_color = color & 3; }
@@ -298,14 +310,88 @@ static void post_stain(float x, float y, float z)
 	*st = (Stain){ true, x, y, z, frand() * 6.2831853f, 0.0f, STAIN_SIZE[v][0], STAIN_SIZE[v][1], 1.0f };
 }
 
-void blood_pool(const float* owner)
+static void spurts(const float* owner)
 {
+	// 0x4eafd0: six drops (class 14) at random angles, 500 strong, a little upwards; on these
+	// floors they go when they land
+	for (int k = 0; k < 6; k++) {
+		int i = 0;
+		while (i < MAX_PART && s_part[i].on)
+			i++;
+		if (i == MAX_PART)
+			return;
+		Part* p = &s_part[i];
+		float a = frand() * 6.2831853f, up = (frand() * 10.0f - 5.0f) * 0.01745f;
+		float sp = 500.0f * (0.6f + 0.4f * frand());
+		p->vel[0] = sinf(a) * cosf(up) * sp * 0.549451f;
+		p->vel[2] = cosf(a) * cosf(up) * sp * 0.549451f;
+		p->vel[1] = -fabsf(sinf(up)) * sp * 1.0989f - 200.0f;
+		p->p0[0] = owner[0], p->p0[1] = owner[1] - 300.0f, p->p0[2] = owner[2];
+		p->floor_y = owner[1];
+		p->mode = 2;
+		p->kind = rnd() & 7;
+		p->t = 0.0f;
+		p->on = true;
+	}
+}
+
+void blood_pool(const float* owner, int room)
+{
+	if (!owner || room == 7 || room == 0x21)
+		return;
+	static const u8 SPURT_ROOMS[] = { 0x62, 0x7a, 0x7c, 0x7e, 0x80, 0x82, 0x85, 0xab, 0xb6, 0xb7, 0xb8, 0xb9, 0xbb };
+	for (size_t k = 0; k < sizeof SPURT_ROOMS; k++)
+		if (room == SPURT_ROOMS[k]) {
+			spurts(owner);
+			return;
+		}
+	if (room == 0x63) {
+		if (owner[1] < -128.0f)
+			spurts(owner);
+		return;
+	}
 	int i = 0;
 	while (i < MAX_POOL / 3 && s_set[i].on)
 		i++;
-	if (i == MAX_POOL / 3 || !owner)
+	if (i == MAX_POOL / 3)
 		return;
 	s_set[i] = (PoolSet){ true, owner, 0.0f, (int)(rnd() % 5), 0 };
+}
+
+void blood_footstep(const float foot[3], float yaw)
+{
+	if (s_prints <= 0) {
+		// 0x4ebe70: the step lands in a pool (one of the class 12 instances, 0x4ce2c0)
+		for (int i = 0; i < MAX_POOL; i++) {
+			const Pool* p = &s_pool[i];
+			if (!p->on)
+				continue;
+			float sz, cf;
+			keys(POOL_KEY, p->t, &sz, &cf);
+			float r = 0.6f * sz * (POOL_SIZE[p->size][0] + POOL_SIZE[p->size][1]) * 0.5f;
+			float dx = foot[0] - p->x, dz = foot[2] - p->z;
+			if (dx * dx + dz * dz < r * r && fabsf(foot[1] - p->y) < 200.0f) {
+				s_prints = 5;            // class 8's count (5.0)
+				break;
+			}
+		}
+		return;
+	}
+	// 0x4e94c0: a print a step, turned along the walk, left and right in turn
+	int i = 0;
+	while (i < MAX_PRINT && s_print[i].on)
+		i++;
+	if (i == MAX_PRINT) {
+		float best = -1.0f;
+		for (int k = 0; k < MAX_PRINT; k++)
+			if (s_print[k].t > best)
+				best = s_print[k].t, i = k;
+	}
+	float side = s_foot ? 60.0f : -60.0f;
+	float x = foot[0] + cosf(yaw) * side, z = foot[2] - sinf(yaw) * side;
+	s_print[i] = (Print){ true, x, floor_at(x, z, foot[1]), z, yaw, 0.0f, s_prints / 5.0f, s_foot };
+	s_foot ^= 1;
+	s_prints--;
 }
 
 static void post_pool(const float* owner)
@@ -382,6 +468,11 @@ void blood_update(float dt)
 			continue;
 		}
 		float y = p->p0[1] + p->vel[1] * p->t + GRAVITY * p->t * p->t;
+		if (p->mode == 2) {
+			if (y >= p->floor_y && p->vel[1] + 2.0f * GRAVITY * p->t > 0.0f)
+				p->on = false;           // 0x4ccd20: gone when it reaches the floor
+			continue;
+		}
 		if (y >= p->floor_y && p->vel[1] + 2.0f * GRAVITY * p->t > 0.0f) {
 			// 0x4cee80: a drop that reaches the floor leaves a stain (class 10) there
 			float x = p->p0[0] + p->vel[0] * p->t, z = p->p0[2] + p->vel[2] * p->t;
@@ -399,6 +490,15 @@ void blood_update(float dt)
 		// 0x4cf710: thirty seconds, then the alpha runs out one step a frame
 		if (st->t > 30.0f && (st->alpha -= dt * 60.0f / 128.0f) <= 0.0f)
 			st->on = false;
+	}
+	for (int i = 0; i < MAX_PRINT; i++) {
+		Print* pr = &s_print[i];
+		if (!pr->on)
+			continue;
+		pr->t += dt;
+		// 0x4cb930: ten seconds, then the alpha goes by 0.01 a tick
+		if (pr->t > 10.0f && (pr->alpha -= dt * 0.6f) <= 0.0f)
+			pr->on = false;
 	}
 	for (int i = 0; i < MAX_POOL / 3; i++) {
 		PoolSet* ps = &s_set[i];
@@ -529,6 +629,30 @@ void blood_draw(const C3D_Mtx* proj, const C3D_Mtx* view)
 			flush(base, v);
 		}
 	}
+	// the footprints: bloodtex0's prints (64x64 cells at 0 / 64, 384), flat on the floor
+	V* prints = v;
+	if (s_sprite_ok) {
+		for (int i = 0; i < MAX_PRINT; i++) {
+			const Print* pr = &s_print[i];
+			if (!pr->on)
+				continue;
+			float c = cosf(pr->rot), s = sinf(pr->rot), h = 187.0f;
+			float u0 = pr->foot ? 0.125f : 0.0f, u1 = u0 + 0.125f;
+			// the toe (the cell's top, v 0.75) ahead along the walk
+			float lx[4] = { -h, h, -h, h }, lz[4] = { h, h, -h, -h }, cu[4] = { u0, u1, u0, u1 };
+			float cv[4] = { 1.0f - 0.75f, 1.0f - 0.75f, 1.0f - 0.875f, 1.0f - 0.875f };
+			V q[4];
+			for (int k = 0; k < 4; k++)
+				put(&q[k], pr->x + c * lx[k] + s * lz[k], pr->y - 6.0f, pr->z - s * lx[k] + c * lz[k], cu[k], cv[k],
+				    DECAL_B[s_color], pr->alpha);
+			v[0] = q[0], v[1] = q[1], v[2] = q[2], v[3] = q[2], v[4] = q[1], v[5] = q[3];
+			v += 6;
+		}
+		if (v > prints) {
+			begin(proj, view, &s_sprite, true);
+			flush(prints, v);
+		}
+	}
 	// the spray and the drops: sprites facing the camera
 	V* first = v;
 	if (s_sprite_ok) {
@@ -567,13 +691,15 @@ void blood_draw(const C3D_Mtx* proj, const C3D_Mtx* view)
 
 const char* blood_status(void)
 {
-	static char line[48];
+	static char line[56];
 	int n[4] = { 0 };
 	for (int i = 0; i < MAX_SPLASH; i++) n[0] += s_splash[i].on;
 	for (int i = 0; i < MAX_PART; i++) n[1] += s_part[i].on;
 	for (int i = 0; i < MAX_STAIN; i++) n[2] += s_stain[i].on;
 	for (int i = 0; i < MAX_POOL; i++) n[3] += s_pool[i].on;
-	snprintf(line, sizeof line, "blood %d %d %d %d verts %d%s", n[0], n[1], n[2], n[3], s_drawn,
+	int prints = 0;
+	for (int i = 0; i < MAX_PRINT; i++) prints += s_print[i].on;
+	snprintf(line, sizeof line, "blood %d %d %d %d %d verts %d%s", n[0], n[1], n[2], n[3], prints, s_drawn,
 	         s_sprite_ok && s_blob_ok ? "" : " no texture");
 	return line;
 }

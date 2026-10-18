@@ -289,6 +289,18 @@ static void resolve(const char* name, char* file, size_t size, int* track)
 	snprintf(s_name, sizeof s_name, "%s", base);
 }
 
+bool movie_exists(const char* name)
+{
+	char file[24], path[96];
+	int track;
+	resolve(name, file, sizeof file, &track);
+	snprintf(path, sizeof path, MOVIE_DIR "/%s.mpg", file);
+	FILE* f = fopen(path, "rb");
+	if (f)
+		fclose(f);
+	return f != NULL;
+}
+
 bool movie_start(const char* name)
 {
 	movie_stop();

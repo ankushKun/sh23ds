@@ -29,8 +29,13 @@ void blood_set_color(int color);         // Blood Color 0 Normal, 1 Green, 2 Vio
 // (it sets the spray's strength, 0x4c7d40), owner the enemy's x, y, z (the splash follows it for
 // half a second), floor_y the floor under it (Y down).
 void blood_hit(const float pos[3], const float dir[3], int attack, const float* owner, float floor_y);
-// A death: the pool round owner (x, y, z, followed while it lies there).
-void blood_pool(const float* owner);
+// A death: the pool round owner (x, y, z, followed while it lies there). room is the PC room id
+// (bgm_room_id): 0x4c73a0 leaves rooms 7 and 0x21 without and gives the rooms whose floor holds no
+// pool six spurts instead (class 4, 0x4eafd0).
+void blood_pool(const float* owner, int room);
+// One of James' steps (main.c, move.c's footstep frames): a step in a pool starts five bloody
+// footprints (class 1 0x4ebe70 -> class 8 0x4e95f0 -> class 9 0x4cb930), one a step after it.
+void blood_footstep(const float foot[3], float yaw);
 // The owner is going away (its slot will be reused): its effects keep their last place.
 void blood_forget(const float* owner);
 

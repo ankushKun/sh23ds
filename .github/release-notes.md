@@ -1,4 +1,4 @@
-A native New 3DS port of Silent Hill 2 (PC Director's Cut). These files contain no game data: you build that from your own copy of the PC game with the packer.
+A native 3DS port of Silent Hill 2 (PC Director's Cut). These files contain no game data: you build that from your own copy of the PC game with the packer.
 
 **Install**
 

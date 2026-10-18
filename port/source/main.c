@@ -32,6 +32,8 @@
 #include "savescreen.h"
 #include "noise.h"
 #include "blood.h"
+#include "gameover.h"
+#include "titlemenu.h"
 #include "optmenu.h"
 #include "stagemdl.h"
 #include "touchui.h"
@@ -104,7 +106,6 @@ static void* s_testquad;    // linear memory, 6 ROOM_VERTEX_SIZE vertices
 enum { CAM_ORBIT, CAM_FLY, CAM_PLAYER, CAM_MODES };
 enum { ST_TITLE, ST_GAME, ST_VIEWER };
 static int s_state = ST_TITLE;
-static int s_menu;               // title menu cursor
 static int s_spawn_stage;        // debug.txt "stage": overrides the spawn map's stage
 static bool s_is_new3ds;
 static float s_title_t;          // seconds on the title screen
@@ -1661,7 +1662,7 @@ static void blood_frame(float dt)
 			at[0] = s_px - dz * side, at[1] = s_py, at[2] = s_pz + dx * side;
 			float pos[3] = { at[0], at[1] - 500.0f, at[2] }, dir[3] = { dx, 0.0f, dz };
 			blood_hit(pos, dir, 0x13, at, at[1]);
-			blood_pool(at);
+			blood_pool(at, bgm_room_id(ev_glb_crd(), at[0], at[2]));
 		}
 	}
 	static float last_hp[ENEMY_MAX];
@@ -1686,7 +1687,7 @@ static void blood_frame(float dt)
 			blood_hit(pos, dir, e->last_atk, &e->x, e->y);
 		}
 		if (seen[i] && d && !dead[i] && e->kind != EN_KIND_EDI)
-			blood_pool(&e->x);
+			blood_pool(&e->x, bgm_room_id(ev_glb_crd(), e->x, e->z));
 		last_hp[i] = e->hp;
 		dead[i] = d;
 		seen[i] = true;
@@ -1770,6 +1771,7 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	if (mo.step && !combat_own_footsteps()) {
 		float feet[3] = { s_px, s_py, s_pz };
 		sfx_footstep(mo.step_volume, feet);
+		blood_footstep(feet, s_yaw);    // a step in a pool leaves footprints after it (blood.c)
 	}
 }
 
@@ -3057,6 +3059,7 @@ static void new_game_wish(void)
 
 static void enter_title(void)
 {
+	titlemenu_reset(any_save());
 	touchui_box(NULL, NULL, 0);
 	touchui_panel("");
 	map_close();
@@ -3316,12 +3319,28 @@ static bool title_levels(u32 down)
 	return true;
 }
 
-static bool title_update(u32 down)
+// The file CONTINUE loads: the one played longest (the saves carry no date; the load screen
+// starts on the same one).
+static int newest_slot(void)
+{
+	int best = 0;
+	float t = -1.0f;
+	for (int i = 0; i < SAVE_SLOTS; i++) {
+		SaveSlotInfo in;
+		memset(&in, 0, sizeof in);
+		if (files_info(i, &in) && !in.clear && in.time > t)
+			t = in.time, best = i;
+	}
+	return best;
+}
+
+static bool title_update(u32 down, float dt)
 {
 	if (s_title_go >= 0)
 		return true;               // fading out to the game: no input
 	if (savescreen_active()) {
-		savescreen_update(down);
+		if (!savescreen_update(down))
+			titlemenu_reset(any_save());
 		return true;
 	}
 	if (optmenu_active()) {
@@ -3331,58 +3350,50 @@ static bool title_update(u32 down)
 	}
 	if (s_title_sub)
 		return title_levels(down);
-	const char* items[] = { "New Game", "Born From a Wish", "Continue", "Options", "Room viewer (debug)" };
-	enum { N = 5 };
-	if (down & (KEY_DUP | KEY_DDOWN)) {
-		s_menu = (s_menu + (down & KEY_DDOWN ? 1 : N - 1)) % N;
-		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
-	}
 	if (down & KEY_START)
 		return false;
-	if (down & KEY_A) {
+	// the PC's title screens (titlemenu.c): the menu, the scenarios, the levels, the movies
+	int action = s_action, riddle = s_riddle;
+	const char* movie = NULL;
+	switch (titlemenu_update(down, dt, &action, &riddle, &movie)) {
+	case TM_LOAD:
 		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
-		if (s_menu == 0 || s_menu == 1) {
-			s_title_sub = s_menu + 1;
-			consoleClear();
-		} else if (s_menu == 2) {
-			if (any_save())
-				savescreen_open(SS_LOAD, &s_files, 0);     // files_load starts the chosen one
-			else
-				printf("\x1b[25;9HNo save file yet.        ");
-		} else if (s_menu == 3) {
-			touchui_menu_close(TOUI_TITLE);
-			options_open();
-			return true;
-		} else {
-			s_state = ST_VIEWER;
-			s_cam.mode = CAM_ORBIT;
-			consoleClear();
-			load_current();
-			stage_for_room();
-		}
-		return true;
+		savescreen_open(SS_LOAD, &s_files, 0);     // files_load starts the chosen one
+		break;
+	case TM_CONTINUE:
+		files_load(newest_slot());                 // the game start sound and the fade
+		break;
+	case TM_NEW_GAME:
+		s_action = action, s_riddle = riddle;
+		title_start(0);
+		break;
+	case TM_WISH:
+		s_action = action, s_riddle = riddle;
+		title_start(1);
+		break;
+	case TM_OPTIONS:
+		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+		touchui_menu_close(TOUI_TITLE);
+		options_open();
+		break;
+	case TM_MOVIE:
+		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+		touchui_menu_close(TOUI_TITLE);
+		touchui_menu_close(TOUI_LEVELS);
+		movie_play(movie);
+		break;
+	case TM_EXIT:
+		return false;
+	case TM_VIEWER:
+		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+		touchui_menu_close(TOUI_TITLE);
+		s_state = ST_VIEWER;
+		s_cam.mode = CAM_ORBIT;
+		consoleClear();
+		load_current();
+		stage_for_room();
+		break;
 	}
-	printf("\x1b[10;12HSILENT HILL 2");
-	printf("\x1b[11;10HDirector's Cut  (3DS)");
-	for (int i = 0; i < N; i++)
-		printf("\x1b[%d;9H%s %-22s", 15 + i * 2, i == s_menu ? ">" : " ", items[i]);
-	touchui_menu_close(TOUI_LEVELS);
-	touchui_menu(TOUI_TITLE, "SILENT HILL 2", items, N, &s_menu, NULL, 0);
-	u8 clear[3];
-	prog_clear_get(clear);
-	if (clear[1]) {
-		// the PC's clear data: which endings were seen (FlagInit's New Game+ flags follow it)
-		static const char* const end[7] = { "Leave", "Maria", "Water", "Rebirth", "Dog", "UFO", "Wish" };
-		char line[48];
-		int k = 0;
-		for (int i = 0; i < 7; i++)
-			if (clear[1] >> i & 1)
-				k += snprintf(line + k, sizeof line - k, "%s%s", k ? " " : "", end[i]);
-		printf("\x1b[25;2HEndings: %-30.30s", line);
-	}
-	if (!s_is_new3ds)
-		printf("\x1b[24;3HOld 3DS: lower detail (Options).");
-	printf("\x1b[27;2HD-pad: choose   A: select   START: exit");
 	return true;
 }
 
@@ -3727,6 +3738,9 @@ int main(void)
 	font_init(PACK_DIR, ui_draw_font);
 	noise_init();
 	blood_init(PACK_DIR, ui_program_flat, blood_floor);
+	gameover_init(PACK_DIR);
+	titlemenu_init(PACK_DIR);
+	titlemenu_reset(any_save());
 
 	options_load();     // debug.txt below may override
 	controls_init(PACK_DIR);            // the player's button bindings (controls.txt)
@@ -3912,7 +3926,7 @@ int main(void)
 		}
 		if (s_state == ST_TITLE) {
 			s_title_t += dt;
-			if (!title_update(down))
+			if (!title_update(down, dt))
 				break;
 			float bright = s_title_t < 1.5f ? s_title_t / 1.5f : 1.0f;
 			if (s_title_go >= 0) {
@@ -3928,7 +3942,8 @@ int main(void)
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
-			if (s_state == ST_TITLE && !optmenu_active())
+			if (s_state == ST_TITLE && !optmenu_active() && !savescreen_active() &&
+			    !titlemenu_draw_top(ui_draw, bright))      // start00 and the PC's menus
 				draw_title(&ortho, bright);
 			savescreen_draw_top();       // Continue's file list over the title
 			optmenu_draw_top(ui_draw);   // the options from the title, on black
@@ -3936,6 +3951,19 @@ int main(void)
 			touchui_frame();
 			C3D_FrameEnd(0);
 			continue;            // the button that left the title is not seen by the game
+		}
+		if (gameover_active()) {
+			if (!gameover_update(dt)) {
+				enter_title();
+				continue;
+			}
+			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
+			C3D_FrameDrawOn(top);
+			gameover_draw_top(ui_draw);
+			touchui_frame();
+			C3D_FrameEnd(0);
+			continue;
 		}
 		bool viewer = s_state == ST_VIEWER;
 		if (viewer && (down & KEY_START)) {
@@ -4053,8 +4081,8 @@ int main(void)
 					head_update(&cp, gheld, dt, !prog_running() || !prog_player_locked());
 				}
 				blood_frame(dt);
-				if (combat_dead()) {     // game over
-					enter_title();
+				if (combat_dead()) {     // game over: the PC's screen, then the title (0x401fc0)
+					gameover_start();
 					continue;
 				}
 			}
