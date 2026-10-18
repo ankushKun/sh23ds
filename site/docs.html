@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sh23ds docs</title>
-  <meta name="description" content="Build, test, debug and extend the 3DS port of Silent Hill 2.">
-  <meta name="theme-color" content="#101214">
+  <title>Docs · sh23ds</title>
+  <meta name="description" content="How the sh23ds port of Silent Hill 2 fits together, how to build it, and how to port the next piece.">
+  <meta name="theme-color" content="#050505">
   <link rel="canonical" href="https://ankush.one/sh23ds/docs.html">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-64.png" sizes="64x64" type="image/png">
@@ -13,313 +13,267 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="sh23ds">
   <meta property="og:title" content="sh23ds docs">
-  <meta property="og:description" content="Build, test, debug and extend the 3DS port of Silent Hill 2.">
+  <meta property="og:description" content="How the port fits together, how to build it, and how to port the next piece.">
   <meta property="og:url" content="https://ankush.one/sh23ds/docs.html">
   <meta property="og:image" content="https://ankush.one/sh23ds/assets/banner.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="preload" href="fonts/m-plus-rounded-1c-800-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/m-plus-rounded-1c-500-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/libre-caslon-display-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/crimson-pro-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/vt323-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="site.css">
   <script>document.documentElement.classList.add("js")</script>
   <script src="site.js" defer></script>
 </head>
-<body>
+<body class="page">
   <a class="skip" href="#main">Skip to the content</a>
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <symbol id="i-gh" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></symbol>
-    <symbol id="i-menu" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M3 6h14M3 10h14M3 14h14"/></symbol>
-    <symbol id="i-down" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m-4-4 4 4 4-4M4 16.5h12"/></symbol>
-    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m-5-5 5 5-5 5"/></symbol>
-    <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M10 9v5M10 6.2v.1"/></symbol>
-    <symbol id="i-warn" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M10 3 18 17H2Z"/><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M10 8.5v4M10 14.8v.1"/></symbol>
-    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
-  </svg>
 
   <header class="bar">
-    <div class="wrap bar-inner">
-      <a class="brand" href="./"><span class="brand-icon"><i></i></span>sh23ds</a>
-      <nav aria-label="Main">
-        <ul class="pills">
-          <li><a href="./">Home</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="status.html">Status</a></li>
-          <li><a href="docs.html" aria-current="page">Docs</a></li>
-        </ul>
-      </nav>
-      <div class="status">
-        <span class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="clock" aria-hidden="true">00:00</span>
-        <span class="battery" aria-hidden="true"></span>
-        <a class="gh" href="https://github.com/ankushKun/sh23ds" aria-label="sh23ds on GitHub"><svg aria-hidden="true"><use href="#i-gh"/></svg></a>
-        <details class="menu">
-          <summary aria-label="Menu"><svg aria-hidden="true"><use href="#i-menu"/></svg></summary>
-          <div class="menu-panel">
-            <a href="./">Home</a>
-            <a href="install.html">Install</a>
-            <a href="status.html">Status</a>
-            <a href="docs.html" aria-current="page">Docs</a>
-            <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
-          </div>
-        </details>
-      </div>
-    </div>
+    <a class="brand" href="./">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="brand-name">sh23ds</span>
+    </a>
+    <nav class="nav" aria-label="Site">
+      <a href="install.html">Install</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="docs.html" aria-current="page">Docs</a>
+      <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
+    </nav>
   </header>
 
-  <main id="main" class="wrap">
-    <div class="page-head">
-      <h1>Docs</h1>
-      <p class="lead">How the port fits together, how to build and test it, and how to port the next piece. Everything builds in Docker.</p>
-    </div>
+  <main id="main">
+    <section class="page-head">
+      <div class="static" aria-hidden="true"></div>
+      <div class="wrap-narrow">
+        <h1 class="page-title">Docs</h1>
+        <p class="lede">How the port fits together, how to build it, and how to port the next piece. Everything builds in Docker.</p>
+      </div>
+    </section>
 
-    <div class="docs layout">
-        <nav class="toc" aria-label="On this page">
-          <input class="input" type="search" placeholder="Filter ( / )" aria-label="Filter the sections" data-filter>
-          <p class="group">Start</p>
-          <ul>
-            <li><a href="#architecture">Architecture</a></li>
-            <li><a href="#layout">Repository layout</a></li>
-            <li><a href="#build">Build from source</a></li>
-            <li><a href="#releases">Packaging and releases</a></li>
-          </ul>
-          <p class="group">Test and debug</p>
-          <ul>
-            <li><a href="#azahar">Running in Azahar</a></li>
-            <li><a href="#headless">Headless runs</a></li>
-            <li><a href="#debug">The debug file</a></li>
-          </ul>
-          <p class="group">Game data</p>
-          <ul>
-            <li><a href="#converters">The converters</a></li>
-            <li><a href="#pack">Pack layout</a></li>
-          </ul>
-          <p class="group">Contribute</p>
-          <ul>
-            <li><a href="#porting">Porting a feature</a></li>
-            <li><a href="#rules">Rules</a></li>
-            <li><a href="#reference">Reference notes</a></li>
-          </ul>
-          <p class="empty" hidden>No section matches.</p>
-        </nav>
+    <div class="guide">
+      <aside class="guide-side">
+        <div class="panel">
+          <div class="panel-head"><span>Contents</span></div>
+          <nav class="side-menu" aria-label="Contents" data-spy>
+            <a href="#architecture"><span class="sq"></span>Architecture</a>
+            <a href="#layout"><span class="sq"></span>Repository</a>
+            <a href="#build"><span class="sq"></span>Build from source</a>
+            <a href="#releases"><span class="sq"></span>Releases</a>
+            <a href="#debug"><span class="sq"></span>The debug file</a>
+            <a href="#converters"><span class="sq"></span>The converters</a>
+            <a href="#pack"><span class="sq"></span>Pack layout</a>
+            <a href="#porting"><span class="sq"></span>Porting a feature</a>
+            <a href="#rules"><span class="sq"></span>Rules</a>
+            <a href="#notes"><span class="sq"></span>Reference notes</a>
+          </nav>
+        </div>
+      </aside>
 
-      <div class="prose">
-<section class="card" id="architecture">
-          <h2>Architecture <a class="anchor" href="#architecture" aria-label="Link to this section">#</a></h2>
+      <div class="guide-main" style="gap:96px">
+
+        <section class="doc-section prose" id="architecture" aria-labelledby="d-arch">
+          <h2 class="doc-title" id="d-arch">Architecture</h2>
           <p>Two halves. The converters in <code>tools/sh2conv</code> read the PC game’s files once, on the player’s computer, and write the pack. The engine in <code>port/</code> reads the pack from the SD card and runs the game, with logic ported from the Director’s Cut exe function by function and the PC address of each function in a comment next to it.</p>
-          <ol class="numbered">
+          <ul>
             <li><strong>The PC game:</strong> <code>sh2pc.exe</code> and <code>data/</code> from the player’s copy.</li>
-            <li><strong>The converters</strong> (Python, <code>tools/sh2conv</code>, run by the packer) write the pack.</li>
+            <li><strong>The converters</strong> (Python, run by the packer) write the pack.</li>
             <li><strong>The pack</strong> goes to <code>sdmc:/3ds/sh23ds/</code>, about 1.3 GB.</li>
-            <li><strong>The engine</strong> (C with libctru and citro3d, <code>port/</code>) reads it on the console.</li>
-          </ol>
+            <li><strong>The engine</strong> (C with libctru and citro3d) reads it on the console.</li>
+          </ul>
           <h3>The engine</h3>
-          <div class="table-wrap">
+          <div class="table-scroll">
             <table class="table">
               <thead><tr><th scope="col">Files</th><th scope="col">What they do</th></tr></thead>
               <tbody>
-                <tr><td><code>main.c</code></td><td>Main loop, room changes, rendering</td></tr>
-                <tr><td><code>room.c</code>, <code>stagemdl.c</code>, <code>collide.c</code></td><td>Room geometry and textures, stage models, collision</td></tr>
-                <tr><td><code>gamecam.c</code>, <code>game/view/sh2cam.c</code></td><td>The PC camera module and its roads</td></tr>
-                <tr><td><code>envlight.c</code>, <code>chrlight.c</code>, <code>fog.c</code>, <code>shadow.c</code></td><td>Room and character lighting, the fog layer, flashlight and drop shadows</td></tr>
-                <tr><td><code>chr.c</code>, <code>move.c</code>, <code>controls.c</code></td><td>James’s animation, movement, button layouts</td></tr>
-                <tr><td><code>events.c</code>, <code>prog*.c</code></td><td>Stage events and the stage programs, one file per part of the game</td></tr>
-                <tr><td><code>enemy.c</code>, <code>combat.c</code>, <code>maria.c</code>, <code>blood.c</code></td><td>Enemies and bosses, weapons, Maria, blood</td></tr>
-                <tr><td><code>touchui.c</code>, <code>map.c</code>, <code>itemview.c</code></td><td>The touch screen: map, items, memos</td></tr>
-                <tr><td><code>titlemenu.c</code>, <code>optmenu.c</code>, <code>savescreen.c</code>, <code>gameover.c</code></td><td>Title, options, save files, game over</td></tr>
-                <tr><td><code>demo.c</code>, <code>movie.c</code>, <code>noise.c</code></td><td>In-engine cutscenes, FMV playback, the film grain</td></tr>
-                <tr><td><code>audio.c</code>, <code>bgm.c</code>, <code>sfx.c</code></td><td>Music, per-area music, sound effects</td></tr>
-                <tr><td><code>stream.c</code>, <code>profile.c</code>, <code>perf.c</code></td><td>Worker-thread streaming, the New and Old 3DS profiles, frame timing</td></tr>
-                <tr><td><code>*.v.pica</code></td><td>Vertex shaders</td></tr>
+                <tr><td>main.c</td><td>Main loop, room changes, rendering</td></tr>
+                <tr><td>room.c, stagemdl.c, collide.c</td><td>Room geometry and textures, stage models, collision</td></tr>
+                <tr><td>gamecam.c, game/view/sh2cam.c</td><td>The PC camera module and its roads</td></tr>
+                <tr><td>envlight.c, chrlight.c, fog.c, shadow.c</td><td>Room and character lighting, the fog layer, flashlight and drop shadows</td></tr>
+                <tr><td>chr.c, move.c, controls.c</td><td>James’s animation, movement, button layouts</td></tr>
+                <tr><td>events.c, prog*.c</td><td>Stage events and the stage programs, one file per part of the game</td></tr>
+                <tr><td>enemy.c, combat.c, maria.c, blood.c</td><td>Enemies and bosses, weapons, Maria, blood</td></tr>
+                <tr><td>touchui.c, map.c, itemview.c</td><td>The touch screen: map, items, memos</td></tr>
+                <tr><td>titlemenu.c, optmenu.c, savescreen.c, gameover.c</td><td>Title, options, save files, game over</td></tr>
+                <tr><td>demo.c, movie.c, noise.c</td><td>In-engine cutscenes, FMV playback, the film grain</td></tr>
+                <tr><td>audio.c, bgm.c, sfx.c</td><td>Music, per-area music, sound effects</td></tr>
+                <tr><td>stream.c, profile.c, perf.c</td><td>Worker-thread streaming, the New and Old 3DS profiles, frame timing</td></tr>
+                <tr><td>*.v.pica</td><td>Vertex shaders</td></tr>
               </tbody>
             </table>
           </div>
         </section>
-<section class="card" id="layout">
-          <h2>Repository layout <a class="anchor" href="#layout" aria-label="Link to this section">#</a></h2>
-          <div class="code" data-nocopy><pre><code>port/                 the 3DS engine: source/, meta/ (banner, icon, RSF), build.sh, package.sh
+
+        <section class="doc-section prose" id="layout" aria-labelledby="d-layout">
+          <h2 class="doc-title" id="d-layout">Repository</h2>
+          <pre class="code">port/                 the 3DS engine: source/, meta/, build.sh, package.sh
 tools/sh2conv/        converters from the PC formats to the pack
 tools/make_pack.sh    runs every converter in order
 tools/packer/         the packer image (Dockerfile, entry point)
-tools/lr3ds/          headless test runner for Azahar's libretro core
-sh2-3ds-port-kit/     reverse-engineering kit: labels, Ghidra scripts, version detection
+sh2-3ds-port-kit/     reverse-engineering kit: labels, Ghidra scripts
 docs/RESEARCH.md      how the exe was mapped, key addresses, the work log
-site/                 this website, deployed by GitHub Pages</code></pre></div>
+site/                 this website, deployed by GitHub Pages</pre>
         </section>
-<section class="card" id="build">
-          <h2>Build from source <a class="anchor" href="#build" aria-label="Link to this section">#</a></h2>
+
+        <section class="doc-section prose" id="build" aria-labelledby="d-build">
+          <h2 class="doc-title" id="d-build">Build from source</h2>
           <p>You need Docker: Docker Desktop, or the Docker CLI with Colima on macOS. The build runs in a devkitARM image pinned by digest, and the same commit always builds the same <code>sh23ds.3dsx</code>, byte for byte.</p>
-          <div class="code"><pre><code>git clone https://github.com/ankushKun/sh23ds
+          <div>
+            <div class="code-head"><span>Terminal</span><button class="copy" type="button" data-copy-text="git clone https://github.com/ankushKun/sh23ds&#10;cd sh23ds&#10;./port/build.sh&#10;./port/package.sh">Copy</button></div>
+            <pre class="code">git clone https://github.com/ankushKun/sh23ds
 cd sh23ds
 ./port/build.sh
-./port/package.sh</code></pre></div>
-          <p><code>build.sh</code> writes <code>port/sh23ds.3dsx</code> and <code>sh23ds.elf</code>, and passes its arguments to <code>make</code>, so <code>./port/build.sh clean</code> works. <code>package.sh</code> builds the CIA with bannertool and makerom and copies everything to <code>dist/</code> with SHA-256 sums.</p>
-          <div class="table-wrap">
+./port/package.sh</pre>
+          </div>
+          <p><code>build.sh</code> writes <code>port/sh23ds.3dsx</code> and <code>sh23ds.elf</code>, and passes its arguments to make, so <code>./port/build.sh clean</code> works. <code>package.sh</code> builds the CIA with bannertool and makerom and copies everything to <code>dist/</code> with SHA-256 sums.</p>
+          <div class="table-scroll">
             <table class="table">
               <thead><tr><th scope="col">Variable</th><th scope="col">Default and use</th></tr></thead>
               <tbody>
-                <tr><td><code>SH23DS_BUILD_JOBS</code></td><td><code>4</code>, parallel make jobs</td></tr>
-                <tr><td><code>SH23DS_BUILD_IMAGE</code></td><td>The pinned <code>devkitpro/devkitarm</code> image</td></tr>
-                <tr><td><code>SH23DS_CIA_IMAGE</code></td><td><code>sh23ds-cia-tools:1.0.0</code>, built from <code>port/cia-tools.Dockerfile</code> on first use</td></tr>
+                <tr><td>SH23DS_BUILD_JOBS</td><td>4, parallel make jobs</td></tr>
+                <tr><td>SH23DS_BUILD_IMAGE</td><td>The pinned devkitpro/devkitarm image</td></tr>
+                <tr><td>SH23DS_CIA_IMAGE</td><td>sh23ds-cia-tools:1.0.0, built from port/cia-tools.Dockerfile on first use</td></tr>
               </tbody>
             </table>
           </div>
         </section>
-<section class="card" id="releases">
-          <h2>Packaging and releases <a class="anchor" href="#releases" aria-label="Link to this section">#</a></h2>
-          <p>The CIA asks for the 124 MB memory mode, the 804 MHz clock and the L2 cache (<code>port/package.sh</code>, through <code>port/meta/template.rsf</code>). The 3DSX gets whatever the Homebrew Launcher runs with.</p>
-          <p>GitHub Actions byte-compiles the converters and builds the 3DSX and CIA on every push and pull request, keeping <code>dist/</code> as an artifact. To release:</p>
+
+        <section class="doc-section prose" id="releases" aria-labelledby="d-rel">
+          <h2 class="doc-title" id="d-rel">Releases</h2>
+          <p>The CIA asks for the 124 MB memory mode, the 804 MHz clock and the L2 cache (<code>port/meta/template.rsf</code>). The 3DSX gets whatever the Homebrew Launcher runs with. GitHub Actions builds both on every push and pull request.</p>
           <ol>
             <li>Bump <code>VERSION</code>, write what changed in <code>.github/releases/v&lt;version&gt;.md</code> and commit.</li>
             <li>Push a matching tag, such as <code>v0.2.0</code>.</li>
-            <li>CI checks the tag against <code>VERSION</code>, verifies the checksums and publishes the release with those notes, the install steps and the checksums. The packer workflow pushes <code>ghcr.io/ankushkun/sh23ds-packer</code> with the same version and <code>latest</code>.</li>
+            <li>CI checks the tag against <code>VERSION</code>, verifies the checksums and publishes the release with those notes. The packer workflow pushes <code>ghcr.io/ankushkun/sh23ds-packer</code> with the same version and <code>latest</code>.</li>
           </ol>
-          <div class="callout"><svg aria-hidden="true"><use href="#i-info"/></svg><p>GitHub creates a new container package as private. After the first packer push, make it public once in the package’s settings so players can pull it.</p></div>
-          <p>The QR codes on the install guide point at <code>releases/latest/download/</code>, so they stay valid for every release. <code>tools/make_site_qr.py</code> regenerates them if the repository or asset names change.</p>
+          <p>The QR codes on the install guide point at <code>releases/latest/download/</code>, so they stay valid for every release. <code>tools/make_site_qr.py</code> regenerates them if the repository or file names change.</p>
         </section>
-<section class="card" id="azahar">
-          <h2>Running in Azahar <a class="anchor" href="#azahar" aria-label="Link to this section">#</a></h2>
-          <p>Set the system to New 3DS. Put the pack in Azahar’s virtual SD card under <code>sdmc/3ds/sh23ds/</code> (in its user folder), and add any file named <code>sdmc/3ds/dspfirm.cdc</code>, since Azahar’s audio doesn’t need the real firmware. Then open <code>port/sh23ds.3dsx</code> or install the CIA.</p>
-          <p>If the top screen stays black in the desktop app, switch the graphics API between Vulkan and OpenGL, or clear the shader cache for title <code>0000000000000000</code>. A <code>dumpframe</code> line in the debug file shows whether the game drew anything.</p>
-        </section>
-<section class="card" id="headless">
-          <h2>Headless runs <a class="anchor" href="#headless" aria-label="Link to this section">#</a></h2>
-          <p><code>tools/lr3ds</code> is a small libretro frontend for macOS that runs a build in Azahar’s libretro core without a window, with the software renderer, the New 3DS model (<code>LR3DS_MODEL="Old 3DS"</code> for the original), scripted input and screenshots at chosen frames. Its SD card is <code>.lr3ds/save/Azahar/sdmc/</code>, so the pack goes in <code>.lr3ds/save/Azahar/sdmc/3ds/sh23ds/</code>.</p>
-          <div class="code"><pre><code>clang -O2 -Wall -o tools/lr3ds/lr3ds tools/lr3ds/lr3ds.c -framework OpenGL
-export AZAHAR_CORE=/path/to/azahar_libretro.dylib
-tools/lr3ds/run.sh 600 --frames 600 --shot 590:/tmp/title.bmp
-tools/lr3ds/smoke.sh</code></pre></div>
-          <p><code>run.sh</code> takes a timeout in seconds and then any of these options. <code>smoke.sh</code> runs twelve scripted scenes, from the title screen to the pause menu, and writes a contact sheet to <code>.lr3ds/smoke/</code>. Run it before every pull request.</p>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th scope="col">Option</th><th scope="col">Does</th></tr></thead>
-              <tbody>
-                <tr><td><code>--frames N</code></td><td>Frames to run (default 600)</td></tr>
-                <tr><td><code>--shot F:path.bmp</code></td><td>Save the frame shown at frame F (repeatable)</td></tr>
-                <tr><td><code>--press A-B:BUTTONS</code></td><td>Hold buttons from frame A to B, e.g. <code>120-125:A</code> or <code>300-400:UP+B</code></td></tr>
-                <tr><td><code>--touch A-B:X,Y</code></td><td>Touch the bottom screen at X,Y (320 × 240)</td></tr>
-                <tr><td><code>--analog A-B:X,Y</code></td><td>Hold the Circle Pad at X,Y in -1..1</td></tr>
-                <tr><td><code>--wav path.wav</code></td><td>Record the audio output</td></tr>
-                <tr><td><code>--log</code></td><td>Print the core’s log</td></tr>
-                <tr><td><code>--opt key=value</code></td><td>Override a core option</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-<section class="card" id="debug">
-          <h2>The debug file <a class="anchor" href="#debug" aria-label="Link to this section">#</a></h2>
+
+        <section class="doc-section prose" id="debug" aria-labelledby="d-debug">
+          <h2 class="doc-title" id="d-debug">The debug file</h2>
           <p>Lines in <code>sdmc:/3ds/sh23ds/debug.txt</code> change how the game starts. Delete the file to play normally. A common setup puts James in a room with a flag set and the readout on:</p>
-          <div class="code"><pre><code>debughud 1
+          <pre class="code">debughud 1
 flag 32 1
-spawn er01 -19250 0 21250 90 2</code></pre></div>
-          <div class="table-wrap">
+spawn er01 -19250 0 21250 90 2</pre>
+          <div class="table-scroll">
             <table class="table">
               <thead><tr><th scope="col">Line</th><th scope="col">Does</th></tr></thead>
               <tbody>
-                <tr><td><code>spawn &lt;map&gt; &lt;x&gt; &lt;y&gt; &lt;z&gt; &lt;yaw&gt; &lt;mode&gt;</code></td><td>Start in a room. Mode 2 plays as James, other modes open the room viewer</td></tr>
-                <tr><td><code>stage &lt;n&gt;</code></td><td>The stage for the spawn, otherwise taken from the room</td></tr>
-                <tr><td><code>flag &lt;n&gt; &lt;0|1&gt;</code></td><td>Set a game flag before the spawn</td></tr>
-                <tr><td><code>item &lt;id&gt; &lt;count&gt;</code></td><td>Give an item before the spawn</td></tr>
-                <tr><td><code>hp &lt;n&gt;</code></td><td>Start with this much health</td></tr>
-                <tr><td><code>action &lt;0..3&gt;</code>, <code>riddle &lt;0..3&gt;</code></td><td>Action and riddle level</td></tr>
-                <tr><td><code>enemy &lt;kind&gt; &lt;x&gt; &lt;z&gt; &lt;yaw&gt; [status] [height]</code></td><td>Place an extra enemy, kind in hex (<code>202</code> is a creeper)</td></tr>
-                <tr><td><code>wish</code></td><td>Born From a Wish flags, with <code>stage 53</code> for its spawn</td></tr>
-                <tr><td><code>demo &lt;name&gt; &lt;seconds&gt;</code></td><td>Play a cutscene from this point</td></tr>
-                <tr><td><code>movie &lt;name&gt;</code></td><td>Play a movie</td></tr>
-                <tr><td><code>newgame 1</code></td><td>Start New Game without input</td></tr>
-                <tr><td><code>results 1</code>, <code>itemget &lt;id&gt;</code></td><td>Open the results screen after counting these pickups</td></tr>
-                <tr><td><code>musicbox &lt;seconds&gt;</code></td><td>Pose the music box at that time of its tune</td></tr>
-                <tr><td><code>debughud 1</code></td><td>The readout on the bottom screen (SELECT toggles it)</td></tr>
-                <tr><td><code>dumpframe &lt;n&gt;</code></td><td>Save frame n as <code>frame_n.bmp</code> with its stats</td></tr>
-                <tr><td><code>perflog 1</code>, <code>memlog 1</code>, <code>memtest &lt;n&gt;</code></td><td>Frame times, memory use, a memory stress test</td></tr>
-                <tr><td><code>streamsync 1</code></td><td>Load streamed tiles on the main thread, to compare with the worker</td></tr>
-                <tr><td><code>autotest warps &lt;first&gt; &lt;count&gt;</code></td><td>Load every door and warp in turn and log the result</td></tr>
-                <tr><td><code>rendermode</code>, <code>batch</code>, <code>freeze</code>, <code>ambient</code></td><td>Renderer experiments</td></tr>
+                <tr><td>spawn &lt;map&gt; &lt;x&gt; &lt;y&gt; &lt;z&gt; &lt;yaw&gt; &lt;mode&gt;</td><td>Start in a room. Mode 2 plays as James; other modes open the room viewer</td></tr>
+                <tr><td>stage &lt;n&gt;</td><td>The stage for the spawn, otherwise taken from the room</td></tr>
+                <tr><td>flag &lt;n&gt; &lt;0|1&gt;</td><td>Set a game flag before the spawn</td></tr>
+                <tr><td>item &lt;id&gt; &lt;count&gt;</td><td>Give an item before the spawn</td></tr>
+                <tr><td>hp &lt;n&gt;</td><td>Start with this much health</td></tr>
+                <tr><td>action &lt;0..3&gt;, riddle &lt;0..3&gt;</td><td>Action and riddle level</td></tr>
+                <tr><td>enemy &lt;kind&gt; &lt;x&gt; &lt;z&gt; &lt;yaw&gt;</td><td>Place an extra enemy, kind in hex (202 is a creeper)</td></tr>
+                <tr><td>wish</td><td>Born From a Wish flags, with stage 53 for its spawn</td></tr>
+                <tr><td>demo &lt;name&gt; &lt;seconds&gt;</td><td>Play a cutscene from this point</td></tr>
+                <tr><td>movie &lt;name&gt;</td><td>Play a movie</td></tr>
+                <tr><td>newgame 1</td><td>Start a New Game without input</td></tr>
+                <tr><td>debughud 1</td><td>The readout on the bottom screen (SELECT toggles it)</td></tr>
+                <tr><td>dumpframe &lt;n&gt;</td><td>Save frame n as frame_n.bmp with its stats</td></tr>
+                <tr><td>perflog 1, memlog 1</td><td>Log frame times and memory use</td></tr>
               </tbody>
             </table>
           </div>
         </section>
-<section class="card" id="converters">
-          <h2>The converters <a class="anchor" href="#converters" aria-label="Link to this section">#</a></h2>
+
+        <section class="doc-section prose" id="converters" aria-labelledby="d-conv">
+          <h2 class="doc-title" id="d-conv">The converters</h2>
           <p><code>tools/make_pack.sh</code> runs them in order and stops early unless <code>sh2pc.exe</code> has the Director’s Cut MD5, because several converters read tables at fixed addresses in that exe. To rebuild one part of the pack, run its converter on its own:</p>
-          <div class="code"><pre><code>python3 -m venv .venv &amp;&amp; .venv/bin/pip install numpy pillow pefile
-.venv/bin/python -I tools/sh2conv/pics.py "Silent Hill 2/data" pack</code></pre></div>
-          <div class="table-wrap">
+          <pre class="code">python3 -m venv .venv &amp;&amp; .venv/bin/pip install numpy pillow pefile
+.venv/bin/python -I tools/sh2conv/pics.py "Silent Hill 2/data" pack</pre>
+          <div class="table-scroll">
             <table class="table">
               <thead><tr><th scope="col">Converter</th><th scope="col">Writes</th></tr></thead>
               <tbody>
-                <tr><td><code>convert.py</code></td><td>Room geometry and ETC1 textures with mipmaps (<code>tex3ds</code>), camera roads</td></tr>
-                <tr><td><code>collision.py</code></td><td>Room collision</td></tr>
-                <tr><td><code>chr.py</code></td><td>Characters, weapons and their motions</td></tr>
-                <tr><td><code>events.py</code>, <code>events_pack.py</code></td><td>Stage events and English messages</td></tr>
-                <tr><td><code>enemies_pack.py</code>, <code>moths.py</code></td><td>Enemy lists, Mary’s moths</td></tr>
-                <tr><td><code>lighting.py</code>, <code>fog.py</code></td><td>Room lighting records with EE’s fixes, the fog layer</td></tr>
-                <tr><td><code>ui.py</code>, <code>pics.py</code>, <code>maps.py</code></td><td>The PC font and title art, stills and puzzle overlays, maps and memos</td></tr>
-                <tr><td><code>sound.py</code></td><td>Sound effects, footstep materials, per-stage music tables</td></tr>
-                <tr><td><code>movies.py</code></td><td>The Bink movies as MPEG-1 and MP2 (needs ffmpeg)</td></tr>
-                <tr><td><code>demos.py</code></td><td>Cutscene scripts, motions, their characters, voices</td></tr>
+                <tr><td>convert.py</td><td>Room geometry and ETC1 textures with mipmaps, camera roads</td></tr>
+                <tr><td>collision.py</td><td>Room collision</td></tr>
+                <tr><td>chr.py</td><td>Characters, weapons and their motions</td></tr>
+                <tr><td>events.py, events_pack.py</td><td>Stage events and English messages</td></tr>
+                <tr><td>enemies_pack.py, moths.py</td><td>Enemy lists, Mary’s moths</td></tr>
+                <tr><td>lighting.py, fog.py</td><td>Room lighting records with the EE’s fixes, the fog layer</td></tr>
+                <tr><td>ui.py, pics.py, maps.py</td><td>The PC font and title art, stills and puzzle overlays, maps and memos</td></tr>
+                <tr><td>sound.py</td><td>Sound effects, footstep materials, per-stage music tables</td></tr>
+                <tr><td>movies.py</td><td>The Bink movies as MPEG-1 and MP2 (needs ffmpeg)</td></tr>
+                <tr><td>demos.py</td><td>Cutscene scripts, motions, their characters, voices</td></tr>
               </tbody>
             </table>
           </div>
         </section>
-<section class="card" id="pack">
-          <h2>Pack layout <a class="anchor" href="#pack" aria-label="Link to this section">#</a></h2>
-          <div class="code" data-nocopy><pre><code>bg/&lt;area&gt;/&lt;room&gt;.s3m      room geometry
+
+        <section class="doc-section prose" id="pack" aria-labelledby="d-pack">
+          <h2 class="doc-title" id="d-pack">Pack layout</h2>
+          <pre class="code">bg/&lt;area&gt;/&lt;room&gt;.s3m      room geometry
 bg/&lt;area&gt;/&lt;room&gt;.s3l      collision
-bg/&lt;area&gt;/*.cam            camera roads, including &lt;area&gt;GB.cam for open areas
+bg/&lt;area&gt;/*.cam            camera roads, with &lt;area&gt;GB.cam for open areas
 bg/&lt;area&gt;/tex/&lt;id&gt;.t3x     textures
 chr/&lt;folder&gt;/&lt;model&gt;.s3c   characters, with .s3a motions and tex/
 events/  map/  pic/  ui/   events, maps, stills, font and title
 demo/                      cutscenes
 movie/                     FMV
 sound/                     ADX music, effects, voices, tables
-lighting.txt chrlight.txt  room and character lighting</code></pre></div>
-          <p>The converters also write PNG previews under <code>bg/&lt;area&gt;/png/</code> and decoded events as JSON. The packer deletes them unless it runs with <code>-e KEEP_EXTRAS=1</code>.</p>
+lighting.txt chrlight.txt  room and character lighting</pre>
+          <p>The converters also write PNG previews and decoded events as JSON. The packer deletes them unless it runs with <code>-e KEEP_EXTRAS=1</code>.</p>
         </section>
-<section class="card" id="porting">
-          <h2>Porting a feature <a class="anchor" href="#porting" aria-label="Link to this section">#</a></h2>
+
+        <section class="doc-section prose" id="porting" aria-labelledby="d-port">
+          <h2 class="doc-title" id="d-port">Porting a feature</h2>
           <ol>
-            <li>Find the PC function in the Director’s Cut exe. The Ghidra project gets its names from the PS2 beta’s debug information and the Enhanced Edition source, as described in <a href="https://github.com/ankushKun/sh23ds/blob/main/docs/RESEARCH.md">RESEARCH.md</a>.</li>
+            <li>Find the PC function in the Director’s Cut exe. The Ghidra project gets its names from the PS2 beta’s debug information and the Enhanced Edition source, as <a href="https://github.com/ankushKun/sh23ds/blob/main/docs/RESEARCH.md">RESEARCH.md</a> describes.</li>
             <li>Write the C in <code>port/source</code> with the PC address in a comment.</li>
-            <li>If it needs data, add to or extend a converter, then rebuild that part of the pack only.</li>
-            <li>Check it in Azahar with a <code>spawn</code> line and a screenshot.</li>
-            <li>Run <code>tools/lr3ds/smoke.sh</code> and update the notes for that part of the game.</li>
+            <li>If it needs data, extend a converter, then rebuild only that part of the pack.</li>
+            <li>Check it with a <code>spawn</code> line in the debug file and a <code>dumpframe</code>.</li>
+            <li>Run the smoke run from <a href="https://github.com/ankushKun/sh23ds/blob/main/port/TESTING.md">TESTING.md</a> and update the notes for that part of the game.</li>
           </ol>
         </section>
-<section class="card" id="rules">
-          <h2>Rules <a class="anchor" href="#rules" aria-label="Link to this section">#</a></h2>
-          <div class="callout warn"><svg aria-hidden="true"><use href="#i-warn"/></svg><p>Never commit anything that comes from the game: exe bytes, extracted assets, a converted pack, Ghidra databases or decompiler output. <code>.gitignore</code> covers the usual places. Check <code>git status</code> before every commit anyway.</p></div>
+
+        <section class="doc-section prose" id="rules" aria-labelledby="d-rules">
+          <h2 class="doc-title" id="d-rules">Rules</h2>
+          <p>Never commit anything that comes from the game: exe bytes, extracted assets, a converted pack, Ghidra databases or decompiler output. <code>.gitignore</code> covers the usual places; check <code>git status</code> before every commit anyway.</p>
           <p>Pull requests should build in CI, pass the smoke run and keep the notes in <code>port/*.md</code> in step with the code. Code that ports an Enhanced Edition fix names the EE option and file in a comment.</p>
         </section>
-<section class="card" id="reference">
-          <h2>Reference notes <a class="anchor" href="#reference" aria-label="Link to this section">#</a></h2>
-          <ul class="links plain">
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/STATUS.md"><b>STATUS.md</b><span>What works and how each part was tested</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/PROGRAMS.md"><b>PROGRAMS.md</b><span>Stage programs, puzzles, endings, results</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/ENEMIES.md"><b>ENEMIES.md</b><span>Enemies, bosses and combat</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/CUTSCENES.md"><b>CUTSCENES.md</b><span>The scene player and its data</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/MOVIES.md"><b>MOVIES.md</b><span>FMV conversion and playback</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/SOUND.md"><b>SOUND.md</b><span>Music, sound effects and voices</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/EE_FIXES.md"><b>EE_FIXES.md</b><span>Every Enhanced Edition option and its state</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/port/PERFORMANCE.md"><b>PERFORMANCE.md</b><span>Frame budget, streaming and memory</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/tools/sh2conv/EVENTS.md"><b>EVENTS.md</b><span>The event data format</span></a></li>
-            <li><a href="https://github.com/ankushKun/sh23ds/blob/main/docs/RESEARCH.md"><b>RESEARCH.md</b><span>How the exe was mapped, key addresses</span></a></li>
-          </ul>
+
+        <section class="doc-section prose" id="notes" aria-labelledby="d-notes">
+          <h2 class="doc-title" id="d-notes">Reference notes</h2>
+          <div class="table-scroll">
+            <table class="table">
+              <tbody>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/STATUS.md">STATUS.md</a></td><td>What works, and the gaps in order</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/TESTING.md">TESTING.md</a></td><td>The smoke run and the other test runs</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/PROGRAMS.md">PROGRAMS.md</a></td><td>Stage programs, puzzles, endings, results</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/ENEMIES.md">ENEMIES.md</a></td><td>Enemies, bosses and combat</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/CUTSCENES.md">CUTSCENES.md</a></td><td>The scene player and its data</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/MOVIES.md">MOVIES.md</a></td><td>FMV conversion and playback</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/SOUND.md">SOUND.md</a></td><td>Music, sound effects and voices</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/EE_FIXES.md">EE_FIXES.md</a></td><td>Every Enhanced Edition option and its state</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/PERFORMANCE.md">PERFORMANCE.md</a></td><td>Frame budget, streaming and memory</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/port/CONTROLS.md">CONTROLS.md</a></td><td>Both button layouts and the remap page</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/tools/sh2conv/EVENTS.md">EVENTS.md</a></td><td>The event data format</td></tr>
+                <tr><td><a href="https://github.com/ankushKun/sh23ds/blob/main/docs/RESEARCH.md">RESEARCH.md</a></td><td>How the exe was mapped, key addresses</td></tr>
+              </tbody>
+            </table>
+          </div>
         </section>
       </div>
     </div>
   </main>
 
-  <footer class="footer">
+  <footer class="foot">
     <div class="wrap">
-      <a class="brand" href="./" style="justify-content: center"><span class="brand-icon"><i></i></span>sh23ds</a>
-      <ul class="footer-links">
-        <li><a href="install.html">Install</a></li>
-        <li><a href="status.html">Status</a></li>
-        <li><a href="docs.html">Docs</a></li>
-        <li><a href="https://github.com/ankushKun/sh23ds/releases">Releases</a></li>
-        <li><a href="https://github.com/ankushKun/sh23ds">GitHub</a></li>
-      </ul>
-      <p class="legal">Free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>, with fixes from <a href="https://github.com/elishacloud/Silent-Hill-2-Enhancements">Silent Hill 2: Enhanced Edition</a>. A fan project, not affiliated with Konami or Nintendo. <em>Silent Hill</em> is a trademark of Konami Digital Entertainment and Nintendo 3DS is a trademark of Nintendo. Releases and the packer contain no game code or assets; screenshots show the port running the author’s own copy. Console photo: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, cropped, screens replaced. Fonts: M PLUS Rounded 1c, DotGothic16, M PLUS 1 Code, Reenie Beanie (SIL OFL).</p>
+      <div class="foot-row">
+        <a class="brand" href="./">
+          <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="brand-name">sh23ds <span data-version>v0.1.2</span></span>
+        </a>
+        <nav class="nav" aria-label="Footer">
+          <a href="install.html">Install</a>
+          <a href="roadmap.html">Roadmap</a>
+          <a href="docs.html" aria-current="page">Docs</a>
+          <a href="https://github.com/ankushKun/sh23ds/releases">Releases</a>
+          <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
+        </nav>
+      </div>
+      <p>Free software under the GPLv3, by <a href="https://github.com/ankushKun">ankushKun</a>, with fixes from <a href="https://enhanced.townofsilenthill.com/SH2/">Silent Hill 2: Enhanced Edition</a>. A fan project, not affiliated with Konami or Nintendo. Silent Hill is a trademark of Konami Digital Entertainment and Nintendo 3DS is a trademark of Nintendo. Releases contain no game code or assets; screenshots show the port running the author’s own copy. Fonts: Libre Caslon Display, Crimson Pro and VT323 (SIL OFL).</p>
     </div>
   </footer>
 </body>

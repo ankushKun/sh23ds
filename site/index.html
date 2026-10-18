@@ -3,267 +3,267 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sh23ds: Silent Hill 2 on your 3DS</title>
-  <meta name="description" content="A native 3DS port of Silent Hill 2, the 2001 PC Director's Cut, with the Enhanced Edition's fixes built in. Runs on your own copy of the game.">
-  <meta name="theme-color" content="#101214">
+  <title>sh23ds: Silent Hill 2 on Nintendo 3DS</title>
+  <meta name="description" content="A native Nintendo 3DS port of Silent Hill 2, the 2001 PC Director's Cut, with the Enhanced Edition's fixes built in. Runs on your own copy of the game.">
+  <meta name="theme-color" content="#050505">
   <link rel="canonical" href="https://ankush.one/sh23ds/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="sh23ds">
-  <meta property="og:title" content="Silent Hill 2, on your 3DS">
-  <meta property="og:description" content="A native port of the PC Director's Cut. Bring your own copy of the game.">
+  <meta property="og:title" content="Silent Hill 2 on Nintendo 3DS">
+  <meta property="og:description" content="A native port of the PC Director's Cut, with the Enhanced Edition's fixes built in.">
   <meta property="og:url" content="https://ankush.one/sh23ds/">
   <meta property="og:image" content="https://ankush.one/sh23ds/assets/banner.jpg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="preload" href="fonts/m-plus-rounded-1c-800-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/m-plus-rounded-1c-500-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/libre-caslon-display-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/crimson-pro-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="site.css">
   <script>document.documentElement.classList.add("js")</script>
   <script src="site.js" defer></script>
 </head>
-<body>
+<body class="home">
   <a class="skip" href="#main">Skip to the content</a>
 
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <symbol id="i-gh" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></symbol>
-    <symbol id="i-menu" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M3 6h14M3 10h14M3 14h14"/></symbol>
-    <symbol id="i-down" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m-4-4 4 4 4-4M4 16.5h12"/></symbol>
-    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m-5-5 5 5-5 5"/></symbol>
-  </svg>
-
-  <header class="bar">
-    <div class="wrap bar-inner">
-      <a class="brand" href="./"><span class="brand-icon"><i></i></span>sh23ds</a>
-      <nav aria-label="Main">
-        <ul class="pills">
-          <li><a href="./" aria-current="page">Home</a></li>
-          <li><a href="install.html">Install</a></li>
-          <li><a href="status.html">Status</a></li>
-          <li><a href="docs.html">Docs</a></li>
-        </ul>
-      </nav>
-      <div class="status">
-        <span class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="clock" aria-hidden="true">00:00</span>
-        <span class="battery" aria-hidden="true"></span>
-        <a class="gh" href="https://github.com/ankushKun/sh23ds" aria-label="sh23ds on GitHub"><svg aria-hidden="true"><use href="#i-gh"/></svg></a>
-        <details class="menu">
-          <summary aria-label="Menu"><svg aria-hidden="true"><use href="#i-menu"/></svg></summary>
-          <div class="menu-panel">
-            <a href="./" aria-current="page">Home</a>
-            <a href="install.html">Install</a>
-            <a href="status.html">Status</a>
-            <a href="docs.html">Docs</a>
-            <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
-          </div>
-        </details>
-      </div>
-    </div>
+  <header class="bar bar-over">
+    <a class="brand" href="./">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="brand-name">sh23ds</span>
+    </a>
   </header>
 
-  <main id="main" class="wrap">
-    <section class="hero">
-      <span class="badge">New! <span data-version>v0.1.2</span></span>
-      <h1>Silent Hill 2, <span class="red">on your 3DS</span></h1>
-      <p class="lead">A native port of the PC Director’s Cut with the Enhanced Edition’s fixes built in. Bring your own copy of the game.</p>
-      <div class="actions">
-        <a class="btn btn-red" href="#install">Install with FBI</a>
-        <a class="btn" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.cia"><svg aria-hidden="true"><use href="#i-down"/></svg>sh23ds.cia <span class="size" data-size="sh23ds.cia"></span></a>
-      </div>
-      <p class="fine">Any 3DS with Luma3DS. No game files included.</p>
+  <main id="main">
+    <section class="title-screen">
+      <video class="title-video" autoplay muted loop playsinline preload="auto" poster="assets/title-loop.jpg" disablepictureinpicture disableremoteplayback aria-hidden="true" tabindex="-1" data-title-video>
+        <source src="assets/title-loop.mp4" type="video/mp4">
+        <source src="assets/title-loop.webm" type="video/webm">
+      </video>
+      <div class="bloom" aria-hidden="true"></div>
+      <div class="vig" aria-hidden="true"></div>
 
-      <div class="stage">
-        <span class="note n1">fog and flashlight,<br>straight from the PC
-          <svg width="90" height="60" style="left: 70%; top: 105%" viewBox="0 0 90 60"><path d="M4 6c22 6 48 18 74 44M78 50l-2-14M78 50l-13-3"/></svg>
-        </span>
-        <span class="note n2">map, items and saves<br>live down here
-          <svg width="110" height="40" style="left: 100%; top: 10%" viewBox="0 0 110 40"><path d="M2 30c30-2 62-10 96-22M98 8l-13 1M98 8l-6 12"/></svg>
-        </span>
-        <span class="note n3">every ending,<br>Born From a Wish too</span>
-        <span class="note n4">a profile for the<br>original 3DS too
-          <svg width="80" height="50" style="left: -55%; top: -20%" viewBox="0 0 80 50"><path d="M76 4C54 6 30 18 10 40M10 40l2-13M10 40l12-4"/></svg>
-        </span>
-        <div class="device-stage">
-          <!-- A New Nintendo 3DS photo (PantheraLeo1359531, CC BY 4.0) with the port's screenshots placed on
-               its screens. The matrices come from 3dsFM's screen-map; replacing the photo needs new ones. -->
-          <img class="device-photo" src="assets/new-3ds-angled.png" width="1356" height="1177" alt="A New Nintendo 3DS running Silent Hill 2: the game on the top screen, the port's touch screen with the map below." decoding="async" fetchpriority="high">
-          <div class="screen screen-top" aria-hidden="true">
-            <img src="assets/shots/deck-top.jpg" width="400" height="240" alt="">
-            <img class="is-off" src="assets/shots/town-top.jpg" width="400" height="240" alt="" loading="lazy">
-            <img class="is-off" src="assets/shots/apartments-top.jpg" width="400" height="240" alt="" loading="lazy">
+      <div class="title-block">
+        <p class="eyebrow">sh23ds <span data-version>v0.1.2</span></p>
+        <h1 class="title">
+          <span class="sr">Silent Hill 2</span>
+          <span aria-hidden="true"><span class="word"><span class="ch" style="animation-delay:0ms">S</span><span class="ch" style="animation-delay:55ms">i</span><span class="ch" style="animation-delay:110ms">l</span><span class="ch" style="animation-delay:165ms">e</span><span class="ch" style="animation-delay:220ms">n</span><span class="ch" style="animation-delay:275ms">t</span></span> <span class="word"><span class="ch" style="animation-delay:385ms">H</span><span class="ch" style="animation-delay:440ms">i</span><span class="ch" style="animation-delay:495ms">l</span><span class="ch" style="animation-delay:550ms">l</span><span class="ch" style="animation-delay:605ms">&nbsp;</span><span class="ch" style="animation-delay:660ms">2</span></span></span>
+        </h1>
+      </div>
+
+      <p class="lede">A native port of the PC Director’s Cut, with the Enhanced Edition’s fixes built in.</p>
+
+      <nav class="menu" aria-label="Main">
+        <a class="is-sel" href="install.html"><span class="sq"></span>Install</a>
+        <a href="roadmap.html"><span class="sq"></span>Roadmap</a>
+        <a href="docs.html"><span class="sq"></span>Docs</a>
+        <a href="https://github.com/ankushKun/sh23ds"><span class="sq"></span>Source</a>
+      </nav>
+
+      <a class="start" href="#opening">Press start</a>
+    </section>
+
+    <section class="section opening" id="opening" aria-label="Opening">
+      <div class="wrap">
+        <figure class="scene">
+          <div class="scene-bar"></div>
+          <div class="scene-frame">
+            <img src="assets/shots/f-game.jpg" width="400" height="240" alt="James at the lake overlook in the fog, on the port">
           </div>
-          <div class="screen screen-bottom" aria-hidden="true">
-            <img src="assets/shots/deck-bottom.jpg" width="320" height="240" alt="">
-            <img class="is-off" src="assets/shots/town-bottom.jpg" width="320" height="240" alt="" loading="lazy">
-            <img class="is-off" src="assets/shots/apartments-bottom.jpg" width="320" height="240" alt="" loading="lazy">
+          <figcaption><span class="subtitle-line">In my restless dreams, I see that town.</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="section alt" id="features" aria-labelledby="features-title">
+      <div class="wrap stack">
+        <div class="results-head">
+          <span class="bullet" aria-hidden="true" style="margin:0;width:10px;height:10px"></span>
+          <h2 class="h2 h-center" id="features-title">The whole game, on two screens</h2>
+        </div>
+
+        <div class="memos" data-memos>
+          <div class="memo-side">
+            <div class="panel">
+              <div class="panel-head"><span>Memo</span><span class="sys" data-memo-count>1 / 6</span></div>
+              <div class="memo-list" role="tablist" aria-label="Memos" aria-orientation="vertical">
+                <button class="memo-tab" type="button" role="tab" id="t-endings" aria-controls="m-endings" aria-selected="true"><span class="sq"></span>Every ending</button>
+                <button class="memo-tab" type="button" role="tab" id="t-screens" aria-controls="m-screens" aria-selected="false" tabindex="-1"><span class="sq"></span>Two screens</button>
+                <button class="memo-tab" type="button" role="tab" id="t-native" aria-controls="m-native" aria-selected="false" tabindex="-1"><span class="sq"></span>Native</button>
+                <button class="memo-tab" type="button" role="tab" id="t-fog" aria-controls="m-fog" aria-selected="false" tabindex="-1"><span class="sq"></span>The fog</button>
+                <button class="memo-tab" type="button" role="tab" id="t-ee" aria-controls="m-ee" aria-selected="false" tabindex="-1"><span class="sq"></span>Enhanced Edition fixes</button>
+                <button class="memo-tab" type="button" role="tab" id="t-any" aria-controls="m-any" aria-selected="false" tabindex="-1"><span class="sq"></span>Any 3DS</button>
+              </div>
+            </div>
+            <p class="memo-also">Also: the lake boat with the PC’s rowing controls, quick turn and strafing, all 128 cutscenes and ten save files.</p>
+          </div>
+
+          <div class="paper memo-paper">
+            <article class="memo" role="tabpanel" id="m-endings" aria-labelledby="t-endings">
+              <div class="memo-text">
+                <h3>Every ending</h3>
+                <p>Every area, puzzle and boss. All six endings, New Game+ and Born From a Wish.</p>
+              </div>
+              <figure class="photo"><img src="assets/shots/wish-top.jpg" width="400" height="240" alt="Maria by a window in Born From a Wish" loading="lazy"></figure>
+            </article>
+            <article class="memo" role="tabpanel" id="m-screens" aria-labelledby="t-screens">
+              <div class="memo-text">
+                <h3>Two screens</h3>
+                <p>The game on top. The map, items and memos on the touch screen.</p>
+              </div>
+              <figure class="photo photo-pair">
+                <img src="assets/shots/apartments-top.jpg" width="400" height="240" alt="Top screen: James outside the apartments" loading="lazy">
+                <img src="assets/shots/apartments-bottom.jpg" width="320" height="240" alt="Touch screen: the live map, his condition and the weapon" loading="lazy">
+              </figure>
+            </article>
+            <article class="memo" role="tabpanel" id="m-native" aria-labelledby="t-native">
+              <div class="memo-text">
+                <h3>Native</h3>
+                <p>The PC game’s code, rewritten in C. It runs on the 3DS itself and draws with its GPU.</p>
+              </div>
+              <figure class="photo"><img src="assets/shots/hotel-top.jpg" width="400" height="240" alt="James in a room with sofas" loading="lazy"></figure>
+            </article>
+            <article class="memo" role="tabpanel" id="m-fog" aria-labelledby="t-fog">
+              <div class="memo-text">
+                <h3>The fog</h3>
+                <p>The PC’s fog layer, down to James pushing it aside and the puffs from vents.</p>
+              </div>
+              <figure class="photo"><img src="assets/shots/town-top.jpg" width="400" height="240" alt="A street in the fog with a blood stain" loading="lazy"></figure>
+            </article>
+            <article class="memo" role="tabpanel" id="m-ee" aria-labelledby="t-ee">
+              <div class="memo-text">
+                <h3>Enhanced Edition fixes</h3>
+                <p>Every fix that applies is built in and always on. The packer uses EE packs if you have them.</p>
+              </div>
+              <figure class="photo"><img src="assets/shots/f-ee.jpg" width="800" height="480" alt="The Advanced Options on both screens" loading="lazy"></figure>
+            </article>
+            <article class="memo" role="tabpanel" id="m-any" aria-labelledby="t-any">
+              <div class="memo-text">
+                <h3>Any 3DS</h3>
+                <p>Full settings on the New 3DS. A lighter 30 fps profile for the original 3DS and 2DS.</p>
+              </div>
+              <figure class="photo"><img src="assets/shots/f-any.jpg" width="800" height="480" alt="The game paused, with the pause menu on the touch screen" loading="lazy"></figure>
+            </article>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="card" aria-labelledby="inside">
-      <span class="tag">What's in it</span>
-      <div class="card-head">
-        <h2 id="inside">The whole game, both screens</h2>
-      </div>
-      <div class="viewer">
-        <div class="viewer-screen">
-          <img src="assets/shots/f-game.jpg" width="400" height="240" alt="The observation deck in fog." data-viewer-img>
-          <p class="viewer-caption" aria-live="polite"><b data-viewer-title>The whole game</b><span data-viewer-text>Every area, puzzle, boss and all six endings, with New Game+ and the PC’s saves.</span></p>
+    <section class="section" id="install" aria-labelledby="install-title">
+      <div class="wrap stack">
+        <div class="head-row">
+          <h2 class="h2" id="install-title">Get it running</h2>
+          <a class="lnk" href="install.html">Full install guide</a>
         </div>
-        <div class="dock" role="tablist" aria-label="Features" data-dock>
-          <button class="app" type="button" role="tab" aria-selected="true" data-shot="assets/shots/f-game.jpg" data-alt="The observation deck in fog." data-title="The whole game" data-text="Every area, puzzle, boss and all six endings, with New Game+ and the PC’s saves.">
-            <span class="ico" style="--c: linear-gradient(180deg, #8a3b31, #5d221b)"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 20V9l7-5 7 5v11M10 20v-5h4v5"/></svg></span>Game
-          </button>
-          <button class="app" type="button" role="tab" aria-selected="false" tabindex="-1" data-shot="assets/shots/f-touch.jpg" data-alt="The touch screen's map and item screen." data-title="The touch screen" data-text="A live map, the item screen with each item’s model, memos, saves and the PC’s options, under your thumb.">
-            <span class="ico" style="--c: linear-gradient(180deg, #4b6a73, #2c434a)"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h3"/></svg></span>Touch
-          </button>
-          <button class="app" type="button" role="tab" aria-selected="false" tabindex="-1" data-shot="assets/shots/f-fight.jpg" data-alt="James facing a Lying Figure in the street." data-title="Fights" data-text="The PC’s moves, target lock and damage, every enemy and boss, and the blood to go with them.">
-            <span class="ico" style="--c: linear-gradient(180deg, #7a6a52, #4b402f)"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M14 5h5v5M5 14l5 5"/></svg></span>Fights
-          </button>
-          <button class="app" type="button" role="tab" aria-selected="false" tabindex="-1" data-shot="assets/shots/f-wish.jpg" data-alt="Maria in the Baldwin mansion." data-title="Born From a Wish" data-text="Maria’s scenario from the Director’s Cut, with her own moves and weapons.">
-            <span class="ico" style="--c: linear-gradient(180deg, #7d3550, #4d1f31)"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z"/></svg></span>Wish
-          </button>
-          <button class="app" type="button" role="tab" aria-selected="false" tabindex="-1" data-shot="assets/shots/f-ee.jpg" data-alt="Advanced Options, with the Enhanced Edition’s settings." data-title="Enhanced Edition" data-text="The EE’s fixes are built in, and the packer uses its texture, movie and audio packs when you have them.">
-            <span class="ico" style="--c: linear-gradient(180deg, #5b6470, #363c45)"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.5"/></svg></span>EE fixes
-          </button>
-          <button class="app" type="button" role="tab" aria-selected="false" tabindex="-1" data-shot="assets/shots/f-any.jpg" data-alt="The pause menu on the touch screen." data-title="Any 3DS" data-text="New 3DS models run at 60 where they can. The original 3DS gets a lighter profile that targets 30, and both button layouts can be remapped.">
-            <span class="ico" style="--c: linear-gradient(180deg, #3f5a46, #253629)"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="8" rx="1.5"/><rect x="5" y="13" width="14" height="8" rx="1.5"/><circle cx="9" cy="17" r="1"/></svg></span>Any 3DS
-          </button>
-        </div>
-      </div>
-      <p class="also">Also: the lake boat with the PC’s rowing controls, quick turn and strafe, animation blending, the film-grain Noise Effect, and the fog, now with its wall test and vent puffs.</p>
-    </section>
 
-    <section class="card" id="install" aria-labelledby="install-title">
-      <span class="tag red">Install</span>
-      <div class="card-head">
-        <h2 id="install-title">Add it to your 3DS</h2>
-        <p>You need Luma3DS and FBI. Not set up yet? Follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a> first.</p>
-      </div>
-      <ol class="marks">
-        <li><h3>Build the game data</h3><p>Run the packer on your PC copy of the Director’s Cut. One Docker command, an hour or two, once. <a href="install.html#data">How</a></p></li>
-        <li><h3>Copy it to the SD card</h3><p>Put the <code>3ds</code> folder it makes at the root of the card. About 1.3 GB.</p></li>
-        <li><h3>Install the app</h3><p>Scan the code with FBI and start <em>Silent Hill 2</em> from the HOME Menu.</p></li>
-      </ol>
-
-      <div class="install-grid">
-        <div class="tabset" data-tabs>
-          <div class="seg" role="tablist" aria-label="How to install" data-js-only>
-            <button type="button" role="tab" id="t-cia" aria-controls="p-cia" aria-selected="true">HOME Menu</button>
-            <button type="button" role="tab" id="t-3dsx" aria-controls="p-3dsx" aria-selected="false" tabindex="-1">Homebrew Launcher</button>
+        <div class="get">
+          <div class="panel save">
+            <div class="panel-head"><span>Steps</span></div>
+            <a class="slot" href="install.html#step-2">
+              <span class="slot-num">Step 1</span>
+              <span class="slot-body">
+                <span class="slot-title">Build the game data</span>
+                <span class="slot-text">Run the packer on your PC copy of the Director’s Cut. One Docker command, an hour or two, once.</span>
+              </span>
+              <span class="slot-meta">1 to 2 h</span>
+            </a>
+            <a class="slot" href="install.html#step-3">
+              <span class="slot-num">Step 2</span>
+              <span class="slot-body">
+                <span class="slot-title">Copy it to the SD card</span>
+                <span class="slot-text">The packer makes a 3ds folder. Put it at the root of the card.</span>
+              </span>
+              <span class="slot-meta">1.3 GB</span>
+            </a>
+            <a class="slot" href="install.html#step-4">
+              <span class="slot-num">Step 3</span>
+              <span class="slot-body">
+                <span class="slot-title">Install the app</span>
+                <span class="slot-text">Scan the code with FBI, then start Silent Hill 2 from the HOME Menu.</span>
+              </span>
+              <span class="slot-meta">2 min</span>
+            </a>
           </div>
-          <div class="tabpanel" role="tabpanel" id="p-cia" aria-labelledby="t-cia">
-            <span class="no-js-title">HOME Menu (CIA)</span>
-            <div class="handheld">
-              <div class="lid"><div class="lcd lcd-top">
-                <div class="qr-screen">
-                  <img class="qr" src="qr/install-cia.svg" width="124" height="124" alt="QR code that installs the latest sh23ds.cia with FBI">
-                  <div><span class="scan">SCAN WITH</span><div class="fbi">FBI</div><p>Remote Install, then Scan QR Code</p></div>
-                </div>
-              </div></div>
-              <div class="base">
-                <span class="cpad" aria-hidden="true"></span>
-                <div class="lcd lcd-bottom"><div class="panel">
-                  <span class="title">sh23ds.cia <span class="size" data-size="sh23ds.cia"></span></span>
-                  <ol><li>Open FBI on your 3DS.</li><li>Remote Install, then Scan QR Code.</li><li>Point the camera at the code.</li></ol>
-                  <div class="row"><a class="btn" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.cia">Download</a></div>
-                </div></div>
-                <span class="abxy" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+
+          <div class="panel item">
+            <div class="panel-head"><span>Item</span></div>
+            <div class="item-body">
+              <div class="qr"><img src="qr/install-cia.svg" width="220" height="220" alt="QR code for the latest sh23ds.cia"></div>
+              <div class="item-caption">
+                <span class="item-name">sh23ds.cia</span>
+                <span>In FBI: Remote Install, then Scan QR Code.</span>
+              </div>
+              <div class="item-actions">
+                <a class="btn btn-red" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.cia">CIA <span class="size" data-size="sh23ds.cia">721 KB</span></a>
+                <a class="btn" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.3dsx">3DSX <span class="size" data-size="sh23ds.3dsx">919 KB</span></a>
               </div>
             </div>
           </div>
-          <div class="tabpanel" role="tabpanel" id="p-3dsx" aria-labelledby="t-3dsx" hidden>
-            <span class="no-js-title">Homebrew Launcher (3DSX)</span>
-            <div class="handheld">
-              <div class="lid"><div class="lcd lcd-top">
-                <div class="qr-screen">
-                  <img class="qr" src="qr/download-3dsx.svg" width="124" height="124" alt="QR code that downloads the latest sh23ds.3dsx">
-                  <div><span class="scan">DOWNLOAD</span><div class="fbi">3DSX</div><p>For the Homebrew Launcher</p></div>
-                </div>
-              </div></div>
-              <div class="base">
-                <span class="cpad" aria-hidden="true"></span>
-                <div class="lcd lcd-bottom"><div class="panel">
-                  <span class="title">sh23ds.3dsx <span class="size" data-size="sh23ds.3dsx"></span></span>
-                  <ol><li>Copy it to <code>sdmc:/3ds/</code>.</li><li>Start it from the Homebrew Launcher.</li></ol>
-                  <div class="row"><a class="btn" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.3dsx">Download</a></div>
-                </div></div>
-                <span class="abxy" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div class="memo">
-            <b>No sound?</b>
-            Homebrew needs the console’s DSP firmware. Run <a href="https://github.com/zoogie/DSP1/releases">DSP1</a> once and it writes <code>sdmc:/3ds/dspfirm.cdc</code>.
-          </div>
-          <div class="memo" style="transform: rotate(0.9deg)">
-            <b>Which copy?</b>
-            The retail PC Director’s Cut. The packer checks the exe and stops on anything else. Enhanced Edition packs are welcome; its exe isn’t.
-          </div>
-          <p class="fine center" style="margin-top: 22px"><a href="install.html">Full install guide</a> &nbsp;·&nbsp; <a href="https://github.com/ankushKun/sh23ds/releases">All releases</a> &nbsp;·&nbsp; <a href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.sha256">Checksums</a></p>
         </div>
       </div>
     </section>
 
-    <section class="card" aria-labelledby="status-title">
-      <span class="tag ok">Status</span>
-      <div class="card-head">
-        <h2 id="status-title">Playable in Azahar, console next</h2>
+    <section class="section deep" id="results" aria-labelledby="results-title">
+      <div class="static" aria-hidden="true"></div>
+      <div class="wrap-narrow results-wrap">
+        <div class="results-head">
+          <h2 class="h2 h-center" id="results-title">Results</h2>
+          <p>Every part of the PC game is in.</p>
+        </div>
+        <div class="results">
+          <div class="result"><span class="result-name">Areas</span><span class="leader" aria-hidden="true"></span><span class="result-value">17 / 17</span></div>
+          <div class="result"><span class="result-name">Cutscenes</span><span class="leader" aria-hidden="true"></span><span class="result-value">128 / 128</span></div>
+          <div class="result"><span class="result-name">Endings</span><span class="leader" aria-hidden="true"></span><span class="result-value">6 / 6</span></div>
+          <div class="result"><span class="result-name">Weapons</span><span class="leader" aria-hidden="true"></span><span class="result-value">8 / 8</span></div>
+          <div class="result"><span class="result-name">Born From a Wish</span><span class="leader" aria-hidden="true"></span><span class="result-value red">CLEAR</span></div>
+        </div>
+        <a class="lnk" href="roadmap.html">What’s left</a>
       </div>
-      <ol class="stages">
-        <li><span class="state">Done</span><h3>Ported from the PC</h3><p>The engine, every stage’s scripts, the menus and the endings, rebuilt from the Director’s Cut exe.</p></li>
-        <li><span class="state">Done</span><h3>Played through in Azahar</h3><p>The whole story on foot, every ending, and all 570 doors loaded by a test on both models.</p></li>
-        <li class="next"><span class="state">Next</span><h3>A real 3DS</h3><p>0.1.1 ran on one console and 0.1.2 fixes what it found, but nobody has confirmed those fixes or timed anything on hardware yet. Console reports help most.</p></li>
-      </ol>
-      <p class="fine center" style="margin-top: 18px"><a href="status.html">Full status</a> &nbsp;·&nbsp; <a href="https://github.com/ankushKun/sh23ds/issues">Report a problem</a></p>
     </section>
 
-    <section class="card" aria-labelledby="faq-title">
-      <span class="tag">FAQ</span>
-      <div class="card-head">
-        <h2 id="faq-title">Questions</h2>
-      </div>
-      <div class="faq">
-        <details>
-          <summary>Where do I get the game files?</summary>
-          <div class="answer"><p>From your own copy of the PC game. This project doesn’t host, link to or share game files.</p></div>
-        </details>
-        <details>
-          <summary>Does it run on an original 3DS?</summary>
-          <div class="answer"><p>Yes, with a lighter profile that targets 30 fps: fewer fog sprites and streamed town tiles, no character shadows. It has been tested in Azahar’s Old 3DS model, not yet on a real console.</p></div>
-        </details>
-        <details>
-          <summary>Is this an emulator?</summary>
-          <div class="answer"><p>No. The game’s code was rewritten in C from the PC exe and runs natively, drawing with the 3DS GPU.</p></div>
-        </details>
-        <details>
-          <summary>Can I use my v1.0 copy?</summary>
-          <div class="answer"><p>Not yet. The converters read tables at fixed places in the Director’s Cut exe, so the packer only accepts that build.</p></div>
-        </details>
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="wrap stack">
+        <h2 class="h2 h-center" id="faq-title">Questions</h2>
+        <div class="faq">
+          <article class="paper">
+            <h3>Where do I get the game files?</h3>
+            <p>From your own copy of the PC game. This project doesn’t host or link to game files.</p>
+          </article>
+          <article class="paper">
+            <h3>Does it run on an original 3DS?</h3>
+            <p>Yes, with a lighter profile that aims for 30 fps: fewer fog sprites, fewer streamed town tiles and no character shadows.</p>
+          </article>
+          <article class="paper">
+            <h3>Is this an emulator?</h3>
+            <p>No. The game’s code was rewritten in C from the PC exe and runs natively on the 3DS.</p>
+          </article>
+          <article class="paper">
+            <h3>Can I use my v1.0 copy?</h3>
+            <p>Not yet. The packer reads tables at fixed places in the Director’s Cut exe, so it only accepts that build.</p>
+          </article>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="footer">
+  <footer class="foot">
     <div class="wrap">
-      <a class="brand" href="./" style="justify-content: center"><span class="brand-icon"><i></i></span>sh23ds</a>
-      <ul class="footer-links">
-        <li><a href="install.html">Install</a></li>
-        <li><a href="status.html">Status</a></li>
-        <li><a href="docs.html">Docs</a></li>
-        <li><a href="https://github.com/ankushKun/sh23ds/releases">Releases</a></li>
-        <li><a href="https://github.com/ankushKun/sh23ds">GitHub</a></li>
-      </ul>
-      <p class="legal">Free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>, with fixes from <a href="https://github.com/elishacloud/Silent-Hill-2-Enhancements">Silent Hill 2: Enhanced Edition</a>. A fan project, not affiliated with Konami or Nintendo. <em>Silent Hill</em> is a trademark of Konami Digital Entertainment and Nintendo 3DS is a trademark of Nintendo. Releases and the packer contain no game code or assets; screenshots show the port running the author’s own copy. Console photo: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, cropped, screens replaced. Fonts: M PLUS Rounded 1c, DotGothic16, M PLUS 1 Code, Reenie Beanie (SIL OFL).</p>
+      <div class="foot-row">
+        <a class="brand" href="./">
+          <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="brand-name">sh23ds <span data-version>v0.1.2</span></span>
+        </a>
+        <nav class="nav" aria-label="Footer">
+          <a href="install.html">Install</a>
+          <a href="roadmap.html">Roadmap</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/ankushKun/sh23ds/releases">Releases</a>
+          <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
+        </nav>
+      </div>
+      <p>Free software under the GPLv3, by <a href="https://github.com/ankushKun">ankushKun</a>, with fixes from <a href="https://enhanced.townofsilenthill.com/SH2/">Silent Hill 2: Enhanced Edition</a>. A fan project, not affiliated with Konami or Nintendo. Silent Hill is a trademark of Konami Digital Entertainment and Nintendo 3DS is a trademark of Nintendo. Releases contain no game code or assets; screenshots show the port running the author’s own copy, and the title screen’s background is cut from the PC game’s opening movies (© Konami Digital Entertainment). Fonts: Libre Caslon Display, Crimson Pro and VT323 (SIL OFL).</p>
     </div>
   </footer>
 </body>

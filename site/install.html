@@ -3,252 +3,266 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Install sh23ds</title>
-  <meta name="description" content="Turn your copy of Silent Hill 2 into the 3DS pack, copy it to the SD card and install the app.">
-  <meta name="theme-color" content="#101214">
+  <title>Install · sh23ds</title>
+  <meta name="description" content="Install Silent Hill 2 on your 3DS: build the game data from your PC copy, copy it to the SD card and install the app with FBI.">
+  <meta name="theme-color" content="#050505">
   <link rel="canonical" href="https://ankush.one/sh23ds/install.html">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="sh23ds">
-  <meta property="og:title" content="Install sh23ds">
-  <meta property="og:description" content="Turn your copy of Silent Hill 2 into the 3DS pack, copy it to the SD card and install the app.">
+  <meta property="og:title" content="Install Silent Hill 2 on your 3DS">
+  <meta property="og:description" content="Build the game data from your PC copy, copy it to the SD card, install the app with FBI.">
   <meta property="og:url" content="https://ankush.one/sh23ds/install.html">
   <meta property="og:image" content="https://ankush.one/sh23ds/assets/banner.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="preload" href="fonts/m-plus-rounded-1c-800-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/m-plus-rounded-1c-500-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/libre-caslon-display-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/crimson-pro-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/vt323-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="site.css">
   <script>document.documentElement.classList.add("js")</script>
   <script src="site.js" defer></script>
 </head>
-<body>
+<body class="page">
   <a class="skip" href="#main">Skip to the content</a>
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <symbol id="i-gh" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></symbol>
-    <symbol id="i-menu" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M3 6h14M3 10h14M3 14h14"/></symbol>
-    <symbol id="i-down" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M10 3v10m-4-4 4 4 4-4M4 16.5h12"/></symbol>
-    <symbol id="i-arrow" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" d="M4 10h12m-5-5 5 5-5 5"/></symbol>
-    <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M10 9v5M10 6.2v.1"/></symbol>
-    <symbol id="i-warn" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" d="M10 3 18 17H2Z"/><path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" d="M10 8.5v4M10 14.8v.1"/></symbol>
-    <symbol id="i-check" viewBox="0 0 20 20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="m4.5 10.5 3.5 3.5 7.5-8"/></symbol>
-  </svg>
 
   <header class="bar">
-    <div class="wrap bar-inner">
-      <a class="brand" href="./"><span class="brand-icon"><i></i></span>sh23ds</a>
-      <nav aria-label="Main">
-        <ul class="pills">
-          <li><a href="./">Home</a></li>
-          <li><a href="install.html" aria-current="page">Install</a></li>
-          <li><a href="status.html">Status</a></li>
-          <li><a href="docs.html">Docs</a></li>
-        </ul>
-      </nav>
-      <div class="status">
-        <span class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="clock" aria-hidden="true">00:00</span>
-        <span class="battery" aria-hidden="true"></span>
-        <a class="gh" href="https://github.com/ankushKun/sh23ds" aria-label="sh23ds on GitHub"><svg aria-hidden="true"><use href="#i-gh"/></svg></a>
-        <details class="menu">
-          <summary aria-label="Menu"><svg aria-hidden="true"><use href="#i-menu"/></svg></summary>
-          <div class="menu-panel">
-            <a href="./">Home</a>
-            <a href="install.html" aria-current="page">Install</a>
-            <a href="status.html">Status</a>
-            <a href="docs.html">Docs</a>
-            <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
-          </div>
-        </details>
-      </div>
-    </div>
+    <a class="brand" href="./">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="brand-name">sh23ds</span>
+    </a>
+    <nav class="nav" aria-label="Site">
+      <a href="install.html" aria-current="page">Install</a>
+      <a href="roadmap.html">Roadmap</a>
+      <a href="docs.html">Docs</a>
+      <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
+    </nav>
   </header>
 
-  <main id="main" class="wrap">
-    <div class="page-head">
-      <h1>Install guide</h1>
-      <p class="lead">An hour or two, mostly the packer running on its own. You need your computer, the SD card and the console.</p>
-      <div class="chips">
-        <span class="chip">1.3 GB on the SD card</span>
-        <span class="chip">Any 3DS with Luma3DS</span>
-        <span class="chip"><span data-version>v0.1.2</span></span>
+  <main id="main">
+    <section class="page-head">
+      <div class="static" aria-hidden="true"></div>
+      <div class="wrap-narrow">
+        <h1 class="page-title">Install</h1>
+        <p class="lede">An hour or two, most of it the packer working on its own. You need a computer, the SD card and the console.</p>
+        <p class="facts"><span>1.3 GB on the SD card</span><i aria-hidden="true"></i><span>Any 3DS with Luma3DS</span><i aria-hidden="true"></i><span data-version>v0.1.2</span></p>
       </div>
-    </div>
+    </section>
 
-    <div class="guide layout">
-      <aside class="stepper" aria-label="Steps">
-        <div class="progress-bar"><span></span></div>
-        <span class="progress-label">0 of 5 done</span>
-        <ol class="steps-nav">
-          <li><a href="#check"><span class="n">1</span><span class="label">What you need</span></a></li>
-          <li><a href="#data"><span class="n">2</span><span class="label">Game data</span></a></li>
-          <li><a href="#sd"><span class="n">3</span><span class="label">SD card</span></a></li>
-          <li><a href="#app"><span class="n">4</span><span class="label">The app</span></a></li>
-          <li><a href="#play"><span class="n">5</span><span class="label">Play</span></a></li>
-        </ol>
-        <p class="note-small">Your progress is saved in this browser.</p>
-        <button class="reset" type="button" data-reset>Clear progress</button>
+    <div class="guide">
+      <aside class="guide-side">
+        <div class="panel">
+          <div class="panel-head"><span>Steps</span></div>
+          <nav class="side-menu" aria-label="Install steps" data-spy>
+            <a href="#step-1"><span class="sq"></span>1 · What you need</a>
+            <a href="#step-2"><span class="sq"></span>2 · Game data</a>
+            <a href="#step-3"><span class="sq"></span>3 · SD card</a>
+            <a href="#step-4"><span class="sq"></span>4 · The app</a>
+            <a href="#step-5"><span class="sq"></span>5 · Play</a>
+          </nav>
+        </div>
+        <p class="side-note">PC Director’s Cut only · Bring your own copy</p>
       </aside>
 
-      <div>
-        <section class="card step" id="check" data-step aria-labelledby="check-t">
-          <div class="step-head"><span class="num">1</span><h2 id="check-t">What you need</h2><span class="time">5 min</span></div>
-          <div class="step-body">
-            <div>
-              <label class="check"><input type="checkbox" data-key="console"><span><b>A 3DS with Luma3DS and FBI</b>Any model. The New 3DS family gets the full settings; the original 3DS and 2DS run a lighter profile. Not set up yet? Follow <a href="https://3ds.hacks.guide/">3ds.hacks.guide</a>.</span></label>
-              <label class="check"><input type="checkbox" data-key="game"><span><b>Silent Hill 2 for PC, Director’s Cut</b>Your own unmodified install, with <code>sh2pc.exe</code> and the <code>data</code> folder.</span></label>
-              <label class="check"><input type="checkbox" data-key="docker"><span><b>Docker</b><a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a> on Windows, macOS or Linux, or Docker Engine on Linux. <a href="https://github.com/abiosoft/colima">Colima</a> works on a Mac.</span></label>
-              <label class="check"><input type="checkbox" data-key="space"><span><b>Space</b>1.3 GB on the SD card, around 3 GB on the computer while the packer runs.</span></label>
-            </div>
-            <button class="btn btn-sm done-btn" type="button" aria-pressed="false"><span class="t">Mark as done</span></button>
+      <div class="guide-main">
+
+        <section class="step" id="step-1" aria-labelledby="s1">
+          <div class="step-head">
+            <div><span class="step-num">Step 1</span><h2 class="step-title" id="s1">What you need</h2></div>
+            <span class="step-time">5 min</span>
           </div>
+          <ul class="needs">
+            <li><span class="bullet" aria-hidden="true"></span><div><b>A 3DS with Luma3DS and FBI</b><span>Any model; the original 3DS and 2DS get a lighter profile. Not set up yet? Follow <a class="tt" href="https://3ds.hacks.guide">3ds.hacks.guide</a>.</span></div></li>
+            <li><span class="bullet" aria-hidden="true"></span><div><b>Silent Hill 2 PC, Director’s Cut</b><span>Your own unmodified install, with sh2pc.exe and the data folder.</span></div></li>
+            <li><span class="bullet" aria-hidden="true"></span><div><b>Docker</b><span>Docker Desktop on Windows or macOS, Docker Engine on Linux. Colima works on a Mac.</span></div></li>
+            <li><span class="bullet" aria-hidden="true"></span><div><b>Space</b><span>1.3 GB on the SD card and about 3 GB on the computer while the packer runs.</span></div></li>
+          </ul>
         </section>
 
-        <section class="card step" id="data" data-step aria-labelledby="data-t">
-          <div class="step-head"><span class="num">2</span><h2 id="data-t">Build the game data</h2><span class="time">1 to 2 h</span></div>
-          <div class="step-body" data-builder>
-            <p>The packer converts your copy into the formats the port reads. It only reads the game folder. Type its path and the commands follow.</p>
-            <div class="seg" role="group" aria-label="Your computer">
-              <button type="button" data-os="mac" aria-pressed="true">macOS</button>
-              <button type="button" data-os="windows" aria-pressed="false">Windows</button>
-              <button type="button" data-os="linux" aria-pressed="false">Linux</button>
+        <section class="step" id="step-2" aria-labelledby="s2">
+          <div class="step-head">
+            <div><span class="step-num">Step 2</span><h2 class="step-title" id="s2">Build the game data</h2></div>
+            <span class="step-time">1 to 2 h</span>
+          </div>
+          <p class="step-lede">The packer turns your copy into files the port reads. It only reads the game folder.</p>
+
+          <div class="panel" data-builder>
+            <div class="option-row">
+              <span id="os-label">Your computer</span>
+              <div class="cycler" role="group" aria-labelledby="os-label">
+                <button class="arrow" type="button" data-os-step="-1" aria-label="Previous system"><svg viewBox="0 0 12 16" aria-hidden="true"><path d="M10 2 3 8l7 6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+                <output data-os-label aria-live="polite">macOS</output>
+                <button class="arrow" type="button" data-os-step="1" aria-label="Next system"><svg viewBox="0 0 12 16" aria-hidden="true"><path d="m2 2 7 6-7 6" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+              </div>
             </div>
-            <div class="field">
+            <div class="field-box">
               <label for="game-path">Your Silent Hill 2 folder</label>
-              <input class="input" id="game-path" type="text" spellcheck="false" autocomplete="off" data-game placeholder="/Users/you/Games/Silent Hill 2">
-              <span class="hint">The one with <code>sh2pc.exe</code> in it. Dragging the folder into a terminal prints its path.</span>
+              <input id="game-path" class="field" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="/Users/you/Games/Silent Hill 2" data-game>
+              <span class="hint">The one with sh2pc.exe in it. Drag the folder into a terminal to print its path.</span>
+              <span class="field-note" data-note="colima">Colima only shares your home folder with Docker. Move the game inside it, or share that path in Colima.</span>
             </div>
-            <div class="callout builder-note" data-note="exe"><svg aria-hidden="true"><use href="#i-info"/></svg><p>That pointed inside the game folder, so the commands use the folder itself.</p></div>
-            <div class="callout builder-note" data-note="tilde"><svg aria-hidden="true"><use href="#i-info"/></svg><p>A leading <code>~</code> doesn’t expand inside quotes, so the commands use <code>$HOME</code>.</p></div>
-            <div class="callout warn builder-note" data-note="colima"><svg aria-hidden="true"><use href="#i-warn"/></svg><p>Colima only shares your home folder with Docker. Move the game inside it, or share that path in Colima.</p></div>
+          </div>
 
+          <div class="step-block">
             <h3>Check your copy</h3>
-            <div class="code">
-              <div class="code-head"><span><span data-os-only="mac linux">Terminal</span><span data-os-only="windows" hidden>PowerShell</span></span><button class="copy" type="button">Copy</button></div>
-              <pre><code data-out="md5">md5 -q "<mark>/Users/you/Games/Silent Hill 2</mark>/sh2pc.exe"</code></pre>
+            <div>
+              <div class="code-head"><span data-shell>Terminal</span><button class="copy" type="button" data-copy="md5">Copy</button></div>
+              <pre class="code"><code data-out="md5">md5 -q "<mark>/Users/you/Games/Silent Hill 2</mark>/sh2pc.exe"</code></pre>
             </div>
-            <p class="fine">It should print <code>f3f5360298b6d0f6f2e09cf24a0925d1</code>. Anything else is a different build, and the packer will stop.</p>
+            <p class="text-2">It should print <span class="tt">f3f5360298b6d0f6f2e09cf24a0925d1</span>. Anything else is a different build, and the packer will stop.</p>
+          </div>
 
+          <div class="step-block">
             <h3>Run the packer</h3>
-            <p class="fine">Run it where you want the output. The first run downloads the packer, about 900 MB.</p>
-            <div class="code">
-              <div class="code-head"><span><span data-os-only="mac linux">Terminal</span><span data-os-only="windows" hidden>PowerShell</span></span><button class="copy" type="button">Copy</button></div>
-              <pre><code data-out="pack">mkdir -p sd
+            <p class="text-2">Run it where you want the output. The first run downloads the packer, about 900 MB.</p>
+            <div>
+              <div class="code-head"><span data-shell>Terminal</span><button class="copy" type="button" data-copy="pack">Copy</button></div>
+              <pre class="code"><code data-out="pack">mkdir -p sd
 docker run --rm \
   -v "<mark>/Users/you/Games/Silent Hill 2</mark>:/game:ro" \
   -v "$PWD/sd:/out" \
   ghcr.io/ankushkun/sh23ds-packer</code></pre>
             </div>
+          </div>
 
-            <div class="faq">
-              <details><summary>“sh2pc.exe is not the Director’s Cut build”</summary><div class="answer"><p>Your exe is another version or was replaced. The Enhanced Edition’s setup swaps it, for one. Put the Director’s Cut exe back; EE packs in the <code>sh2e</code> folder are fine and get used.</p></div></details>
-              <details><summary>“Mount your Silent Hill 2 folder at /game”</summary><div class="answer"><p>The path before <code>:/game</code> doesn’t hold <code>sh2pc.exe</code> and <code>data</code>. Keep the quotes; the name has spaces.</p></div></details>
-              <details><summary>It stopped partway</summary><div class="answer"><p>Run the same command again. Finished steps are skipped. Add <code>-e FRESH=1</code> to start over.</p></div></details>
-              <details><summary>Docker can’t find the image</summary><div class="answer"><p>Check Docker is running (<code>docker info</code>). Or build the image from a clone and use <code>sh23ds-packer</code> as the name:</p><div class="code"><pre><code>git clone https://github.com/ankushKun/sh23ds
-cd sh23ds
-docker build -f tools/packer/Dockerfile -t sh23ds-packer .</code></pre></div></div></details>
-              <details><summary>Without Docker</summary><div class="answer"><p>With Python 3.11+ (numpy, Pillow, pefile), ffmpeg and devkitPro’s <code>tex3ds</code> on your PATH, run <code>tools/make_pack.sh "/path/to/Silent Hill 2"</code> from a clone. It writes <code>./pack</code>; copy that to <code>sdmc:/3ds/sh23ds/</code>.</p></div></details>
+          <div class="step-block">
+            <h3 class="sc" style="font-weight:400;font-size:21px;color:var(--menu)">If something goes wrong</h3>
+            <div>
+              <details class="trouble">
+                <summary><span class="plus" aria-hidden="true"></span>“sh2pc.exe is not the Director’s Cut build”</summary>
+                <p>Your exe is another version or was replaced; the Enhanced Edition’s setup swaps it, for one. Put the Director’s Cut exe back. EE packs in the sh2e folder are fine and get used.</p>
+              </details>
+              <details class="trouble">
+                <summary><span class="plus" aria-hidden="true"></span>“Mount your Silent Hill 2 folder at /game”</summary>
+                <p>The path before <span class="tt">:/game</span> doesn’t hold sh2pc.exe and data. Keep the quotes, since the name has spaces.</p>
+              </details>
+              <details class="trouble">
+                <summary><span class="plus" aria-hidden="true"></span>It stopped partway</summary>
+                <p>Run the same command again and finished steps are skipped. Add <span class="tt">-e FRESH=1</span> to start over.</p>
+              </details>
+              <details class="trouble">
+                <summary><span class="plus" aria-hidden="true"></span>Docker can’t find the image</summary>
+                <p>Check Docker is running with <span class="tt">docker info</span>. Or build the image from a clone with <span class="tt">docker build -f tools/packer/Dockerfile -t sh23ds-packer .</span> and use <span class="tt">sh23ds-packer</span> as the name.</p>
+              </details>
+              <details class="trouble">
+                <summary><span class="plus" aria-hidden="true"></span>Without Docker</summary>
+                <p>With Python 3.11+ (numpy, Pillow, pefile), ffmpeg and devkitPro’s tex3ds on your PATH, run <span class="tt">tools/make_pack.sh "/path/to/Silent Hill 2"</span> from a clone. It writes <span class="tt">./pack</span>; copy that to <span class="tt">sdmc:/3ds/sh23ds/</span>.</p>
+              </details>
             </div>
-            <button class="btn btn-sm done-btn" type="button" aria-pressed="false"><span class="t">Mark as done</span></button>
           </div>
         </section>
 
-        <section class="card step" id="sd" data-step aria-labelledby="sd-t">
-          <div class="step-head"><span class="num">3</span><h2 id="sd-t">Copy it to the SD card</h2><span class="time">10 min</span></div>
-          <div class="step-body">
-            <div class="two">
-              <ol class="numbered">
-                <li><strong>Power off the 3DS</strong> and put its SD card in the computer, or copy over Wi-Fi with ftpd.</li>
-                <li><strong>Copy the <code>3ds</code> folder</strong> from <code>sd</code> to the root of the card. It merges with the one there.</li>
-                <li><strong>No <code>3ds/dspfirm.cdc</code>?</strong> Run <a href="https://github.com/zoogie/DSP1/releases">DSP1</a> once from the Homebrew Launcher. Without it the game is silent.</li>
-              </ol>
-              <div class="code" data-nocopy>
-                <div class="code-head"><span>The card afterwards</span></div>
-                <pre><code>sdmc:/
-└── 3ds/
-    ├── dspfirm.cdc   <span class="c">from DSP1</span>
-    └── sh23ds/       <span class="c">from the packer</span>
-        ├── bg/ chr/ demo/ events/
-        ├── map/ movie/ pic/ sound/ ui/
-        └── save.dat  <span class="c">your saves</span></code></pre>
-              </div>
+        <section class="step" id="step-3" aria-labelledby="s3">
+          <div class="step-head">
+            <div><span class="step-num">Step 3</span><h2 class="step-title" id="s3">Copy it to the SD card</h2></div>
+            <span class="step-time">10 min</span>
+          </div>
+          <div class="split">
+            <p class="step-lede">Power off the 3DS and put its SD card in the computer, or copy over Wi-Fi with ftpd. Copy the 3ds folder from sd to the root of the card. It merges with the one already there.</p>
+            <div>
+              <div class="code-head"><span>The card afterwards</span></div>
+              <pre class="code" style="line-height:1.25">sdmc:/
+`-- 3ds/
+    |-- dspfirm.cdc     <span class="c">from DSP1</span>
+    `-- sh23ds/         <span class="c">from the packer</span>
+        |-- bg/ chr/ demo/ events/
+        |-- map/ movie/ pic/ sound/ ui/
+        `-- save.dat    <span class="r">your saves</span></pre>
             </div>
-            <div class="memo" style="margin-top: 4px"><b>Keep your saves</b>They live in <code>3ds/sh23ds/save*.dat</code>. Copy them out before replacing the folder with newer data. Coming from 0.1.1? Saves carry over, but run the packer again for the lake boat’s two new files.</div>
-            <button class="btn btn-sm done-btn" type="button" aria-pressed="false"><span class="t">Mark as done</span></button>
+          </div>
+          <div class="notes">
+            <div class="paper note"><b>No 3ds/dspfirm.cdc?</b><span>Run DSP1 once from the Homebrew Launcher. Without it the game is silent.</span></div>
+            <div class="paper note"><b>Keep your saves</b><span>They live in 3ds/sh23ds/save*.dat. Copy them out before you replace the folder.</span></div>
           </div>
         </section>
 
-        <section class="card step" id="app" data-step aria-labelledby="app-t">
-          <div class="step-head"><span class="num">4</span><h2 id="app-t">Install the app</h2><span class="time">2 min</span></div>
-          <div class="step-body">
-            <div class="tabset" data-tabs style="justify-items: start">
-              <div class="seg" role="tablist" aria-label="How to install" data-js-only>
-                <button type="button" role="tab" id="g-cia" aria-controls="gp-cia" aria-selected="true">HOME Menu (CIA)</button>
-                <button type="button" role="tab" id="g-3dsx" aria-controls="gp-3dsx" aria-selected="false" tabindex="-1">Homebrew Launcher (3DSX)</button>
-              </div>
-              <div class="tabpanel" role="tabpanel" id="gp-cia" aria-labelledby="g-cia">
-                <span class="no-js-title">HOME Menu (CIA)</span>
-                <div class="fbi-panel">
-                  <img class="qr" src="qr/install-cia.svg" width="150" height="150" alt="QR code that installs the latest sh23ds.cia with FBI">
-                  <div><ol><li>Open FBI.</li><li>Remote Install, then Scan QR Code.</li><li>Point the camera at the code.</li></ol>
-                  <div class="actions" style="margin-top: 14px"><a class="btn btn-sm" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.cia"><svg aria-hidden="true"><use href="#i-down"/></svg>sh23ds.cia <span class="size" data-size="sh23ds.cia"></span></a></div></div>
-                </div>
-                <p class="fine" style="margin-top: 12px">Recommended: the CIA asks a New 3DS for its fast clock, L2 cache and extra memory. No Wi-Fi? Put the file on the card and install it from FBI’s SD browser.</p>
-              </div>
-              <div class="tabpanel" role="tabpanel" id="gp-3dsx" aria-labelledby="g-3dsx" hidden>
-                <span class="no-js-title">Homebrew Launcher (3DSX)</span>
-                <div class="fbi-panel">
-                  <img class="qr" src="qr/download-3dsx.svg" width="150" height="150" alt="QR code that downloads the latest sh23ds.3dsx">
-                  <div><ol><li>Download sh23ds.3dsx.</li><li>Copy it to <code>sdmc:/3ds/</code>.</li><li>Start it from the Homebrew Launcher.</li></ol>
-                  <div class="actions" style="margin-top: 14px"><a class="btn btn-sm" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.3dsx"><svg aria-hidden="true"><use href="#i-down"/></svg>sh23ds.3dsx <span class="size" data-size="sh23ds.3dsx"></span></a></div></div>
-                </div>
+        <section class="step" id="step-4" aria-labelledby="s4">
+          <div class="step-head">
+            <div><span class="step-num">Step 4</span><h2 class="step-title" id="s4">Install the app</h2></div>
+            <span class="step-time">2 min</span>
+          </div>
+
+          <div class="tabs" role="tablist" aria-label="Where to install" data-tabs>
+            <button class="tab" type="button" role="tab" id="t-cia" aria-controls="p-cia" aria-selected="true"><span class="sq"></span>HOME Menu (CIA)<span class="sys">Recommended</span></button>
+            <button class="tab" type="button" role="tab" id="t-3dsx" aria-controls="p-3dsx" aria-selected="false" tabindex="-1"><span class="sq"></span>Homebrew Launcher (3DSX)</button>
+          </div>
+
+          <div class="tabpanel install-cia" role="tabpanel" id="p-cia" aria-labelledby="t-cia">
+            <div class="panel item">
+              <div class="panel-head"><span>Item</span></div>
+              <div class="item-body">
+                <div class="qr"><img src="qr/install-cia.svg" width="220" height="220" alt="QR code for the latest sh23ds.cia"></div>
+                <span class="item-name">sh23ds.cia</span>
               </div>
             </div>
-            <p class="fine"><a href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.sha256">Checksums</a> &nbsp;·&nbsp; <a href="https://github.com/ankushKun/sh23ds/releases">All releases</a></p>
-            <button class="btn btn-sm done-btn" type="button" aria-pressed="false"><span class="t">Mark as done</span></button>
+            <div class="install-text">
+              <p>Open FBI. Remote Install, then Scan QR Code. Point the camera at the code.</p>
+              <p class="text-2">The CIA asks a New 3DS for its fast clock, L2 cache and extra memory. No Wi-Fi? Put the file on the card and install it from FBI’s SD browser.</p>
+              <div class="actions"><a class="btn btn-red" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.cia">Download sh23ds.cia <span class="size" data-size="sh23ds.cia">721 KB</span></a></div>
+            </div>
+          </div>
+          <div class="tabpanel" role="tabpanel" id="p-3dsx" aria-labelledby="t-3dsx" hidden>
+            <div class="install-text" style="max-width:60ch">
+              <p>Copy sh23ds.3dsx to <span class="tt">sdmc:/3ds/</span> and start it from the Homebrew Launcher.</p>
+              <div class="actions"><a class="btn btn-red" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.3dsx">Download sh23ds.3dsx <span class="size" data-size="sh23ds.3dsx">919 KB</span></a></div>
+            </div>
+          </div>
+
+          <div class="links">
+            <a class="lnk" href="https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.sha256">Checksums</a>
+            <a class="lnk" href="https://github.com/ankushKun/sh23ds/releases">All releases</a>
           </div>
         </section>
 
-        <section class="card step" id="play" data-step aria-labelledby="play-t">
-          <div class="step-head"><span class="num">5</span><h2 id="play-t">Play</h2></div>
-          <div class="step-body">
-            <p>Start <em>Silent Hill 2</em> from the HOME Menu. Options has the PC’s settings, the hardware profile and the button layout.</p>
+        <section class="step" id="step-5" aria-labelledby="s5">
+          <div class="step-head">
+            <div><span class="step-num">Step 5</span><h2 class="step-title" id="s5">Play</h2></div>
+          </div>
+          <p class="step-lede">Start Silent Hill 2 from the HOME Menu. Options has the PC’s settings, the hardware profile and the button layout.</p>
+
+          <div class="panel">
+            <div class="panel-head"><span>Control options</span></div>
             <dl class="controls">
-              <div><dt>Circle Pad</dt><dd>Move. Rotational or Directional, in Options</dd></div>
-              <div><dt><kbd>B</kbd> hold</dt><dd>Run</dd></div>
-              <div><dt><kbd>A</kbd></dt><dd>Check, open, pick up, next message</dd></div>
-              <div><dt><kbd>R</kbd> + <kbd>A</kbd></dt><dd>Ready the weapon and attack</dd></div>
-              <div><dt><kbd>X</kbd></dt><dd>Flashlight</dd></div>
-              <div><dt><kbd>Y</kbd></dt><dd>Items</dd></div>
-              <div><dt>Touch screen</dt><dd>Map, items, menus</dd></div>
-              <div><dt><kbd class="wide">START</kbd></dt><dd>Pause</dd></div>
+              <div><dt><span class="key">Circle Pad</span></dt><dd>Move <span>(Rotational or Directional, in Options)</span></dd></div>
+              <div><dt><span class="key">B, held</span></dt><dd>Run</dd></div>
+              <div><dt><span class="key">A</span></dt><dd>Check, open, pick up</dd></div>
+              <div><dt><span class="key">R + A</span></dt><dd>Ready the weapon and attack</dd></div>
+              <div><dt><span class="key">X</span></dt><dd>Flashlight</dd></div>
+              <div><dt><span class="key">Y</span></dt><dd>Items</dd></div>
+              <div><dt><span class="key">Touch</span></dt><dd>Map, items, menus</dd></div>
+              <div><dt><span class="key">START</span></dt><dd>Pause</dd></div>
             </dl>
-            <p class="fine">New 3DS: the C-Stick strafes and turns round, ZL looks, ZR runs. Every action also works on an original 3DS. The full layouts are in <a href="https://github.com/ankushKun/sh23ds/blob/main/port/CONTROLS.md">CONTROLS.md</a>.</p>
-            <div class="faq">
-              <details><summary>No sound</summary><div class="answer"><p>Run DSP1 once, as in step 3.</p></div></details>
-              <details><summary>It doesn’t get past starting up</summary><div class="answer"><p>The data must be at exactly <code>sdmc:/3ds/sh23ds/</code>, holding <code>bg</code>, <code>chr</code> and the rest, not another folder inside it.</p></div></details>
-              <details><summary>It crashes or looks wrong</summary><div class="answer"><p>Please <a href="https://github.com/ankushKun/sh23ds/issues">open an issue</a> with your console model, Luma3DS version and where you were. A photo of the debug page (SELECT twice) helps.</p></div></details>
-            </div>
-            <button class="btn btn-sm done-btn" type="button" aria-pressed="false"><span class="t">Mark as done</span></button>
+            <p class="panel-foot"><strong>New 3DS:</strong> the C-Stick strafes and turns round, ZL looks, ZR runs.</p>
+          </div>
+
+          <div class="fixes">
+            <div><b>No sound</b><span>Run DSP1 once, as in step 3.</span></div>
+            <div><b>Stuck at start-up</b><span>The data must be at exactly sdmc:/3ds/sh23ds/, holding bg, chr and the rest.</span></div>
+            <div><b>It crashes or looks wrong</b><span>Open an issue with your console model, Luma3DS version and where you were. A photo of the debug page (SELECT twice) helps.</span><a class="lnk" href="https://github.com/ankushKun/sh23ds/issues">Open an issue</a></div>
           </div>
         </section>
       </div>
     </div>
   </main>
 
-  <footer class="footer">
+  <footer class="foot">
     <div class="wrap">
-      <a class="brand" href="./" style="justify-content: center"><span class="brand-icon"><i></i></span>sh23ds</a>
-      <ul class="footer-links">
-        <li><a href="install.html">Install</a></li>
-        <li><a href="status.html">Status</a></li>
-        <li><a href="docs.html">Docs</a></li>
-        <li><a href="https://github.com/ankushKun/sh23ds/releases">Releases</a></li>
-        <li><a href="https://github.com/ankushKun/sh23ds">GitHub</a></li>
-      </ul>
-      <p class="legal">Free software under the GPLv3, made by <a href="https://ankush.one">ankushKun</a>, with fixes from <a href="https://github.com/elishacloud/Silent-Hill-2-Enhancements">Silent Hill 2: Enhanced Edition</a>. A fan project, not affiliated with Konami or Nintendo. <em>Silent Hill</em> is a trademark of Konami Digital Entertainment and Nintendo 3DS is a trademark of Nintendo. Releases and the packer contain no game code or assets; screenshots show the port running the author’s own copy. Console photo: <a href="https://commons.wikimedia.org/wiki/File:New_Nintendo_3DS_(wei%C3%9F)_20250129_HOF2650_RAW-Export.png">PantheraLeo1359531</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>, cropped, screens replaced. Fonts: M PLUS Rounded 1c, DotGothic16, M PLUS 1 Code, Reenie Beanie (SIL OFL).</p>
+      <div class="foot-row">
+        <a class="brand" href="./">
+          <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="brand-name">sh23ds <span data-version>v0.1.2</span></span>
+        </a>
+        <nav class="nav" aria-label="Footer">
+          <a href="install.html" aria-current="page">Install</a>
+          <a href="roadmap.html">Roadmap</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/ankushKun/sh23ds/releases">Releases</a>
+          <a href="https://github.com/ankushKun/sh23ds">GitHub</a>
+        </nav>
+      </div>
+      <p>Free software under the GPLv3, by <a href="https://github.com/ankushKun">ankushKun</a>, with fixes from <a href="https://enhanced.townofsilenthill.com/SH2/">Silent Hill 2: Enhanced Edition</a>. A fan project, not affiliated with Konami or Nintendo. Silent Hill is a trademark of Konami Digital Entertainment and Nintendo 3DS is a trademark of Nintendo. Releases contain no game code or assets; screenshots show the port running the author’s own copy. Fonts: Libre Caslon Display, Crimson Pro and VT323 (SIL OFL).</p>
     </div>
   </footer>
 </body>

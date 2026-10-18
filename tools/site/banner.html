@@ -1,44 +1,39 @@
 <!doctype html>
 <!-- The social image and README banner (site/assets/banner.jpg), rendered at 1200 x 630 by
-     tools/site/render_banner.sh from the site's own fonts, stylesheet, console photo and screenshots. -->
+     tools/site/render_banner.sh from the site's own fonts and stylesheet: the home page's title screen. -->
 <html lang="en" class="js">
 <head>
 <meta charset="utf-8">
 <link rel="stylesheet" href="../../site/fonts.css">
 <link rel="stylesheet" href="../../site/site.css">
 <style>
-  html, body { width: 1200px; height: 630px; overflow: hidden; }
-  .banner {
-    position: relative; display: grid; grid-template-columns: 1fr 560px; align-items: center; gap: 24px;
-    height: 630px; padding: 0 56px 0 72px; box-sizing: border-box; overflow: hidden; text-align: left;
-  }
-  .banner .brand { margin-bottom: 30px; font-size: 22px; }
-  .banner .brand-icon { width: 36px; height: 36px; }
-  .banner h1 { font: 800 70px/1.02 var(--round); letter-spacing: -0.02em; }
-  .banner h1 .red { color: var(--red-2); }
-  .banner p { margin-top: 24px; max-width: 25ch; color: var(--text-2); font-size: 23px; line-height: 1.45; }
-  .banner .device-stage { width: 560px; }
-  .banner .note { position: absolute; right: 64px; top: 34px; font-size: 44px; transform: rotate(-4deg); }
+  html, body { width: 1200px; height: 630px; min-height: 0; overflow: hidden; }
+  body::before { animation: none; opacity: .14; }
+  .banner { width: 1200px; height: 630px; min-height: 0; padding: 0 40px; gap: 30px; }
+  .banner .title { font-size: 104px; }
+  .banner .title .ch { animation: none; }
+  .banner .lede { max-width: 44ch; font-size: 26px; }
+  .banner .static { animation: none; opacity: .26; }
+  .banner .bloom { top: 40%; animation: none; opacity: 1; }
+  .corner { position: absolute !important; bottom: 34px; display: flex; align-items: center; gap: 12px; }
+  .corner.left { left: 44px; }
+  .corner.right { right: 44px; font: 400 24px/1 var(--mono); letter-spacing: .14em; color: var(--dim); }
 </style>
 </head>
-<body>
-<div class="banner">
-  <div>
-    <span class="brand"><span class="brand-icon"><i></i></span>sh23ds</span>
-    <h1>Silent Hill 2,<br><span class="red">on your 3DS</span></h1>
-    <p>A native port of the PC Director’s Cut. Bring your own copy of the game.</p>
+<body class="home">
+<div class="title-screen banner">
+  <div class="static"></div>
+  <div class="bloom"></div>
+  <div class="vig"></div>
+  <div class="title-block">
+    <h1 class="title">Silent Hill 2</h1>
   </div>
-  <div class="device-stage">
-    <img class="device-photo" src="../../site/assets/new-3ds-angled.png" width="1356" height="1177" alt="">
-    <div class="screen screen-top"><img src="../../site/assets/shots/deck-top.jpg" width="400" height="240" alt=""></div>
-    <div class="screen screen-bottom"><img src="../../site/assets/shots/deck-bottom.jpg" width="320" height="240" alt=""></div>
+  <p class="lede">A native port of the PC Director’s Cut, with the Enhanced Edition’s fixes built in.</p>
+  <div class="corner left">
+    <span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="brand-name">sh23ds</span>
   </div>
-  <span class="note">runs on any 3DS</span>
+  <div class="corner right">ANKUSH.ONE/SH23DS</div>
 </div>
-<script>
-  var stage = document.querySelector(".device-stage");
-  stage.style.setProperty("--k", (stage.offsetWidth / 1356).toFixed(5));
-  stage.classList.add("is-mapped");
-</script>
 </body>
 </html>
