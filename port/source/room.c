@@ -215,6 +215,119 @@ int room_texture_ids(const u8* data, long size, u32* out, int max)
 	return n;
 }
 
+// ---------------------------------------------------------------- map part switches
+
+// The loaded maps' batches (Room structs are copied by value; their batch arrays stay put).
+#define PART_MAPS 24
+static struct {
+	RoomBatch* batches;
+	u32 n, map_id;
+} s_parts_maps[PART_MAPS];
+// The switches applied since the glb last changed, for maps that load after them.
+#define PART_KEEP 48
+static u32 s_keep_key[PART_KEEP], s_keep_mask[PART_KEEP], s_keep_glb;
+static int s_nkeep;
+
+static bool open_glb(int glb) { return glb == 0x11 || (glb >= 1 && glb <= 4); }   // 0x494d80
+
+// 0x5b49b0 on one map: the variants of group g on by mask
+static void parts_switch(RoomBatch* b, u32 n, int g, u32 mask)
+{
+	for (u32 i = 0; i < n; i++) {
+		int v = b[i].part & 0xff;
+		if ((b[i].part >> 8) == g)
+			b[i].hidden = !(v == 0 || (mask & 0xffff & (1u << ((v - 1) & 31))));
+	}
+}
+
+// 0x47d5d0
+static void parts_key(u32 key, u32 mask, int only)
+{
+	for (int k = 0; k < PART_MAPS; k++)
+		if (s_parts_maps[k].batches && s_parts_maps[k].map_id == key) {
+			if (only < 0 || only == k)
+				parts_switch(s_parts_maps[k].batches, s_parts_maps[k].n, 0, mask);
+			return;
+		}
+	if (open_glb((int)(key >> 16)))
+		return;
+	for (int k = 0; k < PART_MAPS; k++) {
+		u32 id = s_parts_maps[k].map_id;
+		if (s_parts_maps[k].batches && id && key >= id && key - id < 256 && (only < 0 || only == k))
+			parts_switch(s_parts_maps[k].batches, s_parts_maps[k].n, (int)(key - id), mask);
+	}
+}
+
+void room_parts_add(RoomPartList* l, int glb, int id, int bit)
+{
+	u32 key = (u32)glb << 16 | (u32)id;
+	int i = 0;
+	while (i < l->n && l->key[i] != key)
+		i++;
+	if (i == l->n) {
+		if (l->n >= 16)
+			return;
+		l->key[l->n] = key, l->mask[l->n] = 0, l->n++;
+	}
+	if (bit >= 0)
+		l->mask[i] |= 1u << (bit & 31);
+}
+
+void room_parts_apply(const RoomPartList* l, int glb)
+{
+	if ((u32)glb != s_keep_glb)
+		s_nkeep = 0, s_keep_glb = (u32)glb;
+	if (open_glb(glb))
+		s_nkeep = 0;                    // each apply starts from variant 0 there
+	if (open_glb(glb))
+		for (int k = 0; k < PART_MAPS; k++)
+			if (s_parts_maps[k].batches)
+				parts_switch(s_parts_maps[k].batches, s_parts_maps[k].n, 0, 0);
+	for (int i = 0; i < l->n; i++) {
+		parts_key(l->key[i], l->mask[i], -1);
+		int j = 0;
+		while (j < s_nkeep && s_keep_key[j] != l->key[i])
+			j++;
+		if (j == s_nkeep && s_nkeep < PART_KEEP)
+			s_keep_key[s_nkeep++] = l->key[i];
+		if (j < PART_KEEP)
+			s_keep_mask[j] = l->mask[i];
+	}
+}
+
+static u32 map_id_of(const char* area, const char* name)
+{
+	static const char* const areas[] = { "ca", "cb", "cc", "cd", "ob", "er", "bw", "th", "ap", "hp", "ps", "rr",
+	                                     "ru", "qp", "qt", "ma" };
+	for (int i = 0; i < 16; i++)
+		if (!strncmp(area, areas[i], 2) && !strncmp(name, areas[i], 2) && name[2] >= '0' && name[2] <= '9')
+			return (u32)(i + 1) << 16 | (u32)atoi(name + 2);
+	return 0;
+}
+
+static void parts_register(Room* room, const char* area, const char* name)
+{
+	room->map_id = map_id_of(area, name);
+	for (int k = 0; k < PART_MAPS; k++)
+		if (!s_parts_maps[k].batches) {
+			s_parts_maps[k].batches = room->batches;
+			s_parts_maps[k].n = room->n_batches;
+			s_parts_maps[k].map_id = room->map_id;
+			// the switches already applied in this glb reach a map that loads later
+			if (room->map_id >> 16 == s_keep_glb)
+				for (int i = 0; i < s_nkeep; i++)
+					parts_key(s_keep_key[i], s_keep_mask[i], k);
+			return;
+		}
+}
+
+static void parts_unregister(const RoomBatch* batches)
+{
+	for (int k = 0; k < PART_MAPS; k++)
+		if (batches && s_parts_maps[k].batches == batches)
+			s_parts_maps[k].batches = NULL;
+}
+
 bool room_load_mem(Room* room, const char* pack, const char* area, const char* name, u8* data, long size,
                    const RoomTexBlob* tex, int ntex, char* err, size_t errlen)
 {
@@ -268,7 +381,9 @@ bool room_load_mem(Room* room, const char* pack, const char* area, const char* n
 	const u16* fidx = (const u16*)(data + h->ofs_indices);
 	for (u32 i = 0; i < h->n_batches; i++) {
 		RoomBatch* b = &room->batches[i];
-		b->group = fb[i].group;
+		b->group = fb[i].group & 0xff;
+		b->part = (u16)(fb[i].group >> 8);       // the geometry id (0 in packs made before it was kept)
+		b->hidden = (b->part & 0xff) != 0;       // 0x5b4690: only variant 0 shows until switched
 		b->material = fb[i].material;
 		b->first_vertex = fb[i].first_vertex;
 		b->vertex_count = fb[i].vertex_count;
@@ -288,11 +403,13 @@ bool room_load_mem(Room* room, const char* pack, const char* area, const char* n
 	}
 	memcpy(room->vertices, data + h->ofs_vertices, h->n_vertices * ROOM_VERTEX_SIZE);
 	free(data);
+	parts_register(room, area, name);
 	return true;
 }
 
 void room_free(Room* room)
 {
+	parts_unregister(room->batches);
 	free(room->materials);
 	if (room->batches)
 		for (u32 i = 0; i < room->n_batches; i++)

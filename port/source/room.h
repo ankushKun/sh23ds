@@ -21,6 +21,8 @@ typedef struct {
 typedef struct {
 	u32 group, material, first_vertex, vertex_count, index_count;
 	u16* indices;       // own linear allocation: the PICA index buffer address must be aligned
+	u16 part;           // the map geometry's id: variant (low byte) and part group (high byte)
+	u8 hidden;          // a part the stage code has not switched on (see room_parts_apply)
 } RoomBatch;
 
 typedef struct {
@@ -30,6 +32,7 @@ typedef struct {
 	RoomBatch* batches;
 	void* vertices;     // linear memory, 28-byte vertices (pos, uv, color, normal)
 	u32 missing_textures;
+	u32 map_id;         // the PC's map file id, glb_crd << 16 | the map's number (ap22: 0x90016)
 } Room;
 
 #define ROOM_VERTEX_SIZE 28
@@ -59,3 +62,20 @@ void texcache_clear(void);
 // Keeps the textures of the resident rooms and trims the cache (call after loading rooms).
 void texcache_keep(const Room* const* rooms, int n);
 u32 texcache_count(void);
+
+// The PC's map part switches. A map geometry's id holds a part group (high byte) and a variant
+// (low byte); 0x5b4690 shows variant 0 and hides the others when the map loads, and the stage code
+// switches variants on by group: per frame or on entering a room it lists (glb_crd << 16 | id,
+// mask) pairs (0x4a2a80) and applies them (0x4a2ad0, then 0x47d5d0 and 0x5b49b0). A switch whose
+// key is a resident map's id sets that map's group 0; otherwise, outside the town and forest, every
+// resident map with an id below the key gets the group key - its id. The variants on are those
+// whose bit (variant - 1) is in the mask. In the town and forest the apply first turns every
+// group 0 back to variant 0 only (0x47d4f0).
+typedef struct {
+	u32 key[16], mask[16];
+	int n;
+} RoomPartList;
+// 0x4a2a80: add id (glb_crd << 16 | id) to the list, with bit set in its mask unless bit < 0.
+void room_parts_add(RoomPartList* l, int glb, int id, int bit);
+// 0x4a2ad0: apply the list to the resident maps (and to maps that load later in the same glb).
+void room_parts_apply(const RoomPartList* l, int glb);

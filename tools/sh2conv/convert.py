@@ -14,7 +14,8 @@ S3M v2 (little-endian):
   u32 n_materials, n_batches, n_vertices, n_indices,
   u32 ofs_materials, ofs_batches, ofs_vertices, ofs_indices
   material  u32 texture_id (0 = none), u32 mode, u32 color, u32 flags (bit0 texture has alpha)
-  batch     u32 group (0 opaque, 1 transparent, 2 decal), u32 material,
+  batch     u32 group (0 opaque, 1 transparent, 2 decal; bits 8..23: the map geometry's id, its
+            variant in the low byte and its part group in the high one), u32 material,
             u32 first_vertex, u32 vertex_count, u32 first_index, u32 index_count
   vertex    f32 x, y, z, f32 u, v, u8 r, g, b, a, s8 nx, ny, nz, pad   (28 bytes)
             normals come from the map where its vertex section has them, otherwise from
@@ -95,7 +96,9 @@ def write_s3m(path, m, tex_alpha):
         rec['n'][:, :3] = np.clip(np.round(nrm * 127), -127, 127).astype(np.int8)
         verts.append(rec.tobytes())
         idx.append(b.indices.astype('<u2').tobytes())
-        brecs.append(struct.pack('<6I', GROUP[b.group], b.material, v0, n, i0, len(b.indices)))
+        # the group field's bits 8..23 carry the map geometry's id (map part switches, room.c)
+        brecs.append(struct.pack('<6I', GROUP[b.group] | (b.geo_id & 0xffff) << 8, b.material, v0, n, i0,
+                                 len(b.indices)))
         v0 += n
         i0 += len(b.indices)
     mats = b''.join(struct.pack('<4I', mt.texture_id, mt.mode, mt.color,

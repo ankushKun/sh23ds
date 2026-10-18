@@ -2128,7 +2128,7 @@ static u32 draw_room_group(const Room* r, int group)
 	BufInfo_Add(bi, r->vertices, ROOM_VERTEX_SIZE, 4, 0x3210);
 	for (u32 i = 0; i < r->n_batches; i++) {
 		RoomBatch* b = &r->batches[i];
-		if ((int)b->group != group || (s_only_batch >= 0 && (int)i != s_only_batch))
+		if ((int)b->group != group || b->hidden || (s_only_batch >= 0 && (int)i != s_only_batch))
 			continue;
 		RoomMaterial* m = &r->materials[b->material < r->n_materials ? b->material : 0];
 		bool textured = m->tex != NULL && s_render_mode == 0;

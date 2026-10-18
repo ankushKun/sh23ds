@@ -121,6 +121,7 @@ class Batch:
     colors: np.ndarray      # (n, 4) uint8, white if the section has none
     normals: np.ndarray     # (n, 3) float32, zero if the section has none
     indices: np.ndarray     # (m,) uint32, triangle list into this batch's vertices
+    geo_id: int = 0         # the geometry's id: part group (bits 8..15) and variant (bits 0..7)
 
 
 @dataclass
@@ -192,6 +193,12 @@ def _collect(batches, group, sections, section, material, tris):
     used, remap = np.unique(tris, return_inverse=True)
     batches.append(Batch(group, material, pos[used], uv[used], col[used], nrm[used],
                          remap.astype(np.uint32)))
+
+
+def _tag(batches, first, geo_id):
+    """The batches from `first` on came from the geometry with this id."""
+    for b in batches[first:]:
+        b.geo_id = geo_id & 0xffff
 
 
 def _mesh_group(r, base, group, batches):
@@ -277,13 +284,16 @@ def _load(path):
             _, geo_count, geo_size, mat_count = r.unpack('IIII', body)
             g = body + 16
             for _ in range(geo_count):
-                _, size, o_ofs, t_ofs, d_ofs = r.unpack('IIIII', g)
+                geo_id, size, o_ofs, t_ofs, d_ofs = r.unpack('IIIII', g)
+                first = len(m.batches)
                 if o_ofs:
                     _mesh_group(r, g + o_ofs, 'opaque', m.batches)
                 if t_ofs:
                     _mesh_group(r, g + t_ofs, 'transparent', m.batches)
                 if d_ofs:
                     _decals(r, g + d_ofs, m.batches)
+                # 0x5b4690 keeps the id's low byte as the variant and the next as the part group
+                _tag(m.batches, first, geo_id)
                 g += size
             mp = body + geo_size
             for i in range(mat_count):

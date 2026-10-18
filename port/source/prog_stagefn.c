@@ -6,6 +6,7 @@
 #include "demo.h"
 #include "playtest.h"
 #include "prog_int.h"
+#include "stageparts.h"
 #include "bgm.h"
 #include "combat.h"
 #include "collide.h"
@@ -395,6 +396,7 @@ void prog_stagefn_tick(int stage, float dt)
 	if (dt <= 0.0f)
 		return;
 	frame_sounds(stage, room, pos);
+	stageparts_tick(stage, room, dt);   // the map part switches (stageparts.c)
 	switch (stage) {
 	case 30: well_wall_tick(room); break;
 	case 34:
