@@ -32,6 +32,7 @@
 #include "savescreen.h"
 #include "noise.h"
 #include "blood.h"
+#include "mist.h"
 #include "gameover.h"
 #include "titlemenu.h"
 #include "pausemenu.h"
@@ -618,6 +619,7 @@ static void load_current(void)
 		t0 = svcGetSystemTick();
 		enemy_room_enter(ev_stage(), s_have_col ? &s_col : NULL);
 		blood_clear();
+		mist_clear();
 		perf_part("ld_enemy", t0);
 		t0 = svcGetSystemTick();
 		gamecam_load_area(PACK_DIR, s_areas[s_area], (const char (*)[16])s_rooms, s_nrooms);
@@ -1729,6 +1731,7 @@ static void blood_frame(float dt)
 		owner[i] = &e->x;
 	}
 	blood_update(dt);
+	mist_update(dt);
 }
 
 // James' legs (move.c, the PC's lower-body states): the circle pad walks and turns, the game keys
@@ -3863,6 +3866,7 @@ int main(void)
 	font_init(PACK_DIR, ui_draw_font);
 	noise_init();
 	blood_init(PACK_DIR, ui_program_flat, blood_floor);
+	mist_init(PACK_DIR, ui_program_flat);
 	gameover_init(PACK_DIR);
 	titlemenu_init(PACK_DIR);
 	titlemenu_reset(any_save());
@@ -4337,6 +4341,7 @@ int main(void)
 			tr = svcGetSystemTick();
 			shadow_draw(&proj, &mv, &ortho);
 			blood_draw(&proj, &mv);      // the floor's pools and stains, the spray (blood.c)
+			mist_draw(&proj, &mv);       // the hyper spray's puffs (mist.c)
 			perf_part("r_shadow", tr);
 			tr = svcGetSystemTick();
 			if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && s_opt.fog)
@@ -4434,7 +4439,11 @@ int main(void)
 			printf("%-38s\n", fog_status());
 			printf("%-38s\n", perf_status());
 			printf("%-38s\n", shadow_status());
-			printf("%-38s\n", blood_status());
+			{
+				char line[64];
+				snprintf(line, sizeof line, "%s mist %d", blood_status(), mist_count());
+				printf("%-38.38s\n", line);
+			}
 			printf("%-38.38s\n", sfx_status());
 		}
 		pause_draw();

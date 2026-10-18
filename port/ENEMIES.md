@@ -1036,6 +1036,8 @@ In the emulator:
   table.
 * `mi1_600` .. `mi1_700`: spraying a nurse at cb47, the cloud leaves the can and spreads past her;
   the debug page counts 14 puffs.
+* `mi3_660` .. `mi3_780`: the same on the tree with ws5's frame-rate work. The press has to come
+  after the can is up: in `mi2` A went down while James was still raising it, so he only aimed.
 
 ## Testing keys (debug.txt, read by enemy_init)
 

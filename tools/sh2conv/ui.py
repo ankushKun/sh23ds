@@ -10,7 +10,8 @@ Also writes the save screen's backgrounds (data/menu/mc/savebg.tbn2, James, and 
 Maria; 512x512 DXT3 squeezed to 512x256 RGB565 like the stills: pack/ui/savebg.t3x, savebg2.t3x)
 and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg), and the options
 screens' texts (option_msg_e.mes as pack/events/option.msg) and the blood effects' texture
-(pack/effect/blood.t3x, see write_blood), and the title background, the game over text and its
+(pack/effect/blood.t3x, see write_blood), the hyper spray's mist (pack/effect/mist.t3x, see
+write_mist), and the title background, the game over text and its
 sound (see write_screens).
 
 Also writes the PC's text font (pack/ui/font.t3x and font.bin, see write_font), which the exe carries
@@ -216,6 +217,25 @@ def write_blood(data, pack):
     print('wrote', t3x)
 
 
+def write_mist(data, pack):
+    """The hyper spray's mist texture: effect texture 2 (0x4a4c00 -> 0x4c9b20(2) -> file id 0x2c1a,
+    data/pic/effect/poison.tbn2, 256x256 with a cloud in the alpha). The PC tints it with the
+    vertex colour and samples a random quarter of it per puff, so only the alpha matters: A8 at
+    128x128 as pack/effect/mist.t3x (blood.c wraps it)."""
+    img = load_tex(os.path.join(data, 'pic', 'effect', 'poison.tbn2')).convert('RGBA')
+    alpha = img.split()[3].resize((128, 128), Image.LANCZOS)
+    out = Image.new('RGBA', (128, 128), (255, 255, 255, 0))
+    out.putalpha(alpha)
+    os.makedirs(os.path.join(pack, 'effect'), exist_ok=True)
+    png, t3x = 'effect/mist.png', 'effect/mist.t3x'
+    out.save(os.path.join(pack, png))
+    if os.path.exists(os.path.join(pack, t3x)):
+        os.remove(os.path.join(pack, t3x))
+    encode_textures([(png, t3x, True)], pack, fmt='a8', mipmaps=False)
+    os.remove(os.path.join(pack, png))
+    print('wrote', t3x)
+
+
 def write_screens(data, pack, out_voice=True):
     """The PC's title background (data/pic/etc/start00.tex, the menus are text over it:
     pack/ui/start00.t3x, 512x512 DXT3 squeezed to 512x256 RGB565 like the stills) and its pulsing
@@ -279,6 +299,7 @@ def main():
     write_save_screen(data, pack)
     write_options(data, pack)
     write_blood(data, pack)
+    write_mist(data, pack)
     write_screens(data, pack)
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
     logo = os.path.join(data, 'pic', 'etc', 'sh2dc.tex')

@@ -28,6 +28,7 @@
 #include "demo.h"
 #include "events.h"
 #include "maria.h"
+#include "mist.h"
 #include "prog.h"
 #include "sfx.h"
 
@@ -1051,7 +1052,8 @@ static float ray_enemy(const float o[3], const float d[3], float t0, float t1, E
 
 // 0x545260: the hyper spray's cone. Five rays from the can along James' aim, out to the attack's
 // reach (shorter and weaker once less than ten seconds are left), each enemy struck once a spray.
-static void spray_hits(const CombatBody* b, const AttackInfo* a)
+// The centre ray also posts the mist (0x5454dc -> 0x4a4c00): a puff a tick toward its end plus 150.
+static void spray_hits(const CombatBody* b, const AttackInfo* a, float dt)
 {
 	float f = s_frame - s_cur->start;
 	if (f < a->first || f > a->last + 0.99f)
@@ -1069,6 +1071,10 @@ static void spray_hits(const CombatBody* b, const AttackInfo* a)
 			float ex = o[0] + d[0] * reach, ez = o[2] + d[2] * reach;
 			col_clamp_ray(s_col, o[0], o[2], &ex, &ez, o[1]);
 			lim = hypotf(ex - o[0], ez - o[2]);
+		}
+		if (r == 0) {
+			float v[3] = { d[0] * (lim + 150.0f), d[1] * (lim + 150.0f), d[2] * (lim + 150.0f) };
+			mist_spray(o, v, dt);
 		}
 		Enemy* e;
 		ray_enemy(o, d, 0.0f, lim, &e);
@@ -1569,7 +1575,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		if (s_cur != &S_EMPTY) {
 			float f = s_frame - s_cur->start;
 			if (f >= a->first && f <= a->last + 0.99f && s_spray > 0.0f) {
-				spray_hits(b, a);
+				spray_hits(b, a, dt);
 				s_spray -= dt;
 				if (enemy_difficulty() > 1 && s_hp > 1.0f)
 					s_hp -= dt;
