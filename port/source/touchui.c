@@ -1,11 +1,13 @@
 #include "touchui.h"
 #include "combat.h"
+#include "controls.h"
 #include "events.h"
 #include "font.h"
 #include "itemview.h"
 #include "map.h"
 #include "prog.h"
 #include "prog_int.h"
+#include "profile.h"
 #include "touchui_shbin.h"
 #include <citro3d.h>
 #include <math.h>
@@ -15,13 +17,13 @@
 
 // ---------------------------------------------------------------- state
 
-#define MAX_ROWS 24
-#define MAX_BUTTONS 5
-#define MAX_VERTS 4096
-#define SOLID_END 1536                // s_verts: solids, then pictures, then glyphs
-#define IMAGE_END 2048
-#define MAX_IMAGES 24
-#define MAX_HITS 48
+#define MAX_ROWS 64
+#define MAX_BUTTONS 6
+#define MAX_VERTS 8192
+#define SOLID_END 3584                // s_verts: solids, then pictures, then glyphs
+#define IMAGE_END 5120
+#define MAX_IMAGES 40
+#define MAX_HITS 96
 
 typedef struct {
 	bool on;
@@ -32,9 +34,11 @@ typedef struct {
 	char blabel[MAX_BUTTONS][16];
 	u32 bkey[MAX_BUTTONS];
 	int nb;
+	u64 dim;
+	int flags;
 } Menu;
 
-enum { HIT_KEY, HIT_ROW, HIT_PASS, HIT_ZOOM };
+enum { HIT_KEY, HIT_ROW, HIT_PASS, HIT_ZOOM, HIT_QUICK, HIT_DRAG };
 typedef struct { float x0, y0, x1, y1; u8 kind, menu; s16 row; u32 key; } Hit;
 typedef struct { float x, y, u, v; u8 c[4]; } Vert;
 
@@ -48,10 +52,17 @@ static char s_panel[512];
 static bool s_debug, s_movie, s_dirty = true;
 static int s_cond = -1;              // 0 Fine, 1 Caution, 2 Danger (the help screen's thresholds)
 static char s_weapon[40];
+static int s_heal[3];                // the healing items' counts (the quick slots)
+static bool s_have_light;
+static int s_quick, s_quick_item;    // a quick slot tapped, for touchui_quick
 
 static Hit s_hits[MAX_HITS];
 static int s_nhits;
 static u64 s_select_tick;
+static float s_press[4];             // the prompt last tapped lights for a moment
+static u64 s_press_tick;
+static bool s_drag;                  // a finger moving the zoomed map, and where it was
+static int s_drag_x, s_drag_y;
 
 static C3D_RenderTarget* s_target;
 static DVLB_s* s_dvlb;
@@ -63,27 +74,55 @@ static int s_nsolid, s_ntext;    // solids from the front of s_verts, glyphs fro
 static int s_nimage;             // picture vertices from SOLID_END
 static struct { C3D_Tex* tex; int first, count; } s_images[MAX_IMAGES];
 static int s_nimages;
-static float s_mini_zoom = 1.0f; // the small map: the screen's zoomed-out size times this
+static C3D_Tex s_grain[4];       // film grain, four noise frames swapped in place
+static bool s_grain_ok;
+static int s_grain_frame;
+#define MINI_NEAR 1.8f               // the small map: the screen's zoomed-out size times this
+#define MINI_CLOSE 3.4f              // and with the zoom ring on
+static float s_mini_zoom = MINI_NEAR;
 static u32 s_mini_key;
 static bool s_map_on, s_map_zoomed;
 static bool s_map_readable = true;
 static char s_map_name[48];
-static int s_item_ids[MAX_ROWS];  // the item menu's items (touchui_menu_items)
-static int s_model_item;          // this redraw's item model and where (itemview.c)
-static float s_model_rect[4], s_model_angle;
-static u64 s_model_tick;
 static PrintConsole s_console;
 static u16* s_offscreen;         // where the console writes while it is not shown
 
-// The PC's colours (font.c) and the screen's own darks.
+// The PC's colours (font.c) and the screen's own (port/UI.md, "The look"), 0xRRGGBBAA.
 static u32 s_white, s_grey_top, s_grey_bottom, s_yellow;
-#define BG 0x0c0c0cff
-#define FRAME 0x3a3a3aff
-#define BAR 0x3c1010ff
-#define BUTTON 0x1c1c1cff
-#define BUTTON_EDGE 0x5a5a5aff
+#define BG 0x0b0a0aff
+#define PANEL 0x000000ff
+#define RULE 0x4a4440ff
+#define LABEL 0x8a847cff
+#define DIM 0x55524eff
+#define RING 0xb4aea6ff
+#define RED 0x741010ff
+#define PAD 0x161313ff
+#define FOOT_Y 206.0f                 // the footer's rule; its prompts below it
+#define CLEAR(c) ((c) & 0xffffff00u)
 
 // ---------------------------------------------------------------- setup
+
+static void grain_init(void)
+{
+	u32 seed = 0x2c9277b5u;
+	s_grain_ok = true;
+	for (int f = 0; f < 4; f++) {
+		if (!C3D_TexInit(&s_grain[f], 64, 64, GPU_RGBA8)) {
+			s_grain_ok = false;
+			return;
+		}
+		// noise needs no swizzling: any order of random texels is the same noise
+		u32* px = (u32*)s_grain[f].data;
+		for (int i = 0; i < 64 * 64; i++) {
+			seed ^= seed << 13, seed ^= seed >> 17, seed ^= seed << 5;
+			u32 g = seed >> 24;
+			px[i] = g << 24 | g << 16 | g << 8 | 0x18;
+		}
+		C3D_TexFlush(&s_grain[f]);
+		C3D_TexSetFilter(&s_grain[f], GPU_NEAREST, GPU_NEAREST);
+		C3D_TexSetWrap(&s_grain[f], GPU_REPEAT, GPU_REPEAT);
+	}
+}
 
 void touchui_init(void)
 {
@@ -104,6 +143,7 @@ void touchui_init(void)
 	s_uProj = shaderInstanceGetUniformLocation(s_prog.vertexShader, "projection");
 	Mtx_OrthoTilt(&s_proj, 0.0f, 320.0f, 240.0f, 0.0f, 0.0f, 1.0f, true);
 	s_verts = linearAlloc(MAX_VERTS * sizeof(Vert));
+	grain_init();
 	u32 dummy;
 	font_pc_color(0, &s_white, &dummy);
 	font_pc_color(10, &s_grey_top, &s_grey_bottom);
@@ -115,19 +155,19 @@ void touchui_init(void)
 
 static void copy_buttons(char label[][16], u32* key, int* nb, const TouiButton* b, int n)
 {
-	*nb = n > MAX_BUTTONS ? MAX_BUTTONS : n;
+	*nb = n > MAX_BUTTONS ? MAX_BUTTONS : n < -1 ? -1 : n;
 	for (int i = 0; i < *nb; i++) {
 		snprintf(label[i], 16, "%s", b[i].label);
 		key[i] = b[i].key;
 	}
 }
 
-void touchui_menu(int id, const char* title, const char* const* rows, int n, int* sel, const TouiButton* buttons,
-                  int nbuttons)
+void touchui_menu_ex(int id, const char* title, const char* const* rows, int n, int* sel, const TouiButton* buttons,
+                     int nbuttons, u64 dim, int flags)
 {
 	if (id < 0 || id >= TOUI_MENUS)
 		return;
-	Menu m;
+	static Menu m;                   // big: off the stack
 	memset(&m, 0, sizeof m);
 	m.on = true;
 	snprintf(m.title, sizeof m.title, "%s", title ? title : "");
@@ -137,16 +177,18 @@ void touchui_menu(int id, const char* title, const char* const* rows, int n, int
 	m.sel = sel;
 	m.shown_sel = sel ? *sel : -1;
 	copy_buttons(m.blabel, m.bkey, &m.nb, buttons, nbuttons);
+	m.dim = dim;
+	m.flags = flags;
 	if (memcmp(&m, &s_menus[id], sizeof m)) {
 		s_menus[id] = m;
 		s_dirty = true;
 	}
 }
 
-void touchui_menu_items(const int* items, int n)
+void touchui_menu(int id, const char* title, const char* const* rows, int n, int* sel, const TouiButton* buttons,
+                  int nbuttons)
 {
-	for (int i = 0; i < MAX_ROWS; i++)
-		s_item_ids[i] = i < n ? items[i] : 0;
+	touchui_menu_ex(id, title, rows, n, sel, buttons, nbuttons, 0, 0);
 }
 
 void touchui_menu_close(int id)
@@ -154,10 +196,8 @@ void touchui_menu_close(int id)
 	if (id >= 0 && id < TOUI_MENUS && s_menus[id].on) {
 		s_menus[id].on = false;
 		s_dirty = true;
-		if (id == TOUI_ITEMS) {
+		if (id == TOUI_ITEMS)
 			itemview_free();             // the model's memory goes back with the item screen
-			s_model_tick = 0;
-		}
 	}
 }
 
@@ -228,7 +268,15 @@ void touchui_movie(bool on)
 	}
 }
 
-// ---------------------------------------------------------------- drawing
+int touchui_quick(int* item)
+{
+	int q = s_quick;
+	*item = s_quick_item;
+	s_quick = TQ_NONE;
+	return q;
+}
+
+// ---------------------------------------------------------------- drawing: shapes
 
 static void hit(float x0, float y0, float x1, float y1, int kind, int menu, int row, u32 key)
 {
@@ -241,39 +289,87 @@ static void put(Vert* v, float x, float y, u32 c)
 	*v = (Vert){ x, y, 0.0f, 0.0f, { c >> 24, c >> 16 & 0xff, c >> 8 & 0xff, c & 0xff } };
 }
 
-static void rect(float x0, float y0, float x1, float y1, u32 top, u32 bottom)
+static void tri(float x0, float y0, float x1, float y1, float x2, float y2, u32 c)
+{
+	if (s_nsolid + 3 > SOLID_END)
+		return;
+	Vert* v = &s_verts[s_nsolid];
+	put(&v[0], x0, y0, c), put(&v[1], x1, y1, c), put(&v[2], x2, y2, c);
+	s_nsolid += 3;
+}
+
+// A quad with a colour at each corner (top left, top right, bottom left, bottom right).
+static void quad4(float x0, float y0, float x1, float y1, u32 tl, u32 tr, u32 bl, u32 br)
 {
 	if (s_nsolid + 6 > SOLID_END)
 		return;
 	Vert* v = &s_verts[s_nsolid];
-	put(&v[0], x0, y0, top), put(&v[1], x0, y1, bottom), put(&v[2], x1, y1, bottom);
-	put(&v[3], x0, y0, top), put(&v[4], x1, y1, bottom), put(&v[5], x1, y0, top);
+	put(&v[0], x0, y0, tl), put(&v[1], x0, y1, bl), put(&v[2], x1, y1, br);
+	put(&v[3], x0, y0, tl), put(&v[4], x1, y1, br), put(&v[5], x1, y0, tr);
 	s_nsolid += 6;
 }
 
-static void frame_rect(float x0, float y0, float x1, float y1, u32 fill, u32 edge)
+static void rect(float x0, float y0, float x1, float y1, u32 top, u32 bottom)
 {
-	rect(x0, y0, x1, y1, edge, edge);
-	rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill, fill);
+	quad4(x0, y0, x1, y1, top, top, bottom, bottom);
+}
+
+static void outline(float x0, float y0, float x1, float y1, u32 c)
+{
+	rect(x0, y0, x1, y0 + 1, c, c);
+	rect(x0, y1 - 1, x1, y1, c, c);
+	rect(x0, y0 + 1, x0 + 1, y1 - 1, c, c);
+	rect(x1 - 1, y0 + 1, x1, y1 - 1, c, c);
+}
+
+// A one-pixel rule that fades out at both ends.
+static void rule(float x0, float x1, float y, u32 c)
+{
+	float m = (x0 + x1) * 0.5f;
+	quad4(x0, y, m, y + 1, CLEAR(c), c, CLEAR(c), c);
+	quad4(m, y, x1, y + 1, c, CLEAR(c), c, CLEAR(c));
+}
+
+// The chosen row's band: dark red, fading out at both ends.
+static void band(float x0, float y0, float x1, float y1)
+{
+	float f = (x1 - x0) * 0.18f;
+	quad4(x0, y0, x0 + f, y1, CLEAR(RED), RED, CLEAR(RED), RED);
+	rect(x0 + f, y0, x1 - f, y1, RED, RED);
+	quad4(x1 - f, y0, x1, y1, RED, CLEAR(RED), RED, CLEAR(RED));
+}
+
+static void circle(float cx, float cy, float r, u32 c)
+{
+	const int n = 20;
+	for (int i = 0; i < n; i++) {
+		float a0 = i * 6.2831853f / n, a1 = (i + 1) * 6.2831853f / n;
+		tri(cx, cy, cx + cosf(a0) * r, cy + sinf(a0) * r, cx + cosf(a1) * r, cy + sinf(a1) * r, c);
+	}
 }
 
 // A line of thickness w between two points (the heart trace).
 static void line(float x0, float y0, float x1, float y1, float w, u32 c)
 {
-	if (s_nsolid + 6 > SOLID_END)
-		return;
 	float dx = x1 - x0, dy = y1 - y0, l = sqrtf(dx * dx + dy * dy);
 	if (l < 0.01f)
 		return;
 	float nx = -dy / l * w * 0.5f, ny = dx / l * w * 0.5f;
-	Vert* v = &s_verts[s_nsolid];
-	put(&v[0], x0 + nx, y0 + ny, c), put(&v[1], x0 - nx, y0 - ny, c), put(&v[2], x1 - nx, y1 - ny, c);
-	put(&v[3], x0 + nx, y0 + ny, c), put(&v[4], x1 - nx, y1 - ny, c), put(&v[5], x1 + nx, y1 + ny, c);
-	s_nsolid += 6;
+	tri(x0 + nx, y0 + ny, x0 - nx, y0 - ny, x1 - nx, y1 - ny, c);
+	tri(x0 + nx, y0 + ny, x1 - nx, y1 - ny, x1 + nx, y1 + ny, c);
 }
 
-// Pictures (the small map, its marks; tex NULL for flat shapes such as the arrow), drawn after the
-// solids and before the text. Fits map.c's MapDrawFn.
+// A small arrow head pointing left, right, up or down (dx, dy), centred on (x, y).
+static void arrow(float x, float y, int dx, int dy, float s, u32 c)
+{
+	if (dx)
+		tri(x + dx * s, y, x - dx * s * 0.6f, y - s, x - dx * s * 0.6f, y + s, c);
+	else
+		tri(x, y + dy * s, x - s, y - dy * s * 0.6f, x + s, y - dy * s * 0.6f, c);
+}
+
+// Pictures (the small map, its marks, the grain; tex NULL for flat shapes such as the arrow), drawn
+// after the solids and before the text. Fits map.c's MapDrawFn.
 static void image(C3D_Tex* tex, const MapVert* mv, int n, u32 rgba)
 {
 	if (SOLID_END + s_nimage + n > IMAGE_END || s_nimages >= MAX_IMAGES)
@@ -291,6 +387,28 @@ static void image(C3D_Tex* tex, const MapVert* mv, int n, u32 rgba)
 	s_images[s_nimages - 1].count += n;
 }
 
+// Flat shapes in the pictures' layer (over the small map): a disc and a bar.
+static void disc(float cx, float cy, float r, u32 rgba)
+{
+	MapVert v[20 * 3];
+	for (int i = 0; i < 20; i++) {
+		float a0 = i * 6.2831853f / 20, a1 = (i + 1) * 6.2831853f / 20;
+		v[i * 3] = (MapVert){ cx, cy, 0, 0 };
+		v[i * 3 + 1] = (MapVert){ cx + cosf(a0) * r, cy + sinf(a0) * r, 0, 0 };
+		v[i * 3 + 2] = (MapVert){ cx + cosf(a1) * r, cy + sinf(a1) * r, 0, 0 };
+	}
+	image(NULL, v, 60, rgba);
+}
+
+static void bar_img(float x0, float y0, float x1, float y1, u32 rgba)
+{
+	MapVert v[6] = { { x0, y0, 0, 0 }, { x1, y0, 0, 0 }, { x1, y1, 0, 0 },
+	                 { x0, y0, 0, 0 }, { x1, y1, 0, 0 }, { x0, y1, 0, 0 } };
+	image(NULL, v, 6, rgba);
+}
+
+// ---------------------------------------------------------------- drawing: text
+
 static void text(int font, float x, float y, const char* s, int align, u32 top, u32 bottom)
 {
 	FontVert fv[6 * 80];
@@ -302,128 +420,357 @@ static void text(int font, float x, float y, const char* s, int align, u32 top, 
 	}
 }
 
-// Text with line breaks, one call per line (font_layout_px takes 80 glyphs at a time). A line
-// with three spaces in it is a "label   value" pair: the value goes to the right edge.
-static float text_block(int font, float x, float y, const char* s, int align, u32 top, u32 bottom)
+// White text a pixel off a dark shadow, as the chosen rows and titles are drawn.
+static void text_lit(int font, float x, float y, const char* s, int align, u32 c)
 {
-	char line[96];
-	float lh = font_line_px(font);
-	while (s && *s) {
-		const char* e = strchr(s, '\n');
-		int n = e ? (int)(e - s) : (int)strlen(s);
-		snprintf(line, sizeof line, "%.*s", n < 95 ? n : 95, s);
-		char* lead = line;
-		while (*lead == ' ')
-			lead++;
-		char* gap = align == FONT_LEFT ? strstr(lead, "   ") : NULL;
-		if (gap) {
-			*gap = 0;
-			for (gap += 3; *gap == ' '; gap++)
-				;
-			text(font, 320.0f - x, y, gap, FONT_RIGHT, top, bottom);
-		}
-		text(font, x, y, line, align, top, bottom);
-		y += lh;
-		s = e ? e + 1 : s + n;
-	}
-	return y;
+	text(font, x + 1, y + 1, s, align, 0x000000c0, 0x000000c0);
+	text(font, x, y, s, align, c, c);
 }
 
-static void button(float x0, float y0, float x1, float y1, const char* label, u32 key)
+// A title, spread a little and centred on x.
+static float spaced_width(int font, const char* s, float gap)
 {
-	frame_rect(x0, y0, x1, y1, BUTTON, BUTTON_EDGE);
-	text(FONT_SMALL, (x0 + x1) * 0.5f, (y0 + y1) * 0.5f - font_line_px(FONT_SMALL) * 0.5f, label, FONT_CENTER, s_white,
-	     s_white);
+	float w = 0.0f;
+	char one[2] = { 0, 0 };
+	for (const char* c = s; *c; c++) {
+		one[0] = *c;
+		w += font_width_px(font, one) + (c[1] ? gap : 0.0f);
+	}
+	return w;
+}
+
+static void text_spaced(int font, float cx, float y, const char* s, float gap, u32 c)
+{
+	float x = cx - spaced_width(font, s, gap) * 0.5f;
+	char one[2] = { 0, 0 };
+	for (const char* p = s; *p; p++) {
+		one[0] = *p;
+		text_lit(font, x, y, one, FONT_LEFT, c);
+		x += font_width_px(font, one) + gap;
+	}
+}
+
+// A small grey capitals label ("CONDITION").
+static void label(float x, float y, const char* s, int align)
+{
+	char up[32];
+	int i = 0;
+	for (; s[i] && i < 31; i++)
+		up[i] = s[i] >= 'a' && s[i] <= 'z' ? s[i] - 32 : s[i];
+	up[i] = 0;
+	text(FONT_SMALL, x, y, up, align, LABEL, LABEL);
+}
+
+// ---------------------------------------------------------------- drawing: the kit
+
+// The button's name on its glyph: NULL for the D-Pad and the C-Stick's directions (an arrow).
+static const char* key_name(u32 key)
+{
+	static const struct { u32 key; const char* name; } names[] = {
+		{ KEY_A, "A" }, { KEY_B, "B" }, { KEY_X, "X" }, { KEY_Y, "Y" }, { KEY_L, "L" }, { KEY_R, "R" },
+		{ KEY_ZL, "ZL" }, { KEY_ZR, "ZR" }, { KEY_START, "START" }, { KEY_SELECT, "SELECT" },
+		{ KEY_CSTICK_UP, "C" }, { KEY_CSTICK_DOWN, "C" }, { KEY_CSTICK_LEFT, "C" }, { KEY_CSTICK_RIGHT, "C" },
+	};
+	for (u32 i = 0; i < sizeof names / sizeof *names; i++)
+		if (key & names[i].key)
+			return names[i].name;
+	return NULL;
+}
+
+static bool key_dpad(u32 key) { return key & (KEY_DUP | KEY_DDOWN | KEY_DLEFT | KEY_DRIGHT); }
+
+static float glyph_width(u32 key)
+{
+	if (!key)
+		return 0.0f;
+	const char* n = key_name(key);
+	if (!n)
+		return 12.0f;
+	return n[1] ? font_width_px(FONT_SMALL, n) + 11.0f : 15.0f;
+}
+
+// A letter (or a short name) placed on whole pixels with its ink centred as near (cx, cy) as the
+// pixel grid allows; out: the ink's real centre, which the ring or tag around it is drawn on.
+static void ink_text(int font, float cx, float cy, const char* s, u32 c, float* ox, float* oy)
+{
+	float x0, y0, x1, y1;
+	*ox = cx, *oy = cy;
+	if (!font_ink_px(font, s, &x0, &y0, &x1, &y1))
+		return;
+	float x = floorf(cx - (x0 + x1) * 0.5f + 0.5f), y = floorf(cy - (y0 + y1) * 0.5f + 0.5f);
+	text(font, x, y, s, FONT_LEFT, c, c);
+	*ox = x + (x0 + x1) * 0.5f, *oy = y + (y0 + y1) * 0.5f;
+}
+
+// The button's glyph from x, centred on cy: a ring with its letter, a rounded tag for the longer
+// names, an arrow for the D-Pad. The ring goes round the letter's ink, not its cell.
+static void glyph(float x, float cy, u32 key, u32 c)
+{
+	const char* n = key_name(key);
+	if (!n) {
+		if (key_dpad(key)) {
+			int dx = key & KEY_DLEFT ? -1 : key & KEY_DRIGHT ? 1 : 0, dy = key & KEY_DUP ? -1 : key & KEY_DDOWN ? 1 : 0;
+			arrow(x + 6, cy, dx, dy, 4.5f, c);
+		}
+		return;
+	}
+	float w = glyph_width(key), lx, ly;
+	ink_text(FONT_SMALL, x + w * 0.5f, cy, n, c, &lx, &ly);
+	if (!n[1]) {
+		circle(lx, ly, 7.0f, c);
+		circle(lx, ly, 5.8f, BG);
+		return;
+	}
+	float l = lx - w * 0.5f, r = lx + w * 0.5f;
+	circle(l + 7, ly, 7.0f, c), circle(r - 7, ly, 7.0f, c);
+	rect(l + 7, ly - 7, r - 7, ly + 7, c, c);
+	circle(l + 7, ly, 5.8f, BG), circle(r - 7, ly, 5.8f, BG);
+	rect(l + 7, ly - 5.8f, r - 7, ly + 5.8f, BG, BG);
+}
+
+// The prompts under the footer's rule, each in an equal share of the width; a dim prompt can't be
+// taken (no hit).
+static void footer(char label_[][16], const u32* key, int n, u32 dim)
+{
+	if (!n)
+		return;
+	rule(12, 308, FOOT_Y, RULE);
+	float slot = 304.0f / n, cy = 223.0f;
+	for (int i = 0; i < n; i++) {
+		bool off = dim >> i & 1;
+		u32 c = off ? DIM : RING;
+		float gw = glyph_width(key[i]), lw = font_width_px(FONT_SMALL, label_[i]);
+		float w = gw + (gw > 0 && lw > 0 ? 5.0f : 0.0f) + lw;
+		float x = 8 + slot * i + (slot - w) * 0.5f;
+		glyph(x, cy, key[i], c);
+		text(FONT_SMALL, x + w - lw, cy - font_line_px(FONT_SMALL) * 0.5f, label_[i], FONT_LEFT, off ? DIM : s_grey_top,
+		     off ? DIM : s_grey_bottom);
+		if (!off)
+			hit(8 + slot * i, FOOT_Y + 1, 8 + slot * (i + 1), 240, HIT_KEY, 0, 0, key[i]);
+	}
+}
+
+// The background: black, a dark edge all round.
+static void backdrop(void)
+{
+	rect(0, 0, 320, 240, BG, BG);
+	const u32 edge = 0x000000a0;
+	rect(0, 0, 320, 26, edge, CLEAR(edge));
+	rect(0, 214, 320, 240, CLEAR(edge), edge);
+	quad4(0, 0, 30, 240, edge, CLEAR(edge), edge, CLEAR(edge));
+	quad4(290, 0, 320, 240, CLEAR(edge), edge, CLEAR(edge), edge);
+}
+
+// A centred title between two rules that fade out towards the edges.
+static void header(const char* title)
+{
+	if (!title || !*title)
+		return;
+	float w = spaced_width(FONT_BIG, title, 1.0f), y = 7.0f, mid = y + font_line_px(FONT_BIG) * 0.5f;
+	text_spaced(FONT_BIG, 160, y, title, 1.0f, s_white);
+	float l = 160 - w * 0.5f - 10, r = 160 + w * 0.5f + 10;
+	if (l > 30) {
+		quad4(14, mid, l, mid + 1, CLEAR(RULE), RULE, CLEAR(RULE), RULE);
+		quad4(r, mid, 306, mid + 1, RULE, CLEAR(RULE), RULE, CLEAR(RULE));
+	}
+}
+
+// A touch pad (the map's and the panels' arrows): a dark cell with a thin edge.
+static void pad(float x0, float y0, float x1, float y1, const char* label_, u32 key, int dx, int dy)
+{
+	rect(x0, y0, x1, y1, PAD, PAD);
+	outline(x0, y0, x1, y1, RULE);
+	float cx = (x0 + x1) * 0.5f, cy = (y0 + y1) * 0.5f;
+	if (label_ && *label_) {
+		if (dx || dy)
+			arrow(cx, y0 + 9, dx, dy, 4.0f, RING), cy += 4;
+		text(FONT_SMALL, cx, cy - font_line_px(FONT_SMALL) * 0.5f, label_, FONT_CENTER, s_grey_top, s_grey_bottom);
+	} else {
+		arrow(cx, cy, dx, dy, 6.0f, RING);
+	}
 	hit(x0, y0, x1, y1, HIT_KEY, 0, 0, key);
 }
 
-static void button_row(char label[][16], const u32* key, int nb, float y)
-{
-	if (!nb)
-		return;
-	float w = (304.0f - 6.0f * (nb - 1)) / nb;
-	for (int i = 0; i < nb; i++)
-		button(8 + i * (w + 6), y, 8 + i * (w + 6) + w, y + 30, label[i], key[i]);
-}
-
-static void screen_frame(const char* title)
-{
-	rect(0, 0, 320, 240, BG, BG);
-	frame_rect(3, 3, 317, 237, BG, FRAME);
-	if (title && *title) {
-		text(FONT_BIG, 160, 8, title, FONT_CENTER, s_white, s_white);
-		rect(16, 26, 304, 27, FRAME, FRAME);
-	}
-}
+// ---------------------------------------------------------------- the pages
 
 static void draw_menu(int id)
 {
 	Menu* m = &s_menus[id];
-	screen_frame(m->title);
+	header(m->title);
 	int sel = m->sel ? *m->sel : -1;
-	float right = 310;
-	if (id == TOUI_ITEMS) {
-		int item = sel >= 0 && sel < m->n ? s_item_ids[sel] : 0;
-		if (item > 0 && itemview_has(item)) {
-			right = 176;
-			frame_rect(182, 32, 312, 170, 0x000000ff, FRAME);
-			if (!s_model_tick)
-				s_model_tick = svcGetSystemTick();
-			s_model_item = item;
-			s_model_rect[0] = 183, s_model_rect[1] = 33, s_model_rect[2] = 311, s_model_rect[3] = 169;
-			s_model_angle = (float)(svcGetSystemTick() - s_model_tick) / (float)SYSCLOCK_ARM11 * 0.9f;
-		} else {
-			s_model_tick = 0;
-		}
-	}
-	float lh = font_line_px(FONT_BIG) + 2.0f;
-	int fit = (int)((m->nb ? 160.0f : 196.0f) / lh);
+	float right = 312;
+	float top = 32.0f, bottom = m->nb ? FOOT_Y - 4 : 234.0f;
+	float rh = m->n ? (bottom - top) / m->n : 20.0f;
+	rh = rh > 24.0f ? 24.0f : rh < 19.0f ? 19.0f : rh;
+	int fit = (int)((bottom - top) / rh);
 	int first = sel - fit / 2;
 	first = first > m->n - fit ? m->n - fit : first;
 	first = first < 0 ? 0 : first;
+	float lh = font_line_px(FONT_BIG);
 	for (int i = first; i < m->n && i < first + fit; i++) {
-		float y = 34 + (i - first) * lh;
-		bool on = i == sel;
+		float y = top + (i - first) * rh, ty = y + (rh - lh) * 0.5f;
+		bool on = i == sel, off = m->dim >> i & 1;
 		if (on)
-			rect(10, y - 1, right, y + lh - 2, BAR, BAR);
-		u32 ct = on ? s_yellow : s_grey_top, cb = on ? s_yellow : s_grey_bottom;
-		// "Label    value" rows (the console's columns): the value goes to the right edge
+			band(8, y, right, y + rh - 1);
+		u32 ct = off ? DIM : s_grey_top, cb = off ? DIM : s_grey_bottom;
+		// "Label    value" rows: the value goes to the right edge, a "< value >" one with the
+		// PC's arrows either side while it is chosen
 		const char* gap = strstr(m->rows[i], "  ");
+		char lab[48];
+		snprintf(lab, sizeof lab, "%.*s", gap ? (int)(gap - m->rows[i]) : 47, m->rows[i]);
+		if (on && !off)
+			text_lit(FONT_BIG, 22, ty, lab, FONT_LEFT, s_white);
+		else
+			text(FONT_BIG, 22, ty, lab, FONT_LEFT, ct, cb);
+		bool lr = false;
 		if (gap) {
-			char label[48];
-			snprintf(label, sizeof label, "%.*s", (int)(gap - m->rows[i]), m->rows[i]);
 			while (*gap == ' ')
 				gap++;
-			text(FONT_BIG, 18, y, label, FONT_LEFT, ct, cb);
-			text(FONT_BIG, right - 8, y, gap, FONT_RIGHT, ct, cb);
-		} else {
-			text(FONT_BIG, 18, y, m->rows[i], FONT_LEFT, ct, cb);
+			char val[48];
+			snprintf(val, sizeof val, "%s", gap);
+			size_t k = strlen(val);
+			if (val[0] == '<' && k > 2 && val[k - 1] == '>') {
+				lr = true;
+				val[k - 1] = 0;
+				char* v = val + 1;
+				while (*v == ' ')
+					v++;
+				for (char* e = v + strlen(v); e > v && e[-1] == ' '; )
+					*--e = 0;
+				memmove(val, v, strlen(v) + 1);
+			}
+			float vx = right - (lr ? 18 : 10);
+			if (on && !off)
+				text_lit(FONT_BIG, vx, ty, val, FONT_RIGHT, s_white);
+			else
+				text(FONT_BIG, vx, ty, val, FONT_RIGHT, ct, cb);
+			if (lr && on) {
+				float w = font_width_px(FONT_BIG, val), cy = y + rh * 0.5f;
+				arrow(vx - w - 8, cy, -1, 0, 3.5f, RING);
+				arrow(right - 9, cy, 1, 0, 3.5f, RING);
+			}
 		}
-		hit(10, y - 1, right, y + lh - 2, HIT_ROW, id, i, strchr(m->rows[i], '<') ? 1 : 0);
+		hit(8, y, right, y + rh, HIT_ROW, id, i, lr ? 1 : 0);
 	}
-	button_row(m->blabel, m->bkey, m->nb, 202);
+	if (first > 0)
+		arrow(right - 4, top - 3, 0, -1, 3.0f, RING);
+	if (first + fit < m->n)
+		arrow(right - 4, bottom + 1, 0, 1, 3.0f, RING);
+	footer(m->blabel, m->bkey, m->nb, 0);
 }
 
 static void draw_box(void)
 {
-	screen_frame(NULL);
 	int lines = 1;
 	for (const char* c = s_box; *c; c++)
 		lines += *c == '\n';
-	text_block(lines > 9 ? FONT_SMALL : FONT_BIG, 18, lines > 9 ? 10 : 24, s_box, FONT_LEFT, s_white, s_white);
-	if (s_box_nb)
-		button_row(s_box_label, s_box_key, s_box_nb, 202);
-	else
-		hit(0, 0, 320, 240, HIT_KEY, 0, 0, KEY_A);
+	int f = lines > 9 ? FONT_SMALL : FONT_BIG;
+	float y = lines > 9 ? 10 : 18;
+	char ln[96];
+	for (const char* s = s_box; *s; ) {
+		const char* e = strchr(s, '\n');
+		int n = e ? (int)(e - s) : (int)strlen(s);
+		snprintf(ln, sizeof ln, "%.*s", n < 95 ? n : 95, s);
+		text_lit(f, 20, y, ln, FONT_LEFT, s_white);
+		y += font_line_px(f);
+		s = e ? e + 1 : s + n;
+	}
+	if (s_box_nb < 0)
+		return;                          // a subtitle over the game: no prompt, the taps aren't ours
+	hit(0, 0, 320, FOOT_Y, HIT_KEY, 0, 0, s_box_nb ? 0 : KEY_A);
+	if (s_box_nb) {
+		footer(s_box_label, s_box_key, s_box_nb, 0);
+	} else {
+		static char next[1][16] = { "Next" };
+		static const u32 a[1] = { KEY_A };
+		footer(next, a, 1, 0);
+	}
 }
 
+// A stage program's panel (puzzles, the hospital lift, keypads): text written for the old console,
+// so its last line holds the keys ("D-pad: floor  A: press  B: leave"). That line becomes the
+// footer (A with its verb, B as Back) and a touch D-pad under its own caption; a line with the
+// console's ">" cursor gets the red band.
 static void draw_panel(void)
 {
-	screen_frame(NULL);
-	text_block(FONT_SMALL, 14, 10, s_panel, FONT_LEFT, s_white, s_white);
-	static char labels[6][16] = { "<", "^", "v", ">", "A", "B" };
-	static const u32 keys[6] = { KEY_DLEFT, KEY_DUP, KEY_DDOWN, KEY_DRIGHT, KEY_A, KEY_B };
-	button_row(labels, keys, 6, 202);
+	char body[512], help[160] = "";
+	snprintf(body, sizeof body, "%s", s_panel);
+	for (char* ln = body; ln && *ln; ) {
+		// a line of keys: one with "A: ", "D-pad: ", "Left/Right: " or "Up/Down: " in it
+		char* e = strchr(ln, '\n');
+		int n = e ? (int)(e - ln) : (int)strlen(ln);
+		char one[96];
+		snprintf(one, sizeof one, "%.*s", n < 95 ? n : 95, ln);
+		if (strstr(one, "A: ") || strstr(one, "D-pad: ") || strstr(one, "Left/Right: ") || strstr(one, "Up/Down: ")) {
+			size_t k = strlen(help);
+			snprintf(help + k, sizeof help - k, "%s%s", k ? "  " : "", one);
+			const char* rest = e ? e + 1 : ln + n;
+			memmove(ln, rest, strlen(rest) + 1);
+			continue;
+		}
+		ln = e ? e + 1 : NULL;
+	}
+	for (char* e = body + strlen(body); e > body && (e[-1] == '\n' || e[-1] == ' '); )
+		*--e = 0;                        // the blank lines the console kept above its keys
+	// the keys: "<keys>: <verb>" pairs two spaces apart
+	char a_verb[16] = "OK", pad_verb[32] = "";
+	for (char* t = help; *t; ) {
+		while (*t == ' ')
+			t++;
+		char* colon = strstr(t, ": ");
+		if (!colon)
+			break;
+		char* end = strstr(colon + 2, "  ");
+		int vn = end ? (int)(end - colon - 2) : (int)strlen(colon + 2);
+		if (!strncmp(t, "A:", 2)) {
+			snprintf(a_verb, sizeof a_verb, "%.*s", vn, colon + 2);
+		} else if (strncmp(t, "B:", 2)) {           // D-pad, Left/Right, Up/Down
+			size_t k = strlen(pad_verb);
+			snprintf(pad_verb + k, sizeof pad_verb - k, "%s%.*s", k ? " / " : "", vn, colon + 2);
+		}
+		t = end ? end : colon + 2 + vn;
+	}
+	if (a_verb[0] >= 'a' && a_verb[0] <= 'z')
+		a_verb[0] -= 32;
+	// the text, the cursor's line on the band
+	int lines = 0;
+	for (const char* c = body; *c; c++)
+		lines += *c == '\n';
+	int f = lines > 11 ? FONT_SMALL : FONT_BIG;
+	float y = 10, lh = font_line_px(f) + (f == FONT_BIG ? 1.0f : 0.0f);
+	char ln[96];
+	for (const char* p = body; *p; ) {
+		const char* e = strchr(p, '\n');
+		int n = e ? (int)(e - p) : (int)strlen(p);
+		snprintf(ln, sizeof ln, "%.*s", n < 95 ? n : 95, p);
+		char* lead = ln;
+		while (*lead == ' ')
+			lead++;
+		if (lead[0] == '>' && lead[1] == ' ') {
+			*lead = ' ';
+			band(8, y - 2, help[0] ? 224 : 312, y + lh - 1);
+			text_lit(f, 16, y, ln, FONT_LEFT, s_white);
+		} else {
+			text(f, 16, y, ln, FONT_LEFT, s_grey_top, s_grey_bottom);
+		}
+		y += lh;
+		p = e ? e + 1 : p + n;
+	}
+	// the D-pad, a cross of pads in the bottom right
+	if (help[0]) {
+		float cx = 272, cy = 150, r = 15;
+		if (pad_verb[0])
+			label(cx, cy - 3 * r - 6, pad_verb, FONT_CENTER);
+		pad(cx - r, cy - 3 * r, cx + r, cy - r, "", KEY_DUP, 0, -1);
+		pad(cx - r, cy + r, cx + r, cy + 3 * r, "", KEY_DDOWN, 0, 1);
+		pad(cx - 3 * r, cy - r, cx - r, cy + r, "", KEY_DLEFT, -1, 0);
+		pad(cx + r, cy - r, cx + 3 * r, cy + r, "", KEY_DRIGHT, 1, 0);
+	}
+	char labels[2][16];
+	snprintf(labels[0], 16, "%s", a_verb);
+	snprintf(labels[1], 16, "Back");
+	static const u32 keys[2] = { KEY_A, KEY_B };
+	footer(labels, keys, 2, 0);
 }
 
 static MapPlayer player(void)
@@ -437,39 +784,56 @@ static MapPlayer player(void)
 	return p;
 }
 
-// In play: the map around James (a tap opens the map screen, the corner button zooms), his
-// condition the way the PC's item screen shows it (a heartbeat line in the condition's colour:
-// Fine green, Caution yellow, Danger red, with its word), the weapon and its rounds.
-static void draw_play(void)
+// The lowest button bound to an action, which a prompt shows and a tap presses.
+static u32 bound(ControlsAction act)
 {
-	screen_frame(NULL);
-	frame_rect(8, 8, 190, 172, 0x000000ff, FRAME);
-	MapPlayer pl = player();
-	if (!s_map_readable)
-		text(FONT_SMALL, 99, 84, "Too dark to read", FONT_CENTER, s_grey_top, s_grey_bottom);
-	else if (!map_mini(&pl, image, 9, 9, 189, 171, s_mini_zoom))
-		text(FONT_SMALL, 99, 84, "No map", FONT_CENTER, s_grey_top, s_grey_bottom);
-	hit(8, 8, 190, 172, HIT_PASS, 0, 0, 0);
-	frame_rect(8, 176, 190, 196, BUTTON, BUTTON_EDGE);
-	text(FONT_SMALL, 99, 186 - font_line_px(FONT_SMALL) * 0.5f, s_mini_zoom > 1.5f ? "Zoom out" : "Zoom in", FONT_CENTER,
-	     s_white, s_white);
-	hit(8, 176, 190, 196, HIT_ZOOM, 0, 0, 0);
+	u32 k = controls_keys(act);
+	return k & -k;
+}
 
+// In play (port/UI.md, "The play page"): the map around James (a tap opens the map screen, the
+// ring in its corner zooms), his condition the way the PC's item screen shows it (a heartbeat
+// line in the condition's colour: Fine green, Caution yellow, Danger red, with its word), the
+// weapon and its rounds (a tap: the next weapon), the healing items (a tap uses one) and the
+// prompts. waiting: a message is up on the top screen, and the footer is its "Next".
+static void draw_play(bool waiting)
+{
+	rect(6, 6, 214, 200, PANEL, PANEL);
+	outline(6, 6, 214, 200, RULE);
+	MapPlayer pl = player();
+	float sl = font_line_px(FONT_SMALL);
+	if (!s_map_readable)
+		text(FONT_SMALL, 110, 103 - sl * 0.5f, "Too dark to read", FONT_CENTER, DIM, DIM);
+	else if (!map_mini(&pl, image, 7, 7, 213, 199, s_mini_zoom))
+		text(FONT_SMALL, 110, 103 - sl * 0.5f, "No map", FONT_CENTER, DIM, DIM);
+	hit(6, 6, 214, 200, HIT_PASS, 0, 0, 0);
+	if (s_map_readable) {
+		// the zoom ring in the map's corner, drawn with the pictures so the map never covers it
+		// the ring round (198, 184), its bars one whole pixel wide on either side of that
+		disc(198, 184, 9.0f, 0x000000c0);
+		disc(198, 184, 8.0f, RING);
+		disc(198, 184, 6.8f, PAD);
+		bar_img(195, 184, 202, 185, RING);
+		if (s_mini_zoom < MINI_CLOSE - 0.1f)
+			bar_img(198, 181, 199, 188, RING);
+		hit(182, 168, 214, 200, HIT_ZOOM, 0, 0, 0);
+	}
+
+	// condition
 	static const char* const word[3] = { "Fine", "Caution", "Danger" };
 	static const u32 col[3] = { 0x40d040ff, 0xe0c030ff, 0xe03020ff };
 	int c = s_cond < 0 ? 0 : s_cond;
-	text(FONT_SMALL, 198, 10, "Condition", FONT_LEFT, s_grey_top, s_grey_bottom);
-	frame_rect(196, 26, 312, 82, 0x000000ff, FRAME);
+	label(224, 6, "Condition", FONT_LEFT);
+	rect(222, 19, 314, 55, PANEL, PANEL);
+	outline(222, 19, 314, 55, RULE);
 	static const float beat[] = { 0, 0, 0.1f, -0.15f, 0.1f, 0, 0, 0.05f, -0.9f, 0.7f, -0.1f, 0, 0.12f, 0.18f, 0.08f, 0, 0 };
 	const int nb = (int)(sizeof beat / sizeof *beat);
-	float amp = c == 0 ? 20.0f : c == 1 ? 14.0f : 9.0f;
-	for (int i = 0; i + 1 < nb; i++) {
-		float x0 = 200 + i * 6.7f, x1 = x0 + 6.7f;
-		line(x0, 52 + beat[i] * amp, x1, 52 + beat[i + 1] * amp, 1.6f, col[c]);
-	}
-	text(FONT_BIG, 254, 86, word[c], FONT_CENTER, col[c], col[c]);
-	text(FONT_SMALL, 198, 116, "Weapon", FONT_LEFT, s_grey_top, s_grey_bottom);
-	// "name  loaded / spare": the name, then the rounds below it
+	float amp = c == 0 ? 15.0f : c == 1 ? 11.0f : 7.0f, step = 86.0f / (nb - 1);
+	for (int i = 0; i + 1 < nb; i++)
+		line(225 + i * step, 37 + beat[i] * amp, 225 + (i + 1) * step, 37 + beat[i + 1] * amp, 1.4f, col[c]);
+	text(FONT_BIG, 268, 58, word[c], FONT_CENTER, col[c], col[c]);
+
+	// the weapon: "name  loaded / spare", the name, then the rounds below it
 	char name[40], rounds[24] = "";
 	snprintf(name, sizeof name, "%s", s_weapon);
 	char* gap = strstr(name, "  ");
@@ -479,33 +843,75 @@ static void draw_play(void)
 			;
 		snprintf(rounds, sizeof rounds, "%s", gap);
 	}
-	text(FONT_BIG, 254, 132, name, FONT_CENTER, s_white, s_white);
-	if (rounds[0])
-		text(FONT_BIG, 254, 152, rounds, FONT_CENTER, s_white, s_white);
-	button(8, 202, 104, 232, "Items", KEY_Y);
-	button(112, 202, 208, 232, "Light", KEY_X);
-	button(216, 202, 312, 232, "Pause", KEY_START);
+	label(224, 80, "Weapon", FONT_LEFT);
+	if (name[0]) {
+		int f = font_width_px(FONT_BIG, name) > 80.0f ? FONT_SMALL : FONT_BIG;
+		text_lit(f, 224, 94 + (f == FONT_SMALL ? 2 : 0), name, FONT_LEFT, s_white);
+		if (rounds[0])
+			text(FONT_SMALL, 224, 110, rounds, FONT_LEFT, s_grey_top, s_grey_bottom);
+		arrow(309, 101, 1, 0, 3.5f, RING);
+		u32 k = bound(ACT_WEAPON_NEXT);
+		if (k)
+			hit(220, 76, 318, 124, HIT_KEY, 0, 0, k);
+	} else {
+		text(FONT_SMALL, 224, 96, "None", FONT_LEFT, DIM, DIM);
+	}
+
+	// the quick slots: the three healing items
+	static const char* const heal[3] = { "Drink", "First Aid", "Ampoule" };
+	label(224, 132, "Healing", FONT_LEFT);
+	for (int i = 0; i < 3; i++) {
+		float y = 146 + 18 * i;
+		bool have = s_heal[i] > 0;
+		u32 t = have ? s_grey_top : DIM, b = have ? s_grey_bottom : DIM;
+		text(FONT_SMALL, 224, y + 3, heal[i], FONT_LEFT, t, b);
+		char n[8];
+		snprintf(n, sizeof n, "x%d", s_heal[i]);
+		text(FONT_SMALL, 312, y + 3, n, FONT_RIGHT, t, b);
+		if (have && !waiting)
+			hit(220, y, 318, y + 18, HIT_QUICK, 0, 0, (u32)(i + 1));
+	}
+
+	if (waiting) {
+		// a message on the top screen: the whole page is its A
+		s_nhits = 0;
+		hit(0, 0, 320, 240, HIT_KEY, 0, 0, KEY_A);
+		static char next[1][16] = { "Next" };
+		static const u32 a[1] = { KEY_A };
+		footer(next, a, 1, 0);
+		return;
+	}
+	// the map is the map itself: a tap on it opens it, so it has no prompt
+	char labels[3][16] = { "Items", "Light", "Pause" };
+	u32 keys[3] = { bound(ACT_ITEMS), bound(ACT_FLASHLIGHT), KEY_START };
+	footer(labels, keys, 3, s_have_light ? 0 : 2);
 }
 
 // The map screen (on the top screen): its name, the other floors and maps, zoom and close; while
 // zoomed in, the arrows scroll for as long as they are held.
 static void draw_map(void)
 {
-	screen_frame(s_map_name);
-	static char la[6][16] = { "Up", "Down", "<", ">", "Zoom", "Close" };
+	header(s_map_name);
 	if (s_map_zoomed) {
-		snprintf(la[0], 16, "^"), snprintf(la[1], 16, "v"), snprintf(la[4], 16, "Out");
+		// zoomed in: the page is a pad that moves the map under the finger
+		float lh = font_line_px(FONT_SMALL);
+		rect(16, 34, 304, 198, PAD, PAD);
+		outline(16, 34, 304, 198, RULE);
+		arrow(160, 60, 0, -1, 5.0f, DIM), arrow(160, 172, 0, 1, 5.0f, DIM);
+		arrow(60, 116, -1, 0, 5.0f, DIM), arrow(260, 116, 1, 0, 5.0f, DIM);
+		text(FONT_SMALL, 160, 116 - lh * 0.5f, "Drag to move the map", FONT_CENTER, s_grey_top, s_grey_bottom);
+		hit(16, 34, 304, 198, HIT_DRAG, 0, 0, 0);
 	} else {
-		snprintf(la[0], 16, "Floor up"), snprintf(la[1], 16, "Floor down"), snprintf(la[4], 16, "Zoom");
+		pad(110, 40, 210, 80, "Floor up", KEY_DUP, 0, -1);
+		pad(110, 140, 210, 180, "Floor down", KEY_DDOWN, 0, 1);
+		pad(20, 90, 104, 130, "Other map", KEY_DLEFT, -1, 0);
+		pad(216, 90, 300, 130, "Other map", KEY_DRIGHT, 1, 0);
 	}
-	button(110, 40, 210, 80, la[0], KEY_DUP);
-	button(110, 120, 210, 160, la[1], KEY_DDOWN);
-	button(20, 80, 100, 120, la[2], KEY_DLEFT);
-	button(220, 80, 300, 120, la[3], KEY_DRIGHT);
-	button(8, 202, 156, 232, la[4], KEY_A);
-	button(164, 202, 312, 232, la[5], KEY_B);
-	if (!s_map_zoomed)
-		text(FONT_SMALL, 160, 172, "< > other maps", FONT_CENTER, s_grey_top, s_grey_bottom);
+	static char la[2][16];
+	snprintf(la[0], 16, "%s", s_map_zoomed ? "Zoom out" : "Zoom in");
+	snprintf(la[1], 16, "Back");
+	static const u32 keys[2] = { KEY_A, KEY_B };
+	footer(la, keys, 2, 0);
 }
 
 void touchui_map_readable(bool yes)
@@ -529,29 +935,35 @@ void touchui_map(bool open)
 
 static void draw_movie(void)
 {
-	screen_frame(NULL);
-	button(100, 104, 220, 136, "Skip", KEY_START);
+	static char skip[1][16] = { "Skip" };
+	static const u32 keys[1] = { KEY_START };
+	footer(skip, keys, 1, 0);
 }
-
 
 static void status_check(void)
 {
 	float hp = combat_hp(), max = combat_hp_max();
 	int cond = hp > 0.7f * max ? 0 : hp > 0.35f * max ? 1 : 2;
-	const char* w = combat_weapon_line();
+	// "name  loaded / spare": the item's own name (combat's is a short one), then the rounds
+	int item = combat_weapon_item(), in_gun, spare;
+	const char* name = item ? ev_item_name(item) : NULL;
 	char weapon[40];
-	snprintf(weapon, sizeof weapon, "%s", w ? w : "");
-	for (char* e = weapon + strlen(weapon); e > weapon && e[-1] == ' '; )
-		*--e = 0;
+	int k = snprintf(weapon, sizeof weapon, "%.*s", name ? (int)strcspn(name, "\n") : 0, name ? name : "");
+	if (combat_weapon_rounds(&in_gun, &spare) && k < (int)sizeof weapon)
+		snprintf(weapon + k, sizeof weapon - k, "  %d / %d", in_gun, spare);
 	MapPlayer pl = player();
 	u32 key = s_map_readable ? map_mini_key(&pl, s_mini_zoom) : 1;
 	if (key != s_mini_key) {
 		s_mini_key = key;
 		s_dirty = true;
 	}
-	if (cond != s_cond || strcmp(weapon, s_weapon)) {
+	int heal[3] = { ev_item_count(1), ev_item_count(2), ev_item_count(3) };
+	bool light = ev_have_item(18);
+	if (cond != s_cond || strcmp(weapon, s_weapon) || memcmp(heal, s_heal, sizeof heal) || light != s_have_light) {
 		s_cond = cond;
 		memcpy(s_weapon, weapon, sizeof s_weapon);
+		memcpy(s_heal, heal, sizeof heal);
+		s_have_light = light;
 		s_dirty = true;
 	}
 }
@@ -591,29 +1003,45 @@ void touchui_frame(void)
 {
 	if (!s_target || !s_verts || !font_ready())
 		return;
-	if (top_menu() < 0 && !s_box_on && !s_panel[0] && !s_movie && !s_map_on)
+	if (top_menu() < 0 && !s_panel[0] && !s_movie && !s_map_on)
 		status_check();
-	static u32 frame;
-	if (s_model_tick && top_menu() == TOUI_ITEMS && (++frame & 1))
-		s_dirty = true;                  // the item model turns: about 30 redraws a second
+	u64 now = svcGetSystemTick();
+	if (s_press_tick && now - s_press_tick > SYSCLOCK_ARM11 / 7) {
+		s_press_tick = 0;                // the tapped prompt goes out again
+		s_dirty = true;
+	}
+	if (s_grain_ok && profile_new()) {
+		int g = (int)(now / (SYSCLOCK_ARM11 / 12) & 3);   // the grain flickers about 12 times a second
+		if (g != s_grain_frame) {
+			s_grain_frame = g;
+			s_dirty = true;
+		}
+	}
 	if (!s_dirty || s_debug)
 		return;
 	s_dirty = false;
 	s_nsolid = s_ntext = s_nhits = s_nimage = s_nimages = 0;
-	s_model_item = 0;
+	backdrop();
 	int m = top_menu();
 	if (s_movie)
 		draw_movie();
 	else if (m >= 0)
 		draw_menu(m);
-	else if (s_box_on)
+	else if (s_box_on && (s_box[0] || s_box_nb))
 		draw_box();
 	else if (s_map_on)
 		draw_map();
 	else if (s_panel[0])
 		draw_panel();
 	else
-		draw_play();
+		draw_play(s_box_on);
+	if (s_press_tick)
+		band(s_press[0], s_press[1], s_press[2], s_press[3]);
+	if (s_grain_ok) {
+		static const MapVert gv[6] = { { 0, 0, 0, 0 }, { 320, 0, 5, 0 }, { 320, 240, 5, 3.75f },
+		                               { 0, 0, 0, 0 }, { 320, 240, 5, 3.75f }, { 0, 240, 0, 3.75f } };
+		image(&s_grain[s_grain_frame], gv, 6, 0xffffffff);
+	}
 
 	// the GPU reads the vertices from memory: write them out of the CPU's data cache first
 	GSPGPU_FlushDataCache(s_verts, MAX_VERTS * sizeof(Vert));
@@ -626,10 +1054,6 @@ void touchui_frame(void)
 		C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, 0, 0);
 		C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 		C3D_DrawArrays(GPU_TRIANGLES, 0, s_nsolid);
-	}
-	if (s_model_item > 0) {
-		itemview_draw(s_model_item, s_model_rect[0], s_model_rect[1], s_model_rect[2], s_model_rect[3], s_model_angle);
-		bind_ui();
 	}
 	for (int i = 0; i < s_nimages; i++) {
 		env = C3D_GetTexEnv(0);          // getting it again marks it changed after the last draw
@@ -656,12 +1080,28 @@ void touchui_frame(void)
 
 // ---------------------------------------------------------------- input
 
+static void pressed(const Hit* h)
+{
+	s_press[0] = h->x0, s_press[1] = h->y0, s_press[2] = h->x1, s_press[3] = h->y1;
+	s_press_tick = svcGetSystemTick();
+	s_dirty = true;
+}
+
 void touchui_input(u32* down, u32* held)
 {
 	if (s_debug)
 		return;
 	touchPosition t;
+	if (!(*held & KEY_TOUCH))
+		s_drag = false;
 	if (!(*down & KEY_TOUCH)) {
+		if (s_drag && s_map_on && (*held & KEY_TOUCH)) {
+			hidTouchRead(&t);
+			map_drag((float)(t.px - s_drag_x), (float)(t.py - s_drag_y));
+			s_drag_x = t.px, s_drag_y = t.py;
+			*held &= ~KEY_TOUCH;
+			return;
+		}
 		// a held arrow keeps scrolling the zoomed map (the screen reads held keys)
 		if (s_map_on && (*held & KEY_TOUCH)) {
 			hidTouchRead(&t);
@@ -680,12 +1120,20 @@ void touchui_input(u32* down, u32* held)
 		if (t.px < h->x0 || t.px >= h->x1 || t.py < h->y0 || t.py >= h->y1)
 			continue;
 		if (h->kind == HIT_ZOOM) {
-			s_mini_zoom = s_mini_zoom > 1.5f ? 1.0f : 2.0f;
+			s_mini_zoom = s_mini_zoom > MINI_NEAR + 0.1f ? MINI_NEAR : MINI_CLOSE;
 			s_dirty = true;
 		} else if (h->kind == HIT_PASS) {
 			*down |= KEY_TOUCH;
+		} else if (h->kind == HIT_DRAG) {
+			s_drag = true;
+			s_drag_x = t.px, s_drag_y = t.py;
+		} else if (h->kind == HIT_QUICK) {
+			s_quick = TQ_HEAL, s_quick_item = (int)h->key;
+			pressed(h);
 		} else if (h->kind == HIT_KEY) {
 			*down |= h->key;
+			if (h->y0 >= FOOT_Y || h->x1 - h->x0 < 320)
+				pressed(h);
 		} else {
 			Menu* m = &s_menus[h->menu];
 			if (!m->sel)
@@ -695,8 +1143,8 @@ void touchui_input(u32* down, u32* held)
 				*down |= KEY_DLEFT;
 			else if (h->key && t.px > h->x1 - w * 0.3f && *m->sel == h->row)
 				*down |= KEY_DRIGHT;
-			else if (*m->sel == h->row)
-				*down |= KEY_A;          // a second tap on the chosen row takes it
+			else if (*m->sel == h->row || (m->flags & TOUI_ONE_TAP))
+				*down |= KEY_A;          // a second tap on the chosen row takes it (an action list's first)
 			*m->sel = h->row;
 			s_dirty = true;
 		}

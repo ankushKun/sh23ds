@@ -101,6 +101,19 @@ One pl_mpeg quirk had to be handled: the audio decoder reads its first frames fr
 created, so selecting stream 1 afterwards played 108 ms of `open_bgm` before `open_voc`. `movie.c`
 rewinds the audio instance after picking the stream.
 
+## Fades
+
+Nothing cuts. `movie_play` keeps the room's (or the scene's) last picture in the top target and
+lays the movie's first frame over it at a growing alpha for 0.75 s, eased at both ends, before
+the movie's clock and sound start, so the Laura scenes fade into their white first frame and most
+movies into black. At the end, or on a skip, the last picture fades to black over 0.4 s. Each step
+blends over the previous frame, so its alpha is the part still to cover, (f - f_prev) / (1 - f_prev).
+
+Around them: an in-engine scene that is followed by a movie in its sequence (`hei_lau_a @hei ...`)
+skips its own fade to black, so its last picture is what the movie fades from (`demo.c`
+`next_is_movie`). Before a stage program's scene starts, the room fades to black over 0.4 s and the
+scene fades in from that black (`main.c` `demo_preroll`), where the room used to cut to black.
+
 ## pl_mpeg changes
 
 Three patches, each marked `sh23ds:` in the header, all checked bit-exact against upstream pl_mpeg by

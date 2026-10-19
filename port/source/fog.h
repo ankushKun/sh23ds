@@ -24,6 +24,7 @@ void fog_exit(void);
 void fog_reset(void);                  // 0x489af0, on every stage connect
 // The record's fog particle colour (FUN_004879c0, MoveFogCol); r < 0 keeps the current one.
 void fog_set_color(int r, int g, int b, int a);
+void fog_set_clip(float near, float far);   // the projection's near and far planes, the sprites are cut to them
 void fog_update(const FogFrame* f);    // 0x489b90 without the draw
 // 0x488a80 + 0x4876c0: sorted sprites, then the screen layer. The caller has the scene drawn,
 // the light environment unbound and the top screen target bound.
@@ -32,3 +33,8 @@ const char* fog_status(void);          // debug HUD line
 // debug.txt "fogdebug N": 1 draws only the blow puffs, 2 leaves the walls out, 3 draws only the
 // puffs at eight times their alpha
 void fog_debug(int mode);
+
+// The console test (SELECT + R in play): 0 normal, then one part of the particle drawing taken away.
+int fog_debug_mode(void);
+const char* fog_debug_name(void);
+int fog_debug_cycle(void);

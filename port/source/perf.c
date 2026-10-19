@@ -98,6 +98,9 @@ void perf_part(const char* name, u64 t0)
 }
 void perf_mark_render(void) { P.t_render = svcGetSystemTick(); }
 
+static float s_cmd_max;
+void perf_cmdbuf(float used) { s_cmd_max = used > s_cmd_max ? used : s_cmd_max; }
+
 void perf_frame_end(const char* where)
 {
 	u64 now = svcGetSystemTick();
@@ -144,7 +147,11 @@ void perf_frame_end(const char* where)
 	for (int i = 0; i < P.nparts; i++)
 		if (!strcmp(P.part[i].name, "r_wait"))
 			wait += P.part[i].ms;
-	P.last_work = upd + ren - wait;
+	// the frame's work: the CPU's (update and drawing, without the wait for the GPU and the vertical
+	// blank) or the GPU's, whichever is longer. Pacing on the CPU's alone kept the game at 60 in the
+	// fog, where the GPU takes 15 to 20 ms: uneven 22 to 25 ms frames. (Suspected, not yet confirmed,
+	// as the cause of the console's fog flashes, which showed on the screen but not in the frame.)
+	P.last_work = upd + ren - wait > gpu ? upd + ren - wait : gpu;
 	P.win.frames++;
 	P.win.over17 += upd + ren > 17.5f;
 	P.win.over33 += upd + ren > 34.0f;
@@ -163,10 +170,10 @@ void perf_frame_end(const char* where)
 	         P.ren_sum / n, P.gpu_sum / n);
 	if (P.log_frames) {
 		log_add("%-10s upd %5.2f max %5.2f  render %5.2f max %5.2f  c3d cpu %5.2f gpu %5.2f max %5.2f  frame max %5.2f"
-		        "  lin %lu  music %d%%  gaps %lu\n",
+		        "  lin %lu  music %d%%  gaps %lu  cmdbuf %.0f%%\n",
 		        where, P.upd_sum / n, P.upd_max, P.ren_sum / n, P.ren_max, P.cpu_sum / n, P.gpu_sum / n, P.gpu_max,
 		        P.tot_max, (unsigned long)(linearSpaceFree() >> 10), audio_decode_load(),
-		        (unsigned long)audio_underruns());
+		        (unsigned long)audio_underruns(), s_cmd_max * 100.0f);
 		// the named parts: average over the second and the worst frame's share
 		if (P.npsum) {
 			log_add("%-10s parts", where);
@@ -179,6 +186,7 @@ void perf_frame_end(const char* where)
 	}
 	P.npsum = 0;
 	P.frames = 0;
+	s_cmd_max = 0.0f;
 	P.upd_sum = P.upd_max = P.ren_sum = P.ren_max = P.cpu_sum = P.gpu_sum = P.gpu_max = P.tot_max = 0.0f;
 }
 

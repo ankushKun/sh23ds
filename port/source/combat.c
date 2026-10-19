@@ -19,6 +19,7 @@
 //   guns is the muzzle (handgun 125, shotgun 294, rifle 483 units out), the plank's second bone is its
 //   grip offset (frame 4 of wp/jms_weapon.anm). They are drawn rigidly on bone 35.
 #include "combat.h"
+#include "gpusync.h"
 #include "controls.h"
 #include <math.h>
 #include <stdint.h>
@@ -255,6 +256,7 @@ static Anim s_anim;               // James' animation set for the current weapon
 static bool s_anim_ok;
 static char s_pack[64];
 static int s_weapon = W_PLANK;
+static bool s_had_plank;         // the plank was owned last frame (picking it up equips it)
 static bool s_ok;
 static float s_hp = 100.0f;
 static float s_hp_recover;        // shPlayerWork.hp_recover: healing still to come, drained over time
@@ -347,6 +349,7 @@ static void step(float dt)
 	}
 }
 
+static bool s_inf_ammo;          // Cheats: firing takes no rounds
 static const WeaponDef* wdef(void) { return &WEAPONS[s_weapon]; }
 static const PlayerDef* pdef(void) { return &PLAYERS[s_maria]; }
 static bool is_gun(void) { return wdef()->clip > 0; }
@@ -390,8 +393,10 @@ static bool owns(int w)
 	const WeaponDef* d = &WEAPONS[w];
 	if (w < pdef()->first || w > pdef()->last)
 		return false;         // the other character's
-	if (w == W_NONE || w == W_PLANK || w == W_MNONE)
-		return true;          // the plank is not handed out by the ported events yet
+	if (w == W_NONE || w == W_MNONE)
+		return true;
+	if (w == W_PLANK)
+		return ev_item_count(d->item) > 0;   // picked up with the first Lying Figure (prog_town.c)
 	if (ev_item_count(d->item) > 0 && ev_item_count(d->owned_marker) == 0)
 		ev_give_item(d->owned_marker, 1);
 	return ev_item_count(d->item) > 0 || ev_item_count(d->owned_marker) > 0;
@@ -434,7 +439,7 @@ static void plank_segment(void)
 static void unload_weapon(void)
 {
 	if (s_wmodel_ok || s_anim_ok)
-		C3D_FrameSync();      // the GPU may still read the old weapon this frame
+		gpu_sync();      // the GPU may still read the old weapon this frame
 	if (s_wmodel_ok)
 		chr_free(&s_wmodel);
 	if (s_anim_ok)
@@ -519,9 +524,10 @@ void combat_reset(void)
 	s_invuln = s_dead_t = s_flash = 0.0f;
 	s_target = NULL;
 	s_carried = false;
-	int w = s_maria ? W_MNONE : W_PLANK;
+	int w = s_maria ? W_MNONE : W_NONE;    // bare hands until a weapon is picked up
 	if (s_ok && s_weapon != w)
 		load_weapon(w);
+	s_had_plank = false;
 	play(&J_STAND);
 	maria_reset();
 	s_fresh = true;           // the chapter is set after this, see player_sync
@@ -550,7 +556,7 @@ static void player_sync(void)
 	if (maria != s_maria) {
 		char dir[96], err[128];
 		unload_weapon();
-		C3D_FrameSync();      // the GPU may still read the old model this frame
+		gpu_sync();      // the GPU may still read the old model this frame
 		chr_free(s_james);
 		s_maria = maria;
 		snprintf(dir, sizeof dir, "%s/chr/%s", s_pack, pdef()->dir);
@@ -562,7 +568,7 @@ static void player_sync(void)
 		}
 		s_mode = M_FREE;
 		s_side = 0;
-		if (!load_weapon(s_maria ? W_MNONE : W_PLANK))
+		if (s_maria || !owns(W_PLANK) || !load_weapon(W_PLANK))
 			load_weapon(bare());
 		if (s_hp > JAMES_HP_MAX)
 			s_hp = JAMES_HP_MAX;
@@ -1178,7 +1184,8 @@ static void fire(const CombatBody* b)
 		else if (wall < w->atk.max_range)
 			s_wall_ap_next = w->atk.ap;     // the shot went into the wall
 	}
-	ev_give_item(w->item, -1);
+	if (!s_inf_ammo)
+		ev_give_item(w->item, -1);       // Infinite Ammo (Cheats): the round stays in the gun
 	sfx_play(w->snd_shot, 1.0f, 0.0f);
 	s_flash = 0.06f;
 }
@@ -1307,6 +1314,12 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	if (!s_ok)
 		return false;
 	player_sync();
+	// EvProgFirstMonsterStart (0x59da20): James picks up the plank and holds it. Any first owning
+	// of it with nothing in hand equips it (a save from before the weapon was kept loads this way)
+	bool plank = !s_maria && owns(W_PLANK);
+	if (plank && !s_had_plank && s_weapon == W_NONE && s_mode == M_FREE)
+		load_weapon(W_PLANK);
+	s_had_plank = plank;
 	if (s_invuln > 0.0f)
 		s_invuln -= dt;
 	if (s_flash > 0.0f)
@@ -1727,6 +1740,30 @@ const char* combat_status(void)
 	                               "shot", "reload", "stomp", "spray", "hurt", "held", "dying", "dead" };
 	snprintf(s_line, sizeof s_line, "HP%3.0f %s g%d", s_hp, names[s_mode], WEAPONS[s_weapon].grip);
 	return s_line;
+}
+
+int combat_weapon_item(void) { return is_bare() ? 0 : wdef()->item; }
+
+void combat_restore_weapon(int item)
+{
+	s_had_plank = !s_maria && owns(W_PLANK);
+	if (item <= 0 || !s_ok || s_mode != M_FREE)
+		return;
+	for (int w = bare() + 1; w <= pdef()->last; w++)
+		if (WEAPONS[w].item == item && owns(w)) {
+			if (w != s_weapon)
+				load_weapon(w);
+			return;
+		}
+}
+
+void combat_set_infinite_ammo(bool on) { s_inf_ammo = on; }
+
+bool combat_weapon_rounds(int* in_gun, int* spare_rounds)
+{
+	*in_gun = is_gun() ? loaded() : 0;
+	*spare_rounds = is_gun() ? spare() : 0;
+	return is_gun();
 }
 
 // One line for the help screen: weapon and rounds.

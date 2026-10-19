@@ -26,6 +26,7 @@ void chr_light_ambient(C3D_LightEnv* env, float r, float g, float b)
 	C3D_LightEnvAmbient(env, r * CHR_LIGHT_SCALE, g * CHR_LIGHT_SCALE, b * CHR_LIGHT_SCALE);
 }
 
+
 typedef struct {
 	char magic[4];
 	u32 version, bones, draws, vertices, indices, textures;
@@ -408,7 +409,7 @@ void chr_draw(Character* c, int uBones)
 	// Consecutive draws often use the same palette, texture and texenv: only what changes is sent
 	// (each palette slot is three uniform vectors, and citro3d re-sends whatever is written).
 	const ChrDraw* prev = NULL;
-	int env_mode = -1, tex_slot = -1, alpha = -1;
+	int env_mode = -1, tex_slot = -1, alpha = 1;
 	for (u32 i = 0; i < c->n_draws; i++) {
 		ChrDraw* d = &c->draws[i];
 		bool same_palette = prev && prev->palette_count >= d->palette_count &&
@@ -446,10 +447,13 @@ void chr_draw(Character* c, int uBones)
 			}
 			env_mode = (int)textured;
 		}
-		int a = textured && (d->flags & 1);
-		if (a != alpha) {
-			C3D_AlphaTest(a, GPU_GREATER, 0x60);
-			alpha = a;
+		// No alpha test: the PC draws its character and item models opaque. Their DXT5 alpha holds
+		// gloss and specular masks (the Lying Figure's sheath is 65 % under 0x60, James' hands 5 %),
+		// so the test the port used to make from "the texture has alpha" (flags bit 0) cut holes in
+		// them and all but erased some stage models.
+		if (alpha) {
+			C3D_AlphaTest(false, GPU_ALWAYS, 0);
+			alpha = 0;
 		}
 		C3D_DrawElements(GPU_TRIANGLES, d->index_count, C3D_UNSIGNED_SHORT, d->indices);
 	}

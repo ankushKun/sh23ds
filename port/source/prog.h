@@ -159,6 +159,9 @@ typedef struct {
 	bool (*map_mark)(int mode);          // map marking animation (0x49c0f0 mode, 0x49dbd0); true when done
 	bool (*sheet)(const char* name);
 	void (*sprite)(const float xy[4][2], const float uv[4], float alpha);
+	// A program's own character (0x48fcc0 kind 0x200, the Lying Figure) at a place with an
+	// enemy status; status -1 takes it away again (0x53a350), -2 starts reading its model
+	void (*figure)(int status, float x, float y, float z, float yaw, float delay);   // delay: seconds before it comes
 } ProgHost;
 
 void prog_init(const ProgHost* host);

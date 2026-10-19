@@ -412,13 +412,16 @@ in the config block at 0xa35fa8; 0x4f6ae0 and 0x4f6c70 set the defaults and 0x46
 `options.ini` on the way out. `optmenu.c` ports the screens: START's pause menu has "Options" and
 the title an "Options" row (the PC's title has OPTIONS too).
 
-* OPTIONS (title: full-width codes, message 72): Game Options, Advanced Options and Control
-  Options open their pages; then Control Type (Rotational Style = the port's tank controls,
-  Directional Style = camera-relative), Subtitles (Off / On, 0x1dbec07: no scene subtitles on
+* OPTIONS (title: full-width codes, message 72): Game Options, Advanced Options, Control Options
+  and the port's Cheats open their pages; then Control Type (Rotational Style = the port's tank
+  controls, Directional Style = camera-relative, the port's default), Subtitles (Off / On, 0x1dbec07: no scene subtitles on
   either screen when off), Speaker Config. (the PC lists DirectSound's speaker setups; here Mono,
   Stereo and Surround, the three NDSP output modes, `audio_set_output`), BGM Volume and SE Volume
   (0 to 15, 12 by default; the PC passes volume << 3 to its mixer, here the gain is volume / 15).
   The PC's Vibration and Language rows have nothing to set on the 3DS and are left out.
+* Cheats (the port's own, `options.txt` `infstamina` / `infammo`): Infinite Stamina (on by
+  default: the run count never builds up, so the third pace stays open and James never stops to
+  pant, `move.c`) and Infinite Ammo (off: a shot leaves the round in the gun, `combat.c` `fire`).
 * GAME OPTIONS (message 73): Weapon Control (Normal: hold R to ready the weapon; Switch: R toggles
   it), Map (the map screen opens Zoom In or Zoom Out), Walk/Run Control (Walk: B runs; Run: James
   runs and B walks; Analog: a full tilt of the Circle Pad runs), View Control (Normal / Switch),
@@ -639,14 +642,14 @@ full-width codes the cell width + 2; centred and right-aligned lines measure wit
 coloured with the PC's colour table (0x47eca0), top and bottom colour per glyph. All glyphs of a
 frame go out in one draw call.
 
-The Advanced Options' "Messages" setting (`options.txt` `messagestop`, bottom screen by default) puts
-messages and cutscene subtitles on the top screen the way the PC's message window places them when
+The Advanced Options' "Messages" setting (`options.txt` `messagestop`, top screen by default since
+the two-screen split in `UI.md`) puts messages and cutscene subtitles on the top screen the way the PC's message window places them when
 the message gives no position (0x47ff50): the big font, the lines left-aligned in a block centred
 on the widest one, the first line at 476 - (lines + 4) * 15, half a line higher for each line
 past three. The pack's message text no longer carries the PC's position words (0xfa00 / 0xf800
 codes), so every message uses that place. A one-pixel dark shadow, which the PC does not draw,
-keeps the text readable over bright rooms. The bottom screen then shows only the "A: next" line,
-and choices, the save question and the puzzle panels stay on the bottom screen.
+keeps the text readable over bright rooms. The touch screen then keeps the play page with a "Next"
+prompt, and choices and the puzzle panels stay on the touch screen.
 
 ## Touch screen
 
@@ -756,7 +759,7 @@ hook and stills show when the pack has them. Events are the stage's event indice
 |---|---|---|---|---|---|
 | 1 | 0x59d2a0 | EvProgGetWrench | 0 | wrench (item 58), after flag 251 | ported |
 | 2 | 0x59d2b0 | (DC) | 1 | wrench note, message 32 | ported |
-| 3 | 0x59d4f0 | EvProgShadowOfSomenthing | 2 enter | walk, blood marks, shadow, messages 28 and 29 | ported |
+| 3 | 0x59d4f0 | EvProgShadowOfSomenthing | 2 enter | walk, blood marks, the figure on the road (a Lying Figure the program creates, 0x48fcc0 status 0x11, under event control; the scene machi is the camera alone), messages 28 and 29 | ported; the figure comes 3 s into the scene so it stands by the truck when the camera gets there, as in the PC footage |
 | 4 | 0x59d8f0 | EvProgSandersBack | 3 enter | message 30, James walks back | ported |
 | 5 | 0x59da20 | EvProgFirstMonsterStart | 21 | first Lying Figure: plank (13) and radio (19), flag 518 | ported |
 | 6 | 0x59dbd0 | EvProgFirstMonsterCorpse | 22 auto | flags 41 and 518 | ported |

@@ -489,6 +489,7 @@ void p_picture_hide(void)
 }
 void p_save_menu(void) { if (s_host.save_menu) s_host.save_menu(); }
 void p_flashlight(bool on) { if (s_host.flashlight) s_host.flashlight(on); }
+void p_figure(int status, float x, float y, float z, float yaw, float delay) { if (s_host.figure) s_host.figure(status, x, y, z, yaw, delay); }
 // 0x48d7e0: an ending's clear bit goes into the clear data before the game ends; the levels and the
 // count only for James' endings (Born From a Wish passes 0x40).
 static void record_clear(int ending)

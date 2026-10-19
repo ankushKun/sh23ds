@@ -889,6 +889,16 @@ static const char* next_token(char* buf, size_t n)
 	return buf;
 }
 
+// The sequence's next step is a movie: the scene before it then hands its last picture straight to
+// the movie, which fades into its own first frame (movie.c), instead of going to black first.
+static bool next_is_movie(void)
+{
+	const char* p = Q.steps;
+	while (p && *p == ' ')
+		p++;
+	return p && *p == '@' && !Q.skipped;
+}
+
 // "f87:gero_edi_h|gero_edi_i": the first choice whose condition holds.
 static void pick(const char* tok, char* out, size_t n)
 {
@@ -1084,7 +1094,7 @@ static bool scene_update(float dt)
 	snprintf(S.status, sizeof S.status, "demo %.10s %4d/%4lu %s f%.2f l%d", S.key, (int)S.cur,
 	         (unsigned long)S.h->total_frames, S.voice_started ? "vo" : "", S.face_peak, S.lights_used);
 	S.face_peak = 0.0f;
-	return S.closing && S.fade_out >= FADE_SECONDS;
+	return S.closing && (S.fade_out >= FADE_SECONDS || next_is_movie());
 }
 
 bool demo_update(u32 down, float dt)
@@ -1122,7 +1132,7 @@ float demo_fade(void)
 	if (!S.active)
 		return 0.0f;
 	float a = 1.0f - S.fade_in / FADE_SECONDS;
-	float b = S.fade_out / FADE_SECONDS;
+	float b = next_is_movie() ? 0.0f : S.fade_out / FADE_SECONDS;
 	a = a > b ? a : b;
 	return a < 0.0f ? 0.0f : a > 1.0f ? 1.0f : a;
 }

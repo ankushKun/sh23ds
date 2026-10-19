@@ -21,7 +21,7 @@ void clearsave_begin(const ClearSaveHost* host)
 	s_host = *host;
 	s_state = CS_ASK;
 	static const TouiButton go[1] = { { "Continue", KEY_A } };
-	touchui_box(ask(), go, 1);
+	touchui_box("", go, 1);              // the question is on the top screen (port/UI.md)
 	printf("\x1b[2J\x1b[3;3H%s\x1b[29;24HA: continue", ask());
 }
 

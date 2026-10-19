@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { PG_MAIN, PG_GAME, PG_ADV, PG_CONTROL, PG_BRIGHT, PG_BUTTONS };
+enum { PG_MAIN, PG_GAME, PG_ADV, PG_CONTROL, PG_BRIGHT, PG_BUTTONS, PG_CHEATS };
 enum { ST_OFF, ST_MENU, ST_ASK };
 enum { K_PAGE, K_LIST, K_BAR, K_TIMES };
 
@@ -37,7 +37,6 @@ static OptHost s_host;
 static int s_state = ST_OFF, s_page, s_sel, s_top, s_bright_sel, s_yes = 1;
 static Row s_rows[MAX_ROWS];
 static int s_n;
-static float s_band;             // the selection band's row, eased (0x45d710)
 
 static const short OFF_ON[2] = { 176, 177 };
 static const short CONTROL_TYPE[2] = { 85, 86 };      // Rotational Style, Directional Style
@@ -53,6 +52,7 @@ static const char* const FRAMING[2] = { "Full Width", "4:3" };
 static const char* const RUN_BUTTON[2] = { "Hold", "Toggle" };
 static const char* const TIMING[2] = { "PC", "Hold A" };
 static const char* const SWAP[2] = { "Normal", "Swapped" };
+static const char* const OFF_ON_TEXT[2] = { "Off", "On" };
 // the hardware profile's rows (profile.c): three values each, Auto first
 static const char* const HARDWARE[3] = { "Auto", "Old 3DS", "New 3DS" };
 static const char* const QUALITY[3] = { "Auto", "Low", "High" };
@@ -78,6 +78,9 @@ void opt_defaults(Options* o)
 	o->bullet = 1;
 	o->ps2_flash = o->noise_ps2 = o->ps2_camera = o->cutscene_fov = 1;
 	o->hold_stomp = o->swap_attack = 1;
+	o->msg_top = 1;              // messages are the top screen's (port/UI.md)
+	o->control_type = 1;         // Directional Style: the stick points where James goes
+	o->inf_stamina = 1;
 }
 
 typedef struct { const char* key; size_t off; u8 lo, hi; } Key;
@@ -91,8 +94,13 @@ static const Key s_keys[] = {
 	K("ps2flashlight", ps2_flash, 0, 1), K("ps2noise", noise_ps2, 0, 1), K("ps2camera", ps2_camera, 0, 1),
 	K("cutscenefov", cutscene_fov, 0, 1), K("togglerun", toggle_run, 0, 1), K("holdstomp", hold_stomp, 0, 1),
 	K("swapattack", swap_attack, 0, 1), K("hwprofile", hwprofile, 0, 2), K("quality", quality, 0, 2),
-	K("framerate", framerate, 0, 2), K("ctrllayout", ctrllayout, 0, 2),
+	K("framerate", framerate, 0, 2), K("ctrllayout", ctrllayout, 0, 2), K("infstamina", inf_stamina, 0, 1),
+	K("infammo", inf_ammo, 0, 1),
 };
+
+// options.txt files written before these defaults (no "optver" line) take the new defaults of the
+// settings that changed: Directional Style and messages on the top screen.
+#define OPT_VERSION 2
 
 void opt_load(Options* o, const char* path)
 {
@@ -100,9 +108,11 @@ void opt_load(Options* o, const char* path)
 	if (!f)
 		return;
 	char key[32];
-	int val, music = -1, sound = -1;
+	int val, music = -1, sound = -1, version = 1;
 	bool bgm = false, se = false;
 	while (fscanf(f, "%31s %d", key, &val) == 2) {
+		if (!strcmp(key, "optver"))
+			version = val;
 		for (size_t i = 0; i < sizeof s_keys / sizeof *s_keys; i++)
 			if (!strcmp(key, s_keys[i].key))
 				((u8*)o)[s_keys[i].off] = val < s_keys[i].lo ? s_keys[i].lo : val > s_keys[i].hi ? s_keys[i].hi : val;
@@ -111,6 +121,12 @@ void opt_load(Options* o, const char* path)
 		if (!strcmp(key, "soundvol")) sound = val;
 	}
 	fclose(f);
+	if (version < OPT_VERSION) {
+		Options d;
+		opt_defaults(&d);
+		o->control_type = d.control_type;
+		o->msg_top = d.msg_top;
+	}
 	if (!bgm && music >= 0)
 		o->bgm = music > 10 ? 15 : (music * 15 + 5) / 10;
 	if (!se && sound >= 0)
@@ -122,6 +138,7 @@ void opt_save(const Options* o, const char* path)
 	FILE* f = fopen(path, "w");
 	if (!f)
 		return;
+	fprintf(f, "optver %d\n", OPT_VERSION);
 	for (size_t i = 0; i < sizeof s_keys / sizeof *s_keys; i++)
 		fprintf(f, "%s %d\n", s_keys[i].key, ((const u8*)o)[s_keys[i].off]);
 	fclose(f);
@@ -150,6 +167,7 @@ static void build(void)
 		add(K_PAGE, 189, NULL, 190, NULL, NULL, 0, 0, NULL, NULL, PG_GAME);
 		add(K_PAGE, 166, NULL, 191, NULL, NULL, 0, 0, NULL, NULL, PG_ADV);
 		add(K_PAGE, 6, NULL, 7, NULL, NULL, 0, 0, NULL, NULL, PG_CONTROL);
+		add(K_PAGE, -1, "Cheats", -1, "Infinite stamina, infinite ammo", NULL, 0, 0, NULL, NULL, PG_CHEATS);
 		LIST(84, 87, control_type, 2, CONTROL_TYPE);
 		LIST(74, 75, subtitles, 2, OFF_ON);
 		LIST(34, 35, speaker, 3, SPEAKER);
@@ -205,6 +223,11 @@ static void build(void)
 			OWN3("Layout", lay, ctrllayout, HARDWARE);
 		}
 		break;
+	case PG_CHEATS:
+		// the port's own: not the PC's (its cheats are the clear rewards), off but for stamina
+		OWN("Infinite Stamina", "James can run for as long as B is held", inf_stamina, OFF_ON_TEXT);
+		OWN("Infinite Ammo", "Guns never run out of rounds", inf_ammo, OFF_ON_TEXT);
+		break;
 	}
 }
 
@@ -238,20 +261,26 @@ static const char* page_title(int page)
 	case PG_CONTROL: return msg(6, "Control Options");
 	case PG_BRIGHT: return msg(2, "Brightness Level");
 	case PG_BUTTONS: return "Buttons";
+	case PG_CHEATS: return "Cheats";
 	}
 	return "Options";
 }
 
+static int s_touch_answer;          // the question's row on the touch screen: 0 Yes, 1 No
+
 static void touch(void)
 {
 	static const TouiButton back[1] = { { "Back", KEY_B } };
-	static const TouiButton yesno[2] = { { "Yes.", KEY_Y }, { "No.", KEY_X } };
+	touchui_box(NULL, NULL, 0);
 	if (s_state == ST_ASK) {
-		touchui_menu_close(TOUI_OPTIONS);
-		touchui_box(msg(89, "Change the settings?"), yesno, 2);
+		// the answers act on the first tap (port/UI.md)
+		static const TouiButton prompts[2] = { { "Select", KEY_A }, { "Back", KEY_B } };
+		const char* rows[2] = { msg(90, "Yes."), msg(91, "No.") };
+		s_touch_answer = s_yes ? 0 : 1;
+		touchui_menu_ex(TOUI_OPTIONS, msg(89, "Change the settings?"), rows, 2, &s_touch_answer, prompts, 2, 0,
+		                TOUI_ONE_TAP);
 		return;
 	}
-	touchui_box(NULL, NULL, 0);
 	static char text[MAX_ROWS][64];
 	const char* rows[MAX_ROWS];
 	if (s_page == PG_BRIGHT) {
@@ -286,7 +315,6 @@ static void go(int page, int sel)
 	build();
 	s_sel = sel < s_n ? sel : 0;
 	s_top = 0;
-	s_band = (float)s_sel;
 	touch();
 }
 
@@ -334,12 +362,16 @@ bool optmenu_update(u32 down)
 	if (s_state == ST_OFF)
 		return false;
 	if (s_state == ST_ASK) {
-		// "Change the settings?": Yes keeps them, No puts the old ones back (0x4630c0)
-		if (down & (KEY_DLEFT | KEY_DRIGHT)) {
+		// "Change the settings?": Yes keeps them, No puts the old ones back (0x4630c0); B goes back
+		// to the menu
+		if ((s_touch_answer == 0) != (s_yes == 1) && (s_touch_answer == 0 || s_touch_answer == 1))
+			s_yes = s_touch_answer == 0;
+		if (down & (KEY_DLEFT | KEY_DRIGHT | KEY_DUP | KEY_DDOWN)) {
 			s_yes ^= 1;
 			sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
+			touch();
 		}
-		int pick = down & KEY_Y ? 1 : down & KEY_X ? 0 : down & KEY_A ? s_yes : -1;
+		int pick = down & KEY_A ? s_yes : -1;
 		if (pick == 1) {
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 			if (s_host.save)
@@ -403,7 +435,7 @@ bool optmenu_update(u32 down)
 	if (down & KEY_B) {
 		if (s_page != PG_MAIN) {
 			sfx_play(SFX_MENU_CANCEL, 1.0f, 0.0f);
-			go(PG_MAIN, s_page == PG_GAME ? 0 : s_page == PG_ADV ? 1 : 2);
+			go(PG_MAIN, s_page == PG_GAME ? 0 : s_page == PG_ADV ? 1 : s_page == PG_CONTROL ? 2 : 3);
 			return true;
 		}
 		if (memcmp(s_live, &s_old, sizeof s_old)) {
@@ -531,11 +563,11 @@ static void title(void)
 	font_codes(FONT_BIG, 256, 52, line, n, FONT_CENTER, 0x808080ff, 0x808080ff);
 }
 
-static void bar(float y, int v, bool changed)
+static void bar(float x0, float y, int v, bool changed)
 {
-	// 0x45bf10: fifteen blocks from x 273, 11 apart, lit up to the volume, two-tone
+	// 0x45bf10: fifteen blocks from x 273 (x0 256), 11 apart, lit up to the volume, two-tone
 	for (int i = 0; i < 15; i++) {
-		float x = 256.0f + 17.0f + 11.0f * i;
+		float x = x0 + 17.0f + 11.0f * i;
 		bool lit = i < v;
 		u32 top = lit ? (changed ? 0xb0b05880 : 0xb0b0b080) : (changed ? 0x50502580 : 0x50505080);
 		u32 bottom = lit ? (changed ? 0x40402080 : 0x40404080) : (changed ? 0x50502580 : 0x50505080);
@@ -564,6 +596,9 @@ static void brightness_screen(void)
 	arrow(322, 436, 1, 0x7e7e7eff);
 }
 
+// The PC's panel and title stay; the rows are on the touch screen (port/UI.md), so the panel shows
+// the chosen one large: its name, its value between the PC's arrows (or the volume blocks), and
+// the PC's help line in the box below; the question in the middle while it is asked.
 void optmenu_draw_top(MapDrawFn draw)
 {
 	if (s_state == ST_OFF || !font_ready() || !draw)
@@ -576,62 +611,39 @@ void optmenu_draw_top(MapDrawFn draw)
 	panels();
 	title();
 	if (s_page == PG_BUTTONS) {
-		// the bindings of the active layout, chosen on the touch screen or with the D-pad below
-		char lines[ACT_COUNT][40];
-		int n = controls_help(lines, ACT_COUNT);
-		for (int i = 0; i < n && i < VISIBLE; i++) {
-			// "Run         B / ZR": the action in the label column, its buttons in the value one
-			char name[16];
-			int k = 0;
-			for (; k < 12 && lines[i][k]; k++)
-				name[k] = lines[i][k];
-			while (k > 0 && name[k - 1] == ' ')
-				k--;
-			name[k] = 0;
-			float y = 100.0f + 27.0f * i;
-			text(243, y, name, FONT_RIGHT, GREY, false);
-			text(270, y, strlen(lines[i]) > 12 ? lines[i] + 12 : "", FONT_LEFT, GREY, false);
-		}
-		font_text(FONT_BIG, 70, 395, "A: new button   Y: default   B: back", FONT_LEFT, 0x7e7e7eff, 0x7e7e7eff);
+		const char* name;
+		char keys[48];
+		bool wait = controls_menu_focus(&name, keys, sizeof keys);
+		text(256, 190, name, FONT_CENTER, GREY, true);
+		text(256, 240, wait ? "Press a button" : keys, FONT_CENTER, wait ? YELLOW : GREY, false);
+		font_text(FONT_BIG, 70, 395, wait ? "START keeps the button it had" : "Choose the button for each action",
+		          FONT_LEFT, 0x7e7e7eff, 0x7e7e7eff);
 		return;
 	}
-	bool main = s_page == PG_MAIN;
-	float lx = main ? 241.0f : 243.0f;
-	// the band under the chosen row (0x45fcf0): sixteen lines fading out, eased towards the row
-	s_band += ((float)(s_sel - s_top) - s_band) * 0.5f;
-	for (int i = 0; i < 16; i++)
-		quad(30, 116.0f + 27.0f * s_band + i, 482, 117.0f + 27.0f * s_band + i, (u32)((15 - i) * 2));
-	for (int i = s_top; i < s_n && i < s_top + VISIBLE; i++) {
-		const Row* r = &s_rows[i];
-		float y = 100.0f + 27.0f * (i - s_top);
-		bool chosen = i == s_sel && s_state == ST_MENU;
-		if (s_state == ST_ASK && main && i >= 3 && i <= 6)
-			continue;                 // the question sits over these rows, as on the PC
-		if (r->kind == K_PAGE) {
-			text(256, y, label(r), FONT_CENTER, GREY, chosen);
-			continue;
-		}
-		text(lx, y, label(r), FONT_RIGHT, GREY, chosen);
+	if (s_state == ST_ASK) {
+		// 0x461600 with 0x94421c set: the question; Yes. and No. are on the touch screen
+		text(256, 215, msg(89, "Change the settings?"), FONT_CENTER, GREY, true);
+		return;
+	}
+	if (s_sel >= s_n)
+		return;
+	const Row* r = &s_rows[s_sel];
+	if (r->kind == K_PAGE) {
+		text(256, 215, label(r), FONT_CENTER, GREY, true);
+	} else {
+		text(256, 190, label(r), FONT_CENTER, GREY, true);
 		size_t off = r->v - (u8*)s_live;
 		bool ch = ((u8*)&s_old)[off] != *r->v;
 		if (r->kind == K_BAR) {
-			bar(y, *r->v, ch);
-			continue;
-		}
-		char buf[24];
-		const char* v = value(r, buf, sizeof buf);
-		text(270, y, v, FONT_LEFT, ch ? YELLOW : GREY, chosen);
-		if (chosen) {
-			arrow(262, y + 14, -1, 0x7e7e7eff);
-			arrow(278 + font_width(FONT_BIG, v), y + 14, 1, 0x7e7e7eff);
+			bar(174.0f - 273.0f + 256.0f, 236, *r->v, ch);
+		} else {
+			char buf[24];
+			const char* v = value(r, buf, sizeof buf);
+			float w = font_width(FONT_BIG, v);
+			text(256, 236, v, FONT_CENTER, ch ? YELLOW : GREY, false);
+			arrow(256 - w * 0.5f - 14, 250, -1, 0x7e7e7eff);
+			arrow(256 + w * 0.5f + 12, 250, 1, 0x7e7e7eff);
 		}
 	}
-	if (s_state == ST_ASK) {
-		// 0x461600 with 0x94421c set: the question with Yes. and No.
-		text(145, 205, msg(89, "Change the settings?"), FONT_LEFT, GREY, false);
-		text(170, 240, msg(90, "Yes."), FONT_LEFT, GREY, s_yes == 1);
-		text(280, 240, msg(91, "No."), FONT_LEFT, GREY, s_yes == 0);
-	} else if (s_sel < s_n) {
-		font_text(FONT_BIG, 70, 395, help(&s_rows[s_sel]), FONT_LEFT, 0x7e7e7eff, 0x7e7e7eff);
-	}
+	font_text(FONT_BIG, 70, 395, help(r), FONT_LEFT, 0x7e7e7eff, 0x7e7e7eff);
 }

@@ -51,6 +51,9 @@ typedef struct {
 	u8 quality;          // Advanced Options "Quality"
 	u8 framerate;        // Advanced Options "Frame Rate"
 	u8 ctrllayout;       // Control Options "Layout"
+	// Cheats (the port's): Infinite Stamina on by default, the rest off
+	u8 inf_stamina;      // James runs without tiring
+	u8 inf_ammo;         // firing takes no rounds
 } Options;
 
 typedef struct {

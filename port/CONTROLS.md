@@ -16,18 +16,29 @@ page of the Options' Control Options (`controls.c`, drawn in the Options screen'
 | --- | --- | --- |
 | Walk, turn | Circle Pad | Circle Pad |
 | Action (check, open, pick up, attack while aiming) | A | A |
-| Run (hold; "toggle" in the Control Options) | B or ZR | B |
+| Run (hold; "toggle" in the Control Options) | B | B |
 | Aim (hold) | R | R |
 | Look (hold: the PC's search view) | ZL | L |
 | Next weapon | L | D-Pad up |
 | Flashlight | X | X |
 | Items | Y | Y |
-| Quick turn (180 degrees) | C-Stick down | D-Pad down |
-| Strafe left / right | C-Stick or D-Pad left / right | D-Pad left / right |
-| Map | C-Stick up, or tap the bottom screen | tap the bottom screen, or the pause menu |
-| Brightness | D-Pad up / down | the Options (Advanced Options) |
+| Quick turn (180 degrees) | ZR | D-Pad down |
+| Strafe left / right | none (bindable) | none (bindable) |
+| Map | tap the map on the touch screen, or the pause menu | the same |
+| Brightness | the Options (Advanced Options) | the same |
 | Pause | START | START |
 | Debug page | SELECT twice | SELECT twice |
+
+The circle pad walks and turns James, so on the New 3DS the C-Stick carries nothing in play
+(decided 2026-10-19 after the first console runs). The D-Pad walks him as well, like the circle pad
+at full tilt, in each direction no action is bound to (`main.c` `dpad_walk`): all four on the New
+3DS, left and right on the Old 3DS, whose up and down keep the next weapon and the quick turn. The
+circle pad wins while it is pushed, and menus keep the D-Pad for moving through rows. Strafing and
+the map can still be bound to the D-Pad or the C-Stick on the Buttons page. The Control Type defaults to Directional
+Style; an `options.txt` written before that (no `optver` line) is moved to it once.
+
+Console test combo (`main.c`): SELECT held with R steps the fog test (`chr.c`,
+port/TESTING.md). (A SELECT + L frame capture froze the console and was taken out.)
 
 Pressing both strafe buttons together also turns James round, as on the PC (0x54b290). Menus keep
 their own keys whatever the bindings: the D-Pad moves, A takes, B goes back, START closes.

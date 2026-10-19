@@ -86,7 +86,7 @@ def decode_still(path):
 SHEETS = ['apt/clock_hari', 'apt/p_safe_close2', 'apt/p_desk_coin_coin', 'hsp/pboxkey01', 'hsp/p_boxnumber_2',
           'hsp/p_quiz_btn', 'htl/dram', 'htl/egg', 'add/teien2', 'htl/maker', 'htl/p_video02',
           'hsp/p_h_elevator_botan', 'dls/p_manacles_off', 'hsp/p_hair_hair', 'hsp/p_female_ring',
-          'dls/p_tablet_plate']
+          'dls/p_tablet_plate', 'out/p_incar_map']
 
 # The tables those overlays read, from the exe (address, size): the clock hands' sprites (0x59a390),
 # the desk coins' places (0x597ce0), the trunk letters and their places (0x579af0), the tombstone's

@@ -127,6 +127,10 @@ void enemy_killed_set(const u8* in);
 void enemy_killed_reset(void);
 
 void enemy_update(const EnPlayer* p, float dt);
+void enemy_event_create(int status, float x, float y, float z, float yaw, float delay);   // a program's own figure (0x48fcc0)
+void enemy_event_remove(void);                                                // 0x53a350
+void enemy_event_prefetch(void);          // start reading its model before it is needed
+void enemy_event_tick(float dt);          // that figure, while a scene or the program holds the game
 
 // Draws with the skinning program bound (James' draw state: same light environment).
 void enemy_draw(const C3D_Mtx* view, int uModelView, int uBones);

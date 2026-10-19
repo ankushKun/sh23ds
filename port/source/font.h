@@ -34,6 +34,9 @@ void font_image(C3D_Tex* tex, float x0, float y0, float x1, float y1, u32 rgba);
 // returns how many; font_texture is the atlas they sample.
 int font_layout_px(int font, float x, float y, const char* s, int align, u32 top, u32 bottom, FontVert* out, int max);
 float font_width_px(int font, const char* s);
+// The ink of a line laid out by font_layout_px from (0, 0), left-aligned: the box its visible
+// pixels cover (for centring a letter in a ring). False when there is no ink.
+bool font_ink_px(int font, const char* s, float* x0, float* y0, float* x1, float* y1);
 float font_line_px(int font);
 C3D_Tex* font_texture(void);
 // The PC's text colours (0x47eca0, index 0..16) as top and bottom RGBA.

@@ -94,17 +94,9 @@ void itemview_free(void)
 	s_item = -1;
 }
 
-void itemview_draw(int item, float x0, float y0, float x1, float y1, float angle)
+// Draws the model with proj, turned by angle, into whatever target and viewport are set.
+static void draw_model(const C3D_Mtx* proj, float angle)
 {
-	if (!itemview_has(item))
-		return;
-	if (!s_ready)
-		init();
-	// the bottom screen's target is 240 x 320 turned: screen x runs along the target's y
-	int vx = 240 - (int)y1, vy = 320 - (int)x1, vw = (int)(y1 - y0), vh = (int)(x1 - x0);
-	C3D_SetViewport(vx, vy, vw, vh);
-	C3D_Mtx proj;
-	Mtx_PerspTilt(&proj, C3D_AngleFromDegrees(30.0f), (x1 - x0) / (y1 - y0), 5.0f, 20000.0f, false);
 	// fit the model's bounds: its centre at the origin, far enough back for its size
 	float c[3], r2 = 1.0f;
 	for (int i = 0; i < 3; i++) {
@@ -127,7 +119,7 @@ void itemview_draw(int item, float x0, float y0, float x1, float y1, float angle
 	AttrInfo_AddLoader(ai, 2, GPU_UNSIGNED_BYTE, 4);
 	AttrInfo_AddLoader(ai, 3, GPU_UNSIGNED_BYTE, 4);
 	AttrInfo_AddLoader(ai, 4, GPU_BYTE, 4);
-	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProj, &proj);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProj, proj);
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, &mv);
 	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
 	C3D_DepthMap(true, -1.0f, 0.0f);
@@ -145,5 +137,50 @@ void itemview_draw(int item, float x0, float y0, float x1, float y1, float angle
 	C3D_LightEnvBind(NULL);
 	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
+}
+
+void itemview_draw(int item, float x0, float y0, float x1, float y1, float angle)
+{
+	if (!itemview_has(item))
+		return;
+	if (!s_ready)
+		init();
+	// the bottom screen's target is 240 x 320 turned: screen x runs along the target's y
+	int vx = 240 - (int)y1, vy = 320 - (int)x1, vw = (int)(y1 - y0), vh = (int)(x1 - x0);
+	C3D_SetViewport(vx, vy, vw, vh);
+	C3D_Mtx proj;
+	Mtx_PerspTilt(&proj, C3D_AngleFromDegrees(30.0f), (x1 - x0) / (y1 - y0), 5.0f, 20000.0f, false);
+	draw_model(&proj, angle);
 	C3D_SetViewport(0, 0, 240, 320);
+}
+
+// The top screen's item (port/UI.md): the model drawn into a texture of its own, cleared to
+// transparent, which the caller then puts over the dimmed room. The target is made once and kept
+// (VRAM: 256 KB of colour, 128 KB of depth), so nothing the GPU may still read is freed.
+#define RT_SIZE 256
+static C3D_Tex s_rt_tex;
+static C3D_RenderTarget* s_rt;
+
+C3D_Tex* itemview_render(int item, float angle)
+{
+	if (!itemview_has(item))
+		return NULL;
+	if (!s_ready)
+		init();
+	if (!s_rt) {
+		if (!C3D_TexInitVRAM(&s_rt_tex, RT_SIZE, RT_SIZE, GPU_RGBA8))
+			return NULL;
+		s_rt = C3D_RenderTargetCreateFromTex(&s_rt_tex, GPU_TEXFACE_2D, 0, GPU_RB_DEPTH16);
+		if (!s_rt) {
+			C3D_TexDelete(&s_rt_tex);
+			return NULL;
+		}
+		C3D_TexSetFilter(&s_rt_tex, GPU_LINEAR, GPU_LINEAR);
+	}
+	C3D_RenderTargetClear(s_rt, C3D_CLEAR_ALL, 0, 0);
+	C3D_FrameDrawOn(s_rt);
+	C3D_Mtx proj;
+	Mtx_Persp(&proj, C3D_AngleFromDegrees(30.0f), 1.0f, 5.0f, 20000.0f, false);
+	draw_model(&proj, angle);
+	return &s_rt_tex;
 }

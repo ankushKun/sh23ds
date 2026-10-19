@@ -87,14 +87,21 @@ static int s03_letter_from_mary(Prog* p)
 	PROG_END(p)
 }
 
-// 0x5a0b80 EvProgItemInCar: the map of Silent Hill on the driver's seat.
+// 0x5a0b80 EvProgItemInCar: the map of Silent Hill on the driver's seat. EvSubPictureDisplay shows
+// the empty seat (p_incar) with the map sprite over it (prog_overlay.c); a button takes it (SE
+// 0x2b17), the message 0x1c is read over the map, then the map fades from the seat over a second
+// (step 0x1b) and the picture goes.
 static int s03_item_in_car(Prog* p)
 {
 	PROG_BEGIN(p)
 		p_lock(p, true);
+		prog_overlay_incar(1.0f);
 	PROG_STEP(p, 2, p_picture(p, "out_p_incar"))
 		p_se(0x2b17);
 	PROG_STEP(p, 0x1e, p_message(p, 0x1c))
+		p->timer = 0.0f;
+	PROG_STEP(p, 0x1b, (prog_overlay_incar(1.0f - p->timer), p_wait(p, 1.0f)))
+		prog_overlay_incar(0.0f);
 		p_picture_hide();
 		p_lock(p, false);
 	PROG_END(p)
@@ -246,17 +253,25 @@ static int s05_spana_note(Prog* p)
 	PROG_END(p)
 }
 
-// 0x59d4f0 EvProgShadowOfSomenthing: the blood marks, something crawls past the fence.
+// 0x59d4f0 EvProgShadowOfSomenthing: the blood marks, then a figure walks off up the road in the fog
+// (a Lying Figure the program creates, status 0x11; the scene machi is the camera alone).
 static int s05_shadow(Prog* p)
 {
 	PROG_BEGIN(p)
 		p_lock(p, true);
 		p_place(5517.262f, 0.0f, -38671.51f, -1.5707964f);
+		p_figure(-2, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);             // its model, read while James walks
 	PROG_STEP(p, 0x1b, p_walk(p, 3144.163f, -38703.02f))
 	PROG_STEP(p, 0x1e, p_message(p, 0x1c))
+		// 0x48fcc0: the figure on the road (0x8e9880), a Lying Figure under event control that
+		// walks off. The PC creates it as the scene starts; its footage has it still beside the
+		// truck when the camera gets there, three seconds in, and walking off into the fog from
+		// there, which the port's walk only matches when it starts then.
+		p_figure(0x11, 2125.0f, 0.0f, -32300.0f, 0.0f, 3.0f);
 	PROG_STEP(p, 0x17, p_demo(p, DEMO_SHADOW))
 		p_place(2125.0f, 0.0f, -37000.0f, 0.0f);
 	PROG_STEP(p, 0x20, p_message(p, 0x1d))
+		p_figure(-1, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);             // 0xd: 0x53a350(0, 0x200, 0)
 		p_lock(p, false);
 	PROG_END(p)
 }

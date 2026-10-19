@@ -8,3 +8,6 @@
 bool itemview_has(int item);
 void itemview_draw(int item, float x0, float y0, float x1, float y1, float angle);
 void itemview_free(void);
+// The same model drawn into a square texture of its own (transparent round it), inside a C3D frame;
+// the caller draws on its own target again afterwards. NULL when the item has no model.
+C3D_Tex* itemview_render(int item, float angle);

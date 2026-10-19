@@ -16,7 +16,7 @@ nobody has made. In Azahar:
 | Workstream | State | What is left |
 | --- | --- | --- |
 | 1. Playthrough | The critical path passes on foot on normal levels, with every ending and Born From a Wish; beginner, hard and extra riddle pass but for one walk step | The stage 43 step on non-normal levels; the easy action level; puzzles from real input |
-| 2. Touch screen | GPU-drawn play page, items, memos, map, pause menu and options; debug page behind SELECT twice | A picture for items with no model; the console flashes at boot |
+| 2. Touch screen | The two-screen split of `UI.md` (lists below, the subject above) in the PC front end's look; play page with quick slots; debug page behind SELECT twice | A check on a console; puzzle panels drawn from structured data instead of console text; a picture for items with no model; the console flashes at boot |
 | 3. Controls and feel | Both layouts, remapping, the PC's locomotion, crossfades, quick turn, strafing, target lock | Stop animations; a check of the feel on a console |
 | 4. EE assets | The packer reads every pack that applies | A run with the real packs |
 | 5. Frame rate | No frame over 33 ms after a load in any room on either model | GPU time, which only a console shows |

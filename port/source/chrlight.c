@@ -19,9 +19,9 @@
 // (cutscenes have demo.c's own), and the light overrides (0x47adf0).
 
 #define NSLOT 12
-#define CL_LIGHTS 7                  // fragment lights 1..7
-#define CL_PAR 3                     // lights 1..3: parallels
-#define CL_EXTRA 4                   // lights 4..7: points and spots, the flashlight in the last
+#define CL_LIGHTS 7                  // fragment lights 0..6 of the characters' own environment
+#define CL_PAR 3                     // at most three parallels
+#define CL_EXTRA 4                   // then points and spots, the flashlight in the last
 
 enum { K_NONE, K_PARALLEL, K_POINT, K_SPOT };
 enum { F_NONE, F_POINT, F_SPOT };
@@ -39,7 +39,9 @@ typedef struct {
 } Slot;
 
 static struct {
-	C3D_LightEnv* env;
+	C3D_LightEnv* env;               // own: the characters' light environment
+	C3D_LightEnv* game;              // the game's (the map's flashlight), bound again afterwards
+	C3D_LightEnv own;
 	C3D_Light light[CL_LIGHTS];
 	Slot s[NSLOT];
 	Slot fl;                         // the flashlight as a character spot (dark rooms)
@@ -48,7 +50,7 @@ static struct {
 	float amb[3], bright;
 	ChrFlash flash;
 	int used;
-	char status[48];
+	char status[96];
 } L;
 
 static void falloff(Slot* s, float start, float end)
@@ -90,12 +92,21 @@ static void slot_luts(Slot* s)
 
 static float intensity(const float* c) { return fabsf(0.3f * c[0] + 0.6f * c[1] + 0.1f * c[2]); }
 
+// The characters have a light environment of their own, their lights packed from light 0 with no
+// gaps. They used to share the game's, after its flashlight in light 0: on a console the room's
+// lights then turned the characters black (ambient included) while Azahar lit them, one light
+// alone or none worked. The PICA evaluates the enabled lights in their permutation order, and with
+// gaps and a foreign light 0 (spot and distance attenuation on, though switched off) that order and
+// the per-light settings no longer lined up the way Azahar assumes. Packed, light i is always the
+// i-th one evaluated.
 void chrlight_init(C3D_LightEnv* env)
 {
 	memset(&L, 0, sizeof L);
-	L.env = env;
+	L.game = env;
+	L.env = &L.own;
+	C3D_LightEnvInit(&L.own);
 	for (int i = 0; i < CL_LIGHTS; i++) {
-		C3D_LightInit(&L.light[i], env);
+		C3D_LightInit(&L.light[i], L.env);
 		C3D_LightEnable(&L.light[i], false);
 	}
 	// the map's flashlight has no diffuse colour, so a diffuse material only affects these lights
@@ -105,7 +116,7 @@ void chrlight_init(C3D_LightEnv* env)
 		{ 1.0f, 1.0f, 1.0f },   // specular0 (the map's flashlight)
 		{ 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f },
 	};
-	C3D_LightEnvMaterial(env, &mat);
+	C3D_LightEnvMaterial(L.env, &mat);
 	L.fl.kind = K_SPOT;
 }
 
@@ -307,6 +318,7 @@ void chrlight_at(const float pos[3], bool james)
 {
 	if (!L.active)
 		return;
+	C3D_LightEnvBind(L.env);             // (a scene's own lights may have been bound meanwhile)
 	chr_light_ambient(L.env, L.amb[0], L.amb[1], L.amb[2]);
 	int g = 0;
 	// parallels (UpdateParallels, at most three here): record lights 1..3 and the fakes
@@ -322,8 +334,6 @@ void chrlight_at(const float pos[3], bool james)
 			set_parallel(&L.light[g++], s->dir, s->col);
 		}
 	}
-	for (int i = g; i < CL_PAR; i++)
-		C3D_LightEnable(&L.light[i], false);
 	// points and spots by influence (0x50c3d0 with the character radius 800, 0x50ce10)
 	Pick pick[NSLOT];
 	int n = 0;
@@ -342,16 +352,17 @@ void chrlight_at(const float pos[3], bool james)
 	int room = CL_EXTRA - (L.flash.on && !james ? 1 : 0);
 	if (room > profile_chr_point_lights())   // fewer on the low quality level (profile.c)
 		room = profile_chr_point_lights();
-	int e = 0;
+	int e = 0;                           // packed after the parallels: lights g, g + 1, ...
 	for (int i = 0; i < n && e < room; i++)
 		if (pick[i].influence > 0.0f)
-			set_extra(&L.light[CL_PAR + e++], pick[i].s, 1.0f);
+			set_extra(&L.light[g + e++], pick[i].s, 1.0f);
 	if (L.flash.on && !james)
-		set_extra(&L.light[CL_PAR + e++], &L.fl, 1.0f);
-	for (int i = CL_PAR + e; i < CL_LIGHTS; i++)
+		set_extra(&L.light[g + e++], &L.fl, 1.0f);
+	for (int i = g + e; i < CL_LIGHTS; i++)
 		C3D_LightEnable(&L.light[i], false);
 	L.used = g + e;
-	snprintf(L.status, sizeof L.status, "chr lights %d par %d extra", g, e);
+	snprintf(L.status, sizeof L.status, "chr lights %d par %d extra amb %.2f %.2f %.2f", g, e, L.amb[0], L.amb[1],
+	         L.amb[2]);
 }
 
 void chrlight_ambient_scale(float k)
@@ -367,6 +378,7 @@ void chrlight_end(void)
 	for (int i = 0; i < CL_LIGHTS; i++)
 		C3D_LightEnable(&L.light[i], false);
 	C3D_LightEnvAmbient(L.env, 0.0f, 0.0f, 0.0f);
+	C3D_LightEnvBind(L.game);
 	L.active = false;
 }
 

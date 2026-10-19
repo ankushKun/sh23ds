@@ -583,6 +583,18 @@ bool map_update(u32 down, u32 held, const circlePosition* cp, float dt)
 	return true;
 }
 
+void map_drag(float dx, float dy)
+{
+	// the zoomed map follows the finger: zoomed in, map_draw shows 512 texels across 320 pixels and
+	// 512 down 240, so a pixel of drag moves the map a pixel on the top screen
+	if (!s_open || s_mode >= 0 || s_zoom_state != 2)
+		return;
+	s_cx -= dx * (512.0f / 320.0f);
+	s_cy -= dy * (512.0f / 240.0f);
+	s_cx = s_cx > 256.0f ? 256.0f : s_cx < -256.0f ? -256.0f : s_cx;
+	s_cy = s_cy > 256.0f ? 256.0f : s_cy < -256.0f ? -256.0f : s_cy;
+}
+
 // Map units to top-screen pixels: the map fills 320x240 (4:3) in the middle of the screen.
 static float sx(float u) { return 200.0f + u * (320.0f / 512.0f); }
 static float sy(float u) { return 120.0f + u * (240.0f / 512.0f); }

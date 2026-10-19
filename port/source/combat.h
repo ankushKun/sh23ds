@@ -97,6 +97,11 @@ void combat_set_equipped(bool on);
 bool combat_equip_item(int item);
 bool combat_owns_item(int item);
 const char* combat_weapon_line(void);   // weapon and rounds, for the help screen
+int combat_weapon_item(void);            // the item of the weapon in hand, 0 for bare hands
+void combat_set_infinite_ammo(bool on);  // Cheats: firing takes no rounds
+bool combat_weapon_rounds(int* in_gun, int* spare_rounds);   // false for a weapon without rounds
+// A loaded save's weapon in hand (its item, 0 for bare hands), once its items are back.
+void combat_restore_weapon(int item);
 bool combat_dead(void);
 // The ap of an attack of James' that struck the room (a wall) during the last frame, 0 if none, and
 // the item of the weapon (PC 0x544fd0 and the equipped weapon 0x1f7d409, for the stage code).

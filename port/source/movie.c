@@ -1,4 +1,5 @@
 #include "movie.h"
+#include "gpusync.h"
 #include "noise.h"
 #include "touchui.h"
 #include <stdio.h>
@@ -497,7 +498,7 @@ void movie_stop(void)
 		ndspChnReset(MOVIE_CH);
 	if (s_log)
 		write_log();
-	C3D_FrameSync();             // the GPU may still be reading the last frame's texture
+	gpu_sync();             // the GPU may still be reading the last frame's texture
 	free_movie();
 	s_active = false;
 	snprintf(s_status, sizeof s_status, "%s: %lu shown, %lu dropped", s_name, (unsigned long)s_shown,
@@ -594,6 +595,29 @@ static bool y2r_convert(const Slot* s, void* dst)
 	return true;
 }
 
+// The next decoded frame into the texture not on screen, which then is.
+static void show_next(void)
+{
+	const Slot* s = &s_slot[s_rd % s_nslot];
+	int back = s_front ^ 1;
+	u64 t0 = svcGetSystemTick();
+	bool ok = false;
+	if (s_y2r && !s_cpu_convert)
+		ok = y2r_convert(s, s_tex[back].data);
+	if (!ok)
+		cpu_convert(s, s_tex[back].data);
+	u64 d = svcGetSystemTick() - t0;
+	s_conv_sum += d;
+	s_conv_n++;
+	if (d > s_conv_max)
+		s_conv_max = d;
+	s_front = back;
+	s_front_idx = s_rd;
+	s_have_frame = true;
+	s_shown++;
+	store_rel(&s_rd, s_rd + 1);
+}
+
 bool movie_update(u32 down)
 {
 	if (!s_active)
@@ -630,24 +654,7 @@ bool movie_update(u32 down)
 			s_dropped++;
 			continue;
 		}
-		const Slot* s = &s_slot[s_rd % s_nslot];
-		int back = s_front ^ 1;
-		u64 t0 = svcGetSystemTick();
-		bool ok = false;
-		if (s_y2r && !s_cpu_convert)
-			ok = y2r_convert(s, s_tex[back].data);
-		if (!ok)
-			cpu_convert(s, s_tex[back].data);
-		u64 d = svcGetSystemTick() - t0;
-		s_conv_sum += d;
-		s_conv_n++;
-		if (d > s_conv_max)
-			s_conv_max = d;
-		s_front = back;
-		s_front_idx = s_rd;
-		s_have_frame = true;
-		s_shown++;
-		store_rel(&s_rd, s_rd + 1);
+		show_next();
 		break;
 	}
 	bool video_over = s_vdone && s_rd == load_acq(&s_wr);
@@ -659,7 +666,51 @@ bool movie_update(u32 down)
 	return true;
 }
 
-void movie_draw(void)
+// The screen-filling quad's program and vertex state (movie_draw and the fades).
+static void bind_quad(void)
+{
+	C3D_Mtx ortho;
+	Mtx_OrthoTilt(&ortho, 0.0f, 400.0f, 0.0f, 240.0f, 0.0f, 1.0f, true);
+	C3D_BindProgram(&s_prog);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, &ortho);
+	C3D_AttrInfo* ai = C3D_GetAttrInfo();
+	AttrInfo_Init(ai);
+	AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 2);     // position
+	AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);     // texcoord
+	C3D_BufInfo* bi = C3D_GetBufInfo();
+	BufInfo_Init(bi);
+	BufInfo_Add(bi, s_quad, sizeof(QuadVertex), 2, 0x10);
+	C3D_LightEnvBind(NULL);
+	C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
+	C3D_CullFace(GPU_CULL_NONE);
+	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
+	C3D_AlphaTest(false, GPU_ALWAYS, 0);
+}
+
+// Black at alpha a over whatever the top screen's target holds (the fade out after a movie).
+static void draw_black(float a)
+{
+	QuadVertex q[4] = { { 0, 240, 0, 0 }, { 0, 0, 0, 0 }, { 400, 240, 0, 0 }, { 400, 0, 0, 0 } };
+	memcpy(s_quad, q, sizeof q);
+	GSPGPU_FlushDataCache(s_quad, sizeof q);
+	bind_quad();
+	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ZERO, GPU_ONE);
+	C3D_TexEnv* env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+	C3D_TexEnvColor(env, (u32)(a * 255.0f) << 24);
+	C3D_TexEnvInit(C3D_GetTexEnv(1));
+	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
+}
+
+static void draw_frame(float alpha);
+
+void movie_draw(void) { draw_frame(1.0f); }
+
+// The current frame; alpha below 1 lays it over what the target already holds (the fade in from
+// the game's last picture), without the noise.
+static void draw_frame(float alpha)
 {
 	if (!s_active || !s_have_frame)
 		return;
@@ -682,32 +733,25 @@ void movie_draw(void)
 	memcpy(s_quad, q, sizeof q);
 	GSPGPU_FlushDataCache(s_quad, sizeof q);
 
-	C3D_Mtx ortho;
-	Mtx_OrthoTilt(&ortho, 0.0f, 400.0f, 0.0f, 240.0f, 0.0f, 1.0f, true);
-	C3D_BindProgram(&s_prog);
-	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, &ortho);
-	C3D_AttrInfo* ai = C3D_GetAttrInfo();
-	AttrInfo_Init(ai);
-	AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 2);     // position
-	AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);     // texcoord
-	C3D_BufInfo* bi = C3D_GetBufInfo();
-	BufInfo_Init(bi);
-	BufInfo_Add(bi, s_quad, sizeof(QuadVertex), 2, 0x10);
-	C3D_LightEnvBind(NULL);
-	C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
-	C3D_CullFace(GPU_CULL_NONE);
-	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
-	C3D_AlphaTest(false, GPU_ALWAYS, 0);
-	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+	bind_quad();
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
+	if (alpha < 1.0f) {
+		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_ZERO, GPU_ONE);
+		C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, 0, 0);
+		C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
+		C3D_TexEnvColor(env, (u32)(alpha * 255.0f) << 24);
+	} else {
+		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
+	}
 	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 	C3D_TexBind(0, &s_tex[s_front]);
 	C3D_DrawArrays(GPU_TRIANGLE_STRIP, 0, 4);
 	// the Noise Effect over the picture (noise.c), y up as the quad above
-	noise_draw_movie(x0, y0, 400.0f - x0, 240.0f - y0);
+	if (alpha >= 1.0f)
+		noise_draw_movie(x0, y0, 400.0f - x0, 240.0f - y0);
 }
 
 static void print_stats(void)
@@ -733,6 +777,70 @@ static void print_stats(void)
 static bool s_skip_all;
 void movie_skip_all(bool on) { s_skip_all = on; }
 
+// Transitions (port/MOVIES.md, "Fades"): a movie no longer cuts in over the game. The game's last
+// picture stays in the top target (nothing clears it), and the movie's first frame is laid over it
+// at a growing alpha, so the room fades into the movie's first picture (white for the Laura scenes,
+// black for most) before the movie's clock and sound start. After the movie, or when it is skipped,
+// its last picture fades to black the same way. Each frame blends over the last one, so the alpha
+// of a step is what is left to cover: (f - f_prev) / (1 - f_prev).
+#define FADE_IN 0.75f
+#define FADE_OUT 0.4f
+
+typedef void (*FadeDraw)(float a);
+
+// Runs one fade of `secs` drawing `draw` at each step's alpha; false when the app is closing. A
+// skip key during it ends it at once (skip true: the caller's movie stops too).
+static bool fade(float secs, FadeDraw draw, bool* skip)
+{
+	u64 t0 = svcGetSystemTick();
+	float prev = 0.0f;
+	while (prev < 1.0f) {
+		if (!aptMainLoop())
+			return false;
+		hidScanInput();
+		u32 kd = hidKeysDown(), kh = 0;
+		touchui_input(&kd, &kh);
+		if (skip && (kd & (KEY_A | KEY_START))) {
+			*skip = true;
+			return true;
+		}
+		float f = (float)(svcGetSystemTick() - t0) / SYSCLOCK_ARM11 / secs;
+		f = f > 1.0f ? 1.0f : f;
+		f = f * f * (3.0f - 2.0f * f);          // eased at both ends
+		float a = prev >= 1.0f ? 1.0f : (f - prev) / (1.0f - prev);
+		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+		C3D_FrameDrawOn(s_top);                  // no clear: blend over the last picture
+		draw(a > 1.0f ? 1.0f : a);
+		touchui_frame();
+		C3D_FrameEnd(0);
+		prev = f;
+	}
+	return true;
+}
+
+static void fade_in_step(float a) { draw_frame(a); }
+
+// Waits (up to a second) for the first frame, shows it into the game's picture, then lets the movie
+// run from it: the clock starts on the first movie_update after this.
+static bool fade_in(void)
+{
+	u64 t0 = svcGetSystemTick();
+	while (load_acq(&s_wr) < 1 && !s_vdone && svcGetSystemTick() - t0 < SYSCLOCK_ARM11)
+		svcSleepThread(2000000);
+	if (load_acq(&s_wr) < 1)
+		return aptMainLoop();
+	show_next();                             // frame 0, on screen from the start
+	bool skip = false;
+	if (!fade(FADE_IN, fade_in_step, &skip))
+		return false;
+	if (skip)
+		movie_stop();                        // the loop then ends at once, into the fade out
+	s_start_tick = svcGetSystemTick();       // the decoders' head start counts from here
+	return true;
+}
+
+static bool fade_out(void) { return fade(FADE_OUT, draw_black, NULL); }
+
 bool movie_play(const char* name)
 {
 	if (s_skip_all)
@@ -753,9 +861,9 @@ bool movie_play(const char* name)
 			}
 	consoleClear();
 	touchui_movie(true);
-	bool alive = true;
+	bool alive = fade_in();
 	u32 frame = 0;
-	while ((alive = aptMainLoop())) {
+	while (alive && (alive = aptMainLoop())) {
 		hidScanInput();
 		u32 kd = hidKeysDown(), kh = 0;
 		touchui_input(&kd, &kh);        // the touch screen's Skip button
@@ -773,6 +881,8 @@ bool movie_play(const char* name)
 		printf("\x1b[15;2Hframe %5lu at %8.3f s  ", (unsigned long)s_front_idx, s_clock);
 	}
 	movie_stop();
+	if (alive)
+		alive = fade_out();
 	touchui_movie(false);
 	for (int ch = 0; ch < 24; ch++)
 		if (paused[ch])

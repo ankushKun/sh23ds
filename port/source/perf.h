@@ -27,5 +27,8 @@ int perf_pace(int cap);
 // A line of its own in perf.txt when frame logging is on (tile loads and the like).
 void perf_event(const char* where, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 float perf_ms(u64 ticks);
+// The frame's GPU command buffer use (0..1, C3D_GetCmdBufUsage before C3D_FrameEnd): the second's
+// highest goes in the perf.txt line.
+void perf_cmdbuf(float used);
 // Free linear, VRAM and heap memory now, as a HUD line; logged to mem.txt with "what" when enabled.
 const char* mem_log(const char* what);

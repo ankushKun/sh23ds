@@ -37,6 +37,7 @@ void prog_overlay_init(const ProgHost* host);
 void prog_overlay_picture(const char* pic);     // a still went up (NULL: down)
 void prog_overlay_frame(int extra);             // every frame while a program runs                // prog_hotel.c: stage per-frame code
 void prog_overlay_manacles(float alpha);        // the open manacles over the closed ones (0x57fd50)
+void prog_overlay_incar(float alpha);           // the map on the car seat (0x5a0b80)
 void prog_wallet_insert(void);                  // prog_apart.c: the safe code as inserted values 0..3
 
 // Coroutine style steps: PROG_STEP sets the step once when the code falls into it from above, then
@@ -75,6 +76,7 @@ void p_player(float pos[3], float* yaw);
 void p_panel(const char* text);
 void p_save_menu(void);
 void p_flashlight(bool on);
+void p_figure(int status, float x, float y, float z, float yaw, float delay);   // 0x48fcc0 Lying Figure; status < 0 removes it
 void p_game_end(int ending);
 void p_damage(float fraction);
 float* p_damage_stats(void);                        // PC 0x1dbebb0, 0x1dbebac, gDamagePointsTaken

@@ -114,6 +114,9 @@ void move_reset(void)
 const MoveOut* move_last(void) { return &M.out; }
 void move_interrupt(void) { M.interrupted = true; }
 
+static bool s_inf_stamina;      // the Cheats page: running never tires
+void move_set_infinite_stamina(bool on) { s_inf_stamina = on; }
+
 static bool running(int s) { return s >= MV_RUN1 && s <= MV_RSRUN; }
 static bool moving(int s) { return s >= MV_BACK && s <= MV_RSRUN; }
 
@@ -230,6 +233,8 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	memset(out, 0, sizeof *out);
 	float yaw0 = *yaw;
 	float limit = 600.0f * (in->hp_frac < 0.0f ? 0.0f : in->hp_frac > 1.0f ? 1.0f : in->hp_frac);
+	if (s_inf_stamina)
+		M.stam = 0.0f;               // Infinite Stamina: the run count never builds up
 
 	// 0x52e110: cross dead zone, then full tilt short of the rim
 	float ax = fabsf(in->x), ay = fabsf(in->y);
@@ -388,6 +393,8 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	}
 	}
 
+	if (s_inf_stamina)
+		M.stam = 0.0f;
 	if (in->control == MOVE_TANK && turn)
 		*yaw += (float)turn * rate * dt;      // right turns raise the yaw: forward is (sin, cos) and +x is screen right
 	// the direction of travel eases between the gaits' offsets (0x54ef10, 4 rad/s)

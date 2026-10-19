@@ -109,7 +109,27 @@ real game folder:
 Last run 2026-10-19: all three pass, and the smoke run passes on the zip the page made. The numbers are
 in tools/packer-web/README.md.
 
+## Interface
+
+`tests/ui/capture.sh [names]` takes a screenshot of both screens in every interface state of
+`UI.md` (title, levels, play, the quick slots, pause and its question, options, items and Examine,
+memos, map, a message, the save files, a cutscene) into `.lr3ds/ui/`, with a contact sheet. The runs
+go one at a time because they share the virtual SD's `debug.txt`. Taps follow `touchui.c`'s layout,
+so a layout change means checking the coordinates in the script.
+
 ## On a console
+
+Every build and checkpoint is tested on a New 3DS (from 2026-10-19). `tools/console/deploy.sh`
+sends a build over Wi-Fi and fetches the logs, with `N3DS_IP` set to the console's address:
+`link` runs `port/sh23ds.3dsx` through the Homebrew Launcher's netloader (Y in the launcher),
+`put <file>` uploads over FTP (ftpd on the console, port 5000), `pull` fetches `perf.txt`, the
+option files and any frame dumps into `.lr3ds/console/`.
+
+In the game, SELECT held with R steps through the fog test (`fog.c`, 13 modes: normal, then one
+part of the fog sprites' drawing taken away at a time; its name shows top left for three seconds).
+The sprites' console flashes (opaque white rectangles, worst on the town roads) are suspected to
+be the sprites past the far plane or before the near plane, which the fog now cuts to both planes
+on the CPU (2026-10-19); console confirmation pending.
 
 Nothing has been measured on a console yet, and it is the biggest open question. Version 0.1.1 ran on
 one console once; 0.1.2 fixes what that showed (characters too dark, cutscene audio stutter, left and

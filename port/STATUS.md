@@ -104,9 +104,12 @@ max, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `demo/`
 
 - The PC's start-up logos, title with its logo pulse, scenario and level screens, Movie Menu, attract
   mode, game over, Options, Game, Advanced and Control Options, Extra Options after a clear.
-- The bottom screen drawn on the GPU (`touchui.c`): the live mini map with zoom, condition, the weapon,
-  the item screen with 3D item models, combine, memos, map and the pause menu by touch or buttons.
-  Messages and subtitles on the top or bottom screen. The debug page sits behind SELECT twice.
+- The two screens split as `UI.md` sets out: every list on the touch screen, the thing itself on top
+  (the item's model and text, the chosen save file, the chosen setting, the memo, the map), nothing
+  drawn twice. The touch screen in the PC front end's look (`touchui.c`): grain, the red selection
+  band, button prompts that show the bound button. The play page: the mini map with zoom, condition,
+  the weapon (tap: next weapon), the healing items as quick slots. Messages and subtitles on top
+  by default. The debug page sits behind SELECT twice.
 
 ### Platform and performance
 

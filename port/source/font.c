@@ -8,7 +8,12 @@
 #define MAX_CODE 0x200
 #define MAX_GLYPHS 1024      // per frame: a full results screen is about 450
 
-typedef struct { u16 x, y; u8 w, h, adv; } Glyph;    // atlas rectangle (3DS pixels), advance (PC units)
+typedef struct {
+	u16 x, y; u8 w, h, adv;      // atlas rectangle (3DS pixels), advance (PC units)
+	u8 ix0, iy0, ix1, iy1;       // the ink inside the rectangle (font_ink_px), ix1 = 0: none
+} Glyph;
+
+static void ink_boxes(void);
 
 static struct {
 	u16 cell_w, cell_h;
@@ -72,8 +77,42 @@ bool font_init(const char* pack_dir, FontDrawFn draw)
 	Tex3DS_TextureFree(t);
 	C3D_TexSetFilter(&s_tex, GPU_NEAREST, GPU_NEAREST);
 	C3D_TexSetWrap(&s_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+	ink_boxes();
 	s_ready = true;
 	return true;
+}
+
+// Where each glyph's ink is inside its rectangle, read once from the atlas (LA4: alpha in the low
+// nibble, 8x8 tiles in Morton order, rows in the order font.c's v coordinates count them, which
+// measuring the rings on screen settled). The rectangles are
+// whole cells, so centring on them leaves a letter off centre inside a button's ring.
+static void ink_boxes(void)
+{
+	const u8* px = (const u8*)s_tex.data;
+	int W = s_tex.width, H = s_tex.height;
+	if (!px || s_tex.fmt != GPU_LA4)
+		return;
+	for (int k = 0; k < 2; k++)
+		for (int i = 0; s_font[k].glyphs && i < MAX_CODE; i++) {
+			if (s_font[k].index[i] < 0)
+				continue;
+			Glyph* g = &s_font[k].glyphs[s_font[k].index[i]];
+			int x0 = 255, y0 = 255, x1 = -1, y1 = -1;
+			for (int y = 0; y < g->h; y++)
+				for (int x = 0; x < g->w; x++) {
+					int u = g->x + x, r = g->y + y;
+					if (u >= W || r >= H)
+						continue;
+					u32 m = (u & 1) | (r & 1) << 1 | (u & 2) << 1 | (r & 2) << 2 | (u & 4) << 2 | (r & 4) << 3;
+					u8 a = px[((r >> 3) * (W >> 3) + (u >> 3)) * 64 + m] & 15;
+					if (a >= 4) {
+						x0 = x < x0 ? x : x0, x1 = x > x1 ? x : x1;
+						y0 = y < y0 ? y : y0, y1 = y > y1 ? y : y1;
+					}
+				}
+			if (x1 >= 0)
+				g->ix0 = (u8)x0, g->iy0 = (u8)y0, g->ix1 = (u8)(x1 + 1), g->iy1 = (u8)(y1 + 1);
+		}
 }
 
 static const Glyph* glyph(int font, int code)
@@ -185,6 +224,30 @@ float font_width(int font, const char* s)
 C3D_Tex* font_texture(void) { return s_ready ? &s_tex : NULL; }
 float font_line_px(int font) { return s_font[font & 1].cell_h * 0.46875f; }
 float font_width_px(int font, const char* s) { return font_width(font, s) * 0.625f; }
+
+bool font_ink_px(int font, const char* s, float* x0, float* y0, float* x1, float* y1)
+{
+	if (!s_ready || !s)
+		return false;
+	font &= 1;
+	float pen = 0.0f, bx0 = 1e9f, by0 = 1e9f, bx1 = -1e9f, by1 = -1e9f;
+	for (; *s && *s != '\n'; s++) {
+		u8 c = (u8)*s;
+		if (c < 0x20)
+			continue;
+		const Glyph* g = glyph(font, c - 0x20);
+		if (g && g->ix1) {
+			float gx = floorf(pen + 0.625f + 0.5f);     // as font_layout_px places it
+			bx0 = fminf(bx0, gx + g->ix0), bx1 = fmaxf(bx1, gx + g->ix1);
+			by0 = fminf(by0, (float)g->iy0), by1 = fmaxf(by1, (float)g->iy1);
+		}
+		pen += advance(font, c - 0x20) * 0.625f;
+	}
+	if (bx1 < bx0)
+		return false;
+	*x0 = bx0, *y0 = by0, *x1 = bx1, *y1 = by1;
+	return true;
+}
 
 int font_layout_px(int font, float x, float y, const char* s, int align, u32 top, u32 bottom, FontVert* out, int max)
 {

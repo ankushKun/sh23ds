@@ -19,7 +19,7 @@ static bool s_blob_tried;
 
 enum { OV_NONE, OV_CLOCK_CLOSED, OV_CLOCK_OPEN, OV_SAFE, OV_COINS, OV_BOX, OV_BOX_WALL, OV_QUIZ, OV_DRUMS,
        OV_EGG, OV_TOMBSTONE, OV_VIDEO, OV_MARKER, OV_ELEVATOR, OV_ELEVATOR_2, OV_MANACLES, OV_MEMO_SAFE,
-       OV_MEMO_HAIR, OV_MEMO_RINGS, OV_MEMO_TABLETS };
+       OV_MEMO_HAIR, OV_MEMO_RINGS, OV_MEMO_TABLETS, OV_INCAR };
 
 static const struct { const char* pic; const char* sheet; int ov; } s_stills[] = {
 	{ "apt_clock_close", "apt/clock_hari", OV_CLOCK_CLOSED },       // 0x59a390
@@ -37,6 +37,7 @@ static const struct { const char* pic; const char* sheet; int ov; } s_stills[] =
 	{ "hsp_p_h_elevator", "hsp/p_h_elevator_botan", OV_ELEVATOR },  // 0x58cad0
 	{ "hsp_p_h_elevator_2", "hsp/p_h_elevator_botan", OV_ELEVATOR_2 }, // 0x5888a0
 	{ "dls_p_manacles_on", "dls/p_manacles_off", OV_MANACLES },     // 0x57fd50
+	{ "out_p_incar", "out/p_incar_map", OV_INCAR },                 // 0x5a0b80
 };
 
 void prog_overlay_init(const ProgHost* host) { s_ov_host = *host; }
@@ -400,6 +401,19 @@ static void ov_manacles(void)
 		rect(-256.0f, -256.0f, 256.0f, 256.0f, 0, 0, 511, 511, s_manacles < 1.0f ? s_manacles : 1.0f);
 }
 
+// 0x5a0b80: the map of Silent Hill on the driver's seat, a 256 unit square at (-774, -506) / 16
+// (0x8ea818), drawn at 0x80 until the map is taken and then faded out over a second. Off (0) for
+// the empty seat 0x5a0e70 shows once the map is gone.
+static float s_incar;
+
+void prog_overlay_incar(float alpha) { s_incar = alpha; }
+
+static void ov_incar(void)
+{
+	if (s_incar > 0.0f)
+		rect(-48.375f, -31.625f, 207.625f, 224.375f, 0, 0, 255, 255, s_incar < 1.0f ? s_incar : 1.0f);
+}
+
 // The memo list's overlays (0x49a210, by memo number): seven memos have a second picture. Four
 // are the stills of puzzles above and draw the same parts (the PC keeps its own copies of their
 // tables): the safe's dial (memo 0x12, once flag 607 is set), the wall symbols (0x20), the trunk's
@@ -502,6 +516,7 @@ void prog_overlay_frame(int extra)
 	case OV_ELEVATOR: ov_elevator(false); break;
 	case OV_ELEVATOR_2: ov_elevator(true); break;
 	case OV_MANACLES: ov_manacles(); break;
+	case OV_INCAR: ov_incar(); break;
 	case OV_MEMO_SAFE: if (p_flag(607)) ov_safe(); break;
 	case OV_MEMO_HAIR: ov_memo_hair(); break;
 	case OV_MEMO_RINGS: ov_memo_rings(); break;

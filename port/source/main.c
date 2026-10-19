@@ -6,6 +6,7 @@
 // Room viewer (debug): D-pad left/right room, up/down area, SELECT camera mode (orbit / fly /
 // player), circle pad move, C-stick or Y/A/X/B look, L/R down/up, START title.
 #include <3ds.h>
+#include "gpusync.h"
 #include <citro3d.h>
 #include <dirent.h>
 #include <math.h>
@@ -35,6 +36,7 @@
 #include "boat.h"
 #include "mist.h"
 #include "gameover.h"
+#include "itemview.h"
 #include "titlemenu.h"
 #include "pausemenu.h"
 #include "optmenu.h"
@@ -139,10 +141,11 @@ static bool s_save_after_msg;    // a save point's message is up; prompt when it
 static bool s_save_prompt;
 static int s_slot;               // the save file Continue loads and saves go to (savescreen.c)
 static int s_save_place = -1;    // the save point last used (its place name in the file list)
-static bool s_debug_hud, s_hud_shown;
+static bool s_debug_hud;
 #define SAVE_PATH PACK_DIR "/save.dat"
 static void* s_fadequad;         // linear memory, 6 ROOM_VERTEX_SIZE vertices
 static char s_panel[512];        // stage program panel (choices, puzzles), empty when none
+bool app_closing;                    // gpusync.h
 static bool s_pt_shot, s_pt_quit;   // playtest driver: dump this frame, leave the main loop
 static bool s_free_voice;        // demo_voice_free's track is playing (its subtitles show)
 static int s_use_item;           // item chosen with "use" in the inventory, for the next event check
@@ -323,7 +326,7 @@ static bool s_keep_due;
 static void neighbour_retire(int k)
 {
 	if (s_ndead == MAX_NB) {             // cannot happen with MAX_NB tiles, but stay safe
-		C3D_FrameSync();
+		gpu_sync();
 		neighbour_free(k);
 		return;
 	}
@@ -361,7 +364,7 @@ static void neighbours_clear(void)
 		s_join_warm = false;
 	}
 	if (s_nnb || s_ndead)
-		C3D_FrameSync();     // the GPU may still be reading them
+		gpu_sync();     // the GPU may still be reading them
 	while (s_nnb)
 		neighbour_free(s_nnb - 1);
 	neighbours_reap();
@@ -578,7 +581,7 @@ static void load_current(void)
 	neighbours_clear();
 	stream_flush(s_nareas ? s_areas[s_area] : "");
 	if (s_loaded) {
-		C3D_FrameSync();     // the GPU may still be reading the old buffers
+		gpu_sync();     // the GPU may still be reading the old buffers
 		room_free(&s_cur);
 		s_loaded = false;
 	}
@@ -904,6 +907,9 @@ static bool s_inv_open;
 static int s_inv_sel;
 static int s_inv_mark[2];        // items marked with R to combine with the next one (0 = none)
 static bool s_inv_dirty;
+static int s_inv_examined;       // the item whose text shows on the top screen (X), 0 none
+static C3D_Tex* s_inv_tex;       // this frame's item model (itemview_render), NULL none
+static u64 s_inv_tick;           // when the chosen item came up: its model turns from there
 
 static int inv_list(int* items, int max)
 {
@@ -942,6 +948,7 @@ static bool inventory_update(u32 down)
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 			s_inv_open = true;
 			s_inv_sel = 0;
+			s_inv_examined = 0;
 			s_inv_mark[0] = s_inv_mark[1] = 0;
 			s_inv_dirty = true;
 		}
@@ -960,11 +967,20 @@ static bool inventory_update(u32 down)
 		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
 		s_inv_dirty = true;
 	}
+	if (n && s_inv_sel >= n)
+		s_inv_sel = n - 1;
+	static int shown;
+	if (n && items[s_inv_sel] != shown) {
+		shown = items[s_inv_sel];        // another item chosen (on either screen): its own turn, no text
+		s_inv_tick = svcGetSystemTick();
+		if (s_inv_examined != shown)
+			s_inv_examined = 0;
+	}
 	if (n && (down & KEY_X)) {
-		s_inv_open = false;
-		s_inv_dirty = true;
+		// the item's text under its model on the top screen (port/UI.md); the item screen stays
 		prog_score_examine(items[s_inv_sel]);
-		show_message(ev_item_desc(items[s_inv_sel]));
+		s_inv_examined = items[s_inv_sel];
+		sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 	}
 	if (n && (down & KEY_R)) {
 		// "Combine" (PC item screen 0x46a790): R marks up to two items, A then uses them together
@@ -988,8 +1004,6 @@ static void inventory_draw(void)
 	if (!s_inv_dirty)
 		return;
 	s_inv_dirty = false;
-	for (int r = 18; r < 30; r++)
-		printf("\x1b[%d;1H%40s", r, "");
 	if (!s_inv_open) {
 		s_msg_dirty = true;      // give the message box its rows back
 		touchui_menu_close(TOUI_ITEMS);
@@ -998,9 +1012,9 @@ static void inventory_draw(void)
 	int items[64];
 	int n = inv_list(items, 64);
 	{
-		static char rowtext[24][48];
-		const char* rows[24];
-		int k = n < 24 ? n : 24;
+		static char rowtext[64][48];
+		const char* rows[64];
+		int k = n < 64 ? n : 64;
 		for (int i = 0; i < k; i++) {
 			const char* name = ev_item_name(items[i]);
 			snprintf(rowtext[i], sizeof rowtext[i], "%s", name ? name : "?");
@@ -1018,27 +1032,59 @@ static void inventory_draw(void)
 			rows[i] = rowtext[i];
 		}
 		// Mark is R (up to two items); with items marked A uses them together with the chosen one
-		static const TouiButton use[4] = { { "Use", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Close", KEY_B } };
-		static const TouiButton join[4] = { { "Combine", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Close", KEY_B } };
-		touchui_menu_items(items, k);
+		static const TouiButton use[4] = { { "Use", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Back", KEY_B } };
+		static const TouiButton join[4] = { { "Combine", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Back", KEY_B } };
 		touchui_menu(TOUI_ITEMS, "Items", rows, k, &s_inv_sel, s_inv_mark[0] || s_inv_mark[1] ? join : use, 4);
 	}
-	printf("\x1b[18;1H---------------- Items -----------------");
-	if (!n)
-		printf("\x1b[20;3H(nothing)");
-	int first = s_inv_sel > 6 ? s_inv_sel - 6 : 0;
-	for (int i = first; i < n && i < first + 8; i++) {
-		const char* name = ev_item_name(items[i]);
-		char line[40];
-		snprintf(line, sizeof line, "%s", name ? name : "?");
-		char* nl = strchr(line, '\n');
-		if (nl)
-			*nl = 0;
-		printf("\x1b[%d;1H%c%c %-28.28s x%-3d", 20 + i - first,
-		       s_inv_mark[0] == items[i] || s_inv_mark[1] == items[i] ? '+' : ' ', i == s_inv_sel ? '>' : ' ', line,
-		       ev_item_count(items[i]));
+}
+
+static void ui_draw(C3D_Tex* tex, const MapVert* v, int n, u32 rgba);
+
+// The item chosen on the item screen, 0 when it is empty.
+static int inv_current(void)
+{
+	int items[64], n = inv_list(items, 64);
+	return n ? items[s_inv_sel < n ? s_inv_sel : n - 1] : 0;
+}
+
+// The item screen's top half (port/UI.md): the chosen item's model turning over the dimmed room
+// (drawn into its own texture before the frame, s_inv_tex), its name and count, and its text once
+// examined.
+static void inventory_draw_top(void)
+{
+	if (!s_inv_open || !font_ready())
+		return;
+	int it = inv_current();
+	if (!it) {
+		font_text(FONT_BIG, 256, 256, "No items", FONT_CENTER, 0x808080ff, 0x808080ff);
+		return;
 	}
-	printf("\x1b[29;1HA: use  X: examine  R: combine  Y/B: close");
+	if (s_inv_tex) {
+		MapVert v[6] = { { 120, 4, 0, 0 }, { 280, 4, 1, 0 }, { 280, 164, 1, 1 },
+		                 { 120, 4, 0, 0 }, { 280, 164, 1, 1 }, { 120, 164, 0, 1 } };
+		ui_draw(s_inv_tex, v, 6, 0xffffffff);
+	}
+	u32 white, yellow, dummy;
+	font_pc_color(0, &white, &dummy);
+	font_pc_color(4, &yellow, &dummy);
+	char name[64];
+	const char* nm = ev_item_name(it);
+	int k = snprintf(name, sizeof name, "%.*s", nm ? (int)strcspn(nm, "\n") : 1, nm ? nm : "?");
+	if (ev_item_count(it) > 1 && k < (int)sizeof name)
+		snprintf(name + k, sizeof name - k, "   x%d", ev_item_count(it));
+	font_text(FONT_BIG, 257.6f, 376.1f, name, FONT_CENTER, 0x000000c0, 0x000000c0);
+	u32 nc = s_inv_mark[0] == it || s_inv_mark[1] == it ? yellow : white;     // marked to combine: yellow
+	font_text(FONT_BIG, 256, 374, name, FONT_CENTER, nc, nc);
+	if (s_inv_examined == it) {
+		char text[400];
+		const char* d = ev_item_desc(it);
+		snprintf(text, sizeof text, "%s", d ? d : "");
+		for (char* c = text; *c; c++)
+			if (*c == '\f')
+				*c = '\n';
+		font_text(FONT_BIG, 257.6f, 410.1f, text, FONT_CENTER, 0x000000c0, 0x000000c0);
+		font_text(FONT_BIG, 256, 408, text, FONT_CENTER, 0xc8c8c8ff, 0xc8c8c8ff);
+	}
 }
 
 static void events_update(u32 down)
@@ -1110,7 +1156,9 @@ typedef struct {
 	u8 clear_save;                   // version 5: 1 for clear data (the PC's 0x1dbeb87 = 0xff)
 	u8 clear[3];                     // version 5: the clear data it carries (prog_clear_get)
 	u8 place;                        // version 6: the save point (m_card_x_msg_e.mes place name)
-	u8 pad[3];
+	u8 weapon;                       // the weapon in hand (0x1f7d409): 0 not saved (older files),
+	                                 // 0xff bare hands, else its item
+	u8 pad[2];
 	float boat[2];                   // version 7: the boat stage's time and top speed (prog_boat_get)
 } SaveFile;
 
@@ -1153,6 +1201,7 @@ static bool save_game(void)
 	prog_boat_get(sv.boat);
 	enemy_killed_get(sv.killed);
 	sv.hp = combat_hp();
+	sv.weapon = combat_weapon_item() ? (u8)combat_weapon_item() : 0xff;
 	FILE* f = slot_open(s_slot, "wb");
 	if (!f)
 		return false;
@@ -1363,7 +1412,6 @@ static u32 s_gdown;                 // this frame's game keys going down (contro
 // Enhanced Edition options kept in options.txt, all on by default as in the EE (combat.c, sh2cam.c, demo.c)
 static bool s_hold_stomp = true, s_swap_attack = true, s_ps2_camera = true, s_cutscene_fov = true;
 static int s_bright = 3;             // Brightness Level 0..7 (Advanced Options)
-static int s_bright_shown;           // frames left to show the level on the bottom screen
 // The PC's brightness is a gamma ramp with the slope k / 128 (0x47cb30); here it scales the light,
 // level 3 keeping the port's 1.2.
 static float bright_scale(void)
@@ -1598,8 +1646,22 @@ static void fog_frame(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* o
 	s_fogf.demo_timer = demo_timer();
 	s_fogf.flag508 = ev_flag(508);
 	s_fogf.dt = dt;
-	fog_update(&s_fogf);
-	fog_draw(proj, view, ortho);
+	float near, far;
+	env_clip(&near, &far);
+	fog_set_clip(near, far);
+	// the console test's modes 7..9 (fog.c): the simulation without the drawing, the fog's CPU time
+	// with neither, the drawing without the simulation
+	int test = fog_debug_mode();
+	if (test == 8) {
+		u64 until = svcGetSystemTick() + SYSCLOCK_ARM11 / 300;    // about 3.3 ms
+		while (svcGetSystemTick() < until)
+			;
+		return;
+	}
+	if (test != 9)
+		fog_update(&s_fogf);
+	if (test != 7)
+		fog_draw(proj, view, ortho);
 }
 
 // Vertex-shader light terms for one map material (see world.v.pica).
@@ -1697,6 +1759,25 @@ static u32 move_keys(u32 held, u32 down, const circlePosition* cp)
 	else if (s_opt.walk_run == 1)
 		held = hypotf(cp->dx, cp->dy) > 0.9f * 156.0f ? held | KEY_B : held & ~KEY_B;
 	return held;
+}
+
+// The D-Pad walks James like the circle pad at full tilt, in each direction no game action is bound
+// to (the New 3DS layout binds none; the Old 3DS keeps the next weapon and the quick turn on up and
+// down). The circle pad wins when it is pushed.
+static void dpad_walk(circlePosition* cp, u32 held)
+{
+	if (abs(cp->dx) > 20 || abs(cp->dy) > 20)
+		return;
+	u32 bound = 0;
+	for (int a = 0; a < ACT_COUNT; a++)
+		bound |= controls_keys((ControlsAction)a);
+	u32 d = held & ~bound;
+	int x = (d & KEY_DRIGHT ? 1 : 0) - (d & KEY_DLEFT ? 1 : 0), y = (d & KEY_DUP ? 1 : 0) - (d & KEY_DDOWN ? 1 : 0);
+	if (!x && !y)
+		return;
+	float k = x && y ? 156.0f * 0.70710678f : 156.0f;
+	cp->dx = (s16)(x * k);
+	cp->dy = (s16)(y * k);
 }
 
 // View Control (0x5342b0): Normal shows the search view while the look button is held (0x1fbab13),
@@ -2582,8 +2663,8 @@ static void memo_panel(const int* list, int n)
 				if (*c == '\n' || *c == '\f') *c = ' ';
 			rows[i] = titles[i];
 		}
-		static const TouiButton b[2] = { { "Read", KEY_A }, { "Close", KEY_B } };
-		touchui_menu(TOUI_MEMOS, n ? "Memos" : "Memos: none yet", rows, n < 64 ? n : 64, &s_memo_sel, b, 2);
+		static const TouiButton b[2] = { { "Read", KEY_A }, { "Back", KEY_B } };
+		touchui_menu(TOUI_MEMOS, "Memos", rows, n < 64 ? n : 64, &s_memo_sel, n ? b : b + 1, n ? 2 : 1);
 	}
 }
 
@@ -2658,6 +2739,24 @@ static bool memo_update(u32 down)
 	if (s_memo_dirty)
 		memo_panel(list, n);
 	return true;
+}
+
+// The memo list's top half (port/UI.md): the memo paper (host_picture) with the chosen memo's title.
+static void memos_draw_top(void)
+{
+	if (!s_memo_open || s_memo_view != 0 || !font_ready())
+		return;
+	int list[64], n = memo_list(list, 64);
+	char t[64];
+	snprintf(t, sizeof t, "%s", n ? (memo_title(list[s_memo_sel % n]) ? memo_title(list[s_memo_sel % n]) : "?") :
+	                                "No memos yet");
+	for (char* c = t; *c; c++)
+		if (*c == '\n' || *c == '\f')
+			*c = ' ';
+	u32 white, dummy;
+	font_pc_color(0, &white, &dummy);
+	font_text(FONT_BIG, 257.6f, 442.1f, t, FONT_CENTER, 0x000000c0, 0x000000c0);
+	font_text(FONT_BIG, 256, 440, t, FONT_CENTER, white, white);
 }
 
 // One frame of the map or the memo list; true while one of them is open (the game waits). A tap
@@ -2803,57 +2902,11 @@ static bool s_results_dirty;
 static bool s_clear_saving;      // clearsave.c runs after the results
 static void enter_title(void);
 
+// The results are the top screen's (results_draw_top); the touch screen has "Continue".
 static void results_print(void)
 {
-	ProgResults r;
-	prog_results(&r);
-	const char* (*m)(int) = ev_result_message;
-	static const int action_msg[4] = { 25, 3, 4, 5 }, riddle_msg[4] = { 3, 4, 5, 24 };
-	consoleClear();
-	printf("\x1b[1;1H---------------- Result ----------------");
-	int row = 3;
-	static char sum[1400];          // the same lines for the touch screen
-	int sn = 0;
-#define LINE(label, ...) do { printf("\x1b[%d;2H%-27s", row, (label) ? (label) : ""); printf(__VA_ARGS__); row++; \
-		sn += snprintf(sum + sn, sizeof sum - sn, "%s   ", (label) ? (label) : ""); \
-		sn += snprintf(sum + sn, sizeof sum - sn, __VA_ARGS__); sn += snprintf(sum + sn, sizeof sum - sn, "\n"); } while (0)
-	LINE(m(1), "%s", m(action_msg[r.action & 3]) ? m(action_msg[r.action & 3]) : "");
-	LINE(m(2), "%s", m(riddle_msg[r.riddle & 3]) ? m(riddle_msg[r.riddle & 3]) : "");
-	int e = r.ending == 1 ? 7 : r.ending == 2 ? 8 : r.ending == 4 ? 9 : r.ending == 8 ? 10 : r.ending == 0x10 ? 11 :
-	        r.ending == 0x20 ? 27 : -1;
-	LINE(m(6), "%s", e >= 0 && m(e) ? m(e) : "");
-	int seen = 0;
-	for (int b = 0; b < 7; b++)
-		seen += r.endings >> b & 1;
-	LINE(m(12), "%d", seen);
-	LINE(m(13), "%d", r.saves);
-	int t = (int)r.time;
-	LINE(m(14), "%d:%02d:%02d", t / 3600, t / 60 % 60, t % 60);
-	LINE(m(15), "%.1f km", r.walk_km);
-	LINE(m(16), "%.1f km", r.run_km);
-	if (r.secret)
-		LINE(m(17), "%d(+%d)", r.items, r.secret);
-	else
-		LINE(m(17), "%d", r.items);
-	LINE(m(18), "%d", r.shot);
-	LINE(m(19), "%d", r.beaten);
-	if (r.chapter != 1) {
-		LINE(m(20), "%d:%02d", (int)r.boat_time / 60, (int)r.boat_time % 60);
-		LINE(m(21), "%.1f", r.boat_speed);
-	}
-	LINE(m(22), "%.0f", r.damage);
-	if (r.chapter != 1) {
-		char stars[24];
-		int n = r.rank < 20 ? r.rank : 20;
-		memset(stars, '*', n);
-		stars[n] = 0;
-		LINE(m(23), "%d", r.rank);
-		printf("\x1b[%d;4H%s", row, stars);
-	}
-#undef LINE
-	printf("\x1b[29;12H%s", "A: continue");
 	static const TouiButton cont[1] = { { "Continue", KEY_A } };
-	touchui_box(sum, cont, 1);
+	touchui_box("", cont, 1);
 	s_results_dirty = false;
 }
 
@@ -3082,6 +3135,28 @@ static bool host_walk_to(float x, float z)
 // counts as watched, so the program goes on with its flags and James' new position.
 static int s_demo_req;           // ProgDemo id playing for the program, 0 when none
 static bool s_demo_over;         // that scene has ended (or was skipped)
+static float s_scene_fade;       // the room going black before a scene starts (demo_preroll)
+static u64 s_scene_fade_tick;    // when demo_preroll last asked for it
+
+// Before an in-engine scene the room fades to black over 0.4 s, and the scene then fades in from
+// that black (demo.c), instead of the room cutting to black. True once it is black.
+#define SCENE_FADE 0.4f
+static bool demo_preroll(int id)
+{
+	static int pre_id;
+	static u64 pre_tick;
+	if (pre_id != id) {
+		pre_id = id;
+		pre_tick = svcGetSystemTick();
+	}
+	float f = (float)(svcGetSystemTick() - pre_tick) / SYSCLOCK_ARM11 / SCENE_FADE;
+	s_scene_fade = f > 1.0f ? 1.0f : f;
+	s_scene_fade_tick = svcGetSystemTick();
+	if (f < 1.0f)
+		return false;
+	pre_id = 0;
+	return true;
+}
 
 static bool host_demo(int id)
 {
@@ -3094,6 +3169,9 @@ static bool host_demo(int id)
 	}
 	// demo.c plays the movies of its sequences itself, between the scenes as the PC does
 	const char* name = demo_has_sequence(id) ? "" : prog_demo_name(id);
+	// a scene opens out of black, a movie out of the room's last picture (movie.c's own fade)
+	if (!strstr(name, ".sfd") && !demo_preroll(id))
+		return false;
 	for (const char* sfd; (sfd = strstr(name, ".sfd")) != NULL; name = sfd + 4) {
 		const char* start = sfd;
 		while (start > name && start[-1] != ' ')
@@ -3104,7 +3182,9 @@ static bool host_demo(int id)
 			movie_play(movie);
 		}
 	}
-	if (!demo_start(PACK_DIR, id))
+	bool started = demo_start(PACK_DIR, id);
+	s_scene_fade = 0.0f;                 // demo_fade is 1 from here, then fades the scene in
+	if (!started)
 		return true;
 	s_demo_req = id;
 	s_demo_over = false;
@@ -3141,10 +3221,20 @@ static void host_game_end(int ending)
 // EvProgFireDamage (stage 47): a part of James' maximum health.
 static void host_damage(float fraction) { combat_damage_james(0x3e, JAMES_HP_MAX * fraction, s_px, s_pz); }
 
+static void host_figure(int status, float x, float y, float z, float yaw, float delay)
+{
+	if (status == -2)
+		enemy_event_prefetch();
+	else if (status < 0)
+		enemy_event_remove();
+	else
+		enemy_event_create(status, x, y, z, yaw, delay);
+}
+
 static const ProgHost s_prog_host = {
 	host_message, host_message_open, host_panel, host_picture, host_fade, host_fade_done, host_se,
 	host_player_get, host_player_set, host_walk_to, host_demo, host_save_menu, host_flashlight,
-	host_game_end, host_damage, host_map_mark, host_sheet, host_sprite,
+	host_game_end, host_damage, host_map_mark, host_sheet, host_sprite, host_figure,
 };
 
 // New game: the PC version opens in the observation deck restroom (stage 2, er01). James stands
@@ -3294,6 +3384,9 @@ static bool continue_game(void)
 	if (sv.version >= 4) {
 		enemy_killed_set(sv.killed);       // before the warp: entering the room spawns enemies
 		combat_set_hp(sv.hp);
+	// the weapon in hand; an older file (0) leaves it to combat.c, which equips the plank if owned
+	if (sv.weapon)
+		combat_restore_weapon(sv.weapon == 0xff ? 0 : sv.weapon);
 	}
 	memset(&s_warp, 0, sizeof s_warp);
 	s_warp.kind = EV_WARP;
@@ -3330,6 +3423,8 @@ static void options_apply(void)
 	s_msg_top = s_opt.msg_top;
 	ev_set_bullet_adjust(s_opt.bullet);
 	combat_set_options(s_hold_stomp, s_swap_attack);
+	combat_set_infinite_ammo(s_opt.inf_ammo);
+	move_set_infinite_stamina(s_opt.inf_stamina);
 	sh2cam_set_ps2_speed(s_ps2_camera);
 	demo_set_reduce_fov(s_cutscene_fov);
 	env_set_ps2_flashlight(s_ps2_flash);
@@ -3342,14 +3437,6 @@ static void options_apply(void)
 	blood_set_color(s_opt.blood);
 	profile_set_choices(s_opt.hwprofile, s_opt.quality, s_opt.ctrllayout, s_opt.framerate);   // profile.c
 	s_env_dirty = true;
-}
-
-static void options_save(void)
-{
-	s_opt.bright = (u8)s_bright;
-	s_opt.control_type = (u8)s_controls;
-	s_opt.bullet = (u8)ev_bullet_adjust();
-	opt_save(&s_opt, OPTIONS_PATH);
 }
 
 // The options screens' host: every change goes into the game at once (the flashlight's look and
@@ -3557,16 +3644,11 @@ static void pause_draw(void)
 	if (!s_pause_dirty)
 		return;
 	s_pause_dirty = false;
-	for (int r = 18; r < 30; r++)
-		printf("\x1b[%d;1H%40s", r, "");
 	if (!s_paused) {
 		s_msg_dirty = true;
 		pausemenu_close();
-		return;
 	}
-	// the PC's pause menu is on the top screen and the touch screen (pausemenu.c); the settings and
-	// the Old 3DS profile's rows are on the options screens
-	printf("\x1b[18;1H---------------- Pause -----------------");
+	// open, the menu draws itself (pausemenu.c: its rows on the touch screen, PAUSED on top)
 }
 
 // 0x44c7d0: Save Game works anywhere but in stages 27, 37 and 48..52, and not while a stage
@@ -3580,15 +3662,34 @@ static bool pause_can_save(void)
 	return !prog_running();
 }
 
+// The pause menu's row whose screen (the map, the memos) is up: B there comes back to the menu.
+static int s_pause_back = -1;
+
+static void pause_reopen(int row)
+{
+	s_paused = true;
+	s_pause_dirty = true;
+	ProgResults r;
+	prog_results(&r);
+	pausemenu_where(ev_mcard_message(157 + ev_stage()), r.time);
+	pausemenu_open_at(pause_can_save(), row);
+}
+
 // Returns true while the game is paused (the caller skips the game update).
 static bool pause_update(u32 down)
 {
+	if (!s_paused && s_pause_back >= 0) {
+		if (screens_open() || s_msg_page)
+			return false;                // the map, the memos or "no map of this area" still up
+		int row = s_pause_back;
+		s_pause_back = -1;
+		pause_reopen(row);
+		return true;
+	}
 	if (!s_paused) {
 		if ((down & KEY_START) && !s_msg_page && !s_save_prompt && !s_inv_open && !s_warp_pending &&
 		    !screens_open()) {
-			s_paused = true;
-			s_pause_dirty = true;
-			pausemenu_open(pause_can_save());
+			pause_reopen(0);
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
 			return true;
 		}
@@ -3619,6 +3720,7 @@ static bool pause_update(u32 down)
 	case PM_LOAD:
 		// the PC's load screen (menu event 0x11); the port shows it over the title
 		s_paused = false;
+		pausemenu_close();               // its rows and question off the touch screen
 		enter_title();
 		savescreen_open(SS_LOAD, &s_files, 0);
 		break;
@@ -3628,16 +3730,19 @@ static bool pause_update(u32 down)
 		break;
 	case PM_QUIT:
 		s_paused = false;
+		pausemenu_close();               // its rows and question off the touch screen
 		enter_title();
 		break;
-	case PM_MAP:                     // the port's own rows on the touch screen
+	case PM_MAP:                     // the port's own rows: B on their screens comes back here
 		s_paused = false;
 		s_pause_dirty = true;
+		s_pause_back = 5;
 		open_map();
 		break;
 	case PM_MEMOS:
 		s_paused = false;
 		s_pause_dirty = true;
+		s_pause_back = 6;
 		if (!prog_running())
 			open_memos();
 		break;
@@ -3674,6 +3779,19 @@ static void draw_message_top(const char* page)
 	font_text(FONT_BIG, x, y, buf, FONT_LEFT, white, white);
 }
 
+static float s_test_shown;      // seconds left of the console test's name (SELECT + R)
+
+static void draw_test_name(float dt)
+{
+	if (s_test_shown <= 0.0f || !font_ready())
+		return;
+	s_test_shown -= dt;
+	char t[64];
+	snprintf(t, sizeof t, "Fog test %d: %s", fog_debug_mode(), fog_debug_name());
+	font_text(FONT_SMALL, 41, 41, t, FONT_LEFT, 0x000000ff, 0x000000ff);
+	font_text(FONT_SMALL, 40, 40, t, FONT_LEFT, 0xffff60ff, 0xffff60ff);
+}
+
 static void draw_top_text(void)
 {
 	if (!s_msg_top || !font_ready() || s_paused)
@@ -3698,36 +3816,61 @@ static int s_debug_weapon;           // debug.txt "weapon <item>": equipped on t
 static u32 s_dump_frames[8];
 static int s_ndump;
 
-static void dump_frame(C3D_RenderTarget* top, u32 n)
+// The top target's last frame into buf (240x400 BGR, as the GPU stores it).
+static void grab_frame(C3D_RenderTarget* top, u8* buf)
 {
-	C3D_FrameSync();
-	u8* buf = linearAlloc(240 * 400 * 3);
-	if (!buf)
-		return;
+	gpu_sync();
 	GSPGPU_FlushDataCache(buf, 240 * 400 * 3);
 	C3D_SyncDisplayTransfer((u32*)top->frameBuf.colorBuf, GX_BUFFER_DIM(240, 400), (u32*)buf,
 	                        GX_BUFFER_DIM(240, 400), DISPLAY_TRANSFER_FLAGS);
 	GSPGPU_InvalidateDataCache(buf, 240 * 400 * 3);
+}
+
+// A frame as frame_<n>.bmp (240x400 BGR, rows as the GPU stores them: the screen is rotated, tools
+// rotate it back). Written with one FS call per part, straight from the buffer: stdio's sdmc writes
+// go through a small bounce buffer chunk by chunk, which on the console took long enough for a
+// capture to look like a freeze.
+static void write_frame(const u8* buf, u32 n)
+{
 	char path[96];
-	snprintf(path, sizeof path, PACK_DIR "/frame_%lu.bmp", (unsigned long)n);
-	FILE* f = fopen(path, "wb");
-	if (f) {
-		// 240x400 BGR, rows as the GPU stores them (the screen is rotated; tools rotate it back)
-		u32 size = 54 + 240 * 400 * 3;
-		u8 h[54] = { 'B', 'M' };
-		memcpy(h + 2, &size, 4);
-		u32 v = 54; memcpy(h + 10, &v, 4);
-		v = 40; memcpy(h + 14, &v, 4);
-		v = 240; memcpy(h + 18, &v, 4);
-		v = 400; memcpy(h + 22, &v, 4);
-		u16 planes = 1, bpp = 24; memcpy(h + 26, &planes, 2); memcpy(h + 28, &bpp, 2);
-		fwrite(h, 1, 54, f);
-		fwrite(buf, 1, 240 * 400 * 3, f);
-		fclose(f);
-	}
+	snprintf(path, sizeof path, "/3ds/sh23ds/frame_%lu.bmp", (unsigned long)n);
+	u32 size = 54 + 240 * 400 * 3;
+	u8 h[54] = { 'B', 'M' };
+	memcpy(h + 2, &size, 4);
+	u32 v = 54; memcpy(h + 10, &v, 4);
+	v = 40; memcpy(h + 14, &v, 4);
+	v = 240; memcpy(h + 18, &v, 4);
+	v = 400; memcpy(h + 22, &v, 4);
+	u16 planes = 1, bpp = 24; memcpy(h + 26, &planes, 2); memcpy(h + 28, &bpp, 2);
+	Handle f;
+	if (R_FAILED(FSUSER_OpenFileDirectly(&f, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, path),
+	                                     FS_OPEN_CREATE | FS_OPEN_WRITE, 0)))
+		return;
+	u32 done;
+	FSFILE_SetSize(f, size);
+	FSFILE_Write(f, &done, 0, h, 54, 0);
+	FSFILE_Write(f, &done, 54, buf, 240 * 400 * 3, FS_WRITE_FLUSH);
+	FSFILE_Close(f);
+}
+
+static void dump_info(u32 n);
+
+static void dump_frame(C3D_RenderTarget* top, u32 n)
+{
+	u8* buf = linearAlloc(240 * 400 * 3);
+	if (!buf)
+		return;
+	grab_frame(top, buf);
+	write_frame(buf, n);
 	linearFree(buf);
+	dump_info(n);
+}
+
+static void dump_info(u32 n)
+{
+	char path[96];
 	snprintf(path, sizeof path, PACK_DIR "/frame_%lu.txt", (unsigned long)n);
-	f = fopen(path, "w");
+	FILE* f = fopen(path, "w");
 	if (f) {
 		fprintf(f, "state %d room %s loaded %d nb %d stage %d pos %.0f %.0f %.0f fade %.2f demo %d prog %d\n",
 		        s_state, s_status, s_loaded, s_nnb, ev_stage(), s_px, s_py, s_pz, s_fade, demo_active(),
@@ -3737,9 +3880,11 @@ static void dump_frame(C3D_RenderTarget* top, u32 n)
 		        s_env.fog_end, s_env.clip_near, s_env.clip_far, s_bright, s_flash_on);
 		fprintf(f, "linear free %lu KB, verts %lu\n", (unsigned long)(linearSpaceFree() / 1024),
 		        (unsigned long)s_cur.n_vertices);
+		fprintf(f, "fog test %d (%s), %s, demo %s\n", fog_debug_mode(), fog_debug_name(), chrlight_status(), demo_status());
 		fclose(f);
 	}
 }
+
 
 // ---------------------------------------------------------------- autotest (debug.txt)
 
@@ -4130,9 +4275,16 @@ int main(void)
 		if (s_autotest)
 			autotest_frame(&down, &held);
 		touchui_input(&down, &held);
+		int quick_item, quick = touchui_quick(&quick_item);   // a quick slot of the play page, this frame only
 		pt_frame(&down, &held, dt);
 		if (s_pt_quit)
 			break;
+		// console test: SELECT held with R steps the fog test (fog.c); the R press goes no further
+		if ((held & KEY_SELECT) && (down & KEY_R)) {
+			s_test_shown = fog_debug_cycle() >= 0 ? 3.0f : 0.0f;
+			down &= ~(KEY_R | KEY_SELECT);
+			held &= ~KEY_R;
+		}
 		u32 gdown, gheld;                    // the game keys (controls.c): actions, not buttons
 		controls_game(down, held, &gdown, &gheld);
 		s_gdown = gdown;
@@ -4234,14 +4386,6 @@ int main(void)
 			s_flash_on = !s_flash_on;
 			sfx_play(s_flash_on ? SFX_LIGHT_ON : SFX_LIGHT_OFF, 0.8f, 0.0f);
 		}
-		if (!viewer && (gdown & (KEY_DUP | KEY_DDOWN)) && !s_inv_open && !screens_open()) {
-			s_bright += gdown & KEY_DUP ? 1 : -1;
-			s_bright = s_bright < 0 ? 0 : s_bright > 7 ? 7 : s_bright;
-			s_bright_shown = 90;
-			s_opt.bright = (u8)s_bright;
-			options_apply();
-			options_save();
-		}
 		if (!viewer && (down & KEY_SELECT) && touchui_select()) {     // SELECT twice: the debug page
 			s_debug_hud = !s_debug_hud;
 			for (int r = 1; r < 18; r++)
@@ -4261,11 +4405,13 @@ int main(void)
 		if (s_paused) {
 			cp.dx = cp.dy = 0;
 		} else if (s_cam.mode == CAM_PLAYER && demo_active()) {
+			enemy_event_tick(dt);
 			if (demo_update(down, dt))
 				demo_finish();
 		} else if (s_cam.mode == CAM_PLAYER && screens_update(down, held, &cp, dt)) {
 			// the map screen or the memo list has the buttons; the game waits
 		} else if (s_cam.mode == CAM_PLAYER) {
+			dpad_walk(&cp, held);
 			if (!save_prompt_update(down) && !message_update(down) && !s_warp_pending) {
 				prog_stage_tick(ev_stage(), dt);
 				boat_tick(ev_stage(), dt);
@@ -4295,6 +4441,9 @@ int main(void)
 						continue;
 					}
 				} else if (!inventory_update(s_inv_open ? down : gdown)) {   // Y opens, its own keys inside
+					// a healing item tapped on the play page: used as the item screen's Use would
+					if (quick == TQ_HEAL && ev_item_count(quick_item) > 0 && !s_msg_page && !s_save_prompt)
+						inventory_use(quick_item, 0, 0);
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held = move_keys(gheld, gdown, &cp);
 					combat_set_sight(s_env.dark, flash_lit());
@@ -4311,6 +4460,8 @@ int main(void)
 					EnPlayer ep = combat_enplayer(&body, flash_lit());
 					enemy_update(&ep, dt);
 					head_update(&cp, gheld, dt, !prog_running() || !prog_player_locked());
+				} else {
+					enemy_event_tick(dt);
 				}
 				blood_frame(dt);
 				if (combat_dead()) {     // game over: the PC's screen, then the title (0x401fc0)
@@ -4399,6 +4550,10 @@ int main(void)
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		perf_part("r_wait", tw);          // the previous frame's GPU work and the vertical blank
 		neighbours_reap();
+		// the item screen's model goes into its own texture first (itemview_render switches targets)
+		s_inv_tex = s_inv_open && s_state == ST_GAME ?
+		            itemview_render(inv_current(), (float)(svcGetSystemTick() - s_inv_tick) / (float)SYSCLOCK_ARM11 * 0.9f) :
+		            NULL;
 		u32 clear = s_cam.mode == CAM_PLAYER ? ((u32)s_env.clear_rgb[0] << 24 | (u32)s_env.clear_rgb[1] << 16 |
 		                                       (u32)s_env.clear_rgb[2] << 8 | 0xFF) : CLEAR_COLOR;
 		C3D_RenderTargetClear(top, C3D_CLEAR_ALL, s_render_mode == 3 ? 0x808080FF : clear,
@@ -4438,6 +4593,9 @@ int main(void)
 			perf_part("r_fog", tr);
 			tr = svcGetSystemTick();
 			float black = s_fade > demo_fade() ? s_fade : demo_fade();
+			if (svcGetSystemTick() - s_scene_fade_tick > SYSCLOCK_ARM11 / 4)
+				s_scene_fade = 0.0f;         // nothing waits on a scene any more: no black left behind
+			black = black > s_scene_fade ? black : s_scene_fade;
 			// Enhanced Edition "DisableRedCrossInCutScenes" (Patches/DisableRedCrossDuringCutscenes.cpp,
 			// zlib licence): no cross in scenes, still pictures, the item screen or while a stage
 			// program holds James for a scripted shot; the pause menu hides it too
@@ -4445,7 +4603,8 @@ int main(void)
 			if (cross > 0.0f && s_state == ST_GAME && s_cam.mode == CAM_PLAYER && !demo_active() && !s_pic_shown &&
 			    !s_inv_open && !s_paused && !(prog_running() && prog_player_locked()))
 				draw_low_health(&ortho, cross * (1.0f - black));
-			float dim = s_paused && !optmenu_brightness() && black < 0.5f ? 0.5f : black;
+			float dim = (s_paused && !optmenu_brightness()) || s_inv_open ? (s_inv_open ? 0.6f : 0.5f) : 0.0f;
+			dim = dim > black ? dim : black;
 			if (dim > 0.0f)
 				draw_fade(&ortho, dim);
 			if (noise_on() && !s_pic_shown) {
@@ -4456,10 +4615,13 @@ int main(void)
 				draw_picture(&ortho);
 			draw_sprites();
 			map_draw();
+			inventory_draw_top();
+			memos_draw_top();
 			optmenu_draw_top(ui_draw);
 			if (s_paused && !optmenu_active() && !savescreen_active())
 				pausemenu_draw_top();
 			draw_top_text();
+			draw_test_name(dt);
 			savescreen_draw_top();       // a save point's files over the room
 			font_flush();
 			perf_part("r_ui", tr);
@@ -4467,6 +4629,7 @@ int main(void)
 		u64 tt = svcGetSystemTick();
 		touchui_frame();
 		perf_part("r_touch", tt);
+		perf_cmdbuf(C3D_GetCmdBufUsage());   // how full the frame's GPU command buffer got
 		tt = svcGetSystemTick();
 		C3D_FrameEnd(0);
 		perf_part("r_end", tt);
@@ -4482,27 +4645,8 @@ int main(void)
 		}
 
 		bool hud = s_state == ST_VIEWER || s_debug_hud;
-		if ((frame++ % 30) == 0 && !hud && s_hud_shown) {
-			s_hud_shown = false;
-			for (int r = 1; r < 18; r++)
-				printf("\x1b[%d;1H%40s", r, "");
-		}
-		if ((frame % 30) == 1 && !hud) {
-			// the help: the live bindings of the layout in use (controls.c), then James' state
-			char help[12][40];
-			int nh = controls_help(help, 12);
-			printf("\x1b[2;3HSILENT HILL 2  (%s)            ", controls_layout() == CONTROLS_LAYOUT_NEW ? "New 3DS" : "Old 3DS");
-			printf("\x1b[3;3H%-37.37s", "Circle Pad  walk / turn");
-			for (int i = 0; i < nh && i < 11; i++)
-				printf("\x1b[%d;3H%-37.37s", 4 + i, help[i]);
-			printf("\x1b[15;3HSTART pause, SELECT twice debug      ");
-			float hp = combat_hp();
-			printf("\x1b[16;3HHealth %3.0f %-8s flashlight %-3s  ", hp, hp > 70.0f ? "Fine" : hp > 35.0f ? "Caution" : "Danger",
-			       s_flash_on ? "on" : "off");
-			printf("\x1b[17;3HWeapon %-30.30s", combat_weapon_line());
-		}
+		frame++;
 		if ((frame % 30) == 1 && hud) {
-			s_hud_shown = true;
 			printf("\x1b[1;1Hsh23ds %-12s            \n\n", s_state == ST_VIEWER ? "room viewer" : "debug");
 			printf("room   %-20s +%d tiles  \n", s_status, s_nnb);
 			printf("area   %d/%d  room %d/%d          \n", s_area + 1, s_nareas, s_room + 1, s_nrooms);
@@ -4546,66 +4690,30 @@ int main(void)
 				sub = NULL;
 			if (serial != s_sub_serial) {
 				s_sub_serial = serial;
-				for (int r = 18; r < 30; r++)
-					printf("\x1b[%d;1H%40s", r, "");
-				printf("\x1b[18;1H----------------------------------------");
-				int row = 20;
-				printf("\x1b[%d;3H", row);
-				for (const char* c = s_msg_top && font_ready() ? NULL : sub; c && *c && *c != '\f' && row < 28; c++) {
-					if (*c == '\n')
-						printf("\x1b[%d;3H", ++row);
-					else
-						putchar(*c);
-				}
+				// a scene: black with Skip below (and its subtitle, with Messages on the bottom); a voice
+				// over the game: its subtitle alone, the taps left to the game (port/UI.md)
 				static const TouiButton skip[1] = { { "Skip", KEY_START } };
 				bool scene = demo_active();      // (a voice over the game cannot be skipped)
+				bool top = s_msg_top && font_ready();
 				if (scene)
-					printf("\x1b[29;27HSTART: skip");
-				touchui_box(s_msg_top && font_ready() ? "" : (sub ? sub : ""), skip, scene ? 1 : 0);
+					touchui_box(top ? "" : (sub ? sub : ""), skip, 1);
+				else
+					touchui_box(top || !sub || !*sub ? NULL : sub, NULL, -1);
 			}
 		} else if (s_sub_serial != -1) {
 			s_sub_serial = -1;               // the scene is over: the box below gets the screen back
 			s_msg_dirty = true;
 			touchui_box(NULL, NULL, 0);
 		} else if (s_msg_dirty && !s_inv_open && !s_paused) {
-			// message box on the lower half of the bottom screen (rows 18..29)
+			// a message: on the top screen (the touch screen keeps the play page with "Next") or,
+			// with Messages on the bottom, in the touch screen's box; else the stage panel, if any
 			s_msg_dirty = false;
-			for (int r = 18; r < 30; r++)
-				printf("\x1b[%d;1H%40s", r, "");
-			static const TouiButton save[2] = { { "Save", KEY_A }, { "Cancel", KEY_B } };
-			touchui_box(s_save_prompt ? "Do you want to save the game?" :
-			            s_msg_page ? (s_msg_top && font_ready() ? "" : s_msg_page) : NULL,
-			            save, s_save_prompt ? 2 : 0);
+			touchui_box(s_msg_page && !s_save_prompt ? (s_msg_top && font_ready() ? "" : s_msg_page) : NULL, NULL, 0);
 			touchui_panel(!s_save_prompt && !s_msg_page ? s_panel : "");
-			if (s_save_prompt) {
-				printf("\x1b[18;1H----------------------------------------");
-				printf("\x1b[20;3HDo you want to save the game?");
-				printf("\x1b[29;20HA: save   B: cancel");
-			} else if (s_msg_page) {
-				printf("\x1b[18;1H----------------------------------------");
-				int row = 20;
-				printf("\x1b[%d;3H", row);
-				for (const char* c = s_msg_top && font_ready() ? "" : s_msg_page; *c && *c != '\f' && row < 28; c++) {
-					if (*c == '\n')
-						printf("\x1b[%d;3H", ++row);
-					else
-						putchar(*c);
-				}
-				printf("\x1b[29;30H%s", strchr(s_msg_page, '\f') ? "A: next" : "A: close");
-			} else if (s_panel[0]) {
-				printf("\x1b[18;1H----------------------------------------");
-				int row = 19;
-				printf("\x1b[%d;1H", row);
-				for (const char* c = s_panel; *c && row < 30; c++) {
-					if (*c == '\n')
-						printf("\x1b[%d;1H", ++row);
-					else
-						putchar(*c);
-				}
-			}
 		}
 	}
 
+	app_closing = !s_pt_quit;           // closed from the HOME Menu: no more GPU frame events
 	stream_exit();
 	neighbours_clear();
 	if (s_loaded)

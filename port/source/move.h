@@ -61,4 +61,5 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out);
 const MoveOut* move_last(void);
 // Something else (combat, a scene) animated James: the next free clip blends in from there.
 void move_interrupt(void);
+void move_set_infinite_stamina(bool on);   // Cheats: running never tires (no third pace limit, no panting)
 const char* move_status(void);

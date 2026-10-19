@@ -36,6 +36,7 @@ void map_close(void);
 const char* map_legend(void);        // the shown map's name and the keys, for the bottom screen
 const char* map_name(void);          // the shown map's name
 bool map_zoomed(void);               // the screen is zoomed in (the D-pad scrolls)
+void map_drag(float dx, float dy);   // zoomed in: a drag on the touch screen, in its pixels
 // The touch screen's small map (touchui.c): the map James is on, centred on him, zoom times the
 // screen's zoomed-out size, with the red markings and his arrow, through fn into (x0, y0)-(x1, y1)
 // in the caller's pixels. False when he has no map of where he is (or the screen is open).

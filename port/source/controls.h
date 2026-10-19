@@ -12,8 +12,8 @@
 // game while James is free goes through here. controls_game() turns the buttons into "game keys",
 // the KEY_* bits the game code already tested before there was remapping:
 //   KEY_A action, KEY_B run, KEY_R aim, KEY_L next weapon, KEY_X flashlight, KEY_Y items,
-//   GK_LOOK, GK_TURN180, GK_STRAFE_L, GK_STRAFE_R, GK_MAP, and KEY_DUP / KEY_DDOWN for the
-//   brightness when the layout leaves the D-Pad's up and down free.
+//   GK_LOOK, GK_TURN180, GK_STRAFE_L, GK_STRAFE_R, GK_MAP. The D-Pad does nothing else in play
+//   (the brightness is on the Options' Advanced page).
 
 #if __has_include("profile.h")
 #include "profile.h"
@@ -43,8 +43,6 @@ const char* controls_name(ControlsAction act);
 
 // Once per frame with the raw buttons (hidKeysDown / hidKeysHeld after touchui_input): game keys.
 void controls_game(u32 down, u32 held, u32* gdown, u32* gheld);
-// D-Pad up / down change the brightness in play (the layout does not use them for anything else).
-bool controls_dpad_brightness(void);
 
 // The "Buttons" page of the pause menu, drawn like the other pages (bottom console rows 18..29 and
 // touchui_menu). controls_menu_update returns false once it is closed.
@@ -57,6 +55,8 @@ const char* controls_menu_label(void);     // the pause menu line
 // the page opens, then controls_handle(down) each frame (false once the player backs out) and
 // controls_draw_options().
 void controls_menu_slot(int toui_id);
+// The chosen row for the top screen: its action's name and buttons; true while waiting for a button.
+bool controls_menu_focus(const char** name, char* keys, int size);
 void controls_draw_options(void);
 bool controls_handle(u32 down);
 

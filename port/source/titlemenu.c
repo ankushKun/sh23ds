@@ -118,7 +118,8 @@ void titlemenu_reset(bool saves)
 
 static void touch(void)
 {
-	static const TouiButton back[1] = { { "Back", KEY_B } };
+	static const TouiButton prompts[2] = { { "Select", KEY_A }, { "Back", KEY_B } };
+	static const TouiButton play[2] = { { "Play", KEY_A }, { "Back", KEY_B } };
 	static char text[24][48];
 	const char* rows[24];
 	int n = 0;
@@ -134,7 +135,8 @@ static void touch(void)
 				rows[n] = text[n], n++;
 			}
 		touchui_menu_close(TOUI_LEVELS);
-		touchui_menu(TOUI_TITLE, "SILENT HILL 2", rows, n, &s_touch_sel, NULL, 0);
+		static const TouiButton select[1] = { { "Select", KEY_A } };
+		touchui_menu_ex(TOUI_TITLE, "SILENT HILL 2", rows, n, &s_touch_sel, select, 1, 0, TOUI_ONE_TAP);
 		(void)map;
 		return;
 	}
@@ -142,21 +144,22 @@ static void touch(void)
 		rows[0] = msg(252, "Main Scenario"), rows[1] = msg(253, "Sub Scenario");
 		n = 2;
 		s_touch_sel = s_sel;
-		touchui_menu(TOUI_LEVELS, msg(240, "NEW GAME"), rows, n, &s_touch_sel, back, 1);
+		touchui_menu_ex(TOUI_LEVELS, msg(240, "NEW GAME"), rows, n, &s_touch_sel, prompts, 2, 0, TOUI_ONE_TAP);
 		return;
 	case SC_LEVELS: {
 		int k = s_step == 0 ? 4 : 3;
 		for (int i = 0; i < k; i++)
 			rows[i] = msg(248 + i, "?");
 		s_touch_sel = (s_step == 0 ? s_action_sel : s_riddle_sel) - 1;
-		touchui_menu(TOUI_LEVELS, msg(s_step == 0 ? 246 : 247, "LEVEL"), rows, k, &s_touch_sel, back, 1);
+		touchui_menu_ex(TOUI_LEVELS, msg(s_step == 0 ? 246 : 247, "LEVEL"), rows, k, &s_touch_sel, prompts, 2, 0,
+		                TOUI_ONE_TAP);
 		return;
 	}
 	case SC_MOVIES:
 		for (int i = 0; i < s_movie_n; i++)
 			rows[i] = msg(214 + s_movie_msg[i], MOVIE_FILE[s_movie_msg[i]]);
 		s_touch_sel = s_sel;
-		touchui_menu(TOUI_LEVELS, msg(210, "Movie Menu"), rows, s_movie_n, &s_touch_sel, back, 1);
+		touchui_menu(TOUI_LEVELS, msg(210, "Movie Menu"), rows, s_movie_n, &s_touch_sel, play, 2);
 		return;
 	}
 }
@@ -382,36 +385,30 @@ bool titlemenu_draw_top(MapDrawFn draw, float bright)
 	}
 	if (!font_ready())
 		return s_bg_ok;
+	// The rows are on the touch screen (port/UI.md); the top keeps the picture and shows what has
+	// been chosen: the scenario, both levels (the one being chosen lit), the movie.
 	switch (s_screen) {
-	case SC_MENU:
-		for (int it = 0; it < IT_VIEWER; it++)
-			if (shown(it))
-				item(256, 284 + 22 * it, msg(238 + it, "?"), it == s_sel, bright);
-		break;
 	case SC_SCENARIO:
-		item(234, 324, msg(252, "MAIN SCENARIO"), s_sel == 0, bright);
-		item(234, 350, msg(253, "SUB SCENARIO"), s_sel == 1, bright);
+		item(256, 324, msg(240, "NEW GAME"), false, bright);
+		item(256, 350, msg(252 + s_sel, s_sel ? "SUB SCENARIO" : "MAIN SCENARIO"), true, bright);
 		break;
 	case SC_LEVELS:
 		if (s_wish) {
 			// 0x496490: the action level alone, in the middle
-			item(256, 290, msg(246, "ACTION LEVEL"), true, bright);
-			for (int i = 0; i < 4; i++)
-				item(256, 322 + 22 * i, msg(248 + i, "?"), s_action_sel == i + 1, bright);
+			item(256, 324, msg(246, "ACTION LEVEL"), false, bright);
+			item(256, 350, msg(248 + s_action_sel - 1, "?"), true, bright);
 		} else {
-			item(128, 290, msg(246, "ACTION LEVEL"), s_step == 0, bright);
-			item(384, 290, msg(247, "RIDDLE LEVEL"), s_step == 1, bright);
-			for (int i = 0; i < 4; i++)
-				item(128, 322 + 22 * i, msg(248 + i, "?"), s_action_sel == i + 1, bright);
-			for (int i = 0; i < 3; i++)
-				item(384, 322 + 22 * i, msg(248 + i, "?"), s_step == 1 && s_riddle_sel == i + 1, bright);
+			item(160, 324, msg(246, "ACTION LEVEL"), false, bright);
+			item(352, 324, msg(247, "RIDDLE LEVEL"), false, bright);
+			item(160, 350, msg(248 + s_action_sel - 1, "?"), s_step == 0, bright);
+			if (s_step == 1)
+				item(352, 350, msg(248 + s_riddle_sel - 1, "?"), true, bright);
 		}
 		break;
 	case SC_MOVIES:
-		item(256, 270, msg(210, "Movie Menu"), false, bright);
-		for (int i = s_movie_first; i < s_movie_n && i < s_movie_first + 8; i++)
-			item(256, 296 + 22 * (i - s_movie_first), msg(214 + s_movie_msg[i], MOVIE_FILE[s_movie_msg[i]]),
-			     i == s_sel, bright);
+		item(256, 324, msg(210, "Movie Menu"), false, bright);
+		if (s_movie_n)
+			item(256, 350, msg(214 + s_movie_msg[s_sel], MOVIE_FILE[s_movie_msg[s_sel]]), true, bright);
 		break;
 	}
 	return s_bg_ok;

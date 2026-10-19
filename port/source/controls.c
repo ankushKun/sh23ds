@@ -42,17 +42,20 @@ u32 controls_default(ControlsLayout layout, ControlsAction act)
 {
 	bool n = layout == CONTROLS_LAYOUT_NEW;
 	switch (act) {
-	case ACT_RUN: return n ? KEY_B | KEY_ZR : KEY_B;
+	// The circle pad walks and turns James, so the C-Stick and the D-Pad carry nothing by default
+	// on the New 3DS (strafing and the map stay bindable; the map is also a tap on the touch
+	// screen); the Old 3DS, short of buttons, keeps the next weapon and the quick turn on the D-Pad.
+	case ACT_RUN: return KEY_B;
 	case ACT_ACTION: return KEY_A;
 	case ACT_AIM: return KEY_R;
 	case ACT_WEAPON_NEXT: return n ? KEY_L : KEY_DUP;
 	case ACT_FLASHLIGHT: return KEY_X;
 	case ACT_ITEMS: return KEY_Y;
 	case ACT_LOOK: return n ? KEY_ZL : KEY_L;
-	case ACT_TURN180: return n ? KEY_CSTICK_DOWN : KEY_DDOWN;
-	case ACT_STRAFE_LEFT: return n ? KEY_CSTICK_LEFT | KEY_DLEFT : KEY_DLEFT;
-	case ACT_STRAFE_RIGHT: return n ? KEY_CSTICK_RIGHT | KEY_DRIGHT : KEY_DRIGHT;
-	case ACT_MAP: return n ? KEY_CSTICK_UP : 0;      // and a tap on the bottom screen, both layouts
+	case ACT_TURN180: return n ? KEY_ZR : KEY_DDOWN;
+	case ACT_STRAFE_LEFT: return 0;
+	case ACT_STRAFE_RIGHT: return 0;
+	case ACT_MAP: return 0;                       // a tap on the touch screen's map, both layouts
 	case ACT_PAUSE: return KEY_START;
 	case ACT_CANCEL: return KEY_B;
 	default: return 0;
@@ -134,23 +137,12 @@ void controls_game(u32 down, u32 held, u32* gdown, u32* gheld)
 		if (down & k) d |= MAP[i].bit;
 		if (held & k) h |= MAP[i].bit;
 	}
-	if (controls_dpad_brightness()) {
-		d |= down & (KEY_DUP | KEY_DDOWN);
-		h |= held & (KEY_DUP | KEY_DDOWN);
-	}
 	d |= down & (KEY_START | KEY_SELECT | KEY_TOUCH);
 	h |= held & (KEY_START | KEY_SELECT | KEY_TOUCH);
 	*gdown = d;
 	*gheld = h;
 }
 
-bool controls_dpad_brightness(void)
-{
-	u32 used = 0;
-	for (int a = 0; a < ACT_COUNT; a++)
-		used |= controls_keys((ControlsAction)a);
-	return !(used & (KEY_DUP | KEY_DDOWN));
-}
 
 static const char* key_names(u32 k, char* out, size_t n)
 {
@@ -266,15 +258,19 @@ void controls_menu_draw(void)
 	const char* rows[N_MENU_ACTS + 2];
 	for (int i = 0; i < N_MENU_ACTS; i++) {
 		char k[32];
-		snprintf(C.rows[i], sizeof C.rows[i], "%-12s %s", controls_name(MENU_ACTS[i]),
-		         C.capture && i == C.sel ? "press a button" : key_names(controls_keys(MENU_ACTS[i]), k, sizeof k));
+		snprintf(C.rows[i], sizeof C.rows[i], "%s   %s", controls_name(MENU_ACTS[i]),
+		         C.capture && i == C.sel ? "..." : key_names(controls_keys(MENU_ACTS[i]), k, sizeof k));
 		rows[i] = C.rows[i];
 	}
 	rows[N_MENU_ACTS] = "Defaults";
 	rows[N_MENU_ACTS + 1] = "Back";
-	static const TouiButton back[1] = { { "Back", KEY_B } };
+	static const TouiButton prompts[3] = { { "Change", KEY_A }, { "Default", KEY_Y }, { "Back", KEY_B } };
+	static const TouiButton select[2] = { { "Select", KEY_A }, { "Back", KEY_B } };
+	static const TouiButton keep[1] = { { "Keep", KEY_START } };
+	const TouiButton* b = C.capture ? keep : C.sel < N_MENU_ACTS ? prompts : select;
+	int nb = C.capture ? 1 : C.sel < N_MENU_ACTS ? 3 : 2;
 	touchui_menu(C.slot_set ? C.slot : TOUI_PAUSE, L() ? "Buttons (New 3DS)" : "Buttons (Old 3DS)", rows,
-	             N_MENU_ACTS + 2, &C.sel, back, 1);
+	             N_MENU_ACTS + 2, &C.sel, b, nb);
 	if (!C.dirty)
 		return;
 	C.dirty = false;
@@ -286,6 +282,20 @@ void controls_menu_draw(void)
 	for (int i = first; i < N_MENU_ACTS + 2 && i < first + 10; i++)
 		printf("\x1b[%d;3H%c %-34.34s", 18 + i - first, i == C.sel ? '>' : ' ', rows[i]);
 	printf("\x1b[29;1H%-40s", C.capture ? " Press the button (START: keep)" : " A: change  Y: default  B: back");
+}
+
+// What the top screen shows of the page (port/UI.md): the chosen row's name and its buttons;
+// true while the page waits for a new button.
+bool controls_menu_focus(const char** name, char* keys, int size)
+{
+	if (C.sel < N_MENU_ACTS) {
+		*name = controls_name(MENU_ACTS[C.sel]);
+		key_names(controls_keys(MENU_ACTS[C.sel]), keys, size);
+	} else {
+		*name = C.sel == N_MENU_ACTS ? "Defaults" : "Back";
+		snprintf(keys, size, "%s", C.sel == N_MENU_ACTS ? "Every action back to its usual button" : "");
+	}
+	return C.capture;
 }
 
 // ---------------------------------------------------------------- for the Options screen

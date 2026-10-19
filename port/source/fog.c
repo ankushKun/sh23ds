@@ -41,6 +41,8 @@
 #define FOG_MAX_OBJ  64
 #define FOG_MAX_WALL 188        // the PC's table, 0x1f782c0..0x1f7b1c0
 #define BLOW_MAX     48         // puffs drawn at once (the PC allows 200)
+// fog_draw's vertex buffer: four triangles a sprite, each up to five once clipped, and the screen layer
+#define FOG_VERTS    ((FOG_MAX + BLOW_MAX) * 4 * 5 * 3 + 6)
 #define BLOW_SRC     16
 
 // one wall as 0x485f00 keeps it: the (unnormalised) normal, the centre of its four corners and
@@ -110,8 +112,8 @@ static struct {
 	DVLB_s* dvlb;
 	shaderProgram_s prog;
 	int uProj, uMv;
-	u8* vbuf;                    // (FOG_MAX + BLOW_MAX) * 5 vertices + the screen quad
-	u16* ibuf;
+	u8* vbuf;                    // this frame's triangles (FOG_VERTS), one of vbufs
+	u8* vbufs[2];                // two, swapped every frame (fog_draw says why)
 
 	Part part[FOG_MAX];
 	int nsim;                    // particles simulated (<= FOG_MAX)
@@ -145,6 +147,7 @@ static struct {
 	const u8* envs;              // EnvTop (0x1f7d2c4)
 	int nareas, nenvs;
 	int load_step;               // 0x1f7d2a3: 2 = no fog file for this place
+	int failed;                  // the place whose fog file is missing (not tried again each frame)
 	float draw_limit;            // 0x6a7920
 	bool obsv_deck;
 	bool dark_halve;             // a dark room halves the count (0x489573), outdoor modes only
@@ -356,6 +359,10 @@ static void set_env(const Env* e)
 		F.nsim = F.npc = 0;
 		return;
 	}
+	// (console diagnosis of the fog flashes: every change of record, with where the target is)
+	perf_event("fog", "env alpha %d part %d size %d max %d wind %d flag %02x at %.0f %.0f mode %02x speed %.2f",
+	           e->alpha, e->part, e->size, e->maxpos, e->wind, e->flag, F.world[0], F.world[2], F.global & 0xff,
+	           F.speed);
 	float old_max = F.maxpos + 2000.0f;
 	F.maxpos = e->maxpos;
 	F.partsize = e->size;
@@ -379,8 +386,10 @@ static void set_env(const Env* e)
 	F.gridrate = e->grid;
 	set_partnum(F.dark_halve ? e->part / 2 : e->part);
 	F.flag = (F.flag & 0xff00) | e->flag;
-	if (old_max < F.maxpos)
+	if (old_max < F.maxpos) {
+		perf_event("fog", "reset particles (box %.0f -> %.0f)", old_max - 2000.0f, F.maxpos);
 		reset_particles();
+	}
 }
 
 // ---------------------------------------------------------------- the fog box and objects
@@ -1010,6 +1019,7 @@ static int place_mode(const FogFrame* f)
 static void enter_mode(int mode)
 {
 	static const char* const outdoor[6] = { NULL, "caGB", "cbGB", "ccGB", "cdGB", "obGB" };
+	perf_event("fog", "mode %02x -> %02x at %.0f %.0f", F.global & 0xff, mode & 0xff, F.world[0], F.world[2]);
 	F.nobj = 0;                        // 0x485ef0 / 0x486030
 	F.areas = NULL;
 	F.env_now = NULL;
@@ -1028,6 +1038,7 @@ static void enter_mode(int mode)
 	u64 t0 = svcGetSystemTick();
 	bool ok = name && load_fcl(name);
 	perf_part("fog_fcl", t0);
+	F.failed = ok ? -1 : mode;
 	if (!ok) {
 		free(F.fcl);
 		F.fcl = NULL;
@@ -1150,7 +1161,11 @@ void fog_update(const FogFrame* f)
 {
 	if (!F.ready)
 		return;
-	F.speed = f->dt * 60.0f;
+	// SpeedLevel: 1 a 60 Hz tick, at most 2 (the PC's 30 fps). A long frame (a scene or a room
+	// loading, close to a second on a console) would otherwise move the particles dozens of ticks at
+	// once and throw them through the wrap box and the near fade.
+	float dt = f->dt < 1.0f / 30.0f ? f->dt : 1.0f / 30.0f;
+	F.speed = dt * 60.0f;
 	F.projection = f->scr_z;
 	F.camera[0] = f->eye[0], F.camera[1] = f->eye[1], F.camera[2] = f->eye[2], F.camera[3] = 1.0f;
 	// 0x489b90: the target is the camera's watch point at James' height outside, James inside
@@ -1193,7 +1208,7 @@ void fog_update(const FogFrame* f)
 		}
 	} else {
 		int mode = place_mode(f);
-		if (mode != F.global)
+		if (mode != F.global && mode != F.failed)
 			enter_mode(mode);
 		place_centre(f);
 	}
@@ -1206,7 +1221,7 @@ void fog_update(const FogFrame* f)
 		F.floory = F.world[1];
 	if (F.speed > 0.0f) {
 		move_all();
-		blow_update(f->room, f->dt);
+		blow_update(f->room, dt);
 	}
 	snprintf(F.status, sizeof F.status, "fog %02x n%d/%d a%d d%d sz%.0f w%d b%d", F.global & 0xff, F.nsim, F.npc,
 	         F.alpha, F.drawn, F.partsize, F.nwall, F.nblow);
@@ -1215,6 +1230,121 @@ void fog_update(const FogFrame* f)
 // ---------------------------------------------------------------- drawing
 
 typedef struct { float x, y, z, u, v; u8 c[4]; } FogVtx;
+
+// A sprite near the camera projects to thousands of pixels; the console's rasterizer only holds
+// screen positions within a limited range, and a triangle with corners far beyond it came out cut
+// short with its alpha still high: a hard edge across the screen and a near-opaque wash on one
+// side, in single frames as the particles drifted close (Azahar rasterizes in floats and drew them
+// right). So each sprite triangle is clipped here, in clip space, to a little past the screen. A
+// sprite faces the camera, so position, texture coordinates and colour are all linear across it
+// and the clipped triangles look exactly as the whole ones would.
+#define CLIP_MARGIN 1.1f             // the screen's edge in clip space, plus a margin
+#define CLIP_MAX 10                  // a triangle clipped by six planes has at most 9 corners
+static float s_margin = CLIP_MARGIN; // (the console test's modes 10 and 11 move it)
+// The near and far planes as distances in front of the camera (clip w). The sprites go out to
+// 23,400 in front (z14 32767), twice the town's far plane, and some come nearer than the near
+// plane. On the PC D3D clips those; Azahar clips them too, but on a console they came out as
+// opaque white rectangles (the town roads, the far sky and the near sprites of the close scene
+// shots), so they are cut to the two planes here, a little inside them.
+static float s_clip_near = 20.0f, s_clip_far = 100000.0f;
+void fog_set_clip(float near, float far)
+{
+	s_clip_near = near * 1.02f;
+	s_clip_far = far * 0.98f;
+}
+
+typedef struct { float cx, cy, cw; float a[9]; } ClipV;   // a: x y z u v r g b a
+
+static ClipV clip_v(const C3D_Mtx* pv, const FogVtx* f)
+{
+	ClipV c;
+	C3D_FVec p = Mtx_MultiplyFVec4(pv, FVec4_New(f->x, f->y, f->z, 1.0f));
+	c.cx = p.x, c.cy = p.y, c.cw = p.w;
+	float v[9] = { f->x, f->y, f->z, f->u, f->v, f->c[0], f->c[1], f->c[2], f->c[3] };
+	memcpy(c.a, v, sizeof v);
+	return c;
+}
+
+// One plane of the six: inside where d >= 0 (d = margin * w -/+ x or y, then the near and far
+// distances against w, which is the distance in front of the camera).
+static float plane(const ClipV* v, int k)
+{
+	float m = s_margin * v->cw;
+	return k == 0 ? m - v->cx : k == 1 ? m + v->cx : k == 2 ? m - v->cy : k == 3 ? m + v->cy
+	     : k == 4 ? v->cw - s_clip_near : s_clip_far - v->cw;
+}
+
+static int clip_poly(ClipV* in, int n, ClipV* out, int k)
+{
+	int m = 0;
+	for (int i = 0; i < n; i++) {
+		const ClipV* a = &in[i];
+		const ClipV* b = &in[(i + 1) % n];
+		float da = plane(a, k), db = plane(b, k);
+		if (da >= 0.0f && m < CLIP_MAX)
+			out[m++] = *a;
+		if ((da >= 0.0f) != (db >= 0.0f) && m < CLIP_MAX) {
+			float t = da / (da - db);
+			ClipV c;
+			c.cx = a->cx + (b->cx - a->cx) * t, c.cy = a->cy + (b->cy - a->cy) * t, c.cw = a->cw + (b->cw - a->cw) * t;
+			for (int j = 0; j < 9; j++)
+				c.a[j] = a->a[j] + (b->a[j] - a->a[j]) * t;
+			out[m++] = c;
+		}
+	}
+	return m;
+}
+
+static FogVtx fog_v(const ClipV* c)
+{
+	FogVtx f = { c->a[0], c->a[1], c->a[2], c->a[3], c->a[4] };
+	for (int j = 0; j < 4; j++) {
+		float x = c->a[5 + j] + 0.5f;
+		f.c[j] = (u8)(x < 0.0f ? 0.0f : x > 255.0f ? 255.0f : x);
+	}
+	return f;
+}
+
+static bool clip_inside(const ClipV* v)
+{
+	for (int k = 0; k < 6; k++)
+		if (plane(v, k) < 0.0f)
+			return false;
+	return true;
+}
+
+// The triangle (a, b, c), its corners already in clip space, clipped and appended to out as
+// triangles; returns the new count.
+static int clip_tri(const ClipV* a, const ClipV* b, const ClipV* c, FogVtx* out, int n, int max)
+{
+	ClipV p[CLIP_MAX], q[CLIP_MAX];
+	p[0] = *a, p[1] = *b, p[2] = *c;
+	int m = 3;
+	for (int k = 0; k < 6 && m >= 3; k++) {
+		m = clip_poly(p, m, q, k);
+		memcpy(p, q, sizeof(ClipV) * m);
+	}
+	for (int i = 1; i + 1 < m && n + 3 <= max; i++)
+		out[n++] = fog_v(&p[0]), out[n++] = fog_v(&p[i]), out[n++] = fog_v(&p[i + 1]);
+	return n;
+}
+
+// The console test of the fog (SELECT + R in play, main.c): each mode takes one part of the
+// particle drawing away, so the console shows which one makes the sprites flash.
+#define FOG_DEBUG_MODES 13
+static int s_test;
+static const char* const TEST_NAME[FOG_DEBUG_MODES] = {
+	"normal", "no texture", "no depth test", "no near sprites", "nearest filtering", "no screen layer",
+	"no particles", "simulation only, nothing drawn", "no fog, its CPU time spent", "drawn, not simulated",
+	"clipped at the screen edge", "clipped inside the screen edge", "constant colour, no vertex colour",
+};
+int fog_debug_mode(void) { return s_test; }
+const char* fog_debug_name(void) { return TEST_NAME[s_test]; }
+int fog_debug_cycle(void)
+{
+	s_test = (s_test + 1) % FOG_DEBUG_MODES;
+	return s_test;
+}
 
 static int cmp_depth(const void* a, const void* b)
 {
@@ -1231,9 +1361,19 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		F.flag &= ~(u32)FL_SKIP;
 		return;
 	}
-	FogVtx* vb = (FogVtx*)F.vbuf;
-	u16* ib = F.ibuf;
-	int nv = 0, ni = 0;
+	// The sprites are built five vertices each (centre, four corners) into a staging array, then go
+	// out in depth order as plain triangles drawn without indices. Indexed, on a console, the GPU's
+	// post-transform vertex cache (keyed by index, kept across draws) handed some sprites vertices
+	// of the last frame's sprites or of the characters drawn just before, all drawn with indices
+	// from 0: the soft sprites came out as hard-edged, nearly opaque rectangles.
+	static FogVtx vb[(FOG_MAX + BLOW_MAX) * 5];
+	// Two vertex buffers, a frame each: the CPU never writes the one the GPU drew from last frame.
+	// (On the New 3DS, with its L2 cache on, a single buffer rewritten every frame is the one GPU
+	// input of the fog that changes wholesale each frame; the console showed some sprites drawn
+	// opaque and white, as if their vertices were stale or half written.)
+	F.vbuf = F.vbufs[F.vbuf == F.vbufs[0] ? 1 : 0];
+	FogVtx* out = (FogVtx*)F.vbuf;
+	int nv = 0;
 	u32 rgb = F.color & 0xffffff;     // r | g << 8 | b << 16
 	float right[3] = { view->r[0].x, view->r[0].y, view->r[0].z };
 	float down[3] = { -view->r[1].x, -view->r[1].y, -view->r[1].z };
@@ -1260,7 +1400,8 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 				continue;
 			float rel[3] = { p->pos[0] - F.camera[0], p->pos[1] - F.camera[1], p->pos[2] - F.camera[2] };
 			float z14 = (rel[0] * fwd[0] + rel[1] * fwd[1] + rel[2] * fwd[2]) * 1.4f;
-			if (z14 < nearz || z14 > 32767.0f)
+			if (z14 < nearz || z14 > 32767.0f || z14 > s_clip_far * 1.4f || (s_test == 3 && z14 < nearz + 3000.0f) ||
+			    s_test == 6)
 				continue;
 			float a = abyte * p->alp * 0.0078125f, h = F.floory - p->pos[1], squash = 1.0f;
 			if (h < P) {
@@ -1322,7 +1463,7 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 			}
 			float rel[3] = { b->pos[0] - F.camera[0], b->pos[1] - F.camera[1], b->pos[2] - F.camera[2] };
 			float z14 = (rel[0] * fwd[0] + rel[1] * fwd[1] + rel[2] * fwd[2]) * 1.4f;
-			if (z14 < 64.0f || z14 > 32767.0f)
+			if (z14 < 64.0f || z14 > 32767.0f || z14 > s_clip_far * 1.4f)
 				continue;
 			float a = abyte * b->alp * 0.0078125f;   // the particles' alpha byte, EE's 112 included
 			if (F.debug == 3)
@@ -1336,7 +1477,7 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 			a *= h;
 			if (z14 < 576.0f)
 				a = (z14 - 64.0f) * a * 0.001953125f;
-			if (a < 2.0f || flen3(b->mv) > 200.0f)
+			if (a < 2.0f || flen3(b->mv) > 200.0f || s_test == 6 || (s_test == 3 && z14 < 3000.0f))
 				continue;
 			const float bw = 0.048828125f, BP = b->size;
 			float d[4] = { rel[0], rel[1], rel[2], 0 };
@@ -1371,19 +1512,38 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 			n++;
 		}
 		qsort(order, n, sizeof order[0], cmp_depth);
+		C3D_Mtx pv;
+		Mtx_Multiply(&pv, proj, view);
+		s_margin = s_test == 10 ? 0.999f : s_test == 11 ? 0.95f : CLIP_MARGIN;
+		static const u8 fan[12] = { 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1 };
 		for (int i = 0; i < n; i++) {
-			u16 b = (u16)((int)order[i][1] * 5);
-			static const u8 fan[12] = { 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1 };
-			for (int k = 0; k < 12; k++)
-				ib[ni++] = b + fan[k];
+			const FogVtx* s = &vb[(int)order[i][1] * 5];
+			// the corners first: a sprite wholly on the screen (nearly all) goes out as it is
+			ClipV c[5];
+			bool inside = true;
+			for (int k = 0; k < 5; k++) {
+				c[k] = clip_v(&pv, &s[k]);
+				inside = inside && clip_inside(&c[k]);
+			}
+			for (int k = 0; k < 12; k += 3) {
+				if (inside) {
+					if (nv + 3 <= FOG_VERTS - 6)
+						out[nv++] = s[fan[k]], out[nv++] = s[fan[k + 1]], out[nv++] = s[fan[k + 2]];
+				} else {
+					nv = clip_tri(&c[fan[k]], &c[fan[k + 1]], &c[fan[k + 2]], out, nv, FOG_VERTS - 6);
+				}
+			}
 		}
-		nv = n * 5;
+		static int last_n = -1;
+		if (last_n >= 0 && (n - last_n > 40 || last_n - n > 40))
+			perf_event("fog", "sprites drawn %d -> %d", last_n, n);
+		last_n = n;
 		F.drawn = n;
 	}
 
 	// 0x4876c0: the screen layer scrolls with the camera's movement and the wind
-	int screen_v = -1, screen_i = ni;
-	if (F.global <= 5 || F.global == 0x6d) {
+	int screen_v = -1, sprites_v = nv;
+	if ((F.global <= 5 || F.global == 0x6d) && s_test != 5) {
 		float k = F.projection > 1.0f ? 0.1f / F.projection : 0.0f, ws = F.speed * 0.005f;
 		float m[3] = { (F.camera[0] - F.old_camera[0]) * k + F.wind[0] * ws,
 		               (F.camera[1] - F.old_camera[1]) * k + F.wind[1] * ws,
@@ -1392,28 +1552,30 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		F.sc_tdy -= (m[0] * down[0] + m[1] * down[1] + m[2] * down[2]) * 0.25f;
 		F.sc_tdx -= floorf(F.sc_tdx), F.sc_tdy -= floorf(F.sc_tdy);
 		int a = ((EE_FOG ? 128 : (int)(F.color >> 24)) * F.alpha) >> 9;
+		static int last_a = -1;
+		if (last_a >= 0 && (a - last_a > 8 || last_a - a > 8))
+			perf_event("fog", "screen alpha %d -> %d (color %08lx alpha %d)", last_a, a, (unsigned long)F.color, F.alpha);
+		last_a = a;
 		if (a == 0)
 			a = 1;
 		if (F.flag & FL_SCREEN)
 			a *= 2;
 		float wx = EE_FOG ? 0.25f : 0.125f, wy = 0.125f;
-		FogVtx* v = &vb[nv];
+		FogVtx v[4];
 		const float xy[4][2] = { { 0, 0 }, { 400, 0 }, { 400, 240 }, { 0, 240 } };
 		const float uv[4][2] = { { -wx, wy }, { wx, wy }, { wx, -wy }, { -wx, -wy } };
 		for (int i = 0; i < 4; i++)
 			v[i] = (FogVtx){ xy[i][0], xy[i][1], 0.5f, F.sc_tdx + uv[i][0], 1.0f - (F.sc_tdy + uv[i][1]),
 			                 { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, (u8)(a > 255 ? 255 : a) } };
 		static const u8 quad[6] = { 0, 1, 2, 0, 2, 3 };
-		for (int i = 0; i < 6; i++)
-			ib[ni++] = (u16)(nv + quad[i]);
 		screen_v = nv;
-		nv += 4;
+		for (int i = 0; i < 6; i++)
+			out[nv++] = v[quad[i]];
 	}
 	memcpy(F.old_camera, F.camera, sizeof F.old_camera);
 	if (!nv)
 		return;
 	GSPGPU_FlushDataCache(F.vbuf, nv * sizeof(FogVtx));
-	GSPGPU_FlushDataCache(F.ibuf, ni * sizeof(u16));
 
 	C3D_BindProgram(&F.prog);
 	C3D_AttrInfo* ai = C3D_GetAttrInfo();
@@ -1424,11 +1586,21 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, F.vbuf, sizeof(FogVtx), 3, 0x210);
+	C3D_TexSetFilter(&F.tex, s_test == 4 ? GPU_NEAREST : GPU_LINEAR, s_test == 4 ? GPU_NEAREST : GPU_LINEAR);
 	C3D_TexBind(0, &F.tex);
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
-	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+	if (s_test == 1) {                       // the vertex colour alone
+		C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, 0, 0);
+		C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+	} else if (s_test == 12) {               // the texture with a constant half grey at alpha 0.25
+		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_CONSTANT, 0);
+		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+		C3D_TexEnvColor(env, 0x40808080);
+	} else {
+		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
+		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+	}
 	C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);         // D3DTOP_MODULATE2X
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 	C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
@@ -1436,12 +1608,12 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
 	               GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-	if (screen_i > 0) {
+	if (sprites_v > 0) {
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, F.uProj, proj);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, F.uMv, view);
-		C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+		C3D_DepthTest(s_test != 2, GPU_GREATER, GPU_WRITE_COLOR);
 		C3D_DepthMap(true, -1.0f, 0.0f);
-		C3D_DrawElements(GPU_TRIANGLES, screen_i, C3D_UNSIGNED_SHORT, F.ibuf);
+		C3D_DrawArrays(GPU_TRIANGLES, 0, sprites_v);
 	}
 	if (screen_v >= 0) {
 		C3D_Mtx id;
@@ -1449,7 +1621,7 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, F.uProj, ortho);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, F.uMv, &id);
 		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
-		C3D_DrawElements(GPU_TRIANGLES, 6, C3D_UNSIGNED_SHORT, F.ibuf + screen_i);
+		C3D_DrawArrays(GPU_TRIANGLES, screen_v, 6);
 	}
 	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
@@ -1463,6 +1635,7 @@ bool fog_init(const char* pack_dir)
 	snprintf(F.pack, sizeof F.pack, "%s", pack_dir);
 	F.seed = 0x1234567;
 	F.global = 0xff;
+	F.failed = -1;
 	F.color = 0x80808080;
 	F.draw_limit = 200.0f;
 	char path[160];
@@ -1482,12 +1655,13 @@ bool fog_init(const char* pack_dir)
 	shaderProgramSetVsh(&F.prog, &F.dvlb->DVLE[0]);
 	F.uProj = shaderInstanceGetUniformLocation(F.prog.vertexShader, "projection");
 	F.uMv = shaderInstanceGetUniformLocation(F.prog.vertexShader, "modelView");
-	F.vbuf = linearAlloc(((FOG_MAX + BLOW_MAX) * 5 + 4) * sizeof(FogVtx));
-	F.ibuf = linearAlloc(((FOG_MAX + BLOW_MAX) * 12 + 6) * sizeof(u16));
+	F.vbufs[0] = linearAlloc(FOG_VERTS * sizeof(FogVtx));   // triangles, no indices
+	F.vbufs[1] = linearAlloc(FOG_VERTS * sizeof(FogVtx));
+	F.vbuf = F.vbufs[0];
 	F.blow_room = -1;
 	blow_load();
 	fcl_read_all();
-	F.ready = F.vbuf && F.ibuf;
+	F.ready = F.vbufs[0] && F.vbufs[1];
 	return F.ready;
 }
 
@@ -1498,8 +1672,8 @@ void fog_exit(void)
 	C3D_TexDelete(&F.tex);
 	shaderProgramFree(&F.prog);
 	DVLB_Free(F.dvlb);
-	linearFree(F.vbuf);
-	linearFree(F.ibuf);
+	linearFree(F.vbufs[0]);
+	linearFree(F.vbufs[1]);
 	free(F.fcl);
 	fcl_free_all();
 	F.ready = false;
@@ -1515,6 +1689,7 @@ void fog_reset(void)
 	F.escape = 100.0f;
 	F.nobj = 0;
 	F.global = -1;                    // the next update loads the place's fog
+	F.failed = -1;
 	F.env_now = NULL;
 	F.color = 0x80808080;
 	memset(F.wind, 0, sizeof F.wind);

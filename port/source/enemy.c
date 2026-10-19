@@ -1552,6 +1552,13 @@ static void sounds(Enemy* e, float f0, float dt)
 static void scu_update(Enemy* e, const EnPlayer* p, float dt)
 {
 	e->p_dist = hypotf(p->x - e->x, p->z - e->z);
+	if (e->ctrl == 4 && e->type == 0x41) {
+		// 0x4c4500 event control: the walk's own root motion (0x4a9e60) and its sounds (0x4c3c20)
+		float f0 = e->frame;
+		move_exec(e, anim_step(e, dt), dt);
+		sounds(e, f0, dt);
+		return;
+	}
 	if (e->ctrl != 1)
 		return;
 	switch (e->mlv) {
@@ -5659,8 +5666,77 @@ void enemy_exit(void)
 	}
 }
 
+// A stage program's own figure (0x48fcc0), outside Enemy_List and the scripted rows: the Lying
+// Figure that walks off up the road in the fog (EvProgShadowOfSomenthing 0x59d4f0, status 0x11).
+// 0x53a350 takes it away when the program ends. The model's files may still be streaming in when
+// the program asks; the figure then waits (enemy_event_tick) and comes as soon as they are in.
+static int s_ev_slot = -1;
+static struct { bool on; int status; float x, y, z, yaw, delay; } s_ev_want;
+
+void enemy_event_prefetch(void) { load_model(MDL_SCU); }
+
+static void event_spawn(void)
+{
+	if (!load_model(MDL_SCU))
+		return;
+	s_ev_want.on = false;
+	for (int k = 0; k < ENEMY_MAX; k++) {
+		if (s_en[k].used)
+			continue;
+		Enemy* e = &s_en[k];
+		float fy;
+		memset(e, 0, sizeof *e);
+		e->used = true;
+		e->kind = model_kind(MDL_SCU);
+		e->model = MDL_SCU;
+		e->list_id = SCRIPT_ID((int)(sizeof SCRIPTS / sizeof SCRIPTS[0]));   // no row, never in the killed bits
+		e->status = s_ev_want.status;
+		e->x = s_ev_want.x, e->z = s_ev_want.z;
+		e->y = s_col && col_floor(s_col, e->x, e->z, s_ev_want.y, 3000.0f, &fy) ? fy : s_ev_want.y;
+		e->yaw = s_ev_want.yaw;
+		e->amb = -1;
+		kind_init(e, e->status);
+		s_ev_slot = k;
+		return;
+	}
+}
+
+void enemy_event_create(int status, float x, float y, float z, float yaw, float delay)
+{
+	if (s_ev_slot >= 0)
+		return;
+	s_ev_want.on = true;
+	s_ev_want.status = status, s_ev_want.x = x, s_ev_want.y = y, s_ev_want.z = z, s_ev_want.yaw = yaw;
+	s_ev_want.delay = delay;
+	if (delay <= 0.0f)
+		event_spawn();
+}
+
+void enemy_event_remove(void)
+{
+	if (s_ev_slot >= 0)
+		s_en[s_ev_slot].used = false;
+	s_ev_slot = -1;
+	s_ev_want.on = false;
+}
+
+// The program's figure keeps walking while a scene or the program holds the game (enemy_update
+// does not run then).
+void enemy_event_tick(float dt)
+{
+	if (s_ev_want.on && (s_ev_want.delay -= dt) <= 0.0f)
+		event_spawn();
+	if (s_ev_slot < 0 || !s_en[s_ev_slot].used)
+		return;
+	EnPlayer none;
+	memset(&none, 0, sizeof none);
+	scu_update(&s_en[s_ev_slot], &none, dt);
+}
+
 void enemy_clear(void)
 {
+	s_ev_slot = -1;
+	s_ev_want.on = false;
 	memset(s_en, 0, sizeof s_en);
 	memset(s_comm, 0, sizeof s_comm);
 	s_col = NULL;
@@ -5767,7 +5843,7 @@ void enemy_stream_update(int stage, const Collision* col)
 	for (int k = 0; k < ENEMY_MAX; k++) {
 		Enemy* e = &s_en[k];
 		float fy;
-		if (e->used && e->kind != EN_KIND_BOS && e->kind != EN_KIND_IKE &&
+		if (e->used && e->kind != EN_KIND_BOS && e->kind != EN_KIND_IKE && k != s_ev_slot &&
 		    !col_floor(col, e->x, e->z, e->y, 3000.0f, &fy))
 			e->used = false;
 	}
