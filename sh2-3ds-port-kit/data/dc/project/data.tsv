@@ -1,0 +1,154 @@
+addr	name	datatype
+0x00631908	jpeg_std_message_table	/undefined *
+0x007af8e0	g_D3DXPSGPTable	/pointer
+0x007af9c8	g_D3DXPSGPTableDefault	/pointer
+0x024a976c	__imp_LoadLibraryA	/pointer
+0x024a9770	__imp_GetProcAddress	/pointer
+0x024a9774	__imp_GetModuleHandleA	/pointer
+0x024a9778	__imp_WriteFile	/undefined *
+0x024a977c	__imp_GetLastError	/undefined *
+0x024a9780	__imp_GetFileSize	/undefined *
+0x024a9784	__imp_MapViewOfFile	/undefined *
+0x024a9788	__imp_CreateFileMappingA	/undefined *
+0x024a9790	__imp_CreateFileA	/undefined *
+0x024a9794	__imp_WideCharToMultiByte	/undefined *
+0x024a9798	__imp_GetVersionExA	/undefined *
+0x024a979c	__imp_UnmapViewOfFile	/undefined *
+0x024a97a0	__imp_LockResource	/undefined *
+0x024a97a4	__imp_LoadResource	/undefined *
+0x024a97a8	__imp_SizeofResource	/undefined *
+0x024a97ac	__imp_FindResourceA	/pointer
+0x024a97b0	__imp_GetDriveTypeA	/undefined *
+0x024a97b4	__imp_IsProcessorFeaturePresent	/undefined *
+0x024a97b8	__imp_GetCurrentProcessId	/undefined *
+0x024a97bc	__imp_GetCurrentThreadId	/undefined *
+0x024a97c0	__imp_GetTickCount	/undefined *
+0x024a97c4	__imp_GetStartupInfoA	/undefined *
+0x024a97c8	__imp_ExitProcess	/undefined *
+0x024a97cc	__imp_lstrcmpiA	/undefined *
+0x024a97d0	__imp_HeapFree	/undefined *
+0x024a97d4	__imp_HeapDestroy	/undefined *
+0x024a97d8	__imp_HeapCreate	/undefined *
+0x024a97dc	__imp_HeapAlloc	/undefined *
+0x024a97e8	__imp_lstrlenA	/pointer
+0x024a97ec	__imp_GetExitCodeThread	/pointer
+0x024a97f0	__imp_CreateMutexA	/pointer
+0x024a97f4	__imp_FindResourceW	/pointer
+0x024a97fc	__imp_Sleep	/undefined *
+0x024a9800	__imp_ExitThread	/undefined *
+0x024a9804	__imp_GetSystemTimeAsFileTime	/undefined *
+0x024a9808	__imp_SystemTimeToFileTime	/undefined *
+0x024a980c	__imp_CopyFileA	/undefined *
+0x024a9810	__imp_WaitForSingleObject	/undefined *
+0x024a9814	__imp_ReleaseMutex	/pointer
+0x024a981c	__imp_FindNextFileA	/pointer
+0x024a982c	__imp_CloseHandle	/pointer
+0x024a9834	__imp_DeleteFileA	/pointer
+0x024a9838	__imp_OutputDebugStringA	/undefined *
+0x024a983c	__imp_GetThreadLocale	/undefined *
+0x024a9840	__imp_GetLocaleInfoA	/undefined *
+0x024a9844	__imp_GetACP	/undefined *
+0x024a9848	__imp_InterlockedExchange	/undefined *
+0x024a984c	__imp_ReadFile	/undefined *
+0x024a9850	__imp_MultiByteToWideChar	/undefined *
+0x024a9854	__imp_CreateDirectoryA	/pointer
+0x024a985c	__imp_FileTimeToSystemTime	/pointer
+0x024a9860	__imp_FileTimeToLocalFileTime	/pointer
+0x024a9868	__imp_QueryPerformanceCounter	/pointer
+0x024a9874	__imp_ResumeThread	/pointer
+0x024a9878	__imp_SetThreadPriority	/pointer
+0x024a9880	__imp_lstrcpyA	/pointer
+0x024a9888	__imp_GetCurrentThread	/pointer
+0x024a988c	__imp_lstrcatA	/pointer
+0x024a9890	__imp_SuspendThread	/pointer
+0x024a9894	__imp_PulseEvent	/pointer
+0x024a9898	__imp_SetThreadPriorityBoost	/pointer
+0x024a989c	__imp_CreateThread	/pointer
+0x024a9944	__imp_fputs	/pointer
+0x024a9948	__imp_fprintf	/pointer
+0x024a9950	__imp_strtok	/pointer
+0x024a9954	__imp_fgets	/pointer
+0x024a9964	__imp_strncat	/undefined *
+0x024a9968	__imp_strnicmp	/undefined *
+0x024a996c	__imp_c_exit	/undefined *
+0x024a9974	__imp_XcptFilter	/undefined *
+0x024a9978	__imp_cexit	/undefined *
+0x024a997c	__imp_aligned_free	/undefined *
+0x024a9980	__imp_amsg_exit	/undefined *
+0x024a9984	__imp_getmainargs	/undefined *
+0x024a9988	__imp_initterm	/undefined *
+0x024a998c	__imp_setusermatherr	/undefined *
+0x024a9990	__imp_adjust_fdiv	/undefined *
+0x024a9994	__imp_p__commode	/undefined *
+0x024a9998	__imp_strtoul	/undefined *
+0x024a99a0	__imp_terminate__YAXXZ	/undefined *
+0x024a99a4	__imp_dllonexit	/undefined *
+0x024a99a8	__imp_onexit	/undefined *
+0x024a99ac	__imp_1type_info__UAE_XZ	/undefined *
+0x024a99b0	__imp_except_handler3	/undefined *
+0x024a99b4	__imp_puts	/undefined *
+0x024a99b8	__imp_aligned_malloc	/undefined *
+0x024a99bc	__imp_CIasin	/undefined *
+0x024a99c0	__imp_0exception__QAE_ABV0__Z	/undefined *
+0x024a99c4	__imp_acmdln	/undefined *
+0x024a99c8	__imp_CxxThrowException	/undefined *
+0x024a99cc	__imp_0exception__QAE_XZ	/undefined *
+0x024a99d0	__imp_1exception__UAE_XZ	/undefined *
+0x024a99d4	__imp_strncmp	/undefined *
+0x024a99d8	__imp_strncpy	/undefined *
+0x024a99dc	__imp_V_YAXPAX_Z	/undefined *
+0x024a99e0	__imp_wcslen	/undefined *
+0x024a99e4	__imp_iswascii	/undefined *
+0x024a99e8	__imp_strstr	/undefined *
+0x024a99ec	__imp_set_app_type	/undefined *
+0x024a99f0	__imp_qsort	/undefined *
+0x024a99f4	__imp_fseek	/undefined *
+0x024a99f8	__imp_ftell	/undefined *
+0x024a9a04	__imp_fread	/pointer
+0x024a9a08	__imp_fwrite	/pointer
+0x024a9a0c	__imp_fclose	/undefined *
+0x024a9a10	__imp_calloc	/undefined *
+0x024a9a14	__imp_finite	/undefined *
+0x024a9a1c	__imp_isspace	/undefined *
+0x024a9a20	__imp_isdigit	/undefined *
+0x024a9a24	__imp_ftol	/undefined *
+0x024a9a28	__imp_longjmp	/undefined *
+0x024a9a2c	__imp_2_YAPAXI_Z	/undefined *
+0x024a9a30	__imp_3_YAXPAX_Z	/undefined *
+0x024a9a34	__imp_CxxFrameHandler	/undefined *
+0x024a9a38	__imp_fopen	/pointer
+0x024a9a40	__imp_malloc	/pointer
+0x024a9a44	__imp_free	/pointer
+0x024a9a48	__imp_sprintf	/pointer
+0x024a9a4c	__imp_printf	/undefined *
+0x024a9a50	__imp_CIpow	/undefined *
+0x024a9a54	__imp_CIfmod	/undefined *
+0x024a9a58	__imp_floor	/undefined *
+0x024a9a5c	__imp_CIacos	/undefined *
+0x024a9a60	__imp_stricmp	/pointer
+0x024a9ad0	__imp_wsprintfA	/undefined *
+0x024a9ad4	__imp_MessageBoxA	/undefined *
+0x024a9ad8	__imp_RegisterClassExA	/undefined *
+0x024a9adc	__imp_UpdateWindow	/undefined *
+0x024a9ae0	__imp_ShowWindow	/undefined *
+0x024a9ae4	__imp_CreateWindowExA	/undefined *
+0x024a9ae8	__imp_DefWindowProcA	/undefined *
+0x024a9aec	__imp_SendMessageA	/undefined *
+0x024a9af0	__imp_PostQuitMessage	/undefined *
+0x024a9af4	__imp_EndPaint	/undefined *
+0x024a9af8	__imp_BeginPaint	/undefined *
+0x024a9afc	__imp_DispatchMessageA	/pointer
+0x024a9b00	__imp_TranslateMessage	/pointer
+0x024a9b04	__imp_PeekMessageA	/pointer
+0x024a9b48	__imp_timeGetTime	/pointer
+0x024a9b84	__imp_BinkCopyToBuffer_28	/undefined *
+0x024a9b88	__imp_BinkPause_8	/undefined *
+0x024a9b8c	__imp_BinkSetSoundOnOff_8	/undefined *
+0x024a9b90	__imp_BinkOpen_8	/undefined *
+0x024a9b94	__imp_BinkSetSoundTrack_8	/undefined *
+0x024a9b98	__imp_BinkSetSoundSystem_8	/undefined *
+0x024a9b9c	__imp_BinkOpenDirectSound_4	/undefined *
+0x024a9ba0	__imp_BinkClose_4	/undefined *
+0x024a9ba4	__imp_BinkNextFrame_4	/undefined *
+0x024a9ba8	__imp_BinkDoFrame_4	/undefined *
+0x024a9bac	__imp_BinkWait_4	/undefined *

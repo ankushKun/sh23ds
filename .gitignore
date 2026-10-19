@@ -85,6 +85,7 @@ reference/
 !/.github/
 !/.gitignore
 !/.dockerignore
+!/.mcp.json
 
 # browser packer: test dependencies, the converter bundle (built by the Pages workflow), native test build
 node_modules/

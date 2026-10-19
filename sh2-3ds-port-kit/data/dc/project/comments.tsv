@@ -1,0 +1,2400 @@
+addr	kind	text
+0x00400210	EOL	.text
+0x00400238	EOL	.rdata
+0x00400260	EOL	.data
+0x00400288	EOL	.idata
+0x004002b0	EOL	.data1
+0x004002d8	EOL	.cms_t
+0x00400300	EOL	.cms_d
+0x00400328	EOL	.idata
+0x00401a8a	EOL	SecuROM -> MSVCR70.DLL!floor
+0x00401ab8	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x00401ad8	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x00402e37	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00405ecc	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00405edb	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00405ef2	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0040613f	EOL	SecuROM -> MSVCR70.DLL!free
+0x004063e7	EOL	SecuROM -> USER32.DLL!CreateWindowExA
+0x00406425	EOL	SecuROM -> USER32.DLL!ShowWindow
+0x00406432	EOL	SecuROM -> USER32.DLL!UpdateWindow
+0x00406494	EOL	SecuROM -> USER32.DLL!BeginPaint
+0x004064a0	EOL	SecuROM -> USER32.DLL!EndPaint
+0x004064be	EOL	SecuROM -> USER32.DLL!PostQuitMessage
+0x00406516	EOL	SecuROM -> USER32.DLL!SendMessageA
+0x0040653d	EOL	SecuROM -> USER32.DLL!DefWindowProcA
+0x00406651	EOL	SecuROM -> KERNEL32.DLL!GlobalMemoryStatus
+0x00406682	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004069a8	EOL	SecuROM -> USER32.DLL!LoadCursorA
+0x004069cf	EOL	SecuROM -> USER32.DLL!RegisterClassExA
+0x00406a2d	EOL	SecuROM -> KERNEL32.DLL!CreateMutexA
+0x00406a50	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x00408199	EOL	SecuROM -> MSVCR70.DLL!exit
+0x00408345	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00408862	EOL	SecuROM -> MSVCR70.DLL!free
+0x00408c60	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0040931f	PLATE	Library Function - Multiple Matches With Same Base Name\n void __stdcall RFX_Text_Bulk(class CFieldExchange *,char const *,char * *,long * *,int)\n void __stdcall RFX_Text_Bulk(class CFieldExchange *,wchar_t const *,char * *,long * *,int)\n\nLibrary: Visual Studio
+0x004094fb	PLATE	Library Function - Multiple Matches With Same Base Name\n void __stdcall RFX_Text_Bulk(class CFieldExchange *,char const *,char * *,long * *,int)\n void __stdcall RFX_Text_Bulk(class CFieldExchange *,wchar_t const *,char * *,long * *,int)\n\nLibrary: Visual Studio
+0x00409a62	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00409a7a	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00409aad	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00409ac5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00409ad2	PLATE	Library Function - Single Match\n void __stdcall `vector constructor iterator'(void *,unsigned int,int,void * (__thiscall*)(void *))\n\nLibrary: Visual Studio 2003 Release
+0x00409b48	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a19f	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040a20e	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a25b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040a5d9	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a606	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a62e	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a656	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a683	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a696	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040a6a9	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040abfe	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040ac06	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040ac0e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040ac16	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040ac1e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040ac26	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040ac2e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040b1b0	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040b1ee	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040b23a	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040b25d	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040b29a	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040b2e1	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040b435	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040b463	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040b835	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040b9d0	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040cba2	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040cbb6	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040cbcc	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040cbe2	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040cbfa	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040cc17	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040cc2b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040d012	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040d12a	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040d607	EOL	SecuROM -> KERNEL32.DLL!WriteFile
+0x0040d672	EOL	SecuROM -> KERNEL32.DLL!WriteFile
+0x0040d691	EOL	SecuROM -> KERNEL32.DLL!WriteFile
+0x0040d6b1	EOL	SecuROM -> KERNEL32.DLL!WriteFile
+0x0040d764	EOL	SecuROM -> MSVCR70.DLL!setjmp3
+0x0040d874	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040db39	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040dd14	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040debc	EOL	SecuROM -> MSVCR70.DLL!isspace
+0x0040def3	EOL	SecuROM -> MSVCR70.DLL!isspace
+0x0040df01	EOL	SecuROM -> MSVCR70.DLL!isdigit
+0x0040dfc6	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040e17c	EOL	SecuROM -> MSVCR70.DLL!setjmp3
+0x0040e420	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040e43b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040e524	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x0040e535	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0040e568	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040e699	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040e87d	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040e8be	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040ea65	EOL	SecuROM -> KERNEL32.DLL!WriteFile
+0x0040ed4d	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040ee47	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040eeee	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f071	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f084	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f196	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f23e	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0040f256	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040f2fb	EOL	SecuROM -> MSVCR70.DLL!floor
+0x0040f302	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0040f480	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f48d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f499	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f58e	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040f5e6	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040f6be	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0040f8e2	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f8ea	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f8f2	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f8fa	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0040f901	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00410cd2	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00410d54	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00410de2	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00410e34	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00410e6d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00410f54	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00410f5c	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00410fa4	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00410ff3	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041102a	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411158	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411160	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411326	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041137d	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004113b6	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00411552	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041155d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411672	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004116cb	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041171f	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00411a0b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411a16	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411a3a	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00411ab8	EOL	SecuROM -> MSVCR70.DLL!floor
+0x00411bcc	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00411c1a	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00411ee2	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411eea	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411ef2	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411efa	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00411fe6	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00412034	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041260b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00412613	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041261b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00412623	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041262b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00412705	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041275d	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00412824	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004129af	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004129b7	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004129bf	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004129c6	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00413319	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041372f	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00413755	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00413760	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004137c0	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00413835	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00413b58	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00413e17	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00413e4a	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00416ff7	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041707e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004170bb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004170f8	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417321	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041735e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041739b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004176a9	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004176e6	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417723	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417760	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041779d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417867	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417913	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417b42	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417b7f	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417bbc	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417bf9	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417c15	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417c52	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417d90	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417dcd	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417e0a	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417e47	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417e84	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417ec1	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417efe	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417f3b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417f78	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00417fc5	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041825e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041829b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004182d8	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00418311	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041834a	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00418383	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004183bc	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004183f5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00418431	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004184cd	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004184f4	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041851e	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418548	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418572	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041859c	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004185c6	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004185f0	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041861a	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418644	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041866e	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418698	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004186c2	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004186ec	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041874d	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418777	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004187a1	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004187cb	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004187f5	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041881f	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418849	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418893	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004188bd	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004188e7	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418911	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x0041893b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418965	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004189d1	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004189fb	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418a25	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418a4f	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418a79	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418aa3	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418aef	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418b12	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418b35	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418b58	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00418beb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00418c07	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00418c28	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0041d1ac	EOL	SecuROM -> KERNEL32.DLL!GetVersionExA
+0x0041d20e	EOL	SecuROM -> KERNEL32.DLL!CreateFileW
+0x0041d229	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x0041d23d	EOL	SecuROM -> KERNEL32.DLL!CreateFileMappingA
+0x0041d251	EOL	SecuROM -> KERNEL32.DLL!MapViewOfFile
+0x0041d261	EOL	SecuROM -> KERNEL32.DLL!GetFileSize
+0x0041d26f	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x0041d2c1	EOL	SecuROM -> KERNEL32.DLL!GetVersionExA
+0x0041d318	EOL	SecuROM -> KERNEL32.DLL!CreateFileW
+0x0041d32c	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x0041d339	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x0041d361	EOL	SecuROM -> KERNEL32.DLL!UnmapViewOfFile
+0x0041d3b5	EOL	SecuROM -> GDI32.DLL!DeleteObject
+0x0041d3c6	EOL	SecuROM -> GDI32.DLL!DeleteObject
+0x0041d428	EOL	SecuROM -> KERNEL32.DLL!SizeofResource
+0x0041d439	EOL	SecuROM -> KERNEL32.DLL!LoadResource
+0x0041d446	EOL	SecuROM -> KERNEL32.DLL!LockResource
+0x0041d453	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x0041dc90	EOL	SecuROM -> ADVAPI32.DLL!RegOpenKeyA
+0x0041dcae	EOL	SecuROM -> ADVAPI32.DLL!RegQueryValueExA
+0x0041dcb9	EOL	SecuROM -> ADVAPI32.DLL!RegCloseKey
+0x0041dd0f	EOL	SecuROM -> ADVAPI32.DLL!RegOpenKeyA
+0x0041dd37	EOL	SecuROM -> ADVAPI32.DLL!RegQueryValueExA
+0x0041dd4f	EOL	SecuROM -> ADVAPI32.DLL!RegCloseKey
+0x0041dd62	EOL	SecuROM -> ADVAPI32.DLL!RegCloseKey
+0x0041de97	EOL	SecuROM -> KERNEL32.DLL!GetVersionExA
+0x0041df0d	EOL	SecuROM -> KERNEL32.DLL!IsProcessorFeaturePresent
+0x0041f7c6	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0041f7de	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0041f98f	EOL	SecuROM -> MSVCR70.DLL!setjmp3
+0x00421f70	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x00421f81	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x004220c9	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x004220d1	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x004221ba	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x004221cb	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00426bcb	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00426c13	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00426c48	EOL	SecuROM -> MSVCR70.DLL!free
+0x004280d1	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004280dc	EOL	SecuROM -> MSVCR70.DLL!free
+0x004280e7	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004280f2	EOL	SecuROM -> MSVCR70.DLL!free
+0x004384d8	EOL	SecuROM -> MSVCR70.DLL!calloc
+0x004384e4	EOL	SecuROM -> MSVCR70.DLL!free
+0x00438d85	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00438d9f	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00438dbd	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00438dd9	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00438df4	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00438e0d	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00438e29	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00438e45	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0043d7af	EOL	SecuROM -> BINKW32.DLL!_BinkSetSoundSystem@8
+0x0043d9c9	EOL	SecuROM -> BINKW32.DLL!_BinkSetSoundTrack@8
+0x0043d9ee	EOL	SecuROM -> BINKW32.DLL!_BinkOpen@8
+0x0043da60	EOL	SecuROM -> BINKW32.DLL!_BinkOpen@8
+0x0043da85	EOL	SecuROM -> MSVCR70.DLL!exit
+0x0043da9c	EOL	SecuROM -> BINKW32.DLL!_BinkSetSoundOnOff@8
+0x0043dcfa	EOL	SecuROM -> BINKW32.DLL!_BinkClose@4
+0x0043df70	EOL	SecuROM -> BINKW32.DLL!_BinkPause@8
+0x0043df9f	EOL	SecuROM -> KERNEL32.DLL!Sleep
+0x0043dff3	EOL	SecuROM -> BINKW32.DLL!_BinkPause@8
+0x0043dfff	EOL	SecuROM -> BINKW32.DLL!_BinkWait@4
+0x0043e0c0	EOL	SecuROM -> BINKW32.DLL!_BinkDoFrame@4
+0x0043e0de	EOL	SecuROM -> BINKW32.DLL!_BinkNextFrame@4
+0x0043e14b	EOL	SecuROM -> BINKW32.DLL!_BinkCopyToBuffer@28
+0x0043e6aa	EOL	SecuROM -> MSVCR70.DLL!exit
+0x0043e6bd	EOL	SecuROM -> BINKW32.DLL!_BinkClose@4
+0x0043e6ea	EOL	SecuROM -> MSVCR70.DLL!exit
+0x0043e708	EOL	SecuROM -> BINKW32.DLL!_BinkClose@4
+0x0043e8b8	EOL	SecuROM -> MSVCR70.DLL!fwrite
+0x0043e8bf	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x0043e957	EOL	SecuROM -> MSVCR70.DLL!fread
+0x0043e95e	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x00441f74	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00444a43	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00444abc	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00444d28	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x0044513b	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x004452e1	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00446b77	EOL	SecuROM -> MSVCR70.DLL!vsprintf
+0x00447938	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00448434	EOL	SecuROM -> MSVCR70.DLL!floor
+0x00448ef3	EOL	SecuROM -> KERNEL32.DLL!DeleteFileA
+0x00449189	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x004491dd	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x00449509	EOL	SecuROM -> KERNEL32.DLL!GetLocalTime
+0x00449792	EOL	SecuROM -> KERNEL32.DLL!DeleteFileA
+0x0044979c	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x004497ac	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0044983c	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004498c8	EOL	SecuROM -> KERNEL32.DLL!SetFileAttributesA
+0x004498d7	EOL	SecuROM -> KERNEL32.DLL!DeleteFileA
+0x004498f5	EOL	SecuROM -> KERNEL32.DLL!DeleteFileA
+0x00449906	EOL	SecuROM -> MSVCR70.DLL!_strnicmp
+0x00449964	EOL	SecuROM -> KERNEL32.DLL!GetOverlappedResult
+0x00449982	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x004499b0	EOL	SecuROM -> KERNEL32.DLL!DeleteFileA
+0x00449aa9	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x00449b30	EOL	SecuROM -> KERNEL32.DLL!FindNextFileA
+0x00449b3b	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x00449bf7	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00449c5c	EOL	SecuROM -> MSVCR70.DLL!qsort
+0x00449ca7	EOL	SecuROM -> MSVCR70.DLL!free
+0x00449f48	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0044a116	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0044a12a	EOL	SecuROM -> KERNEL32.DLL!ReleaseMutex
+0x0044a1bc	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x0044a1d3	EOL	SecuROM -> MSVCR70.DLL!fseek
+0x0044a1e6	EOL	SecuROM -> MSVCR70.DLL!fread
+0x0044a1f4	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x0044a225	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x0044a296	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x0044a2c3	EOL	SecuROM -> KERNEL32.DLL!GetFileSize
+0x0044a2cc	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x0044a350	EOL	SecuROM -> KERNEL32.DLL!CopyFileA
+0x0044a3ac	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0044a3b2	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x0044a497	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x0044a4a8	EOL	SecuROM -> KERNEL32.DLL!Sleep
+0x0044a4e0	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0044a507	EOL	SecuROM -> KERNEL32.DLL!Sleep
+0x0044a54a	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0044a560	EOL	SecuROM -> MSVCR70.DLL!_beginthread
+0x0044a629	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0044a636	EOL	SecuROM -> KERNEL32.DLL!ReleaseMutex
+0x0044a688	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0044a694	EOL	SecuROM -> KERNEL32.DLL!ReleaseMutex
+0x0044a70d	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0044a71a	EOL	SecuROM -> KERNEL32.DLL!ReleaseMutex
+0x0044b09f	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044b0cb	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044b222	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0044b260	EOL	SecuROM -> MSVCR70.DLL!free
+0x0044b56a	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0044b58b	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0044b624	EOL	SecuROM -> MSVCR70.DLL!free
+0x0044b6f4	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044bbc0	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x0044bdb0	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044be42	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044cafb	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044ce9d	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x0044e065	EOL	SecuROM -> MSVCR70.DLL!free
+0x0044f391	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044fc21	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0044fe10	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x004515ed	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00451b6f	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00451e00	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452226	EOL	SecuROM -> KERNEL32.DLL!GetLocalTime
+0x00452236	EOL	SecuROM -> KERNEL32.DLL!SystemTimeToFileTime
+0x004522ca	EOL	SecuROM -> KERNEL32.DLL!GetLocalTime
+0x004522da	EOL	SecuROM -> KERNEL32.DLL!SystemTimeToFileTime
+0x004525cd	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x004526f8	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x004529ee	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452a7b	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452ab6	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452b65	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452be2	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452d26	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452d90	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452e82	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00452ec0	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00453137	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x004532d0	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004532f9	EOL	SecuROM -> MSVCR70.DLL!free
+0x00453312	EOL	SecuROM -> WINMM.DLL!timeGetTime
+0x00455e13	EOL	SecuROM -> KERNEL32.DLL!SystemTimeToFileTime
+0x0045602b	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x00456057	EOL	SecuROM -> KERNEL32.DLL!DeleteFileA
+0x004560eb	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x00456126	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x00456171	EOL	SecuROM -> KERNEL32.DLL!GetFileSize
+0x00456183	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x00456287	EOL	SecuROM -> MSVCR70.DLL!free
+0x004562c6	EOL	SecuROM -> MSVCR70.DLL!free
+0x0045636b	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x004563a6	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x00456437	EOL	SecuROM -> KERNEL32.DLL!WriteFile
+0x0045650b	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x00456546	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x00456591	EOL	SecuROM -> KERNEL32.DLL!GetFileSize
+0x004565d2	EOL	SecuROM -> KERNEL32.DLL!ReadFile
+0x004565e7	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x004566b7	EOL	SecuROM -> MSVCR70.DLL!free
+0x004566fa	EOL	SecuROM -> MSVCR70.DLL!free
+0x004567bf	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x004567d5	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x0045682a	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x00456874	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x004568c9	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x004568fb	EOL	SecuROM -> MSVCR70.DLL!wcslen
+0x00456917	EOL	SecuROM -> MSVCR70.DLL!iswascii
+0x00456a5c	EOL	SecuROM -> KERNEL32.DLL!MultiByteToWideChar
+0x00456a79	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00456a9c	EOL	SecuROM -> KERNEL32.DLL!CreateDirectoryA
+0x00456aa8	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00456b41	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x00456bdf	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x00456c53	EOL	SecuROM -> KERNEL32.DLL!MultiByteToWideChar
+0x00456c87	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x00456cc4	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00456cd0	EOL	SecuROM -> KERNEL32.DLL!FindNextFileA
+0x00456d0b	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00456d17	EOL	SecuROM -> KERNEL32.DLL!FindNextFileA
+0x00456d22	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x00456d43	EOL	SecuROM -> KERNEL32.DLL!RemoveDirectoryA
+0x00456d4d	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00456ec4	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00456eda	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x00456f16	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x00456fbd	EOL	SecuROM -> MSVCR70.DLL!free
+0x00456fe1	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0045701c	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00457032	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x00457046	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00457107	EOL	SecuROM -> KERNEL32.DLL!FindNextFileA
+0x0045711a	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x0045717a	EOL	SecuROM -> MSVCR70.DLL!free
+0x004571ad	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004571fc	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00457212	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x004572a8	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x004572db	EOL	SecuROM -> KERNEL32.DLL!FindNextFileA
+0x004572ee	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x0045733f	EOL	SecuROM -> KERNEL32.DLL!GetDiskFreeSpaceExA
+0x004573f5	EOL	SecuROM -> KERNEL32.DLL!CreateDirectoryA
+0x004573ff	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00457a4c	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00457a7d	EOL	SecuROM -> MSVCR70.DLL!free
+0x00458524	EOL	SecuROM -> MSVCR70.DLL!wcslen
+0x0045856e	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00459474	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00459604	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0045969e	EOL	SecuROM -> MSVCR70.DLL!free
+0x00459975	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x00459ee0	EOL	SecuROM -> MSVCR70.DLL!floor
+0x00459f36	EOL	SecuROM -> MSVCR70.DLL!floor
+0x00459f5b	EOL	SecuROM -> MSVCR70.DLL!floor
+0x0045a6ae	EOL	SecuROM -> KERNEL32.DLL!CreateEventA
+0x0045a71f	EOL	SecuROM -> USER32.DLL!LoadCursorA
+0x0045aab0	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0045aacd	EOL	SecuROM -> MSVCR70.DLL!free
+0x0045aba3	EOL	SecuROM -> MSVCR70.DLL!free
+0x0045ac19	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0045ac36	EOL	SecuROM -> MSVCR70.DLL!free
+0x0045b2cc	EOL	SecuROM -> MSVCR70.DLL!free
+0x0045b84d	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x0045b88d	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x00462707	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0046f96e	EOL	SecuROM -> MSVCR70.DLL!srand
+0x004761a7	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0047620a	EOL	SecuROM -> MSVCR70.DLL!free
+0x0047d2ad	EOL	SecuROM -> MSVCR70.DLL!calloc
+0x0047d33b	EOL	SecuROM -> MSVCR70.DLL!free
+0x0047d98b	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x0047d9ca	EOL	SecuROM -> MSVCR70.DLL!free
+0x0047e37f	EOL	SecuROM -> MSVCR70.DLL!free
+0x0047e401	EOL	SecuROM -> MSVCR70.DLL!free
+0x0047e452	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00480d63	EOL	SecuROM -> MSVCR70.DLL!vsprintf
+0x00480f67	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004880f0	PRE	sh23ds: port/source/fog.c:273
+0x004893f0	PRE	sh23ds: port/source/fog.c:348
+0x0048bee0	PRE	sh23ds: port/source/events.c:544
+0x0048c110	PRE	sh23ds: port/source/events.c:728
+0x0048c9e8	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048cb20	PRE	sh23ds: port/source/events.c:152
+0x0048e9f5	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048ea11	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048ec40	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048ecb0	PRE	sh23ds: port/source/maria.c:76
+0x0048f557	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048fa4d	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048fbdb	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048ff08	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0048ffcb	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0049004a	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00490e6a	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00491055	EOL	SecuROM -> MSVCR70.DLL!free
+0x00491aaa	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00491aeb	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00491bdb	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00491c3a	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00491ca4	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00491d08	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00491d9a	EOL	SecuROM -> MSVCR70.DLL!free
+0x00491f3b	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004920ea	EOL	SecuROM -> MSVCR70.DLL!free
+0x004922c6	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004922f4	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00492486	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004926ce	EOL	SecuROM -> MSVCR70.DLL!free
+0x00492711	EOL	SecuROM -> MSVCR70.DLL!free
+0x00492754	EOL	SecuROM -> MSVCR70.DLL!free
+0x00492797	EOL	SecuROM -> MSVCR70.DLL!free
+0x0049293c	EOL	SecuROM -> MSVCR70.DLL!free
+0x00492962	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00492a9f	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00492b07	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00492fe6	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004930c8	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004932d4	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0049338c	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00493740	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004954ec	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00495f96	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00496048	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004960b8	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00498b8a	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0049e310	PRE	sh23ds: port/source/events.c:148
+0x0049e70b	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0049f4c3	EOL	SecuROM -> MSVCR70.DLL!qsort
+0x0049f750	PRE	sh23ds: port/source/demo.c:281
+0x0049f7e0	PRE	sh23ds: port/source/demo.c:307
+0x0049fd30	PRE	sh23ds: port/source/demo.c:509
+0x004a0270	PRE	sh23ds: port/source/demo.c:207
+0x004a0b96	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x004a0bb2	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004a0ca8	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004a0cc0	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x004a0de7	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004a1d24	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004a2201	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004a77a0	PRE	sh23ds: port/source/enemy.c:313
+0x004a91f0	PRE	sh23ds: port/source/enemy.c:5985
+0x004a96c0	PRE	sh23ds: port/source/blood.h:11
+0x004aa743	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004ae1f0	PRE	sh23ds: port/source/enemy.c:2660
+0x004ba1e0	PRE	sh23ds: port/source/enemy.c:2168
+0x004bf2d0	PRE	sh23ds: port/source/enemy.c:3041
+0x004c15c0	PRE	sh23ds: port/source/enemy.c:1923
+0x004c46c0	PRE	sh23ds: port/source/enemy.c:5
+0x004c4b30	PRE	sh23ds: port/source/enemy.c:851
+0x004c4f50	PRE	sh23ds: port/source/enemy.c:922
+0x004c5070	PRE	sh23ds: port/source/enemy.c:944
+0x004c5230	PRE	sh23ds: port/source/enemy.c:971
+0x004c5800	PRE	sh23ds: port/source/enemy.c:1245
+0x004c63f0	PRE	sh23ds: port/source/enemy.c:995
+0x004c65d0	PRE	sh23ds: port/source/enemy.c:1086
+0x004c6900	PRE	sh23ds: port/source/enemy.c:1145
+0x004c6f50	PRE	sh23ds: port/source/enemy.c:5
+0x004c7070	PRE	sh23ds: port/source/enemy.c:5
+0x004c8093	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004c80e9	EOL	SecuROM -> MSVCR70.DLL!free
+0x004c88f5	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004c8915	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004c895d	EOL	SecuROM -> MSVCR70.DLL!free
+0x004c89fd	EOL	SecuROM -> exception!exception
+0x004c8a19	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004c8a6e	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004c8a7e	EOL	SecuROM -> exception!~exception
+0x004c8ac0	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c8b00	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c8b50	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c8d05	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c8e1b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004c90cb	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004c9190	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c91c2	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004c9231	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004c9243	EOL	SecuROM -> exception!exception
+0x004c925f	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004c927c	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004c9499	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c94f3	EOL	SecuROM -> exception!exception
+0x004c950e	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004c9552	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004c968d	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004c969f	EOL	SecuROM -> exception!exception
+0x004c96bb	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004c96d8	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004c99b1	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c9b0b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c9beb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004c9c1b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004cda7b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004cda9a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004cf0fb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004cf11a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d026b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d028a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d58cb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d58ea	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d67db	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d67fa	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d7f8b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d7faa	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004db35b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004db37a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004dc10b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004dc12a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e0ceb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e0d0a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e0f7f	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e0fa7	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e1031	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e1059	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e1156	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e117e	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e18ab	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e18ca	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e2e0b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e2e2a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e353b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e355a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e3bdb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e3bfa	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e415b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e417a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e464b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e466a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e4d1b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e4d3a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e54ab	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e54ca	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e5c1b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e5c3a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e63eb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e640a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e6b5b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e6b7a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e726b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e728a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e77bb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e77da	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e80fb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e811a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e881b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e883a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e89c6	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e89ee	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8a78	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8aa0	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8b9f	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8bc7	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8dab	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8dca	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8f56	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e8f7e	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e9008	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e9030	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e912f	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e9157	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e938b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e93aa	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e97cb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004e97ea	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea04b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea06a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea1f6	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea21e	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea2a8	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea2d0	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea3cf	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea3f7	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea66b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ea68a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eaecb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eaeea	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb076	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb09e	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb128	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb150	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb24f	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb277	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb3eb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004eb40a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004ee49e	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004ee53e	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004eec30	EOL	SecuROM -> MSVCR70.DLL!free
+0x004eec41	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004eec77	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004ef64c	EOL	SecuROM -> MSVCR70.DLL!free
+0x004ef660	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004ef775	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004ef855	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f1427	EOL	SecuROM -> MSVCR70.DLL!free
+0x004f143b	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004f184d	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f1b12	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f1bf9	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f1c21	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f279a	EOL	SecuROM -> MSVCR70.DLL!free
+0x004f27ae	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004f2afc	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f355b	EOL	SecuROM -> MSVCR70.DLL!free
+0x004f356b	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x004f36c8	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f3738	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004f5a92	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004f5e3e	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004f5e94	EOL	SecuROM -> D3D8.DLL!Direct3DCreate8
+0x004f67f5	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceFrequency
+0x004f6800	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceCounter
+0x004f6b4b	EOL	SecuROM -> KERNEL32.DLL!GlobalMemoryStatus
+0x004f712b	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004f7147	EOL	SecuROM -> MSVCR70.DLL!fprintf
+0x004f714e	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004f716b	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004f7180	EOL	SecuROM -> MSVCR70.DLL!fprintf
+0x004f7187	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004f71ab	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004f728b	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004f72ab	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004f736b	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004f7485	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f74c1	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f74d3	EOL	SecuROM -> exception!exception
+0x004f74ef	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f750c	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f75d5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f7715	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f7841	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f7853	EOL	SecuROM -> exception!exception
+0x004f786f	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f788c	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f7911	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f7923	EOL	SecuROM -> exception!exception
+0x004f793f	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f795c	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f7985	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f7a01	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f7a13	EOL	SecuROM -> exception!exception
+0x004f7a2f	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f7a4c	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f7b35	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f7be5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f7ecc	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f7eec	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f7f0b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f7f2b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f7f9b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f7feb	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f83bc	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f8409	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f85fc	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f864b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f869b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f89eb	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f8a4b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f8b10	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f8e79	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f8edb	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f8f3b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f8fe5	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f9052	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f90b3	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f90ec	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f911b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9127	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f94bd	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f94cf	EOL	SecuROM -> exception!exception
+0x004f94eb	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f9508	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f96b1	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f96c3	EOL	SecuROM -> exception!exception
+0x004f96df	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f96fc	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f991b	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004f9926	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9acb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9b3b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9c37	EOL	SecuROM -> std!operator<
+0x004f9c9d	EOL	SecuROM -> std!operator<
+0x004f9d17	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9d3b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9dec	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004f9ee2	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004f9f6d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9f9d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004f9fa9	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fa0bb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa0eb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa134	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fa163	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fa23c	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fa281	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa345	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa46c	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004fa4f7	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa527	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa533	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fa68b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa86b	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fa87e	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fa8ab	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fa8c6	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fa91e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fa981	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004faa45	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fab6b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fad00	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fad9b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004faeab	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004faf7c	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fafa1	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fb02c	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fb051	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fb0d7	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fb0fc	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fb40f	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004fb4bd	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fb4f1	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fb4fd	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fb5c3	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fb641	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fb708	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fb7ca	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fba58	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fbb6c	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fbb8e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fbd50	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fbecb	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fbf6b	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fc068	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fc1b8	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fc2aa	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fc3ca	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004fc478	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fc4ac	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fc4b8	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fc57e	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fc78e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fc918	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fc9fe	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fca7e	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fcb70	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fcba6	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x004fcc13	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fcc1f	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fcc6d	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fcc7f	EOL	SecuROM -> exception!exception
+0x004fcc9b	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fccb8	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fce64	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fce76	EOL	SecuROM -> exception!exception
+0x004fce92	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fceaf	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x004fd1db	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fd30a	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fd3d1	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fd5d5	EOL	SecuROM -> MSVCR70.DLL!strtoul
+0x004fd928	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fd95b	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!~basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x004fd97b	EOL	SecuROM -> MSVCR70.DLL!strtoul
+0x004fd9db	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fda17	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004fda61	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004fdae8	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004fdb4a	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004fdbbb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fdbeb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004fddfc	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004fde0d	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004fdecc	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x004fdedd	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x004fe2e1	EOL	SecuROM -> MSVCR70.DLL!vsprintf
+0x004fe2fb	EOL	SecuROM -> MSVCR70.DLL!printf
+0x004fe310	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00504203	EOL	SecuROM -> MSVCR70.DLL!operator_new[]
+0x00504266	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x005055b1	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x005055c3	EOL	SecuROM -> exception!exception
+0x005055df	EOL	SecuROM -> basic_string<char,std::char_traits<char>,std::allocator<char>_>!basic_string<char,std::char_traits<char>,std::allocator<char>_>
+0x005055fc	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x00505625	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x005056ab	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x005057b5	EOL	SecuROM -> MSVCR70.DLL!free
+0x005057c6	EOL	SecuROM -> MSVCR70.DLL!free
+0x0050588b	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x005059b8	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00505c94	EOL	SecuROM -> MSVCR70.DLL!operator_new
+0x00505d29	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00505d5c	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00505d68	EOL	SecuROM -> MSVCR70.DLL!_CxxThrowException
+0x00505efb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00505f2b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00506008	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x00506022	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00506039	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0050607d	EOL	SecuROM -> MSVCR70.DLL!operator_new[]
+0x005061ce	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x005063e0	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00506582	EOL	SecuROM -> MSVCR70.DLL!free
+0x005065bf	EOL	SecuROM -> MSVCR70.DLL!free
+0x00506697	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x005066fb	EOL	SecuROM -> MSVCR70.DLL!free
+0x005068f6	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x005069ea	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00506a0b	EOL	SecuROM -> MSVCR70.DLL!free
+0x00506d0b	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00506d26	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0050752c	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0050758d	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005076ea	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00507723	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005079c6	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x0050c5fc	EOL	SecuROM -> MSVCR70.DLL!qsort
+0x0050cd65	EOL	SecuROM -> MSVCR70.DLL!qsort
+0x0050f18a	EOL	SecuROM -> MSVCR70.DLL!operator_new[]
+0x0050f476	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x0050f5cb	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x0050f61e	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00511add	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00511b04	EOL	SecuROM -> MSVCR70.DLL!free
+0x005124d4	EOL	SecuROM -> MSVCR70.DLL!free
+0x005125cc	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00512670	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00512a11	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00512f17	EOL	SecuROM -> MSVCR70.DLL!free
+0x00512f77	EOL	SecuROM -> MSVCR70.DLL!free
+0x00512fb6	EOL	SecuROM -> MSVCR70.DLL!free
+0x005132fc	EOL	SecuROM -> MSVCR70.DLL!free
+0x005133da	EOL	SecuROM -> MSVCR70.DLL!free
+0x0051352d	EOL	SecuROM -> MSVCR70.DLL!free
+0x00514b95	EOL	SecuROM -> DSOUND.DLL!DirectSoundCreate
+0x00514ba3	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00514bcf	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x00514bd8	EOL	SecuROM -> OLE32.DLL!CoInitialize
+0x00514eb9	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00514f1b	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00515c20	PRE	sh23ds: port/source/bgm.c:112
+0x00516362	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00516458	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00516b75	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00516eb5	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x00516ec3	EOL	SecuROM -> KERNEL32.DLL!FindClose
+0x00516f1d	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00517036	EOL	SecuROM -> MSVCR70.DLL!free
+0x005171e3	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051872a	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceFrequency
+0x005187b9	EOL	SecuROM -> MSVCR70.DLL!_beginthread
+0x00518add	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00518d60	PRE	sh23ds: port/source/gamecam.c:166
+0x00519460	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 169 vs 204, ratio 0.69, cost 0.17)
+0x00519510	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 11 vs 20, ratio 0.69, cost 0.14)
+0x005195a0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 172 vs 252, ratio 0.69, cost 0.01)
+0x00519650	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 160 vs 204, ratio 0.69, cost 0.12)
+0x005196f0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 179 vs 196, ratio 0.69, cost 0.26)
+0x005197e0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 186 vs 272, ratio 0.69, cost 0.01)
+0x005198a0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 97 vs 144, ratio 0.69, cost 0.02)
+0x00519910	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 264 vs 480, ratio 0.69, cost 0.22)
+0x00519a20	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 179 vs 324, ratio 0.69, cost 0.22)
+0x00519c18	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00519c40	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 289 vs 320, ratio 0.69, cost 0.26)
+0x00519dec	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00519ec0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 403 vs 632, ratio 0.69, cost 0.08)
+0x0051a060	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 239 vs 368, ratio 0.69, cost 0.06)
+0x0051a150	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 102 vs 224, ratio 0.69, cost 0.39)
+0x0051a1d0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 82 vs 180, ratio 0.69, cost 0.39)
+0x0051a211	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051a240	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 974 vs 1752, ratio 0.69, cost 0.22)
+0x0051a670	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 922 vs 1332, ratio 0.69, cost 0.00)
+0x0051aa10	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 121 vs 240, ratio 0.69, cost 0.30)
+0x0051aab0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 260 vs 432, ratio 0.69, cost 0.14)
+0x0051abc0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 181 vs 236, ratio 0.69, cost 0.10)
+0x0051ac80	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 134 vs 244, ratio 0.69, cost 0.22)
+0x0051ad10	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 285 vs 412, ratio 0.69, cost 0.00)
+0x0051ae30	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 1404 vs 1948, ratio 0.69, cost 0.04)
+0x0051b3b0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 255 vs 324, ratio 0.69, cost 0.12)
+0x0051b4b0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 240 vs 308, ratio 0.69, cost 0.11)
+0x0051b9cc	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051b9f0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 342 vs 616, ratio 0.69, cost 0.22)
+0x0051bb50	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 507 vs 912, ratio 0.69, cost 0.22)
+0x0051bdc9	EOL	SecuROM -> MSVCR70.DLL!ceil
+0x0051c4e2	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051c510	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 250 vs 280, ratio 0.69, cost 0.25)
+0x0051c670	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 147 vs 240, ratio 0.69, cost 0.12)
+0x0051c710	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 312 vs 652, ratio 0.69, cost 0.36)
+0x0051c7b4	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051c886	EOL	SecuROM -> MSVCR70.DLL!ceil
+0x0051cc80	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 87 vs 160, ratio 0.69, cost 0.22)
+0x0051cce0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 296 vs 396, ratio 0.69, cost 0.08)
+0x0051ced0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 47 vs 108, ratio 0.69, cost 0.41)
+0x0051cf00	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 131 vs 200, ratio 0.69, cost 0.05)
+0x0051cf90	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 160 vs 308, ratio 0.69, cost 0.27)
+0x0051d836	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051d9bd	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051dbe5	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051e3c8	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051ee7c	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051f0db	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051f544	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0051f6fe	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00522e7a	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00522ea9	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005230d4	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00523493	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00525010	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0052512a	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005278f3	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005280ba	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0052adc0	PRE	sh23ds: port/source/maria.c:300
+0x0052d550	PRE	sh23ds: port/source/maria.c:248
+0x005377b9	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005384b1	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00538a85	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00539154	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0053a303	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0054f850	PRE	sh23ds: port/source/demo.c:291
+0x005544e7	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005570cb	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00558e94	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00558fc8	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0055a4b9	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0055ab5f	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0055ac2a	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0055aea0	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0055b29d	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0055b3be	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0055c0a1	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055c2aa	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055c54c	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055c65e	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055cbd0	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055d845	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055d878	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055d94f	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055d98e	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055dc7b	EOL	SecuROM -> KERNEL32.DLL!GetCurrentThread
+0x0055dc84	EOL	SecuROM -> KERNEL32.DLL!GetThreadPriority
+0x0055dc93	EOL	SecuROM -> KERNEL32.DLL!SetThreadPriority
+0x0055dca6	EOL	SecuROM -> KERNEL32.DLL!ResumeThread
+0x0055dcce	EOL	SecuROM -> KERNEL32.DLL!GetCurrentThread
+0x0055dcdc	EOL	SecuROM -> KERNEL32.DLL!SuspendThread
+0x0055dcea	EOL	SecuROM -> KERNEL32.DLL!SetThreadPriority
+0x0055ddac	EOL	SecuROM -> KERNEL32.DLL!ExitThread
+0x0055de1d	EOL	SecuROM -> KERNEL32.DLL!ExitThread
+0x0055debf	EOL	SecuROM -> KERNEL32.DLL!ExitThread
+0x0055df3c	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceCounter
+0x0055dff6	EOL	SecuROM -> WINMM.DLL!timeKillEvent
+0x0055dffe	EOL	SecuROM -> WINMM.DLL!timeEndPeriod
+0x0055e00f	EOL	SecuROM -> WINMM.DLL!timeBeginPeriod
+0x0055e021	EOL	SecuROM -> WINMM.DLL!timeSetEvent
+0x0055e03f	EOL	SecuROM -> KERNEL32.DLL!PulseEvent
+0x0055e097	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceFrequency
+0x0055e0b6	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceCounter
+0x0055e0e1	EOL	SecuROM -> KERNEL32.DLL!CreateEventA
+0x0055e0f7	EOL	SecuROM -> WINMM.DLL!timeBeginPeriod
+0x0055e107	EOL	SecuROM -> WINMM.DLL!timeSetEvent
+0x0055e224	EOL	SecuROM -> KERNEL32.DLL!GetVersionExA
+0x0055e2a8	EOL	SecuROM -> KERNEL32.DLL!WaitForSingleObject
+0x0055e4a0	EOL	SecuROM -> KERNEL32.DLL!ExitThread
+0x0055e4e7	EOL	SecuROM -> KERNEL32.DLL!CreateThread
+0x0055e4f5	EOL	SecuROM -> KERNEL32.DLL!SetThreadPriority
+0x0055e508	EOL	SecuROM -> KERNEL32.DLL!GetVersionExA
+0x0055e51e	EOL	SecuROM -> KERNEL32.DLL!SetThreadPriorityBoost
+0x0055e52b	EOL	SecuROM -> KERNEL32.DLL!ResumeThread
+0x0055e595	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x0055e95f	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055e99f	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x0055e9b3	EOL	SecuROM -> MSVCR70.DLL!strncat
+0x0055ea7d	EOL	SecuROM -> MSVCR70.DLL!strncat
+0x0055fa5c	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x005612e1	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00562caf	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x00562cb7	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005637b5	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005637cb	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00563e75	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x00563ef1	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x00563f05	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x00564037	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00564074	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056409e	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005640ad	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056424d	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056425f	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005642d4	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005642e6	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00564328	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00564337	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00564347	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00564356	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056450f	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056458f	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005645d7	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005645e6	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005645f6	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x00564605	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x005652d0	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x00565375	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x00565423	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x00565be2	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x00565e94	EOL	SecuROM -> MSVCR70.DLL!strncmp
+0x00566702	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0056677b	EOL	SecuROM -> KERNEL32.DLL!GetFullPathNameA
+0x00566786	EOL	SecuROM -> KERNEL32.DLL!lstrlenA
+0x005667f8	EOL	SecuROM -> KERNEL32.DLL!GetVersionExA
+0x00566883	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x0056689c	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x005668a4	EOL	SecuROM -> KERNEL32.DLL!lstrcatA
+0x005668c8	EOL	SecuROM -> KERNEL32.DLL!lstrcatA
+0x005668dd	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x005668e5	EOL	SecuROM -> KERNEL32.DLL!lstrcatA
+0x005668f3	EOL	SecuROM -> KERNEL32.DLL!lstrcatA
+0x0056693e	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceFrequency
+0x005669a5	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceFrequency
+0x00566a81	EOL	SecuROM -> KERNEL32.DLL!GetOverlappedResult
+0x00566a8b	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00566ae2	EOL	SecuROM -> USER32.DLL!wsprintfA
+0x00566cc1	EOL	SecuROM -> KERNEL32.DLL!ReadFile
+0x00566cd5	EOL	SecuROM -> KERNEL32.DLL!SetFilePointer
+0x00566cea	EOL	SecuROM -> KERNEL32.DLL!ReadFile
+0x00566d28	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00566d8f	EOL	SecuROM -> USER32.DLL!wsprintfA
+0x00566f70	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x00566fc4	EOL	SecuROM -> KERNEL32.DLL!CreateEventA
+0x00566fdd	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x00567098	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x00567661	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x0056766e	EOL	SecuROM -> KERNEL32.DLL!GetLastError
+0x00567680	EOL	SecuROM -> USER32.DLL!wsprintfA
+0x005676bd	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x00567757	EOL	SecuROM -> KERNEL32.DLL!GetFileSize
+0x005677d2	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005677f7	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x00567817	EOL	SecuROM -> MSVCR70.DLL!strtoul
+0x0056783f	EOL	SecuROM -> MSVCR70.DLL!strtoul
+0x00567e5e	EOL	SecuROM -> KERNEL32.DLL!lstrlenA
+0x00567f39	EOL	SecuROM -> KERNEL32.DLL!GetVersionExA
+0x00567ff8	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x00568020	EOL	SecuROM -> KERNEL32.DLL!lstrlenA
+0x00568132	EOL	SecuROM -> KERNEL32.DLL!lstrlenA
+0x00568296	EOL	SecuROM -> KERNEL32.DLL!HeapCreate
+0x005682bd	EOL	SecuROM -> KERNEL32.DLL!HeapAlloc
+0x0056837c	EOL	SecuROM -> KERNEL32.DLL!CloseHandle
+0x005683cf	EOL	SecuROM -> KERNEL32.DLL!HeapFree
+0x005683d6	EOL	SecuROM -> KERNEL32.DLL!HeapDestroy
+0x00568425	EOL	SecuROM -> KERNEL32.DLL!lstrlenA
+0x005684bb	EOL	SecuROM -> KERNEL32.DLL!CreateFileA
+0x00568550	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x00568575	EOL	SecuROM -> USER32.DLL!wsprintfA
+0x00568787	EOL	SecuROM -> KERNEL32.DLL!lstrcmpiA
+0x00568d1e	EOL	SecuROM -> MSVCR70.DLL!vsprintf
+0x00568d5f	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x00568d9f	EOL	SecuROM -> MSVCR70.DLL!strncpy
+0x00568db3	EOL	SecuROM -> MSVCR70.DLL!strncat
+0x00568e6d	EOL	SecuROM -> MSVCR70.DLL!strncat
+0x0056997f	EOL	SecuROM -> MSVCR70.DLL!vsprintf
+0x0056a433	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x0056ac0f	EOL	SecuROM -> MSVCR70.DLL!vsprintf
+0x0056bbed	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056bc27	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056bc88	EOL	SecuROM -> MSVCR70.DLL!ftol
+0x0056bdb8	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceFrequency
+0x0056bdcb	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceCounter
+0x0056be30	EOL	SecuROM -> KERNEL32.DLL!GetCurrentThread
+0x0056be37	EOL	SecuROM -> KERNEL32.DLL!GetThreadPriority
+0x0056bef4	EOL	SecuROM -> KERNEL32.DLL!lstrcpyA
+0x0056beff	EOL	SecuROM -> KERNEL32.DLL!lstrlenA
+0x0056bf77	EOL	SecuROM -> KERNEL32.DLL!FindFirstFileA
+0x005712f0	PRE	sh23ds: port/source/prog_wish.c:324
+0x00571300	PRE	sh23ds: port/source/prog_wish.c:324
+0x00571320	PRE	sh23ds: port/source/prog_wish.c:324
+0x00571330	PRE	sh23ds: port/source/prog_wish.c:329
+0x00571370	PRE	sh23ds: port/source/prog_wish.c:340
+0x005715e0	PRE	sh23ds: port/source/prog_wish.c:353
+0x00571cb0	PRE	sh23ds: port/source/prog_wish.c:71
+0x00571cc0	PRE	sh23ds: port/source/prog_wish.c:74
+0x00571ea0	PRE	sh23ds: port/source/prog_wish.c:89
+0x00571f30	PRE	sh23ds: port/source/prog_wish.c:101
+0x00571f40	PRE	sh23ds: port/source/prog_wish.c:101
+0x005725f0	PRE	sh23ds: port/source/prog_wish.c:256
+0x00572800	PRE	sh23ds: port/source/prog_wish.c:267
+0x00572920	PRE	sh23ds: port/source/prog_wish.c:278
+0x00572a00	PRE	sh23ds: port/source/prog_wish.c:287
+0x00572f10	PRE	sh23ds: port/source/prog_wish.c:105
+0x00573a60	PRE	sh23ds: port/source/prog_wish.c:55
+0x005740c0	PRE	sh23ds: port/source/prog_wish.c:16
+0x00574590	PRE	sh23ds: port/source/prog_wish.c:48
+0x00574600	PRE	sh23ds: port/source/prog_hotel.c:1116
+0x00575630	PRE	sh23ds: port/source/prog_hotel.c:1037
+0x00575750	PRE	sh23ds: port/source/prog_hotel.c:1037
+0x00575ae0	PRE	sh23ds: port/source/prog_hotel.c:1029
+0x00575b80	PRE	sh23ds: port/source/prog_hotel.c:1003
+0x00575c70	PRE	sh23ds: port/source/prog_hotel.c:1012
+0x00576050	PRE	sh23ds: port/source/prog_hotel.c:825
+0x00576200	PRE	sh23ds: port/source/prog_hotel.c:836
+0x00576370	PRE	sh23ds: port/source/prog_hotel.c:845
+0x00576440	PRE	sh23ds: port/source/prog_hotel.c:845
+0x00576a90	PRE	sh23ds: port/source/prog_hotel.c:859
+0x005777f0	PRE	sh23ds: port/source/prog_hotel.c:761
+0x00577e80	PRE	sh23ds: port/source/prog_hotel.c:715
+0x00577f80	PRE	sh23ds: port/source/prog_hotel.c:715
+0x00577fa0	PRE	sh23ds: port/source/prog_hotel.c:728
+0x00578440	PRE	sh23ds: port/source/prog_hotel.c:742
+0x00579220	PRE	sh23ds: port/source/prog_hotel.c:285
+0x00579420	PRE	sh23ds: port/source/prog_hotel.c:396
+0x00579440	PRE	sh23ds: port/source/prog_hotel.c:396
+0x00579500	PRE	sh23ds: port/source/prog_hotel.c:485
+0x005796e0	PRE	sh23ds: port/source/prog_hotel.c:516
+0x00579ab0	PRE	sh23ds: port/source/prog_hotel.c:587
+0x00579ae0	PRE	sh23ds: port/source/prog_hotel.c:587
+0x0057a310	PRE	sh23ds: port/source/prog_hotel.c:695
+0x0057a320	PRE	sh23ds: port/source/prog_hotel.c:695
+0x0057a3c2	EOL	SecuROM -> MSVCR70.DLL!printf
+0x0057a790	PRE	sh23ds: port/source/prog_hotel.c:418
+0x0057ac90	PRE	sh23ds: port/source/prog_hotel.c:569
+0x0057afc0	PRE	sh23ds: port/source/prog_hotel.c:597
+0x0057b1f0	PRE	sh23ds: port/source/prog_hotel.c:645
+0x0057b580	PRE	sh23ds: port/source/prog_hotel.c:109
+0x0057b590	PRE	sh23ds: port/source/prog_hotel.c:109
+0x0057b5a0	PRE	sh23ds: port/source/prog_hotel.c:113
+0x0057b5b0	PRE	sh23ds: port/source/prog_hotel.c:113
+0x0057bcc0	PRE	sh23ds: port/source/prog_hotel.c:228
+0x0057be80	PRE	sh23ds: port/source/prog_hotel.c:250
+0x0057be90	PRE	sh23ds: port/source/prog_hotel.c:250
+0x0057bea0	PRE	sh23ds: port/source/prog_hotel.c:250
+0x0057beb0	PRE	sh23ds: port/source/prog_hotel.c:255
+0x0057c470	PRE	sh23ds: port/source/prog_hotel.c:117
+0x0057d190	PRE	sh23ds: port/source/prog_hotel.c:236
+0x0057d530	PRE	sh23ds: port/source/prog_hotel.c:66
+0x0057d540	PRE	sh23ds: port/source/prog_hotel.c:66
+0x0057d550	PRE	sh23ds: port/source/prog_hotel.c:70
+0x0057d570	PRE	sh23ds: port/source/prog_hotel.c:78
+0x0057da50	PRE	sh23ds: port/source/prog_hotel.c:94
+0x0057da80	PRE	sh23ds: port/source/prog_hotel.c:94
+0x0057dd20	PRE	sh23ds: port/source/prog_hotel.c:14
+0x0057de40	PRE	sh23ds: port/source/prog_hotel.c:27
+0x0057df80	PRE	sh23ds: port/source/prog_hotel.c:39
+0x0057df90	PRE	sh23ds: port/source/prog_hotel.c:42
+0x0057f2c0	PRE	sh23ds: port/source/prog_prison.c:656
+0x0057f730	PRE	sh23ds: port/source/prog_prison.c:537
+0x0057f950	PRE	sh23ds: port/source/prog_prison.c:562
+0x0057fc80	PRE	sh23ds: port/source/prog_prison.c:588
+0x0057fd20	PRE	sh23ds: port/source/prog_prison.c:599
+0x0057fd30	PRE	sh23ds: port/source/prog_prison.c:602
+0x0057fd40	PRE	sh23ds: port/source/prog_prison.c:605
+0x0057fd50	PRE	sh23ds: port/source/prog_prison.c:608
+0x005801c0	PRE	sh23ds: port/source/prog_prison.c:627
+0x00580330	PRE	sh23ds: port/source/prog_prison.c:637
+0x00580bf0	PRE	sh23ds: port/source/prog_prison.c:471
+0x00580c00	PRE	sh23ds: port/source/prog_prison.c:474
+0x00580e30	PRE	sh23ds: port/source/prog_prison.c:484
+0x00581260	PRE	sh23ds: port/source/prog_prison.c:504
+0x00581cc0	PRE	sh23ds: port/source/prog_prison.c:385
+0x00581e10	PRE	sh23ds: port/source/prog_prison.c:395
+0x00581e20	PRE	sh23ds: port/source/prog_prison.c:398
+0x00582750	PRE	sh23ds: port/source/prog_prison.c:438
+0x005829c0	PRE	sh23ds: port/source/prog_prison.c:448
+0x005829d0	PRE	sh23ds: port/source/prog_prison.c:451
+0x005829e0	PRE	sh23ds: port/source/prog_prison.c:454
+0x00583c60	PRE	sh23ds: port/source/prog_prison.c:339
+0x00583db0	PRE	sh23ds: port/source/prog_prison.c:358
+0x00583fb0	PRE	sh23ds: port/source/prog_prison.c:339
+0x00584100	PRE	sh23ds: port/source/prog_prison.c:362
+0x005841b0	PRE	sh23ds: port/source/prog_prison.c:358
+0x005844f0	PRE	sh23ds: port/source/prog_prison.c:245
+0x00584520	PRE	sh23ds: port/source/prog_prison.c:245
+0x00584530	PRE	sh23ds: port/source/prog_prison.c:245
+0x00584980	PRE	sh23ds: port/source/prog_prison.c:262
+0x00584fc0	PRE	sh23ds: port/source/prog_prison.c:170
+0x00585350	PRE	sh23ds: port/source/prog_prison.c:180
+0x00585360	PRE	sh23ds: port/source/prog_prison.c:180
+0x00585370	PRE	sh23ds: port/source/prog_prison.c:180
+0x00585380	PRE	sh23ds: port/source/prog_prison.c:181
+0x00585390	PRE	sh23ds: port/source/prog_prison.c:181
+0x005853a0	PRE	sh23ds: port/source/prog_prison.c:188
+0x005855c0	PRE	sh23ds: port/source/prog_prison.c:203
+0x00585950	PRE	sh23ds: port/source/prog_prison.c:235
+0x00585d00	PRE	sh23ds: port/source/prog_prison.c:219
+0x00586040	PRE	sh23ds: port/source/prog_prison.c:42
+0x00586160	PRE	sh23ds: port/source/prog_prison.c:52
+0x00586210	PRE	sh23ds: port/source/prog_prison.c:66
+0x00586bb0	PRE	sh23ds: port/source/prog_prison.c:136
+0x00586d40	PRE	sh23ds: port/source/prog_prison.c:149
+0x00586f40	PRE	sh23ds: port/source/prog_prison.c:152
+0x00587470	PRE	sh23ds: port/source/prog_prison.c:78
+0x00587920	PRE	sh23ds: port/source/prog_prison.c:35
+0x00587c00	PRE	sh23ds: port/source/prog_prison.c:11
+0x00587c10	PRE	sh23ds: port/source/prog_prison.c:11
+0x00587ed0	PRE	sh23ds: port/source/prog_hospital.c:1054
+0x00587f10	PRE	sh23ds: port/source/prog_hospital.c:1058
+0x005881a0	PRE	sh23ds: port/source/prog_hospital.c:1001
+0x005883f0	PRE	sh23ds: port/source/prog_hospital.c:1014
+0x005885c0	PRE	sh23ds: port/source/prog_hospital.c:1030
+0x005885d0	PRE	sh23ds: port/source/prog_hospital.c:1030
+0x00588a50	PRE	sh23ds: port/source/prog_hospital.c:1037
+0x00588e60	PRE	sh23ds: port/source/prog_hospital.c:1034
+0x00589790	PRE	sh23ds: port/source/prog_hospital.c:920
+0x00589f70	PRE	sh23ds: port/source/prog_hospital.c:992
+0x0058a260	PRE	sh23ds: port/source/prog_hospital.c:863
+0x0058a6e0	PRE	sh23ds: port/source/prog_hospital.c:930
+0x0058a8a0	PRE	sh23ds: port/source/prog_hospital.c:815
+0x0058ac20	PRE	sh23ds: port/source/prog_hospital.c:836
+0x0058aed0	PRE	sh23ds: port/source/prog_hospital.c:853
+0x0058aee0	PRE	sh23ds: port/source/prog_hospital.c:853
+0x0058af50	PRE	sh23ds: port/source/prog_hospital.c:769
+0x0058b040	PRE	sh23ds: port/source/prog_hospital.c:779
+0x0058b060	PRE	sh23ds: port/source/prog_hospital.c:782
+0x0058b660	PRE	sh23ds: port/source/prog_hospital.c:806
+0x0058b670	PRE	sh23ds: port/source/prog_hospital.c:713
+0x0058b750	PRE	sh23ds: port/source/prog_hospital.c:713
+0x0058b910	PRE	sh23ds: port/source/prog_hospital.c:732
+0x0058ba80	PRE	sh23ds: port/source/prog_hospital.c:732
+0x0058cc80	PRE	sh23ds: port/source/prog_hospital.c:665
+0x0058cca0	PRE	sh23ds: port/source/prog_hospital.c:668
+0x0058cea0	PRE	sh23ds: port/source/prog_hospital.c:678
+0x0058ced0	PRE	sh23ds: port/source/prog_hospital.c:681
+0x0058d1c0	PRE	sh23ds: port/source/prog_hospital.c:695
+0x0058d480	PRE	sh23ds: port/source/prog_hospital.c:662
+0x0058d7e0	PRE	sh23ds: port/source/prog_hospital.c:336
+0x0058d990	PRE	sh23ds: port/source/prog_hospital.c:349
+0x0058db00	PRE	sh23ds: port/source/prog_hospital.c:360
+0x0058dc60	PRE	sh23ds: port/source/prog_hospital.c:388
+0x0058dd70	PRE	sh23ds: port/source/prog_hospital.c:388
+0x0058de80	PRE	sh23ds: port/source/prog_hospital.c:407
+0x0058e0b0	PRE	sh23ds: port/source/prog_hospital.c:419
+0x0058ebd0	PRE	sh23ds: port/source/prog_hospital.c:570
+0x0058ed40	PRE	sh23ds: port/source/prog_hospital.c:628
+0x0058ee40	PRE	sh23ds: port/source/prog_hospital.c:641
+0x0058ee60	PRE	sh23ds: port/source/prog_hospital.c:644
+0x0058f090	PRE	sh23ds: port/source/prog_hospital.c:370
+0x0058f2d0	PRE	sh23ds: port/source/prog_hospital.c:429
+0x0058fae0	PRE	sh23ds: port/source/prog_hospital.c:573
+0x0058fcb0	PRE	sh23ds: port/source/prog_hospital.c:253
+0x0058fcc0	PRE	sh23ds: port/source/prog_hospital.c:266
+0x0058ff50	PRE	sh23ds: port/source/prog_hospital.c:291
+0x00590090	PRE	sh23ds: port/source/prog_hospital.c:305
+0x005902a0	PRE	sh23ds: port/source/prog_hospital.c:315
+0x005902c0	PRE	sh23ds: port/source/prog_hospital.c:318
+0x00590420	PRE	sh23ds: port/source/prog_hospital.c:177
+0x00590430	PRE	sh23ds: port/source/prog_hospital.c:180
+0x00590730	PRE	sh23ds: port/source/prog_hospital.c:196
+0x005908c0	PRE	sh23ds: port/source/prog_hospital.c:208
+0x005908e0	PRE	sh23ds: port/source/prog_hospital.c:211
+0x005908f0	PRE	sh23ds: port/source/prog_hospital.c:214
+0x00590ab0	PRE	sh23ds: port/source/prog_hospital.c:227
+0x00590c20	PRE	sh23ds: port/source/prog_hospital.c:237
+0x00590f10	PRE	sh23ds: port/source/prog_hospital.c:46
+0x00591070	PRE	sh23ds: port/source/prog_hospital.c:57
+0x005911c0	PRE	sh23ds: port/source/prog_hospital.c:67
+0x00591860	PRE	sh23ds: port/source/prog_hospital.c:12
+0x00591a40	PRE	sh23ds: port/source/prog_hospital.c:21
+0x00591c10	PRE	sh23ds: port/source/prog_hospital.c:32
+0x00592830	PRE	sh23ds: port/source/prog_town.c:470
+0x005928e0	PRE	sh23ds: port/source/prog_town.c:478
+0x00592c90	PRE	sh23ds: port/source/prog_town.c:495
+0x00592e00	PRE	sh23ds: port/source/prog_town.c:506
+0x00592e40	PRE	sh23ds: port/source/prog_town.c:509
+0x00592fd0	PRE	sh23ds: port/source/prog_town.c:519
+0x00593300	PRE	sh23ds: port/source/prog_town.c:547
+0x00593330	PRE	sh23ds: port/source/prog_town.c:555
+0x00593340	PRE	sh23ds: port/source/prog_town.c:558
+0x00593570	PRE	sh23ds: port/source/prog_town.c:574
+0x005937c0	PRE	sh23ds: port/source/prog_town.c:591
+0x00593800	PRE	sh23ds: port/source/prog_town.c:599
+0x00593940	PRE	sh23ds: port/source/prog_town.c:611
+0x00593980	PRE	sh23ds: port/source/prog_town.c:620
+0x00593ba0	PRE	sh23ds: port/source/prog_town.c:633
+0x00593bb0	PRE	sh23ds: port/source/prog_town.c:636
+0x00594a90	PRE	sh23ds: port/source/prog_town.c:577
+0x00594b23	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00594bd4	EOL	SecuROM -> MSVCR70.DLL!free
+0x005959d0	PRE	sh23ds: port/source/prog_apart.c:768
+0x005959e0	PRE	sh23ds: port/source/prog_apart.c:771
+0x00595d80	PRE	sh23ds: port/source/prog_apart.c:786
+0x00595d90	PRE	sh23ds: port/source/prog_apart.c:789
+0x00595f50	PRE	sh23ds: port/source/prog_apart.c:803
+0x005961d0	PRE	sh23ds: port/source/prog_apart.c:719
+0x005961f0	PRE	sh23ds: port/source/prog_apart.c:722
+0x00596200	PRE	sh23ds: port/source/prog_apart.c:722
+0x00596210	PRE	sh23ds: port/source/prog_apart.c:727
+0x00596220	PRE	sh23ds: port/source/prog_apart.c:730
+0x005964c0	PRE	sh23ds: port/source/prog_apart.c:740
+0x005964e0	PRE	sh23ds: port/source/prog_apart.c:748
+0x00596c10	PRE	sh23ds: port/source/prog_apart.c:587
+0x00596d80	PRE	sh23ds: port/source/prog_apart.c:601
+0x00596da0	PRE	sh23ds: port/source/prog_apart.c:601
+0x00596db0	PRE	sh23ds: port/source/prog_apart.c:601
+0x00597710	PRE	sh23ds: port/source/prog_apart.c:606
+0x005979a0	PRE	sh23ds: port/source/prog_apart.c:622
+0x00597b00	PRE	sh23ds: port/source/prog_apart.c:677
+0x00598180	PRE	sh23ds: port/source/prog_apart.c:527
+0x005984a0	PRE	sh23ds: port/source/prog_apart.c:538
+0x005984b0	PRE	sh23ds: port/source/prog_apart.c:538
+0x005984c0	PRE	sh23ds: port/source/prog_apart.c:538
+0x005984d0	PRE	sh23ds: port/source/prog_apart.c:543
+0x00598870	PRE	sh23ds: port/source/prog_apart.c:419
+0x00598c30	PRE	sh23ds: port/source/prog_apart.c:452
+0x005991f0	PRE	sh23ds: port/source/prog_apart.c:377
+0x00599490	PRE	sh23ds: port/source/prog_apart.c:392
+0x005994a0	PRE	sh23ds: port/source/prog_apart.c:395
+0x00599ce0	PRE	sh23ds: port/source/prog_apart.c:342
+0x00599f30	PRE	sh23ds: port/source/prog_apart.c:363
+0x00599f60	PRE	sh23ds: port/source/prog_apart.c:61
+0x0059a160	PRE	sh23ds: port/source/prog_apart.c:73
+0x0059a6b0	PRE	sh23ds: port/source/prog_apart.c:181
+0x0059aa10	PRE	sh23ds: port/source/prog_apart.c:204
+0x0059aa30	PRE	sh23ds: port/source/prog_apart.c:207
+0x0059ad80	PRE	sh23ds: port/source/prog_apart.c:225
+0x0059afb0	PRE	sh23ds: port/source/prog_apart.c:235
+0x0059b1e0	PRE	sh23ds: port/source/prog_apart.c:251
+0x0059b300	PRE	sh23ds: port/source/prog_apart.c:261
+0x0059b3c0	PRE	sh23ds: port/source/prog_apart.c:270
+0x0059b4c0	PRE	sh23ds: port/source/prog_apart.c:282
+0x0059b520	PRE	sh23ds: port/source/prog_apart.c:294
+0x0059b930	PRE	sh23ds: port/source/prog_apart.c:297
+0x0059bb30	PRE	sh23ds: port/source/prog_apart.c:314
+0x0059bb50	PRE	sh23ds: port/source/prog_apart.c:317
+0x0059c1c0	PRE	sh23ds: port/source/prog_apart.c:86
+0x0059c4b0	PRE	sh23ds: port/source/prog_apart.c:132
+0x0059cbf0	PRE	sh23ds: port/source/prog_apart.c:13
+0x0059cdd0	PRE	sh23ds: port/source/prog_apart.c:22
+0x0059cf00	PRE	sh23ds: port/source/prog_apart.c:31
+0x0059d2a0	PRE	sh23ds: port/source/prog_town.c:241
+0x0059d4f0	PRE	sh23ds: port/source/prog_town.c:256
+0x0059d8f0	PRE	sh23ds: port/source/prog_town.c:279
+0x0059da20	PRE	sh23ds: port/source/combat.c:1317
+0x0059dbd0	PRE	sh23ds: port/source/prog_town.c:304
+0x0059dd40	PRE	sh23ds: port/source/prog_town.c:316
+0x0059de50	PRE	sh23ds: port/source/prog_town.c:326
+0x0059dea0	PRE	sh23ds: port/source/prog_town.c:334
+0x0059dec0	PRE	sh23ds: port/source/prog_town.c:342
+0x0059dee0	PRE	sh23ds: port/source/prog_town.c:345
+0x0059f480	PRE	sh23ds: port/source/prog_town.c:164
+0x0059f670	PRE	sh23ds: port/source/prog_town.c:194
+0x0059f790	PRE	sh23ds: port/source/prog_town.c:194
+0x0059f8b0	PRE	sh23ds: port/source/prog_town.c:224
+0x0059fc90	PRE	sh23ds: port/source/prog_town.c:215
+0x005a0740	PRE	sh23ds: port/source/prog_town.c:182
+0x005a0a30	PRE	sh23ds: port/source/prog_town.c:77
+0x005a0b80	PRE	sh23ds: port/source/prog_town.c:90
+0x005a0e70	PRE	sh23ds: port/source/prog_town.c:110
+0x005a0e80	PRE	sh23ds: port/source/prog_town.c:126
+0x005a0fb0	PRE	sh23ds: port/source/prog_town.c:137
+0x005a10e0	PRE	sh23ds: port/source/prog_town.c:148
+0x005a1670	PRE	sh23ds: port/source/prog_town.c:10
+0x005a9c5a	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005a9d5f	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005a9e5f	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005a9f59	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005aa030	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005aa0f8	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005aa1e9	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005aa2ef	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005aa3dd	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
+0x005aee1b	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x005aee5f	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x005aef52	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005aef74	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005aef92	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005aefb0	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005aefd1	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005aefef	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005af010	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005af03d	EOL	SecuROM -> MSVCR70.DLL!sprintf
+0x005af17b	EOL	SecuROM -> MSVCR70.DLL!fopen
+0x005af1bf	EOL	SecuROM -> MSVCR70.DLL!fclose
+0x005af5bd	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x005af5f8	EOL	SecuROM -> MSVCR70.DLL!free
+0x005b4507	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x005b4638	EOL	SecuROM -> MSVCR70.DLL!free
+0x005b47d5	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x005b47e5	EOL	SecuROM -> MSVCR70.DLL!free
+0x005b4949	EOL	SecuROM -> MSVCR70.DLL!free
+0x005b53b3	EOL	SecuROM -> MSVCR70.DLL!qsort
+0x005b549d	EOL	SecuROM -> MSVCR70.DLL!qsort
+0x005b6154	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x005b6220	EOL	SecuROM -> MSVCR70.DLL!_CIpow
+0x005b8268	EOL	SecuROM -> MSVCR70.DLL!malloc
+0x00625012	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062501c	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625026	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625030	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625073	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062507d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625087	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062509b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006250af	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006250b9	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006250cd	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006250d7	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006250eb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006250f5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006250ff	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625113	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062511d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625127	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062513b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625145	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625159	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625163	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625177	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625181	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062518b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006251b1	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006251c5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006251e1	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006251f5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062521b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625225	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062522f	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625239	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625243	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062524d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625257	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625261	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062526b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625275	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062527f	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625289	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625293	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062529d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252a7	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252b1	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252bb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252c5	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252cf	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252d9	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252e3	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252ed	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x006252f7	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625301	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062530b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625315	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062531f	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625329	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625333	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062533d	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625347	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625351	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062535b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625365	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x0062536f	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625379	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625383	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x00625894	EOL	SecuROM -> MSVCR70.DLL!operator_delete[]
+0x00893718	PLATE	class exception RTTI Type Descriptor
+0x00893720	EOL	TypeDescriptor.name
+0x00893730	PLATE	class std::logic_error RTTI Type Descriptor
+0x00893738	EOL	TypeDescriptor.name
+0x00893750	PLATE	class std::out_of_range RTTI Type Descriptor
+0x00893758	EOL	TypeDescriptor.name
+0x00893770	PLATE	class std::length_error RTTI Type Descriptor
+0x00893778	EOL	TypeDescriptor.name
+0x008c49e0	PLATE	class type_info RTTI Type Descriptor
+0x008c49e8	EOL	TypeDescriptor.name
+0x024cce50	PLATE	Library Function - Single Match\n __allmul\n\nLibrary: Visual Studio
+0x024ccf24	PLATE	Library Function - Single Match\n _flsall\n\nLibrary: Visual Studio 2003 Release
+0x024ccfcf	PLATE	Library Function - Single Match\n __exit\n\nLibrary: Visual Studio 2003 Release
+0x024cd490	PLATE	Library Function - Single Match\n _memset\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024cd551	PLATE	Library Function - Single Match\n _malloc\n\nLibrary: Visual Studio 2003 Release
+0x024cd563	PLATE	Library Function - Single Match\n __nh_malloc\n\nLibrary: Visual Studio 2003 Release
+0x024cdbb0	PLATE	Library Function - Single Match\n _strlen\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024cdc30	PLATE	Library Function - Single Match\n _strncpy\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024cdd40	PLATE	Library Function - Single Match\n _strchr\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024cde00	PLATE	Library Function - Single Match\n _strncmp\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024cde40	PLATE	Library Function - Single Match\n _memcmp\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024cdef0	PLATE	Library Function - Single Match\n _strcmp\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024ce050	PLATE	Library Function - Single Match\n __ftol\n\nLibrary: Visual Studio
+0x024ce3c0	PLATE	Library Function - Single Match\n _strstr\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release
+0x024ce70c	PLATE	Library Function - Single Match\n void * __cdecl operator new(unsigned int)\n\nLibrary: Visual Studio 2003 Release
+0x024cea0c	PLATE	Library Function - Single Match\n __global_unwind2\n\nLibrary: Visual Studio
+0x024cea4e	PLATE	Library Function - Single Match\n __local_unwind2\n\nLibraries: Visual Studio 1998 Debug, Visual Studio 1998 Release, Visual Studio 2003 Debug, Visual Studio 2003 Release
+0x024ceab6	PLATE	Library Function - Single Match\n __abnormal_termination\n\nLibrary: Visual Studio
+0x024cead9	PLATE	Library Function - Single Match\n __NLG_Notify1\n\nLibraries: Visual Studio 2017 Debug, Visual Studio 2017 Release, Visual Studio 2019 Debug, Visual Studio 2019 Release
+0x024ced9d	PLATE	Library Function - Single Match\n __amsg_exit\n\nLibrary: Visual Studio 2003 Release
+0x024cef1f	PLATE	Library Function - Single Match\n __fassign\n\nLibrary: Visual Studio 2003 Release
+0x024cf224	PLATE	Library Function - Single Match\n __cfltcvt\n\nLibrary: Visual Studio 2003 Release
+0x024d1cf7	PLATE	Library Function - Single Match\n __startOneArgErrorHandling\n\nLibrary: Visual Studio
+0x024d1d85	PLATE	Library Function - Single Match\n __fload_withFB\n\nLibrary: Visual Studio
+0x024d1deb	PLATE	Library Function - Single Match\n __math_exit\n\nLibrary: Visual Studio
+0x024d1f7f	PLATE	Library Function - Single Match\n __freebuf\n\nLibrary: Visual Studio 2003 Release
+0x024d2e60	PLATE	Library Function - Single Match\n __CallSettingFrame@12\n\nLibraries: Visual Studio 2017 Debug, Visual Studio 2017 Release, Visual Studio 2019 Debug, Visual Studio 2019 Release
+0x024d4640	PLATE	Library Function - Single Match\n __aulldiv\n\nLibrary: Visual Studio
+0x024d46b0	PLATE	Library Function - Single Match\n __aullrem\n\nLibrary: Visual Studio
+0x024d5734	PLATE	Library Function - Single Match\n ___add_12\n\nLibrary: Visual Studio 2003 Release
+0x024d665f	PLATE	Library Function - Single Match\n __mbsnbicoll\n\nLibrary: Visual Studio 2003 Release
+0x02549000	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x02549014	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x02549028	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x0254903c	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x02549050	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x02549064	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x02549078	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x0254908c	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x025490a0	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x025490b4	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x025490c8	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x025490dc	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x025490f0	PLATE	IMAGE_IMPORT_DESCRIPTOR
+0x02549118	EOL	IMAGE_THUNK_DATA32
+0x0254911c	EOL	IMAGE_THUNK_DATA32
+0x02549120	EOL	IMAGE_THUNK_DATA32
+0x02549124	EOL	IMAGE_THUNK_DATA32
+0x02549128	EOL	IMAGE_THUNK_DATA32
+0x02549130	EOL	IMAGE_THUNK_DATA32
+0x02549138	EOL	IMAGE_THUNK_DATA32
+0x0254913c	EOL	IMAGE_THUNK_DATA32
+0x02549140	EOL	IMAGE_THUNK_DATA32
+0x02549144	EOL	IMAGE_THUNK_DATA32
+0x02549148	EOL	IMAGE_THUNK_DATA32
+0x0254914c	EOL	IMAGE_THUNK_DATA32
+0x02549150	EOL	IMAGE_THUNK_DATA32
+0x02549154	EOL	IMAGE_THUNK_DATA32
+0x02549158	EOL	IMAGE_THUNK_DATA32
+0x0254915c	EOL	IMAGE_THUNK_DATA32
+0x02549160	EOL	IMAGE_THUNK_DATA32
+0x02549164	EOL	IMAGE_THUNK_DATA32
+0x02549168	EOL	IMAGE_THUNK_DATA32
+0x0254916c	EOL	IMAGE_THUNK_DATA32
+0x02549170	EOL	IMAGE_THUNK_DATA32
+0x02549174	EOL	IMAGE_THUNK_DATA32
+0x02549178	EOL	IMAGE_THUNK_DATA32
+0x0254917c	EOL	IMAGE_THUNK_DATA32
+0x02549180	EOL	IMAGE_THUNK_DATA32
+0x02549184	EOL	IMAGE_THUNK_DATA32
+0x02549188	EOL	IMAGE_THUNK_DATA32
+0x0254918c	EOL	IMAGE_THUNK_DATA32
+0x02549190	EOL	IMAGE_THUNK_DATA32
+0x02549194	EOL	IMAGE_THUNK_DATA32
+0x02549198	EOL	IMAGE_THUNK_DATA32
+0x0254919c	EOL	IMAGE_THUNK_DATA32
+0x025491a0	EOL	IMAGE_THUNK_DATA32
+0x025491a4	EOL	IMAGE_THUNK_DATA32
+0x025491a8	EOL	IMAGE_THUNK_DATA32
+0x025491ac	EOL	IMAGE_THUNK_DATA32
+0x025491b0	EOL	IMAGE_THUNK_DATA32
+0x025491b4	EOL	IMAGE_THUNK_DATA32
+0x025491b8	EOL	IMAGE_THUNK_DATA32
+0x025491bc	EOL	IMAGE_THUNK_DATA32
+0x025491c0	EOL	IMAGE_THUNK_DATA32
+0x025491c4	EOL	IMAGE_THUNK_DATA32
+0x025491c8	EOL	IMAGE_THUNK_DATA32
+0x025491cc	EOL	IMAGE_THUNK_DATA32
+0x025491d0	EOL	IMAGE_THUNK_DATA32
+0x025491d4	EOL	IMAGE_THUNK_DATA32
+0x025491d8	EOL	IMAGE_THUNK_DATA32
+0x025491dc	EOL	IMAGE_THUNK_DATA32
+0x025491e0	EOL	IMAGE_THUNK_DATA32
+0x025491e4	EOL	IMAGE_THUNK_DATA32
+0x025491e8	EOL	IMAGE_THUNK_DATA32
+0x025491ec	EOL	IMAGE_THUNK_DATA32
+0x025491f0	EOL	IMAGE_THUNK_DATA32
+0x025491f4	EOL	IMAGE_THUNK_DATA32
+0x025491f8	EOL	IMAGE_THUNK_DATA32
+0x025491fc	EOL	IMAGE_THUNK_DATA32
+0x02549200	EOL	IMAGE_THUNK_DATA32
+0x02549204	EOL	IMAGE_THUNK_DATA32
+0x02549208	EOL	IMAGE_THUNK_DATA32
+0x0254920c	EOL	IMAGE_THUNK_DATA32
+0x02549210	EOL	IMAGE_THUNK_DATA32
+0x02549214	EOL	IMAGE_THUNK_DATA32
+0x02549218	EOL	IMAGE_THUNK_DATA32
+0x0254921c	EOL	IMAGE_THUNK_DATA32
+0x02549220	EOL	IMAGE_THUNK_DATA32
+0x02549224	EOL	IMAGE_THUNK_DATA32
+0x02549228	EOL	IMAGE_THUNK_DATA32
+0x0254922c	EOL	IMAGE_THUNK_DATA32
+0x02549230	EOL	IMAGE_THUNK_DATA32
+0x02549234	EOL	IMAGE_THUNK_DATA32
+0x02549238	EOL	IMAGE_THUNK_DATA32
+0x0254923c	EOL	IMAGE_THUNK_DATA32
+0x02549240	EOL	IMAGE_THUNK_DATA32
+0x02549244	EOL	IMAGE_THUNK_DATA32
+0x02549248	EOL	IMAGE_THUNK_DATA32
+0x0254924c	EOL	IMAGE_THUNK_DATA32
+0x02549250	EOL	IMAGE_THUNK_DATA32
+0x02549254	EOL	IMAGE_THUNK_DATA32
+0x02549258	EOL	IMAGE_THUNK_DATA32
+0x0254925c	EOL	IMAGE_THUNK_DATA32
+0x02549260	EOL	IMAGE_THUNK_DATA32
+0x02549264	EOL	IMAGE_THUNK_DATA32
+0x02549268	EOL	IMAGE_THUNK_DATA32
+0x0254926c	EOL	IMAGE_THUNK_DATA32
+0x02549270	EOL	IMAGE_THUNK_DATA32
+0x02549274	EOL	IMAGE_THUNK_DATA32
+0x02549278	EOL	IMAGE_THUNK_DATA32
+0x0254927c	EOL	IMAGE_THUNK_DATA32
+0x02549280	EOL	IMAGE_THUNK_DATA32
+0x02549284	EOL	IMAGE_THUNK_DATA32
+0x02549288	EOL	IMAGE_THUNK_DATA32
+0x0254928c	EOL	IMAGE_THUNK_DATA32
+0x02549290	EOL	IMAGE_THUNK_DATA32
+0x02549294	EOL	IMAGE_THUNK_DATA32
+0x02549298	EOL	IMAGE_THUNK_DATA32
+0x0254929c	EOL	IMAGE_THUNK_DATA32
+0x025492a0	EOL	IMAGE_THUNK_DATA32
+0x025492a4	EOL	IMAGE_THUNK_DATA32
+0x025492a8	EOL	IMAGE_THUNK_DATA32
+0x025492ac	EOL	IMAGE_THUNK_DATA32
+0x025492b0	EOL	IMAGE_THUNK_DATA32
+0x025492b4	EOL	IMAGE_THUNK_DATA32
+0x025492b8	EOL	IMAGE_THUNK_DATA32
+0x025492bc	EOL	IMAGE_THUNK_DATA32
+0x025492c0	EOL	IMAGE_THUNK_DATA32
+0x025492c4	EOL	IMAGE_THUNK_DATA32
+0x025492c8	EOL	IMAGE_THUNK_DATA32
+0x025492cc	EOL	IMAGE_THUNK_DATA32
+0x025492d0	EOL	IMAGE_THUNK_DATA32
+0x025492d4	EOL	IMAGE_THUNK_DATA32
+0x025492d8	EOL	IMAGE_THUNK_DATA32
+0x025492dc	EOL	IMAGE_THUNK_DATA32
+0x025492e0	EOL	IMAGE_THUNK_DATA32
+0x025492e4	EOL	IMAGE_THUNK_DATA32
+0x025492e8	EOL	IMAGE_THUNK_DATA32
+0x025492ec	EOL	IMAGE_THUNK_DATA32
+0x025492f0	EOL	IMAGE_THUNK_DATA32
+0x025492f4	EOL	IMAGE_THUNK_DATA32
+0x025492f8	EOL	IMAGE_THUNK_DATA32
+0x025492fc	EOL	IMAGE_THUNK_DATA32
+0x02549300	EOL	IMAGE_THUNK_DATA32
+0x02549304	EOL	IMAGE_THUNK_DATA32
+0x02549308	EOL	IMAGE_THUNK_DATA32
+0x0254930c	EOL	IMAGE_THUNK_DATA32
+0x02549310	EOL	IMAGE_THUNK_DATA32
+0x02549314	EOL	IMAGE_THUNK_DATA32
+0x02549318	EOL	IMAGE_THUNK_DATA32
+0x0254931c	EOL	IMAGE_THUNK_DATA32
+0x02549320	EOL	IMAGE_THUNK_DATA32
+0x02549328	EOL	IMAGE_THUNK_DATA32
+0x0254932c	EOL	IMAGE_THUNK_DATA32
+0x02549330	EOL	IMAGE_THUNK_DATA32
+0x02549334	EOL	IMAGE_THUNK_DATA32
+0x02549338	EOL	IMAGE_THUNK_DATA32
+0x0254933c	EOL	IMAGE_THUNK_DATA32
+0x02549340	EOL	IMAGE_THUNK_DATA32
+0x02549344	EOL	IMAGE_THUNK_DATA32
+0x02549348	EOL	IMAGE_THUNK_DATA32
+0x0254934c	EOL	IMAGE_THUNK_DATA32
+0x02549350	EOL	IMAGE_THUNK_DATA32
+0x02549354	EOL	IMAGE_THUNK_DATA32
+0x02549358	EOL	IMAGE_THUNK_DATA32
+0x0254935c	EOL	IMAGE_THUNK_DATA32
+0x02549360	EOL	IMAGE_THUNK_DATA32
+0x02549364	EOL	IMAGE_THUNK_DATA32
+0x02549368	EOL	IMAGE_THUNK_DATA32
+0x0254936c	EOL	IMAGE_THUNK_DATA32
+0x02549370	EOL	IMAGE_THUNK_DATA32
+0x02549374	EOL	IMAGE_THUNK_DATA32
+0x0254937c	EOL	IMAGE_THUNK_DATA32
+0x02549384	EOL	IMAGE_THUNK_DATA32
+0x02549388	EOL	IMAGE_THUNK_DATA32
+0x0254938c	EOL	IMAGE_THUNK_DATA32
+0x02549390	EOL	IMAGE_THUNK_DATA32
+0x02549394	EOL	IMAGE_THUNK_DATA32
+0x0254939c	EOL	IMAGE_THUNK_DATA32
+0x025493a0	EOL	IMAGE_THUNK_DATA32
+0x025493a4	EOL	IMAGE_THUNK_DATA32
+0x025493a8	EOL	IMAGE_THUNK_DATA32
+0x025493ac	EOL	IMAGE_THUNK_DATA32
+0x025493b0	EOL	IMAGE_THUNK_DATA32
+0x025493b4	EOL	IMAGE_THUNK_DATA32
+0x025493b8	EOL	IMAGE_THUNK_DATA32
+0x025493bc	EOL	IMAGE_THUNK_DATA32
+0x025493c0	EOL	IMAGE_THUNK_DATA32
+0x025493c4	EOL	IMAGE_THUNK_DATA32
+0x025493c8	EOL	IMAGE_THUNK_DATA32
+0x025493cc	EOL	IMAGE_THUNK_DATA32
+0x025493d0	EOL	IMAGE_THUNK_DATA32
+0x025493d4	EOL	IMAGE_THUNK_DATA32
+0x025493d8	EOL	IMAGE_THUNK_DATA32
+0x025493dc	EOL	IMAGE_THUNK_DATA32
+0x025493e0	EOL	IMAGE_THUNK_DATA32
+0x025493e4	EOL	IMAGE_THUNK_DATA32
+0x025493e8	EOL	IMAGE_THUNK_DATA32
+0x025493ec	EOL	IMAGE_THUNK_DATA32
+0x025493f0	EOL	IMAGE_THUNK_DATA32
+0x025493f4	EOL	IMAGE_THUNK_DATA32
+0x025493f8	EOL	IMAGE_THUNK_DATA32
+0x025493fc	EOL	IMAGE_THUNK_DATA32
+0x02549400	EOL	IMAGE_THUNK_DATA32
+0x02549404	EOL	IMAGE_THUNK_DATA32
+0x02549408	EOL	IMAGE_THUNK_DATA32
+0x0254940c	EOL	IMAGE_THUNK_DATA32
+0x02549410	EOL	IMAGE_THUNK_DATA32
+0x02549414	EOL	IMAGE_THUNK_DATA32
+0x02549418	EOL	IMAGE_THUNK_DATA32
+0x0254941c	EOL	IMAGE_THUNK_DATA32
+0x02549420	EOL	IMAGE_THUNK_DATA32
+0x02549424	EOL	IMAGE_THUNK_DATA32
+0x02549428	EOL	IMAGE_THUNK_DATA32
+0x0254942c	EOL	IMAGE_THUNK_DATA32
+0x02549430	EOL	IMAGE_THUNK_DATA32
+0x02549434	EOL	IMAGE_THUNK_DATA32
+0x02549438	EOL	IMAGE_THUNK_DATA32
+0x0254943c	EOL	IMAGE_THUNK_DATA32
+0x02549440	EOL	IMAGE_THUNK_DATA32
+0x02549444	EOL	IMAGE_THUNK_DATA32
+0x02549448	EOL	IMAGE_THUNK_DATA32
+0x0254944c	EOL	IMAGE_THUNK_DATA32
+0x02549450	EOL	IMAGE_THUNK_DATA32
+0x02549454	EOL	IMAGE_THUNK_DATA32
+0x02549458	EOL	IMAGE_THUNK_DATA32
+0x0254945c	EOL	IMAGE_THUNK_DATA32
+0x02549460	EOL	IMAGE_THUNK_DATA32
+0x02549464	EOL	IMAGE_THUNK_DATA32
+0x02549468	EOL	IMAGE_THUNK_DATA32
+0x0254946c	EOL	IMAGE_THUNK_DATA32
+0x02549470	EOL	IMAGE_THUNK_DATA32
+0x02549474	EOL	IMAGE_THUNK_DATA32
+0x02549478	EOL	IMAGE_THUNK_DATA32
+0x0254947c	EOL	IMAGE_THUNK_DATA32
+0x02549480	EOL	IMAGE_THUNK_DATA32
+0x02549484	EOL	IMAGE_THUNK_DATA32
+0x02549488	EOL	IMAGE_THUNK_DATA32
+0x0254948c	EOL	IMAGE_THUNK_DATA32
+0x02549490	EOL	IMAGE_THUNK_DATA32
+0x02549494	EOL	IMAGE_THUNK_DATA32
+0x02549498	EOL	IMAGE_THUNK_DATA32
+0x0254949c	EOL	IMAGE_THUNK_DATA32
+0x025494a0	EOL	IMAGE_THUNK_DATA32
+0x025494a4	EOL	IMAGE_THUNK_DATA32
+0x025494a8	EOL	IMAGE_THUNK_DATA32
+0x025494ac	EOL	IMAGE_THUNK_DATA32
+0x025494b0	EOL	IMAGE_THUNK_DATA32
+0x025494b4	EOL	IMAGE_THUNK_DATA32
+0x025494b8	EOL	IMAGE_THUNK_DATA32
+0x025494bc	EOL	IMAGE_THUNK_DATA32
+0x025494c4	EOL	IMAGE_THUNK_DATA32
+0x025494c8	EOL	IMAGE_THUNK_DATA32
+0x025494cc	EOL	IMAGE_THUNK_DATA32
+0x025494d0	EOL	IMAGE_THUNK_DATA32
+0x025494d8	EOL	IMAGE_THUNK_DATA32
+0x025494e0	EOL	IMAGE_THUNK_DATA32
+0x025494e8	EOL	IMAGE_THUNK_DATA32
+0x025494ec	EOL	IMAGE_THUNK_DATA32
+0x025494f0	EOL	IMAGE_THUNK_DATA32
+0x025494f4	EOL	IMAGE_THUNK_DATA32
+0x025494f8	EOL	IMAGE_THUNK_DATA32
+0x025494fc	EOL	IMAGE_THUNK_DATA32
+0x02549500	EOL	IMAGE_THUNK_DATA32
+0x02549504	EOL	IMAGE_THUNK_DATA32
+0x02549508	EOL	IMAGE_THUNK_DATA32
+0x0254950c	EOL	IMAGE_THUNK_DATA32
+0x02549510	EOL	IMAGE_THUNK_DATA32
+0x02549518	EOL	IMAGE_THUNK_DATA32
+0x02549520	EOL	IMAGE_THUNK_DATA32
+0x02549524	EOL	IMAGE_THUNK_DATA32
+0x02549528	EOL	IMAGE_THUNK_DATA32
+0x02549530	PRE	165  timeSetEvent  <<not bound>>
+0x02549534	PRE	164  timeKillEvent  <<not bound>>
+0x02549538	PRE	163  timeGetTime  <<not bound>>
+0x0254953c	PRE	159  timeBeginPeriod  <<not bound>>
+0x02549540	PRE	160  timeEndPeriod  <<not bound>>
+0x02549548	PRE	0  DirectInput8Create  <<not bound>>
+0x02549550	PRE	558  LoadLibraryA  <<not bound>>
+0x02549554	PRE	393  GetProcAddress  <<not bound>>
+0x02549558	PRE	359  GetModuleHandleA  <<not bound>>
+0x0254955c	PRE	886  WriteFile  <<not bound>>
+0x02549560	PRE	346  GetLastError  <<not bound>>
+0x02549564	PRE	333  GetFileSize  <<not bound>>
+0x02549568	PRE	580  MapViewOfFile  <<not bound>>
+0x0254956c	PRE	75  CreateFileMappingA  <<not bound>>
+0x02549570	PRE	74  CreateFileA  <<not bound>>
+0x02549574	PRE	77  CreateFileW  <<not bound>>
+0x02549578	PRE	873  WideCharToMultiByte  <<not bound>>
+0x0254957c	PRE	456  GetVersionExA  <<not bound>>
+0x02549580	PRE	837  UnmapViewOfFile  <<not bound>>
+0x02549584	PRE	577  LockResource  <<not bound>>
+0x02549588	PRE	563  LoadResource  <<not bound>>
+0x0254958c	PRE	808  SizeofResource  <<not bound>>
+0x02549590	PRE	212  FindResourceA  <<not bound>>
+0x02549594	PRE	317  GetDriveTypeA  <<not bound>>
+0x02549598	PRE	537  IsProcessorFeaturePresent  <<not bound>>
+0x0254959c	PRE	304  GetCurrentProcessId  <<not bound>>
+0x025495a0	PRE	306  GetCurrentThreadId  <<not bound>>
+0x025495a4	PRE	446  GetTickCount  <<not bound>>
+0x025495a8	PRE	412  GetStartupInfoA  <<not bound>>
+0x025495ac	PRE	171  ExitProcess  <<not bound>>
+0x025495b0	PRE	917  lstrcmpiA  <<not bound>>
+0x025495b4	PRE	501  HeapFree  <<not bound>>
+0x025495b8	PRE	499  HeapDestroy  <<not bound>>
+0x025495bc	PRE	497  HeapCreate  <<not bound>>
+0x025495c0	PRE	495  HeapAlloc  <<not bound>>
+0x025495c4	PRE	44  CloseHandle  <<not bound>>
+0x025495c8	PRE	339  GetFullPathNameA  <<not bound>>
+0x025495cc	PRE	926  lstrlenA  <<not bound>>
+0x025495d0	PRE	325  GetExitCodeThread  <<not bound>>
+0x025495d4	PRE	87  CreateMutexA  <<not bound>>
+0x025495d8	PRE	215  FindResourceW  <<not bound>>
+0x025495dc	PRE	483  GlobalMemoryStatus  <<not bound>>
+0x025495e0	PRE	809  Sleep  <<not bound>>
+0x025495e4	PRE	172  ExitThread  <<not bound>>
+0x025495e8	PRE	428  GetSystemTimeAsFileTime  <<not bound>>
+0x025495ec	PRE	814  SystemTimeToFileTime  <<not bound>>
+0x025495f0	PRE	58  CopyFileA  <<not bound>>
+0x025495f4	PRE	869  WaitForSingleObject  <<not bound>>
+0x025495f8	PRE	669  ReleaseMutex  <<not bound>>
+0x025495fc	PRE	197  FindFirstFileA  <<not bound>>
+0x02549600	PRE	206  FindNextFileA  <<not bound>>
+0x02549604	PRE	193  FindClose  <<not bound>>
+0x02549608	PRE	381  GetOverlappedResult  <<not bound>>
+0x0254960c	PRE	751  SetFileAttributesA  <<not bound>>
+0x02549610	PRE	314  GetDiskFreeSpaceExA  <<not bound>>
+0x02549614	PRE	348  GetLocalTime  <<not bound>>
+0x02549618	PRE	120  DeleteFileA  <<not bound>>
+0x0254961c	PRE	616  OutputDebugStringA  <<not bound>>
+0x02549620	PRE	441  GetThreadLocale  <<not bound>>
+0x02549624	PRE	349  GetLocaleInfoA  <<not bound>>
+0x02549628	PRE	235  GetACP  <<not bound>>
+0x0254962c	PRE	519  InterlockedExchange  <<not bound>>
+0x02549630	PRE	656  ReadFile  <<not bound>>
+0x02549634	PRE	593  MultiByteToWideChar  <<not bound>>
+0x02549638	PRE	66  CreateDirectoryA  <<not bound>>
+0x0254963c	PRE	671  RemoveDirectoryA  <<not bound>>
+0x02549640	PRE	184  FileTimeToSystemTime  <<not bound>>
+0x02549644	PRE	183  FileTimeToLocalFileTime  <<not bound>>
+0x02549648	PRE	70  CreateEventA  <<not bound>>
+0x0254964c	PRE	638  QueryPerformanceCounter  <<not bound>>
+0x02549650	PRE	639  QueryPerformanceFrequency  <<not bound>>
+0x02549654	PRE	451  GetUserDefaultLangID  <<not bound>>
+0x02549658	PRE	684  ResumeThread  <<not bound>>
+0x0254965c	PRE	792  SetThreadPriority  <<not bound>>
+0x02549660	PRE	753  SetFilePointer  <<not bound>>
+0x02549664	PRE	920  lstrcpyA  <<not bound>>
+0x02549668	PRE	442  GetThreadPriority  <<not bound>>
+0x0254966c	PRE	305  GetCurrentThread  <<not bound>>
+0x02549670	PRE	911  lstrcatA  <<not bound>>
+0x02549674	PRE	811  SuspendThread  <<not bound>>
+0x02549678	PRE	630  PulseEvent  <<not bound>>
+0x0254967c	PRE	793  SetThreadPriorityBoost  <<not bound>>
+0x02549680	PRE	101  CreateThread  <<not bound>>
+0x02549684	PRE	550  ReleaseSemaphore  <<not bound>>
+0x02549688	PRE	345  GetSystemDirectoryA  <<not bound>>
+0x0254968c	PRE	305  GetOEMCP  <<not bound>>
+0x02549690	PRE	609  SetEndOfFile  <<not bound>>
+0x02549694	PRE	434  IsBadCodePtr  <<not bound>>
+0x02549698	PRE	437  IsBadReadPtr  <<not bound>>
+0x0254969c	PRE	191  GetCPInfo  <<not bound>>
+0x025496a0	PRE	342  GetStringTypeW  <<not bound>>
+0x025496a4	PRE	339  GetStringTypeA  <<not bound>>
+0x025496a8	PRE	651  SetUnhandledExceptionFilter  <<not bound>>
+0x025496ac	PRE	636  SetStdHandle  <<not bound>>
+0x025496b0	PRE	277  GetFileType  <<not bound>>
+0x025496b4	PRE	621  SetHandleCount  <<not bound>>
+0x025496b8	PRE	264  GetEnvironmentStringsW  <<not bound>>
+0x025496bc	PRE	338  GetStdHandle  <<not bound>>
+0x025496c0	PRE	179  FreeEnvironmentStringsW  <<not bound>>
+0x025496c4	PRE	610  SetEnvironmentVariableA  <<not bound>>
+0x025496c8	PRE	34  CompareStringW  <<not bound>>
+0x025496cc	PRE	33  CompareStringA  <<not bound>>
+0x025496d0	PRE	262  GetEnvironmentStrings  <<not bound>>
+0x025496d4	PRE	685  UnhandledExceptionFilter  <<not bound>>
+0x025496d8	PRE	448  LCMapStringW  <<not bound>>
+0x025496dc	PRE	447  LCMapStringA  <<not bound>>
+0x025496e0	PRE	631  SetPriorityClass  <<not bound>>
+0x025496e4	PRE	307  GetPriorityClass  <<not bound>>
+0x025496e8	PRE	247  GetCurrentProcess  <<not bound>>
+0x025496ec	PRE	180  FreeLibrary  <<not bound>>
+0x025496f0	PRE	670  TerminateProcess  <<not bound>>
+0x025496f4	PRE	92  DeviceIoControl  <<not bound>>
+0x025496f8	PRE	71  CreateSemaphoreA  <<not bound>>
+0x025496fc	PRE	178  FreeEnvironmentStringsA  <<not bound>>
+0x02549700	PRE	523  RaiseException  <<not bound>>
+0x02549704	PRE	357  GetTempPathA  <<not bound>>
+0x02549708	PRE	625  SetLastError  <<not bound>>
+0x0254970c	PRE	368  GetTimeZoneInformation  <<not bound>>
+0x02549710	PRE	349  GetSystemTime  <<not bound>>
+0x02549714	PRE	265  GetEnvironmentVariableA  <<not bound>>
+0x02549718	PRE	559  RtlUnwind  <<not bound>>
+0x0254971c	PRE	202  GetCommandLineA  <<not bound>>
+0x02549720	PRE	372  GetVersion  <<not bound>>
+0x02549724	PRE	170  FlushFileBuffers  <<not bound>>
+0x02549728	PRE	292  GetModuleFileNameA  <<not bound>>
+0x0254972c	PRE	418  HeapReAlloc  <<not bound>>
+0x02549730	PRE	703  VirtualFree  <<not bound>>
+0x02549734	PRE	699  VirtualAlloc  <<not bound>>
+0x02549738	PRE	440  IsBadWritePtr  <<not bound>>
+0x02549740	PRE	439  LoadCursorA  <<not bound>>
+0x02549744	PRE	728  wsprintfA  <<not bound>>
+0x02549748	PRE	476  MessageBoxA  <<not bound>>
+0x0254974c	PRE	535  RegisterClassExA  <<not bound>>
+0x02549750	PRE	699  UpdateWindow  <<not bound>>
+0x02549754	PRE	658  ShowWindow  <<not bound>>
+0x02549758	PRE	96  CreateWindowExA  <<not bound>>
+0x0254975c	PRE	142  DefWindowProcA  <<not bound>>
+0x02549760	PRE	571  SendMessageA  <<not bound>>
+0x02549764	PRE	513  PostQuitMessage  <<not bound>>
+0x02549768	PRE	200  EndPaint  <<not bound>>
+0x0254976c	PRE	13  BeginPaint  <<not bound>>
+0x02549770	PRE	161  DispatchMessageA  <<not bound>>
+0x02549774	PRE	682  TranslateMessage  <<not bound>>
+0x02549778	PRE	509  PeekMessageA  <<not bound>>
+0x0254977c	PRE	252  GetCursorPos  <<not bound>>
+0x02549780	PRE	589  SetSystemCursor  <<not bound>>
+0x02549784	PRE	411  LoadCursorFromFileA  <<not bound>>
+0x02549788	PRE	416  LoadImageA  <<not bound>>
+0x0254978c	PRE	67  CopyImage  <<not bound>>
+0x02549794	PRE	143  DeleteObject  <<not bound>>
+0x0254979c	PRE	491  RegQueryValueExA  <<not bound>>
+0x025497a0	PRE	480  RegOpenKeyA  <<not bound>>
+0x025497a4	PRE	456  RegCloseKey  <<not bound>>
+0x025497a8	PRE	359  RegEnumKeyExA  <<not bound>>
+0x025497ac	PRE	370  RegOpenKeyExA  <<not bound>>
+0x025497b4	PRE	682  fputs  <<not bound>>
+0x025497b8	PRE	680  fprintf  <<not bound>>
+0x025497bc	PRE	793  strtoul  <<not bound>>
+0x025497c0	PRE	791  strtok  <<not bound>>
+0x025497c4	PRE	674  fgets  <<not bound>>
+0x025497c8	PRE	39  ??_U@YAPAXI@Z  <<not bound>>
+0x025497cc	PRE	657  ceil  <<not bound>>
+0x025497d0	PRE	753  puts  <<not bound>>
+0x025497d4	PRE	783  strncat  <<not bound>>
+0x025497d8	PRE	516  _strnicmp  <<not bound>>
+0x025497dc	PRE	205  _c_exit  <<not bound>>
+0x025497e0	PRE	254  _exit  <<not bound>>
+0x025497e4	PRE	79  _XcptFilter  <<not bound>>
+0x025497e8	PRE	208  _cexit  <<not bound>>
+0x025497ec	PRE	192  _aligned_free  <<not bound>>
+0x025497f0	PRE	197  _amsg_exit  <<not bound>>
+0x025497f4	PRE	113  __getmainargs  <<not bound>>
+0x025497f8	PRE	322  _initterm  <<not bound>>
+0x025497fc	PRE	162  __setusermatherr  <<not bound>>
+0x02549800	PRE	190  _adjust_fdiv  <<not bound>>
+0x02549804	PRE	133  __p__commode  <<not bound>>
+0x02549808	PRE	138  __p__fmode  <<not bound>>
+0x0254980c	PRE	159  __set_app_type  <<not bound>>
+0x02549810	PRE	52  ?terminate@@YAXXZ  <<not bound>>
+0x02549814	PRE	110  __dllonexit  <<not bound>>
+0x02549818	PRE	443  _onexit  <<not bound>>
+0x0254981c	PRE	16  ??1type_info@@UAE@XZ  <<not bound>>
+0x02549820	PRE	245  _except_handler3  <<not bound>>
+0x02549824	PRE	222  _controlfp  <<not bound>>
+0x02549828	PRE	193  _aligned_malloc  <<not bound>>
+0x0254982c	PRE	56  _CIasin  <<not bound>>
+0x02549830	PRE	10  ??0exception@@QAE@ABV0@@Z  <<not bound>>
+0x02549834	PRE	176  _acmdln  <<not bound>>
+0x02549838	PRE	72  _CxxThrowException  <<not bound>>
+0x0254983c	PRE	11  ??0exception@@QAE@XZ  <<not bound>>
+0x02549840	PRE	15  ??1exception@@UAE@XZ  <<not bound>>
+0x02549844	PRE	784  strncmp  <<not bound>>
+0x02549848	PRE	785  strncpy  <<not bound>>
+0x0254984c	PRE	40  ??_V@YAXPAX@Z  <<not bound>>
+0x02549850	PRE	822  wcslen  <<not bound>>
+0x02549854	PRE	717  iswascii  <<not bound>>
+0x02549858	PRE	789  strstr  <<not bound>>
+0x0254985c	PRE	203  _beginthread  <<not bound>>
+0x02549860	PRE	756  qsort  <<not bound>>
+0x02549864	PRE	690  fseek  <<not bound>>
+0x02549868	PRE	692  ftell  <<not bound>>
+0x0254986c	PRE	772  srand  <<not bound>>
+0x02549870	PRE	812  vsprintf  <<not bound>>
+0x02549874	PRE	685  fread  <<not bound>>
+0x02549878	PRE	694  fwrite  <<not bound>>
+0x0254987c	PRE	668  fclose  <<not bound>>
+0x02549880	PRE	656  calloc  <<not bound>>
+0x02549884	PRE	273  _finite  <<not bound>>
+0x02549888	PRE	288  _ftol  <<not bound>>
+0x0254988c	PRE	713  isspace  <<not bound>>
+0x02549890	PRE	707  isdigit  <<not bound>>
+0x02549894	PRE	484  _setjmp3  <<not bound>>
+0x02549898	PRE	736  longjmp  <<not bound>>
+0x0254989c	PRE	17  ??2@YAPAXI@Z  <<not bound>>
+0x025498a0	PRE	18  ??3@YAXPAX@Z  <<not bound>>
+0x025498a4	PRE	84  __CxxFrameHandler  <<not bound>>
+0x025498a8	PRE	679  fopen  <<not bound>>
+0x025498ac	PRE	665  exit  <<not bound>>
+0x025498b0	PRE	737  malloc  <<not bound>>
+0x025498b4	PRE	686  free  <<not bound>>
+0x025498b8	PRE	770  sprintf  <<not bound>>
+0x025498bc	PRE	750  printf  <<not bound>>
+0x025498c0	PRE	65  _CIpow  <<not bound>>
+0x025498c4	PRE	62  _CIfmod  <<not bound>>
+0x025498c8	PRE	677  floor  <<not bound>>
+0x025498cc	PRE	55  _CIacos  <<not bound>>
+0x025498d0	PRE	512  _stricmp  <<not bound>>
+0x025498d4	PRE	158  __security_error_handler  <<not bound>>
+0x025498dc	PRE	87  ??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@PBD@Z  <<not bound>>
+0x025498e0	PRE	283  ??1?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@XZ  <<not bound>>
+0x025498e4	PRE	80  ??0?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@QAE@ABV01@@Z  <<not bound>>
+0x025498e8	PRE	656  ??Mstd@@YA_NABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@0@0@Z  <<not bound>>
+0x025498f0	PRE	0  Direct3DCreate8  <<not bound>>
+0x025498f8	PRE	11  Ordinal_11  <<not bound>>
+0x02549900	PRE	17  _BinkCopyToBuffer@28  <<not bound>>
+0x02549904	PRE	40  _BinkPause@8  <<not bound>>
+0x02549908	PRE	51  _BinkSetSoundOnOff@8  <<not bound>>
+0x0254990c	PRE	35  _BinkOpen@8  <<not bound>>
+0x02549910	PRE	53  _BinkSetSoundTrack@8  <<not bound>>
+0x02549914	PRE	52  _BinkSetSoundSystem@8  <<not bound>>
+0x02549918	PRE	36  _BinkOpenDirectSound@4  <<not bound>>
+0x0254991c	PRE	15  _BinkClose@4  <<not bound>>
+0x02549920	PRE	34  _BinkNextFrame@4  <<not bound>>
+0x02549924	PRE	21  _BinkDoFrame@4  <<not bound>>
+0x02549928	PRE	56  _BinkWait@4  <<not bound>>
+0x02549930	PRE	57  CoInitialize  <<not bound>>
+0x02549938	PRE	1  GetFileVersionInfoSizeA  <<not bound>>
+0x0254993c	PRE	0  GetFileVersionInfoA  <<not bound>>
+0x02549940	PRE	10  VerQueryValueA  <<not bound>>
+0x02549948	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x02549952	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549962	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549972	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549980	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549992	PLATE	IMAGE_IMPORT_BY_NAME
+0x025499a2	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x025499ae	PLATE	IMAGE_IMPORT_BY_NAME
+0x025499c4	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x025499d2	PLATE	IMAGE_IMPORT_BY_NAME
+0x025499e2	PLATE	IMAGE_IMPORT_BY_NAME
+0x025499f4	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a08	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a14	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a24	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a32	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a42	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a58	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a66	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a74	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a8a	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549a9a	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549aac	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549abc	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549acc	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ade	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549aee	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549afe	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b1a	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b30	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b46	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b56	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b68	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b76	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b82	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b8e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549b9c	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549baa	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549bb6	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549bc4	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549bd8	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549be4	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549bf8	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c08	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c18	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c2e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c36	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c44	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c5e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c76	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c82	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549c98	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ca8	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549cba	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549cca	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549cd6	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549cec	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d02	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d18	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d28	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d36	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d4c	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d5e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d70	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d7a	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d90	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549d9c	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549db2	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549dc6	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549dda	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549df2	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549e0c	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549e1c	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549e36	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549e52	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549e6a	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549e7a	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549e8e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ea0	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549eac	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ec0	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ed4	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ee0	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ef0	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549efe	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f18	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f28	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f3c	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f52	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f5e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f6e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f7e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f8e	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549f9a	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549fac	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549fbe	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549fdc	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549fec	PLATE	IMAGE_IMPORT_BY_NAME
+0x02549ffa	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a00c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a026	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a036	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a050	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a06a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a07c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a08e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a0a6	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a0c2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a0d2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a0e2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a0f6	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a10a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a11e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a12c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a140	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a152	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a166	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a180	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a192	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a1a2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a1b2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a1cc	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a1dc	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a1f6	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a202	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a214	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a222	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a236	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a24c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a25a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a268	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a278	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a288	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a294	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a2a2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a2ae	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a2bc	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a2d0	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a2e0	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a2ee	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a300	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a312	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a322	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a334	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a340	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a34e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a362	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a376	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a386	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a396	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a3a8	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a3be	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a3cc	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a3d8	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a3e2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a3f2	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a400	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a414	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a422	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a430	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a440	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a450	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a45c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a464	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a46e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a478	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a482	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a48a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a49a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4a2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4aa	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4b4	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4c0	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4ca	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4d2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4e0	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4ea	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a4fa	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a508	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a518	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a524	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a538	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a548	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a558	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a566	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a578	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a58c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a59a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a5a4	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a5bc	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a5d0	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a5de	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a5f0	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a5fa	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a616	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a620	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a636	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a64e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a666	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a670	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a67a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a68a	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a694	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6a0	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6aa	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6ba	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6c2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6ca	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6d2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6da	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6e6	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6ee	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a6f8	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a702	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a70c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a716	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a71e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a728	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a732	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a73e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a748	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a758	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a768	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a77c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a784	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a78c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a796	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a79e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a7a8	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a7b2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a7bc	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a7c6	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a7ce	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a7d8	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a7e4	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a800	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a80c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a858	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a8a2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a8f2	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a942	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a94c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a95e	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a96a	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254a976	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a98e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a99e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a9b6	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a9c4	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a9dc	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254a9f4	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aa0e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aa1e	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aa32	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aa44	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aa52	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254aa5c	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aa6c	PLATE	IMAGE_IMPORT_DESCRIPTOR - DLL NAME
+0x0254aa78	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aa92	PLATE	IMAGE_IMPORT_BY_NAME
+0x0254aaa8	PLATE	IMAGE_IMPORT_BY_NAME

@@ -21,7 +21,17 @@ ghidra_scripts/
   FixOrphans.java    create functions for orphan .text code, drop fragments
   ExportGraph.java   functions, strings, calls, globals, code pointers for module_map.py
   ApplyModuleMap.java  tag functions with their module
+  ImportPs2Types.java  PS2 beta structs and enums (headers from tools/dwarf2h.py), one category per file
+  ExportProject.java   dump the project's functions, names, tags, labels, comments to data/dc/project
+  ImportProject.java   put that dump back into a fresh import (tools/ghidra/rebuild.sh)
+  ApplyNames.java      apply checked names from a TSV (addr, name, evidence), never over a hand-made one
+  Decompile.java       decompile by address or name with callers and tags (tools/ghidra/dec.sh)
 data/
+  dc/project/        the saved Ghidra project as text (functions with bodies and tags, labels, typed
+                     globals, comments, bookmarks): rebuilt by tools/ghidra/rebuild.sh, refreshed by
+                     tools/ghidra/export.sh
+  dc/port_names.tsv  PC names the port's comments cite (tools/ghidra/port_names.py)
+  dc/view_aligned_names.tsv  camera module names from tools/align_names.py
   dc/                Director's Cut: 82 labels, EE lookups, Ghidra functions (auto + fixed), import xrefs,
                      import names (dc_import_*), module map (module_*), CRI and hand-checked
                      names (cri_labels.json, manual_labels.json), source paths
@@ -29,7 +39,8 @@ data/
   v10_to_dc_functions.tsv   3,535 one-to-one function matches (v1.0 entry -> DC entry)
 ```
 
-Python needs `pip install pefile capstone`. Ghidra scripts were tested with Ghidra 12.1.4 headless.
+Python needs `pip install pefile capstone`. The everyday entry points are in `../tools/ghidra/` and
+`../AGENTS.md` explains when to use which. Ghidra scripts were tested with Ghidra 12.1.4 headless.
 
 Notes:
 - In the DC, imports go through SecuROM, so `data/dc/ghidra_import_xrefs.tsv` mostly lists SecuROM code. `data/dc/dc_import_sites.tsv` names the real API per call site (605 of 730 dispatcher sites, all stub calls).

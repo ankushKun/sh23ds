@@ -4,7 +4,7 @@ The reverse-engineering side of the port: how the Director's Cut exe was mapped,
 key addresses, the original plan and the work log. The player and developer guide is the
 [README](../README.md).
 
-Research workspace for a native New 3DS port of Silent Hill 2, built from a decompilation of the Windows Director's Cut (`sh2pc.exe`, 2002). The research phase is done: the reference exe is identified and verified, both PC builds have been through Ghidra and REA, the Enhanced Edition source has been mined for addresses, and the game's assets have been surveyed. No decompiled C exists yet.
+Research workspace for a native New 3DS port of Silent Hill 2, built from a decompilation of the Windows Director's Cut (`sh2pc.exe`, 2002). The research phase is done: the reference exe is identified and verified, both PC builds have been through Ghidra and REA, the Enhanced Edition source has been mined for addresses, and the game's assets have been surveyed. The port in `port/source` is the hand-written C that came out of it, with the PC address of each ported function in its comments. [AGENTS.md](../AGENTS.md) is the index for working on it.
 
 Phase 1 (reference setup) is done on macOS, and phase 2 (mapping the game) has started. The saved Ghidra project `~/ghproj/sh2dc` names the imports hidden behind SecuROM, has 6,620 functions in `.text` (up from 4,846) with only 1,060 orphan instructions left, and decompiles platform code with real API names. A first module map tags every function it can place: all statically linked libraries (D3DX8 with its bundled libjpeg, libpng and zlib, plus CRI) and 150 KB of game code tied to known source files. The rest of the game code is listed as gaps with hints. See [Module map](#module-map) and [Work log](#work-log) steps 24 to 40.
 
@@ -36,6 +36,9 @@ The shared doc "Silent Hill 2 PC to New 3DS: Port Plan" (claude.ai, ask Ankush f
 | `sh2-3ds-port-kit/` | Our toolkit: version detection, Enhanced Edition address resolver, label files, Ghidra scripts, texture census, v1.0-to-DC function map | Yes |
 | `.claude/skills/reverse-engineer-anything/` | REA's skill for Claude Code, installed by `rea-agents setup` | Yes, or leave it to setup |
 | `docs/RESEARCH.md` | This file | Yes |
+| `sh2-3ds-port-kit/data/dc/project/` | The saved Ghidra project as text: functions, names, tags, labels, comments | Yes |
+| `tools/ghidra/` | `rebuild.sh`, `export.sh`, `dec.sh`, `fetch_refs.sh`, `port_names.py` | Yes |
+| `~/ghproj/sh2dc` | The saved Ghidra project itself (contains the program) | Never |
 
 `.gitignore` keeps game files, exes and Ghidra projects out of the repo.
 
@@ -70,27 +73,21 @@ python3 sh2-3ds-port-kit/tools/sh2version.py "Silent Hill 2/sh2pc.exe"
 
 # 2. Install Ghidra 12.1.4 + JDK 21 and register REA (see Setup)
 
-# 3. Build the saved Ghidra project (~2 min): auto-analysis, labels, import names, function fix-ups
-K=sh2-3ds-port-kit
-$GHIDRA_INSTALL_DIR/support/analyzeHeadless ~/ghproj sh2dc \
-  -import "Silent Hill 2/sh2pc.exe" -overwrite -scriptPath $K/ghidra_scripts \
-  -postScript ApplyLabels.java $K/data/dc/sh2_dc_labels.json \
-  -postScript ApplyLabels.java $K/data/dc/dc_import_labels.json \
-  -postScript ApplyImportSites.java $K/data/dc/dc_import_sites.tsv $K/data/dc/dc_import_thunks.tsv \
-  -postScript FixOrphans.java orphans1.txt \
-  -postScript FixOrphans.java orphans2.txt \
-  -postScript ExportGraph.java graph/
+# 3. The outside references (the PS2 beta's debug info gives the project its PS2 types)
+tools/ghidra/fetch_refs.sh
 
-# 4. Module map, then tags and extra names in the project
-python3 $K/tools/module_map.py graph/ "Silent Hill 2/sh2pc.exe" $K/data/dc
-$GHIDRA_INSTALL_DIR/support/analyzeHeadless ~/ghproj sh2dc -process sh2pc.exe -noanalysis \
-  -scriptPath $K/ghidra_scripts \
-  -postScript ApplyLabels.java $K/data/dc/cri_labels.json \
-  -postScript ApplyLabels.java $K/data/dc/manual_labels.json \
-  -postScript ApplyModuleMap.java $K/data/dc/module_map.tsv
+# 4. Build the saved Ghidra project from the committed dump (~5 min): auto-analysis, the import names
+#    SecuROM hides, PS2 types, then every function, name, tag, label and comment in data/dc/project
+tools/ghidra/rebuild.sh
 
-# 5. Open ~/ghproj/sh2dc in the Ghidra GUI, or ask Claude Code to explore it through REA
+# 5. Decompile with our names, or open ~/ghproj/sh2dc in the Ghidra GUI
+tools/ghidra/dec.sh 0x4a96c0 EventExecProgram
 ```
+
+The dump in `data/dc/project` replaces the original build steps (labels, `FixOrphans.java` twice,
+`ExportGraph.java`, `module_map.py`, `ApplyModuleMap.java`), which are kept in the kit and in the work
+log below for how the data was first made. After changing the project, `tools/ghidra/export.sh` writes
+the dump again for review and commit.
 
 ## What we know
 
@@ -244,7 +241,7 @@ The Windows harness proves each decompiled function against the original game, t
 - [x] Install Ghidra 12.1.4 + JDK 21 and build the macOS decompiler (done: Homebrew `openjdk@21`, decompiler in `build/os/mac_arm_64`)
 - [x] Register REA with Claude Code: `GHIDRA_INSTALL_DIR` and `JAVA_HOME` added to this project's REA entry. Restart Claude Code, then confirm with REA's `binary_session` that the Ghidra provider shows `available`
 - [x] Create the Ghidra project for the DC exe with all labels (done locally: `~/ghproj/sh2dc`, Quick start step 3)
-- [ ] Share the Ghidra project (Ghidra Server, or everyone rebuilds it from Quick start step 3, which is reproducible)
+- [x] Share the Ghidra project (done 2026-10-19: committed as a text dump in `data/dc/project`, rebuilt by `tools/ghidra/rebuild.sh`)
 - [x] Rebuild DC import names behind SecuROM (done: 193 IAT slots, 33 stubs, 82 jmp thunks, 605 of 730 dispatcher sites)
 - [ ] Name the last 125 dispatcher sites. Most sit in functions with no v1.0 match. Rerun `match_versions.py` against the fixed DC function list, or name them by hand from their arguments
 - [x] Mark the library code (done: D3DX8, libjpeg, libpng, zlib and CRI tagged `lib/*` by the module map). Ghidra has no Function ID database for MSVC 7.0, and `vsOlder` gave a false MFC match (`RFX_Text_Bulk` at 0x40931f), so the statically linked runtime is identified by position and SecuROM encryption instead
@@ -403,7 +400,7 @@ Notes from the macOS setup on 2026-10-16:
 - Use it through MCP. The CLI re-imports and re-analyzes the exe every call (about 2.5 to 3 minutes), while MCP keeps the Ghidra session open.
 - Quick CLI checks: `rea analyze <exe> --provider ghidra`, `rea function <exe> <addr>`, `rea decompile <exe> <addr>`, `rea search <exe> <text>`.
 - Loop per function: decompile through REA, draft clean C using the labels, test it in the hook harness against the original.
-- REA's annotations last only for its session. Keep permanent names in the saved Ghidra project.
+- REA's annotations last only for its session, and REA cannot open the saved project (it imports the exe into a temporary one). Keep permanent names in the saved Ghidra project and commit them with `tools/ghidra/export.sh`.
 
 ### Headless Ghidra
 
