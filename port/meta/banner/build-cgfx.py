@@ -41,7 +41,7 @@ import math
 import sys
 
 LIMIT = 0x80000  # the HOME Menu refuses CGFX files above 512 KiB
-AMBIENT = 0.36  # a little darker than 3dsDL's 0.42: the scene sits in fog
+AMBIENT = 0.36  # a little darker than 3dsDL's 0.42, for a gloomier mark
 LIGHT = (0.35, -0.5, -0.8)  # direction the light travels: down, right, into the screen
 UNLIT = ("Logo",)
 
