@@ -72,6 +72,8 @@ The CIA is the better choice on a New 3DS: it asks for the 804 MHz clock and the
 
 </details>
 
+If sh23ds starts and can't find its data, it says so: whether the folder is missing, in the wrong place or only half copied, with the steps and a QR code of the [install guide](https://ankush.one/sh23ds/install.html).
+
 ## Features
 
 - The whole game: every area, puzzle, enemy, boss and ending, New Game+ and Born From a Wish

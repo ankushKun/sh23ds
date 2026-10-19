@@ -69,6 +69,26 @@ The PC's own front end, as on the website: no boxes.
   no prompt: tapping the map is the way to it. The zoom ring is drawn with the map's pictures so the
   map never covers it.
 
+## No game data
+
+Before anything else is set up, `nodata.c` checks `sdmc:/3ds/sh23ds/` for a few files every finished
+pack has (one or more from each of the packer's main steps). Without them the game cannot draw a
+word, since the PC font is in the pack too, so this screen uses libctru's text console on both
+screens instead of the kit, and START or the HOME Menu closes the app. A 3DS-only screen with no PC
+counterpart. It tells three cases apart:
+
+- **Not found**: nothing of the pack there. What the packer is, the three install steps and the
+  packer's address.
+- **In the wrong folder**: the pack found one level off (the `sh23ds` folder at the root, `3ds`
+  inside `3ds`, the zip unzipped into a `sh23ds-sd` folder, Docker's `sd` folder copied whole, a
+  `make_pack.sh` `pack` folder). Where it is, where it should be, and to keep any saves already
+  in the right folder.
+- **Incomplete**: some of the files there, others missing (a copy that stopped, a packer run that
+  did not finish). The missing files and what to do.
+
+Each ends with the website's install guide, which the touch screen also shows as a QR code
+(`nodata_qr.h`, made by `tools/make_nodata_qr.py`).
+
 ## Checkpoints
 
 Each one is built, checked in Azahar with the UI capture script (`tests/ui/capture.sh`, every

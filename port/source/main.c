@@ -31,6 +31,7 @@
 #include "font.h"
 #include "clearsave.h"
 #include "savescreen.h"
+#include "nodata.h"
 #include "noise.h"
 #include "blood.h"
 #include "boat.h"
@@ -4067,6 +4068,10 @@ int main(void)
 	s_is_new3ds = profile_console_new();
 
 	gfxInitDefault();
+	if (!nodata_check(PACK_DIR)) {   // no game data: what is wrong and how to make it (nodata.c)
+		gfxExit();
+		return 0;
+	}
 	consoleInit(GFX_BOTTOM, NULL);
 	C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4);
 	profile_apply_frame_rate();          // 30 fps on the low quality level (profile.c)
