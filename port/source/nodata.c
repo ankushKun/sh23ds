@@ -1,7 +1,10 @@
 #include "nodata.h"
+#include "nodata_font.h"
 #include "nodata_qr.h"
 #include <3ds.h>
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -38,18 +41,53 @@ static const char* const s_elsewhere[] = {
 #define GUIDE_URL "ankush.one/sh23ds/install.html"
 #define PACKER_URL "ankush.one/sh23ds/packer.html"
 
-// The QR code's colours, the website's (tools/make_site_qr.py), as RGB565
-#define QR_LIGHT 0xef7e   // #e9edf0
-#define QR_DARK 0x0883    // #0b1219
-#define QR_QUIET 4        // modules of quiet zone around the code
-#define QR_SCALE 5        // pixels per module: (29 + 8) * 5 = 185 of the touch screen's 240
+// The website's colours (site/site.css), 0xRRGGBB
+#define C_TEXT 0xdadada
+#define C_TEXT2 0xc4c4c4
+#define C_HI 0xf2f2f2
+#define C_DIM 0x9a9a9a
+#define C_LABEL 0x8a8d90
+#define C_RED 0xb3121b
+#define C_RED_HI 0xe2363c
+#define C_PAPER 0xd9d3c5
+#define C_INK 0x1b1b1b
+#define C_INK2 0x4a463f
+#define C_RULE 0x5a5550
+#define C_RING 0xb4aea6
 
-#define RED "\x1b[31;1m"
-#define CYAN "\x1b[36;1m"
-#define DIM "\x1b[2m"
-#define RESET "\x1b[0m"
+// In text, a change of style: back to the paragraph's own, or the addresses' (VT323, bright)
+#define BASE "\x01"
+#define MONO "\x02"
 
-static PrintConsole s_top, s_bottom;
+#define FOG_W 512                // the fog field, tiled: a column per x, FOG_H values down it
+#define FOG_H 256
+#define FADE_IN 60               // frames from black
+#define FADE_OUT 18
+
+// One screen: a background drawn under a still overlay each frame, in the framebuffer's order (a
+// column per screen x, its rows bottom up, B G R)
+typedef struct {
+	int w;                       // 400 or 320; 240 high
+	u8* ov;                      // while drawing: the overlay, rows top down, premultiplied R G B A
+	u8* base;                    // B G R: black, the red glow, the vignette
+	u8* fogm;                    // how much of the fog shows, NULL: none on this screen
+	u8* ovr;                     // the overlay in framebuffer order, B G R A
+} Screen;
+
+typedef struct {
+	int style;
+	u32 rgb;
+} Ink;
+
+// What a framebuffer holds (grain frame, the two fog offsets, fade), so a still frame isn't drawn again:
+// the grain changes every fifth frame and the fog moves a pixel every ninth, which spares the Old 3DS
+typedef struct {
+	u8* fb;
+	int state[4];
+} Shown;
+
+static PrintConsole s_top;
+static u8* s_fog;
 
 static bool has_file(const char* dir, const char* file)
 {
@@ -59,44 +97,401 @@ static bool has_file(const char* dir, const char* file)
 	return stat(path, &st) == 0 && S_ISREG(st.st_mode);
 }
 
-static void at(int row, int col, const char* text)
+static float smooth(float a, float b, float x)
 {
-	printf("\x1b[%d;%dH%s", row, col, text);
+	float t = (x - a) / (b - a);
+	t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+	return t * t * (3.0f - 2.0f * t);
 }
 
-// One line centred on the touch screen's 40 columns (the text without colour codes)
-static void centred(int row, const char* colour, const char* text)
+static u32 hash(u32 x, u32 y, u32 seed)
 {
-	int col = (40 - (int)strlen(text)) / 2 + 1;
-	printf("\x1b[%d;%dH%s%s" RESET, row, col < 1 ? 1 : col, colour, text);
+	u32 h = x * 374761393u + y * 668265263u + seed * 2246822519u;
+	h = (h ^ h >> 13) * 1274126177u;
+	return h ^ h >> 16;
 }
 
-static void draw_qr(void)
+// ---------------------------------------------------------------- drawing into the overlay
+
+static void blend(Screen* s, int x, int y, u32 rgb, int a)
 {
-	// the bottom screen's framebuffer is 240 x 320, a column per screen x, its rows bottom up
-	u16* fb = (u16*)gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-	int side = (NODATA_QR_SIZE + 2 * QR_QUIET) * QR_SCALE;
-	int x0 = (320 - side) / 2, y0 = 4;
-	for (int y = 0; y < side; y++)
-		for (int x = 0; x < side; x++) {
-			int mx = x / QR_SCALE - QR_QUIET, my = y / QR_SCALE - QR_QUIET;
-			bool dark = mx >= 0 && my >= 0 && mx < NODATA_QR_SIZE && my < NODATA_QR_SIZE &&
-			            (nodata_qr[my] >> mx & 1);
-			fb[(x0 + x) * 240 + 239 - (y0 + y)] = dark ? QR_DARK : QR_LIGHT;
+	if (a <= 0 || x < 0 || y < 0 || x >= s->w || y >= 240)
+		return;
+	if (a > 255)
+		a = 255;
+	u8* p = s->ov + (y * s->w + x) * 4;
+	int k = 255 - a;
+	p[0] = (u8)(((rgb >> 16 & 255) * a + p[0] * k + 127) / 255);
+	p[1] = (u8)(((rgb >> 8 & 255) * a + p[1] * k + 127) / 255);
+	p[2] = (u8)(((rgb & 255) * a + p[2] * k + 127) / 255);
+	p[3] = (u8)(a + (p[3] * k + 127) / 255);
+}
+
+static void rect(Screen* s, int x, int y, int w, int h, u32 rgb, int a)
+{
+	for (int j = y; j < y + h; j++)
+		for (int i = x; i < x + w; i++)
+			blend(s, i, j, rgb, a);
+}
+
+// A thin rule that fades out at both ends, as the PC's menus and the website draw them
+static void rule(Screen* s, int x0, int x1, int y, u32 rgb, int a)
+{
+	float fade = (x1 - x0) * 0.35f;
+	for (int x = x0; x < x1; x++) {
+		float e = (x - x0 < x1 - 1 - x ? x - x0 : x1 - 1 - x) / fade;
+		blend(s, x, y, rgb, (int)(a * smooth(0.0f, 1.0f, e)));
+	}
+}
+
+// The website's mark: a small grid of red squares
+static void mark(Screen* s, int x, int y)
+{
+	for (int j = 0; j < 3; j++)
+		for (int i = 0; i < 3; i++)
+			rect(s, x + i * 3, y + j * 3, 2, 2, C_RED_HI, (i + j) & 1 ? 150 : 255);
+}
+
+static const NdGlyph* glyph(int style, int c)
+{
+	if (c < ND_FIRST || c > ND_LAST)
+		c = '?';
+	return &nd_font[style].glyph[c - ND_FIRST];
+}
+
+static int kern(int style, int a, int b)
+{
+	const NdFont* f = &nd_font[style];
+	for (int i = 0; i < f->nkern; i++)
+		if (f->kern[i].a == a && f->kern[i].b == b)
+			return f->kern[i].k;
+	return 0;
+}
+
+// Sets t[0..n) from x8 (1/ND_SUB pixel) on baseline y, following the style changes in it (ink
+// carries the style from run to run), track 1/ND_SUB pixels apart. Draws only when s is set; the
+// advance in 1/ND_SUB pixel either way.
+static int run(Screen* s, int x8, int y, const char* t, int n, Ink* ink, Ink base, int track)
+{
+	int pen = 0, prev = 0;
+	for (int i = 0; i < n; i++) {
+		int c = (u8)t[i];
+		if (c == 1 || c == 2) {
+			*ink = c == 1 ? base : (Ink){ND_MONO, C_HI};
+			prev = 0;
+			continue;
+		}
+		if (prev)
+			pen += kern(ink->style, prev, c);
+		const NdGlyph* g = glyph(ink->style, c);
+		if (s) {
+			int gx = (x8 + pen + ND_SUB / 2) / ND_SUB + g->x, gy = y + g->y;
+			for (int k = 0; k < g->w * g->h; k++) {
+				int v = nd_bits[g->off + k / 2] >> (k & 1) * 4 & 15;
+				if (v)
+					blend(s, gx + k % g->w, gy + k / g->w, ink->rgb, v * 17);
+			}
+		}
+		pen += g->adv + track;
+		prev = c;
+	}
+	return pen;
+}
+
+static int text_w(int style, const char* t, int track)
+{
+	Ink ink = {style, 0};
+	return (run(NULL, 0, 0, t, (int)strlen(t), &ink, ink, track) - track + ND_SUB / 2) / ND_SUB;
+}
+
+static void text(Screen* s, int style, int x, int y, u32 rgb, const char* t, int track)
+{
+	Ink ink = {style, rgb};
+	run(s, x * ND_SUB, y, t, (int)strlen(t), &ink, ink, track);
+}
+
+// A paragraph wrapped at maxw, its baselines lh apart from y; the baseline after its last line
+static int para(Screen* s, int x, int y, int maxw, int lh, int style, u32 rgb, const char* t)
+{
+	Ink base = {style, rgb}, ink = base;
+	int pen = 0;
+	while (*t) {
+		const char* w = t;
+		while (*t && *t != ' ' && *t != '\n')
+			t++;
+		Ink probe = ink;
+		int ww = run(NULL, 0, 0, w, (int)(t - w), &probe, base, 0);
+		int space = pen ? glyph(ink.style, ' ')->adv + (ink.style == ND_MONO ? 0 : ND_SUB) : 0;   // airier
+		if (pen && pen + space + ww > maxw * ND_SUB)
+			y += lh, pen = space = 0;
+		pen += space;
+		pen += run(s, x * ND_SUB + pen, y, w, (int)(t - w), &ink, base, 0);
+		if (*t == '\n')
+			y += lh, pen = 0;
+		if (*t)
+			t++;
+	}
+	return y + lh;
+}
+
+// "SILENT HILL 2 . <what>" in spaced capitals, after the mark
+static void label(Screen* s, int x, int y, const char* what)
+{
+	mark(s, x, y - 9);
+	x += 18;
+	text(s, ND_LABEL, x, y, C_LABEL, "SILENT HILL 2", 4 * ND_SUB);
+	x += text_w(ND_LABEL, "SILENT HILL 2", 4 * ND_SUB) + 9;
+	rect(s, x, y - 5, 2, 2, C_LABEL, 255);
+	text(s, ND_LABEL, x + 11, y, C_LABEL, what, 4 * ND_SUB);
+}
+
+// ---------------------------------------------------------------- the background
+
+static float lattice(int x, int y, int seed)
+{
+	return hash((u32)x, (u32)y, (u32)seed) / 4294967296.0f;
+}
+
+// Value noise that tiles over the fog field, cells cw x ch
+static float vnoise(int x, int y, int cw, int ch, int seed)
+{
+	int nx = FOG_W / cw, ny = FOG_H / ch, cx = x / cw, cy = y / ch;
+	float fx = smooth(0.0f, 1.0f, (float)(x % cw) / cw), fy = smooth(0.0f, 1.0f, (float)(y % ch) / ch);
+	float a = lattice(cx % nx, cy % ny, seed), b = lattice((cx + 1) % nx, cy % ny, seed);
+	float c = lattice(cx % nx, (cy + 1) % ny, seed), d = lattice((cx + 1) % nx, (cy + 1) % ny, seed);
+	float top = a + (b - a) * fx, bottom = c + (d - c) * fx;
+	return top + (bottom - top) * fy;
+}
+
+// Wisps of fog, wider than high: three octaves, the thin parts cut away
+static void fog_init(void)
+{
+	for (int x = 0; x < FOG_W; x++)
+		for (int y = 0; y < FOG_H; y++) {
+			float n = 0.5f * vnoise(x, y, 128, 64, 1) + 0.3f * vnoise(x, y, 64, 32, 2) + 0.2f * vnoise(x, y, 32, 16, 3);
+			float f = smooth(0.38f, 0.85f, n);
+			s_fog[x * FOG_H + y] = (u8)(f * 255.0f);
 		}
 }
 
-static void steps(int row)
+// Black with a dull red glow around (gx, gy), the website's vignette, and on the top screen the fog
+// thicker towards the ground
+static void background(Screen* s, float gx, float gy, float gr, float glow)
 {
-	at(row, 2, "To set it up:");
-	at(row + 1, 2, "1. On a computer, open the packer page");
-	at(row + 2, 7, CYAN PACKER_URL RESET);
-	at(row + 3, 5, "and choose your Silent Hill 2 folder, the");
-	at(row + 4, 5, "one with sh2pc.exe. Save the zip it makes.");
-	at(row + 5, 2, "2. Unzip it and copy its 3ds folder to the");
-	at(row + 6, 5, "root of the SD card. It merges with the 3ds");
-	at(row + 7, 5, "folder already there.");
-	at(row + 8, 2, "3. Put the card back and start sh23ds again.");
+	for (int y = 0; y < 240; y++)
+		for (int x = 0; x < s->w; x++) {
+			float dx = (x - s->w * 0.5f) / (s->w * 0.5f), dy = (y - 120.0f) / 120.0f;
+			float v = 1.0f - 0.85f * smooth(0.5f, 1.5f, sqrtf(dx * dx + dy * dy));
+			float ex = (x - gx) / gr, ey = (y - gy) / gr;
+			float g = glow * expf(-(ex * ex + ey * ey));
+			int i = (x * 240 + 239 - y) * 3;
+			s->base[i + 0] = (u8)((5.0f + 27.0f * g) * v);
+			s->base[i + 1] = (u8)((5.0f + 18.0f * g) * v);
+			s->base[i + 2] = (u8)((5.0f + 179.0f * g) * v);
+			if (s->fogm)
+				s->fogm[i / 3] = (u8)(255.0f * v * (0.25f + 0.75f * smooth(30.0f, 240.0f, (float)y)));
+		}
+}
+
+// ---------------------------------------------------------------- the two screens
+
+static void top_screen(Screen* s, const char* pack_dir, const char* found, const char* const* missing, int nmissing)
+{
+	const int x = 26, w = 400 - 2 * x;
+	char line[160];
+	label(s, x, 30, "GAME DATA");
+	text(s, ND_TITLE, x - 1, 70, C_TEXT, found ? "WRONG FOLDER" : nmissing ? "INCOMPLETE" : "NOT FOUND", ND_SUB);
+	if (found) {
+		para(s, x, 96, w, 19, ND_ITALIC, C_DIM,
+		     "The game data is on the card, one folder off from where sh23ds looks for it.");
+		text(s, ND_LABEL, x, 148, C_LABEL, "FOUND", 2 * ND_SUB);
+		snprintf(line, sizeof line, "%s/", found);
+		text(s, ND_MONO, x + 72, 148, C_HI, line, 0);
+		text(s, ND_LABEL, x, 172, C_LABEL, "MOVE TO", 2 * ND_SUB);
+		snprintf(line, sizeof line, "%s/", pack_dir);
+		text(s, ND_MONO, x + 72, 172, C_HI, line, 0);
+		para(s, x, 204, w, 18, ND_BODY, C_TEXT2,
+		     "Move it on a computer or with GodMode9, and keep any save*.dat files already there.");
+	} else if (nmissing) {
+		snprintf(line, sizeof line, "Some of it is missing from " MONO "%s/" BASE ". The copy or the packer "
+		         "stopped before the end.", pack_dir);
+		int y = para(s, x, 96, w, 19, ND_ITALIC, C_DIM, line) + 12;
+		text(s, ND_LABEL, x, y, C_LABEL, "MISSING", 2 * ND_SUB);
+		int shown = nmissing > 3 ? 2 : nmissing;
+		for (int i = 0; i < shown; i++, y += 18)
+			text(s, ND_MONO, x + 72, y, C_HI, missing[i], 0);
+		if (shown < nmissing) {
+			snprintf(line, sizeof line, "and %d more", nmissing - shown);
+			text(s, ND_MONO, x + 72, y, C_DIM, line, 0);
+			y += 18;
+		}
+		para(s, x, y + 10, w, 18, ND_BODY, C_TEXT2,
+		     "Copy the 3ds folder from the packer to the card again. Back up your save*.dat files first.");
+	} else {
+		para(s, x, 96, w, 19, ND_ITALIC, C_DIM,
+		     "The engine is here. The game comes from your own PC copy, converted once on a computer.");
+		static const char* const steps[] = {
+			"Open the packer on a computer:\n" MONO PACKER_URL,
+			"Copy the 3ds folder it makes to the SD card",
+			"Put the card back and start sh23ds again",
+		};
+		int y = 146;
+		for (int i = 0; i < 3; i++) {
+			char n[2] = {(char)('1' + i), 0};
+			text(s, ND_MONO, x, y, C_RED_HI, n, 0);
+			y = para(s, x + 20, y, w - 20, 20, ND_BODY, C_TEXT2, steps[i]) + 3;
+		}
+	}
+}
+
+static void paper(Screen* s, int x0, int y0, int w, int h)
+{
+	// a soft shadow, dropped a little
+	for (int y = y0 - 8; y < y0 + h + 12; y++)
+		for (int x = x0 - 10; x < x0 + w + 12; x++) {
+			float dx = x < x0 + 2 ? x0 + 2 - x : x > x0 + w + 1 ? x - (x0 + w + 1) : 0;
+			float dy = y < y0 + 4 ? y0 + 4 - y : y > y0 + h + 3 ? y - (y0 + h + 3) : 0;
+			float d = sqrtf(dx * dx + dy * dy) / 10.0f;
+			if (d < 1.0f)
+				blend(s, x, y, 0, (int)(170.0f * (1.0f - d) * (1.0f - d)));
+		}
+	// the memo: burnt towards the edges, mottled, a few specks, the edge a little ragged
+	for (int y = y0; y < y0 + h; y++)
+		for (int x = x0; x < x0 + w; x++) {
+			int ex = x - x0 < x0 + w - 1 - x ? x - x0 : x0 + w - 1 - x;
+			int ey = y - y0 < y0 + h - 1 - y ? y - y0 : y0 + h - 1 - y;
+			int e = ex < ey ? ex : ey;
+			u32 r = hash((u32)x, (u32)y, 7);
+			float stain = s_fog[((x * 3) & (FOG_W - 1)) * FOG_H + ((y * 3) & (FOG_H - 1))] / 255.0f;
+			float k = 1.0f - (0.18f + 0.16f * stain) * (1.0f - smooth(0.0f, 14.0f + 8.0f * stain, (float)e));
+			k *= 0.92f + 0.08f * (1.0f - stain);
+			if ((r >> 8 & 255) < 2)
+				k *= 0.85f;
+			k *= 0.97f + 0.03f * (r >> 16 & 255) / 255.0f;
+			u32 c = (u32)((C_PAPER >> 16 & 255) * k) << 16 | (u32)((C_PAPER >> 8 & 255) * k) << 8 |
+			        (u32)((C_PAPER & 255) * k);
+			blend(s, x, y, c, 255);
+		}
+}
+
+static void bottom_screen(Screen* s, int* touch)
+{
+	const int pw = 214, ph = 192, px = (320 - pw) / 2, py = 6;
+	paper(s, px, py, pw, ph);
+	const char* head = "the install guide";
+	text(s, ND_ITALIC, (320 - text_w(ND_ITALIC, head, 0)) / 2, py + 23, C_INK2, head, 0);
+	int q = 4, side = NODATA_QR_SIZE * q, qx = (320 - side) / 2, qy = py + 33;
+	for (int y = 0; y < NODATA_QR_SIZE; y++)
+		for (int x = 0; x < NODATA_QR_SIZE; x++)
+			if (nodata_qr[y] >> x & 1)
+				rect(s, qx + x * q, qy + y * q, q, q, C_INK, 255);
+	text(s, ND_LABEL, (320 - text_w(ND_LABEL, GUIDE_URL, 0)) / 2, py + ph - 15, C_INK, GUIDE_URL, 0);
+
+	// the footer, as touchui.c draws it: a rule, then the button and what it does
+	rule(s, 20, 300, 206, C_RULE, 255);
+	const char* what = "Close";
+	int tw = text_w(ND_LABEL, "START", ND_SUB), bw = tw + 12, ww = text_w(ND_BODY, what, 0);
+	int x = (320 - (bw + 8 + ww)) / 2, y = 214, h = 17;
+	for (int i = 1; i < bw - 1; i++) {
+		blend(s, x + i, y, C_RING, 255);
+		blend(s, x + i, y + h - 1, C_RING, 255);
+	}
+	for (int j = 1; j < h - 1; j++) {
+		blend(s, x, y + j, C_RING, 255);
+		blend(s, x + bw - 1, y + j, C_RING, 255);
+	}
+	text(s, ND_LABEL, x + 6, y + 13, C_RING, "START", ND_SUB);
+	text(s, ND_BODY, x + bw + 8, y + 13, C_TEXT2, what, 0);
+	touch[0] = x - 8, touch[1] = y - 6, touch[2] = x + bw + 8 + ww + 8, touch[3] = y + h + 6;
+}
+
+// ---------------------------------------------------------------- each frame
+
+static bool screen_init(Screen* s, int w, bool fog)
+{
+	s->w = w;
+	s->ov = calloc((size_t)w * 240, 4);
+	s->base = malloc((size_t)w * 240 * 3);
+	s->ovr = malloc((size_t)w * 240 * 4);
+	s->fogm = fog ? malloc((size_t)w * 240) : NULL;
+	return s->ov && s->base && s->ovr && (s->fogm || !fog);
+}
+
+static void screen_free(Screen* s)
+{
+	free(s->ov), free(s->base), free(s->ovr), free(s->fogm);
+}
+
+// The overlay into the framebuffer's order
+static void screen_finish(Screen* s)
+{
+	for (int y = 0; y < 240; y++)
+		for (int x = 0; x < s->w; x++) {
+			const u8* p = s->ov + (y * s->w + x) * 4;
+			u8* q = s->ovr + (x * 240 + 239 - y) * 4;
+			q[0] = p[2], q[1] = p[1], q[2] = p[0], q[3] = p[3];
+		}
+	free(s->ov);
+	s->ov = NULL;
+}
+
+// Background, fog drifting two ways, film grain (four frames, each held for five: the port's own
+// grain, port/UI.md), the overlay, then the fade; st as in Shown
+static void screen_frame(const Screen* s, u8* fb, const int* st)
+{
+	static const u32 seeds[4] = {0x2c9277b5u, 0x9e3779b9u, 0x7f4a7c15u, 0x51ed270bu};
+	u32 seed = seeds[st[0]];
+	u32 o1 = (u32)st[1], o2 = 4096u + 300u - (u32)st[2];
+	int fade = st[3];
+	for (int x = 0; x < s->w; x++) {
+		const u8* f1 = s_fog + ((x + o1) & (FOG_W - 1)) * FOG_H;
+		const u8* f2 = s_fog + ((x + o2) & (FOG_W - 1)) * FOG_H;
+		for (int j = 0; j < 240; j++) {
+			int i = x * 240 + j;
+			const u8* b = s->base + i * 3;
+			const u8* o = s->ovr + i * 4;
+			seed ^= seed << 13, seed ^= seed >> 17, seed ^= seed << 5;
+			int add = ((int)((seed >> 24 & 15) + (seed >> 16 & 15)) - 15) / 2;
+			if (s->fogm) {
+				int y = 239 - j;
+				add += (f1[y] + f2[(y + 101) & (FOG_H - 1)]) * s->fogm[i] >> 10;
+			}
+			int k = 256 - o[3];
+			for (int c = 0; c < 3; c++) {
+				int v = ((b[c] + add) * k >> 8) + o[c];
+				v = v < 0 ? 0 : v > 255 ? 255 : v;
+				fb[i * 3 + c] = (u8)(v * fade >> 8);
+			}
+		}
+	}
+}
+
+static void show(const Screen* s, Shown* held, int screen, u32 t, int fade)
+{
+	u8* fb = gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL);
+	int st[4] = {(int)(t / 5 & 3), s->fogm ? (int)(t / 9) : 0, s->fogm ? (int)(t / 15) : 0, fade};
+	Shown* h = held[0].fb == fb || !held[0].fb ? &held[0] : &held[1];
+	if (h->fb == fb && !memcmp(h->state, st, sizeof st))
+		return;
+	h->fb = fb;
+	memcpy(h->state, st, sizeof st);
+	screen_frame(s, fb, st);
+}
+
+// Plain text, if the screens' memory can't be had
+static void fallback(void)
+{
+	consoleInit(GFX_TOP, &s_top);
+	printf("\n  sh23ds: the game data was not found in\n  sdmc:/3ds/sh23ds/\n\n"
+	       "  Install guide:\n  " GUIDE_URL "\n\n  Press START to return to the HOME Menu.");
+	while (aptMainLoop()) {
+		hidScanInput();
+		if (hidKeysDown() & KEY_START)
+			break;
+		gfxFlushBuffers();
+		gfxSwapBuffers();
+		gspWaitForVBlank();
+	}
 }
 
 bool nodata_check(const char* pack_dir)
@@ -114,66 +509,50 @@ bool nodata_check(const char* pack_dir)
 			if (has_file(s_elsewhere[i], s_need[0]))
 				found = s_elsewhere[i];
 
-	consoleInit(GFX_TOP, &s_top);
-	consoleInit(GFX_BOTTOM, &s_bottom);
-
-	consoleSelect(&s_top);
-	at(2, 2, DIM "SILENT HILL 2 for Nintendo 3DS" RESET);
-	if (found) {
-		at(4, 2, RED "Game data in the wrong folder" RESET);
-		at(6, 2, "The game data is on the SD card, at");
-		printf("\x1b[7;5H" CYAN "%s/" RESET, found);
-		at(8, 2, "but sh23ds reads it from");
-		printf("\x1b[9;5H" CYAN "%s/" RESET, pack_dir);
-		at(11, 2, "Move that sh23ds folder so that it sits");
-		at(12, 2, "directly inside the 3ds folder at the root of");
-		at(13, 2, "the SD card. Use a computer, or a file manager");
-		at(14, 2, "on the 3DS such as GodMode9.");
-		at(16, 2, "If the right folder already holds save*.dat");
-		at(17, 2, "files, keep them: they are your saves.");
-	} else if (nmissing < NEED) {
-		at(4, 2, RED "Game data incomplete" RESET);
-		printf("\x1b[6;2H%s/ is there, but", pack_dir);
-		at(7, 2, "these files are missing from it:");
-		int row = 8;
-		for (int i = 0; i < nmissing && i < 4; i++, row++)
-			printf("\x1b[%d;5H" CYAN "%s" RESET, row, missing[i]);
-		if (nmissing > 4)
-			printf("\x1b[%d;5H" DIM "and %d more" RESET, row++, nmissing - 4);
-		row++;
-		at(row, 2, "The copy to the SD card may have stopped early,");
-		at(row + 1, 2, "or the packer did not finish. Copy the 3ds");
-		at(row + 2, 2, "folder from the packer to the SD card again,");
-		at(row + 3, 2, "or run the packer again if the files are");
-		at(row + 4, 2, "missing on the computer too.");
-		at(row + 6, 2, "Copy your save*.dat files out first to keep");
-		at(row + 7, 2, "your saves.");
-	} else {
-		at(4, 2, RED "Game data not found" RESET);
-		at(6, 2, "sh23ds is the engine only. It plays the game");
-		at(7, 2, "from your own copy of the PC Director's Cut,");
-		at(8, 2, "converted on a computer by the packer.");
-		printf("\x1b[10;2HIt looked in " CYAN "%s/" RESET, pack_dir);
-		steps(12);
+	Screen top = {0}, bottom = {0};
+	s_fog = malloc(FOG_W * FOG_H);
+	if (!s_fog || !screen_init(&top, 400, true) || !screen_init(&bottom, 320, false)) {
+		screen_free(&top), screen_free(&bottom), free(s_fog);
+		fallback();
+		return false;
 	}
-	at(25, 2, "Full guide, with the Docker and ftpd options:");
-	at(26, 4, CYAN GUIDE_URL RESET);
-	at(27, 2, DIM "(or scan the code on the touch screen)" RESET);
-	at(29, 2, "Press START to return to the HOME Menu.");
+	int touch[4];
+	fog_init();
+	background(&top, 110.0f, 120.0f, 150.0f, 0.2f);
+	background(&bottom, 160.0f, 110.0f, 170.0f, 0.1f);
+	top_screen(&top, pack_dir, found, missing, nmissing == NEED ? 0 : nmissing);
+	bottom_screen(&bottom, touch);
+	screen_finish(&top);
+	screen_finish(&bottom);
 
-	consoleSelect(&s_bottom);
-	centred(25, "", "Scan for the install guide");
-	centred(26, CYAN, GUIDE_URL);
-	centred(29, DIM, "START: back to the HOME Menu");
-	draw_qr();
-
+	u32 t = 0, closing = 0;
+	Shown held_top[2] = {0}, held_bottom[2] = {0};
 	while (aptMainLoop()) {
 		hidScanInput();
-		if (hidKeysDown() & KEY_START)
-			break;
+		u32 down = hidKeysDown();
+		if (down & KEY_TOUCH) {
+			touchPosition tp;
+			hidTouchRead(&tp);
+			if (tp.px >= touch[0] && tp.px < touch[2] && tp.py >= touch[1] && tp.py < touch[3])
+				down |= KEY_START;
+		}
+		if ((down & KEY_START) && !closing)
+			closing = 1;
+		int fade = t < FADE_IN ? (int)(t * 256 / FADE_IN) : 256;
+		if (closing) {
+			if (closing > FADE_OUT)
+				break;
+			int out = (int)((FADE_OUT - closing) * 256 / FADE_OUT);
+			fade = fade < out ? fade : out;
+			closing++;
+		}
+		show(&top, held_top, GFX_TOP, t, fade);
+		show(&bottom, held_bottom, GFX_BOTTOM, t, fade);
 		gfxFlushBuffers();
 		gfxSwapBuffers();
 		gspWaitForVBlank();
+		t++;
 	}
+	screen_free(&top), screen_free(&bottom), free(s_fog);
 	return false;
 }

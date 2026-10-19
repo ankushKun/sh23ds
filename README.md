@@ -159,6 +159,7 @@ It's neither. This is the 2001 game, rebuilt from the PC Director's Cut and runn
 - [pl_mpeg](https://github.com/phoboslab/pl_mpeg) by Dominic Szablewski, which plays the movies
 - [pycgfx](https://github.com/skyfloogle/pycgfx) by skyfloogle and the notes in [CBC for YANBF](https://github.com/daaaaavia/CBC-for-YANBF), for the 3D HOME Menu banner
 - [Ghidra](https://ghidra-sre.org/) and [Azahar](https://azahar-emu.org/)
+- [Libre Caslon Display](https://github.com/impallari/Libre-Caslon-Display), [Crimson Pro](https://github.com/Fonthausen/CrimsonPro) and [VT323](https://fonts.google.com/specimen/VT323) (SIL Open Font License), on the website and the setup screen
 
 ## License
 
