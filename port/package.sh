@@ -23,10 +23,24 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
 fi
 tool() { docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -v "$PWD":/w -w /w "$IMAGE" "$@"; }
 
+# The name, description and author shown on the HOME Menu, from the Makefile (the .3dsx uses them too).
+meta() { sed -n "s/^$1[[:space:]]*:=[[:space:]]*//p" Makefile; }
+APP_NAME=$(meta APP_TITLE); APP_DESCRIPTION=$(meta APP_DESCRIPTION); APP_AUTHOR=$(meta APP_AUTHOR)
+
+# The HOME Menu banner is the animated 3D model in meta/banner/ (see its README) with its jingle.
+# SH23DS_FLAT_BANNER=1 packs the flat picture instead, and SH23DS_BANNER_CGFX another model (such as
+# a still from make.sh), for telling a banner problem apart on a console.
+if [ "${SH23DS_FLAT_BANNER:-0}" = 1 ]; then
+	BANNER_ART="-i meta/banner.png"
+else
+	BANNER_ART="-ci ${SH23DS_BANNER_CGFX:-meta/banner/sh23ds.cgfx}"
+fi
+
 mkdir -p build
-tool bannertool makebanner -i meta/banner.png -a meta/banner.wav -o build/banner.bnr
-tool bannertool makesmdh -s "Silent Hill 2 (sh23ds)" -l "Native 3DS port, uses your own game data" \
-	-p "ankushKun" -i meta/icon.png -f visible,nosavebackups -o build/icon.smdh
+# shellcheck disable=SC2086
+tool bannertool makebanner $BANNER_ART -a meta/banner/jingle.wav -o build/banner.bnr
+tool bannertool makesmdh -s "$APP_NAME" -l "$APP_DESCRIPTION" -p "$APP_AUTHOR" \
+	-i meta/icon.png -f visible,nosavebackups -o build/icon.smdh
 tool makerom -f cia -o sh23ds.cia -elf sh23ds.elf -rsf meta/template.rsf \
 	-icon build/icon.smdh -banner build/banner.bnr -exefslogo -target t \
 	-major "$MAJOR" -minor "$MINOR" -micro "$MICRO" \

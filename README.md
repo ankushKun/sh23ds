@@ -155,6 +155,7 @@ It's neither. This is the 2001 game, rebuilt from the PC Director's Cut and runn
 - The Silent Hill Database for its file format notes, and the PS2 beta's debug information, which names much of the PC code
 - [devkitPro](https://devkitpro.org/), libctru and citro3d
 - [pl_mpeg](https://github.com/phoboslab/pl_mpeg) by Dominic Szablewski, which plays the movies
+- [pycgfx](https://github.com/skyfloogle/pycgfx) by skyfloogle and the notes in [CBC for YANBF](https://github.com/daaaaavia/CBC-for-YANBF), for the 3D HOME Menu banner
 - [Ghidra](https://ghidra-sre.org/) and [Azahar](https://azahar-emu.org/)
 
 ## License

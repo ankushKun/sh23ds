@@ -91,3 +91,7 @@ reference/
 node_modules/
 site/packer/sh2conv.zip
 tools/texenc/build/
+
+# HOME Menu banner: the still made for console tests
+port/meta/banner/still.cgfx
+port/meta/banner/__pycache__/

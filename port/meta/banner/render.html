@@ -1,0 +1,127 @@
+<!doctype html>
+<!-- Renders banner.glb the way the HOME Menu frames it, to look at before a console test and
+     for the flat fallback banner. Driven by render.sh through headless Chrome; three.js comes
+     from a pinned CDN version. Adapted from 3dsDL's resources/banner/render.html.
+
+     ?mode=frames    six moments of the loop, 400 x 240 each
+     ?mode=banner    one 400 x 240 top screen frame (&t=seconds)
+     ?mode=flat      a 512 x 256 still for the flat fallback banner
+
+     The lighting imitates the CGFX after build-cgfx.py: one directional light from the upper
+     left, a soft ambient fill, and an unlit wordmark and fog. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; background: transparent; }
+  body { font: 14px system-ui; }
+  .grid { display: grid; grid-template-columns: repeat(3, 400px); gap: 8px; padding: 8px; background: #888; }
+  .grid figure { margin: 0; position: relative; }
+  .grid figcaption { position: absolute; left: 6px; top: 4px; color: #ccc; font: 12px monospace; }
+  canvas { display: block; }
+</style>
+<script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
+const params = new URLSearchParams(location.search);
+const mode = params.get("mode") || "frames";
+const LIGHT = new THREE.Vector3(0.35, -0.5, -0.8).normalize();
+
+const gltf = await new GLTFLoader().loadAsync(params.get("model") || "banner.glb");
+const scene = new THREE.Scene();
+scene.add(gltf.scene);
+
+// Phong materials in the 3DS's own (gamma) colour values.
+gltf.scene.traverse((object) => {
+  if (!object.isMesh) return;
+  const source = object.material;
+  const c = source.color;
+  if (source.map && (source.name === "Logo" || source.name === "Fog")) {
+    object.material = new THREE.MeshBasicMaterial({ map: source.map, alphaTest: 0.5 });
+  } else if (source.map) {
+    object.material = new THREE.MeshPhongMaterial({ map: source.map, shininess: 20, specular: 0x222222 });
+  } else {
+    const material = new THREE.MeshPhongMaterial({ shininess: 70, specular: 0x5a5a5a });
+    // The 3DS shows a material's colour as given, with no gamma: show the glTF factor as is.
+    material.color.setRGB(c.r, c.g, c.b, THREE.SRGBColorSpace);
+    object.material = material;
+  }
+});
+
+const sun = new THREE.DirectionalLight(0xffffff, Math.PI * 0.9);
+sun.position.copy(LIGHT.clone().multiplyScalar(-50));
+scene.add(sun);
+scene.add(new THREE.AmbientLight(0xffffff, Math.PI * 0.42));
+
+const mixer = new THREE.AnimationMixer(gltf.scene);
+gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
+function at(t) { mixer.setTime(t); gltf.scene.updateMatrixWorld(true); }
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setPixelRatio(1);
+
+function bannerCamera(aspect = 5 / 3) {
+  const camera = new THREE.PerspectiveCamera(30, aspect, 26.5, 1000);
+  camera.position.set(0, 1, 44.786);
+  return camera;
+}
+
+// Roughly the default white HOME Menu theme behind the banner.
+function themeBackdrop(ctx, w, h) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "#f4f6f8");
+  g.addColorStop(1, "#d9dee3");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
+function shot(camera, w, h, backdrop) {
+  renderer.setSize(w, h);
+  renderer.render(scene, camera);
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+  const ctx = out.getContext("2d");
+  if (backdrop) backdrop(ctx, w, h);
+  ctx.drawImage(renderer.domElement, 0, 0);
+  return out;
+}
+
+const named = (name) => gltf.scene.getObjectByName(name);
+
+if (mode === "frames") {
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  for (const t of [0.0, 0.8, 1.1, 1.8, 2.6, 3.4]) {
+    at(t);
+    const figure = document.createElement("figure");
+    figure.append(shot(bannerCamera(), 400, 240, themeBackdrop));
+    const caption = document.createElement("figcaption");
+    caption.textContent = "t = " + t + " s";
+    figure.append(caption);
+    grid.append(figure);
+  }
+  document.body.append(grid);
+} else if (mode === "banner") {
+  at(parseFloat(params.get("t") || "0.8"));
+  document.body.append(shot(bannerCamera(), 400, 240, themeBackdrop));
+} else if (mode === "flat") {
+  at(parseFloat(params.get("t") || "0.8"));
+  const camera = bannerCamera(2);
+  camera.position.set(0, 1, 47);
+  document.body.append(shot(camera, 512, 256, themeBackdrop));
+}
+document.title = "done";
+</script>
+</body>
+</html>

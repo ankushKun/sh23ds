@@ -32,9 +32,12 @@ include $(DEVKITARM)/3ds_rules
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
 TARGET		:=	sh23ds
-APP_TITLE	:=	Silent Hill 2 (sh23ds)
-APP_DESCRIPTION	:=	Native 3DS port, uses your own game data
-APP_AUTHOR	:=	ankushKun
+# The HOME Menu, the Homebrew Launcher and FBI show these; package.sh reads them from here for the
+# CIA, so both builds say the same thing.
+APP_TITLE	:=	Silent Hill 2
+APP_DESCRIPTION	:=	The PC Director's Cut, ported to the 3DS
+APP_AUTHOR	:=	sh23ds by ankushKun
+ICON		:=	meta/icon.png
 BUILD		:=	build
 SOURCES		:=	source source/game/view
 DATA		:=	data

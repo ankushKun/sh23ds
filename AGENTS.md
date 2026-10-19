@@ -63,6 +63,7 @@ or approximated".
 | [port/TESTING.md](port/TESTING.md) | Smoke run, warp autotest, playthrough suite, console checklist |
 | [port/DEBUGGING.md](port/DEBUGGING.md) | The `debug.txt` start options, Azahar, headless lr3ds runs |
 | [tools/packer/README.md](tools/packer/README.md) | Packer options: Docker flags, running without Docker, Enhanced Edition packs |
+| [port/meta/banner/README.md](port/meta/banner/README.md) | The HOME Menu icon, 3D banner and jingle, the rules that keep the banner from freezing the HOME Menu, console checks |
 | [docs/RESEARCH.md](docs/RESEARCH.md) | How the exe was mapped: SecuROM, module map, key addresses, the work log |
 | [sh2-3ds-port-kit/README.md](sh2-3ds-port-kit/README.md) | Every RE script and data file |
 | [port/PROGRAMS.md](port/PROGRAMS.md) | Stage programs, puzzles, endings (PC addresses per program) |
@@ -120,7 +121,8 @@ keeping `dist/` as an artifact. To release, bump `VERSION`, write the changes in
 `.github/releases/v<version>.md`, commit, and push a matching tag such as `v0.1.3`. CI checks that the
 tag matches `VERSION`, verifies the checksums and publishes the release with those notes, the install
 steps from `.github/release-notes.md` and the checksums. The packer workflow publishes
-`ghcr.io/ankushkun/sh23ds-packer` as that version and `latest`. The website's QR code points at
+`ghcr.io/ankushkun/sh23ds-packer` as that version and `latest`. A tag with a suffix, such as `v0.2.1-rc.1`, skips the `VERSION` check and the packer image
+and is published as a prerelease, for console tests ahead of a release. The website's QR code points at
 `releases/latest/download/sh23ds.cia`, so it never needs changing; the website's version facts do
 (`site/README.md`).
 

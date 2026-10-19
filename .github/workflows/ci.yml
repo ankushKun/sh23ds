@@ -64,9 +64,12 @@ jobs:
           name: sh23ds-${{ github.sha }}
           path: dist
 
+      # A tag with a suffix (v0.2.1-rc.1) is a prerelease: a test build ahead of VERSION, published as
+      # a prerelease so releases/latest keeps pointing at the last full release.
       - name: Check that the tag matches VERSION
         run: |
           expected="v$(tr -d '[:space:]' < VERSION)"
+          case "${GITHUB_REF_NAME}" in *-*) exit 0 ;; esac
           if [ "${GITHUB_REF_NAME}" != "${expected}" ]; then
             echo "Tag ${GITHUB_REF_NAME} does not match VERSION (${expected})." >&2
             exit 1
@@ -96,8 +99,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          pre=""
+          case "${GITHUB_REF_NAME}" in *-*) pre="--prerelease" ;; esac
           gh release create "${GITHUB_REF_NAME}" \
             dist/sh23ds.cia dist/sh23ds.3dsx dist/sh23ds.sha256 \
             --title "sh23ds ${GITHUB_REF_NAME}" \
             --notes-file notes.md \
-            --verify-tag
+            --verify-tag ${pre}
