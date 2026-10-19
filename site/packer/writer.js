@@ -13,6 +13,16 @@ const ZIP_NAME = 'sh23ds-sd.zip';
 const post = (m) => self.postMessage(m);
 let sink = null, queue = Promise.resolve(), files = 0, bytes = 0;
 let lanes = 0, ended = 0, finishing = null;
+const listed = new Set();   // what files.txt lists: every file but the inspection extras
+
+// pack.py write_list: files.txt, the pack's own file list, added last. sh23ds names the files an SD
+// card is missing from it (port/source/nodata.c). The extras are left out as pack.py is_extra does.
+function fileList() {
+	const extra = (rel) => rel.split('/').slice(0, -1).includes('png') || rel.endsWith('.json');
+	const rels = [...listed].filter((rel) => !extra(rel)).sort();
+	return new TextEncoder().encode('# sh23ds: every file of this pack. sh23ds names the ones an SD card is missing.\n' +
+		rels.map((rel) => rel + '\n').join(''));
+}
 
 async function zipSink() {
 	let root;
@@ -45,6 +55,7 @@ async function zipSink() {
 function add(rel, data) {
 	queue = queue.then(async () => {
 		await sink.add(rel, data);
+		listed.add(rel);
 		files++;
 		bytes += data.size !== undefined ? data.size : data.length;
 	}).catch((err) => post({ type: 'error', message: String(err && err.message || err) }));
@@ -53,6 +64,10 @@ function add(rel, data) {
 function maybeFinish() {
 	if (!finishing || ended < lanes) return;
 	queue.then(async () => {
+		const list = fileList();
+		await sink.add('files.txt', list);
+		files++;
+		bytes += list.length;
 		const size = await sink.finish();
 		post({ type: 'done', name: ZIP_NAME, size, files, bytes });
 	}).catch((err) => post({ type: 'error', message: String(err && err.message || err) }));

@@ -2,10 +2,12 @@
 #include "nodata_font.h"
 #include "nodata_qr.h"
 #include <3ds.h>
+#include <dirent.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 
 // Files every finished pack has, one or more from each of the packer's main steps
@@ -59,6 +61,11 @@ static const char* const s_elsewhere[] = {
 #define BASE "\x01"
 #define MONO "\x02"
 
+#define LIST_NAME "files.txt"       // every file of the pack, one per line, written last by the packer
+#define LIST_TOP 36              // the missing files' list on the touch screen, rows ROW high
+#define LIST_BOTTOM 200
+#define ROW 18
+
 #define FOG_W 512                // the fog field, tiled: a column per x, FOG_H values down it
 #define FOG_H 256
 #define FADE_IN 60               // frames from black
@@ -72,6 +79,7 @@ typedef struct {
 	u8* base;                    // B G R: black, the red glow, the vignette
 	u8* fogm;                    // how much of the fog shows, NULL: none on this screen
 	u8* ovr;                     // the overlay in framebuffer order, B G R A
+	int clip[4];                 // where drawing reaches: x0, y0, x1, y1
 } Screen;
 
 typedef struct {
@@ -79,15 +87,40 @@ typedef struct {
 	u32 rgb;
 } Ink;
 
-// What a framebuffer holds (grain frame, the two fog offsets, fade), so a still frame isn't drawn again:
-// the grain changes every fifth frame and the fog moves a pixel every ninth, which spares the Old 3DS
+// What a framebuffer holds (grain frame, the two fog offsets, fade, overlay serial), so a still frame
+// isn't drawn again: the grain changes every fifth frame and the fog moves a pixel every ninth, which
+// spares the Old 3DS
 typedef struct {
 	u8* fb;
-	int state[4];
+	int state[5];
 } Shown;
+
+// A footer prompt, as touchui.c draws them: the button (a ring with its letter, or a tag), then what
+// it does; tapping it is the same as the button
+typedef struct {
+	const char* key;
+	const char* what;
+	u32 button;
+	int box[4];
+} Prompt;
+
+enum { KIND_NONE, KIND_ELSEWHERE, KIND_INCOMPLETE };
 
 static PrintConsole s_top;
 static u8* s_fog;
+static char* s_list;             // LIST_NAME, read whole; the paths below point into it
+static const char** s_missing;   // what the card lacks, folder by folder
+static int s_nmissing;
+static int s_listed;             // files in LIST_NAME, 0 without one (a pack from an older packer)
+
+// The list's rows: each folder's heading (with how many of its files are missing), then its files
+typedef struct {
+	const char* path;
+	int dl;                      // the folder part's length
+	int count;                   // a heading's files, -1 on a file's row
+} Row;
+static Row* s_rows;
+static int s_nrows;
 
 static bool has_file(const char* dir, const char* file)
 {
@@ -95,6 +128,131 @@ static bool has_file(const char* dir, const char* file)
 	snprintf(path, sizeof path, "%s/%s", dir, file);
 	struct stat st;
 	return stat(path, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+// The length of a path's folder part, 0 at the pack's root
+static int dirlen(const char* p)
+{
+	const char* e = strrchr(p, '/');
+	return e ? (int)(e - p) : 0;
+}
+
+// Folder by folder, then by name, so each folder is read once
+static int cmp_path(const void* a, const void* b)
+{
+	const char *p = *(const char* const*)a, *q = *(const char* const*)b;
+	int lp = dirlen(p), lq = dirlen(q);
+	int c = strncmp(p, q, (size_t)(lp < lq ? lp : lq));
+	if (!c)
+		c = lp - lq;
+	return c ? c : strcmp(p + lp, q + lq);
+}
+
+static int cmp_name(const void* a, const void* b)
+{
+	return strcasecmp(*(const char* const*)a, *(const char* const*)b);   // FAT ignores case
+}
+
+// LIST_NAME against the card: each folder's names read once with readdir, which is far quicker on
+// the SD card than a stat per file. False without the list.
+static bool scan(const char* pack_dir)
+{
+	char path[256];
+	snprintf(path, sizeof path, "%s/" LIST_NAME, pack_dir);
+	FILE* f = fopen(path, "rb");
+	if (!f)
+		return false;
+	fseek(f, 0, SEEK_END);
+	long n = ftell(f);
+	rewind(f);
+	s_list = n > 0 ? malloc((size_t)n + 1) : NULL;
+	if (!s_list || fread(s_list, 1, (size_t)n, f) != (size_t)n) {
+		fclose(f);
+		free(s_list);
+		s_list = NULL;
+		return false;
+	}
+	fclose(f);
+	s_list[n] = 0;
+	int cap = 1;
+	for (long i = 0; i < n; i++)
+		cap += s_list[i] == '\n';
+	const char** all = malloc(cap * sizeof *all);
+	s_missing = malloc(cap * sizeof *s_missing);
+	if (!all || !s_missing) {
+		free(all);
+		return false;
+	}
+	int nall = 0;
+	for (char* p = s_list; *p;) {
+		char* e = strchr(p, '\n');
+		if (e)
+			*e = 0;
+		size_t len = strlen(p);
+		if (len && p[len - 1] == '\r')
+			p[len - 1] = 0;
+		if (*p && *p != '#')
+			all[nall++] = p;
+		if (!e)
+			break;
+		p = e + 1;
+	}
+	qsort(all, nall, sizeof *all, cmp_path);
+
+	char** names = NULL;
+	int nnames = 0, capnames = 0;
+	const char* dir = NULL;
+	for (int i = 0; i < nall; i++) {
+		int dl = dirlen(all[i]);
+		if (!dir || dirlen(dir) != dl || strncmp(dir, all[i], (size_t)dl)) {
+			for (int k = 0; k < nnames; k++)
+				free(names[k]);
+			nnames = 0;
+			dir = all[i];
+			snprintf(path, sizeof path, dl ? "%s/%.*s" : "%s", pack_dir, dl, all[i]);
+			DIR* d = opendir(path);
+			struct dirent* e;
+			while (d && (e = readdir(d))) {
+				if (nnames == capnames) {
+					char** more = realloc(names, (capnames = capnames * 2 + 64) * sizeof *names);
+					if (!more)
+						break;
+					names = more;
+				}
+				if ((names[nnames] = strdup(e->d_name)))
+					nnames++;
+			}
+			if (d)
+				closedir(d);
+			qsort(names, nnames, sizeof *names, cmp_name);
+		}
+		const char* base = all[i] + dl + (dl ? 1 : 0);
+		if (!nnames || !bsearch(&base, names, nnames, sizeof *names, cmp_name))
+			s_missing[s_nmissing++] = all[i];
+	}
+	for (int k = 0; k < nnames; k++)
+		free(names[k]);
+	free(names);
+	free(all);
+	s_listed = nall;
+	return true;
+}
+
+static void list_rows(void)
+{
+	s_rows = malloc((2 * (size_t)s_nmissing + 1) * sizeof *s_rows);
+	s_nrows = 0;
+	Row* head = NULL;
+	for (int i = 0; s_rows && i < s_nmissing; i++) {
+		const char* p = s_missing[i];
+		int dl = dirlen(p);
+		if (!head || head->dl != dl || strncmp(head->path, p, (size_t)dl)) {
+			head = &s_rows[s_nrows++];
+			*head = (Row){p, dl, 0};
+		}
+		head->count++;
+		s_rows[s_nrows++] = (Row){p, dl, -1};
+	}
 }
 
 static float smooth(float a, float b, float x)
@@ -115,7 +273,7 @@ static u32 hash(u32 x, u32 y, u32 seed)
 
 static void blend(Screen* s, int x, int y, u32 rgb, int a)
 {
-	if (a <= 0 || x < 0 || y < 0 || x >= s->w || y >= 240)
+	if (a <= 0 || x < s->clip[0] || y < s->clip[1] || x >= s->clip[2] || y >= s->clip[3])
 		return;
 	if (a > 255)
 		a = 255;
@@ -295,13 +453,14 @@ static void background(Screen* s, float gx, float gy, float gr, float glow)
 
 // ---------------------------------------------------------------- the two screens
 
-static void top_screen(Screen* s, const char* pack_dir, const char* found, const char* const* missing, int nmissing)
+static void top_screen(Screen* s, const char* pack_dir, int kind, const char* found)
 {
 	const int x = 26, w = 400 - 2 * x;
 	char line[160];
 	label(s, x, 30, "GAME DATA");
-	text(s, ND_TITLE, x - 1, 70, C_TEXT, found ? "WRONG FOLDER" : nmissing ? "INCOMPLETE" : "NOT FOUND", ND_SUB);
-	if (found) {
+	text(s, ND_TITLE, x - 1, 70, C_TEXT,
+	     kind == KIND_ELSEWHERE ? "WRONG FOLDER" : kind == KIND_INCOMPLETE ? "INCOMPLETE" : "NOT FOUND", ND_SUB);
+	if (kind == KIND_ELSEWHERE) {
 		para(s, x, 96, w, 19, ND_ITALIC, C_DIM,
 		     "The game data is on the card, one folder off from where sh23ds looks for it.");
 		text(s, ND_LABEL, x, 148, C_LABEL, "FOUND", 2 * ND_SUB);
@@ -312,20 +471,22 @@ static void top_screen(Screen* s, const char* pack_dir, const char* found, const
 		text(s, ND_MONO, x + 72, 172, C_HI, line, 0);
 		para(s, x, 204, w, 18, ND_BODY, C_TEXT2,
 		     "Move it on a computer or with GodMode9, and keep any save*.dat files already there.");
-	} else if (nmissing) {
+	} else if (kind == KIND_INCOMPLETE) {
 		snprintf(line, sizeof line, "Some of it is missing from " MONO "%s/" BASE ". The copy or the packer "
 		         "stopped before the end.", pack_dir);
 		int y = para(s, x, 96, w, 19, ND_ITALIC, C_DIM, line) + 12;
 		text(s, ND_LABEL, x, y, C_LABEL, "MISSING", 2 * ND_SUB);
-		int shown = nmissing > 3 ? 2 : nmissing;
-		for (int i = 0; i < shown; i++, y += 18)
-			text(s, ND_MONO, x + 72, y, C_HI, missing[i], 0);
-		if (shown < nmissing) {
-			snprintf(line, sizeof line, "and %d more", nmissing - shown);
-			text(s, ND_MONO, x + 72, y, C_DIM, line, 0);
+		if (s_listed)
+			snprintf(line, sizeof line, "%d of %d files", s_nmissing, s_listed);
+		else
+			snprintf(line, sizeof line, "%d key file%s", s_nmissing, s_nmissing == 1 ? "" : "s");
+		text(s, ND_MONO, x + 72, y, C_HI, line, 0);
+		for (int i = 0; i < s_nmissing && i < 2 && y + 18 + 46 <= 240; i++) {   // the note's two lines below
 			y += 18;
+			snprintf(line, sizeof line, "%.40s", s_missing[i]);
+			text(s, ND_MONO, x + 72, y, C_DIM, line, 0);
 		}
-		para(s, x, y + 10, w, 18, ND_BODY, C_TEXT2,
+		para(s, x, y + 28, w, 18, ND_BODY, C_TEXT2,
 		     "Copy the 3ds folder from the packer to the card again. Back up your save*.dat files first.");
 	} else {
 		para(s, x, 96, w, 19, ND_ITALIC, C_DIM,
@@ -374,7 +535,7 @@ static void paper(Screen* s, int x0, int y0, int w, int h)
 		}
 }
 
-static void bottom_screen(Screen* s, int* touch)
+static void guide_view(Screen* s)
 {
 	const int pw = 214, ph = 192, px = (320 - pw) / 2, py = 6;
 	paper(s, px, py, pw, ph);
@@ -386,23 +547,133 @@ static void bottom_screen(Screen* s, int* touch)
 			if (nodata_qr[y] >> x & 1)
 				rect(s, qx + x * q, qy + y * q, q, q, C_INK, 255);
 	text(s, ND_LABEL, (320 - text_w(ND_LABEL, GUIDE_URL, 0)) / 2, py + ph - 15, C_INK, GUIDE_URL, 0);
+}
 
-	// the footer, as touchui.c draws it: a rule, then the button and what it does
+// The list's height in pixels, the note about older packs included
+static int list_height(void)
+{
+	return s_nrows * ROW + (s_listed ? 0 : 44);
+}
+
+static int list_max_scroll(void)
+{
+	int h = list_height() - (LIST_BOTTOM - LIST_TOP);
+	return h > 0 ? h : 0;
+}
+
+// t into line, cut in the middle to fit chars characters
+static void fit(char* line, size_t size, const char* t, int n, int chars)
+{
+	if (n <= chars)
+		snprintf(line, size, "%.*s", n, t);
+	else
+		snprintf(line, size, "%.*s...%.*s", chars / 2 - 2, t, chars - chars / 2 - 1, t + n - (chars - chars / 2 - 1));
+}
+
+// Every missing file under its folder's heading, scrolled by scroll pixels
+static void list_view(Screen* s, int scroll)
+{
+	char line[64];
+	text(s, ND_LABEL, 16, 23, C_LABEL, "MISSING FILES", 3 * ND_SUB);
+	if (s_listed)
+		snprintf(line, sizeof line, "%d OF %d", s_nmissing, s_listed);
+	else
+		snprintf(line, sizeof line, "%d", s_nmissing);
+	text(s, ND_LABEL, 304 - text_w(ND_LABEL, line, ND_SUB), 23, C_TEXT2, line, ND_SUB);
+	rule(s, 10, 310, 30, C_RULE, 255);
+
+	s->clip[1] = LIST_TOP, s->clip[3] = LIST_BOTTOM;
+	for (int r = scroll / ROW; r < s_nrows && r * ROW - scroll < LIST_BOTTOM - LIST_TOP; r++) {
+		const Row* row = &s_rows[r];
+		int y = LIST_TOP + r * ROW - scroll;
+		if (row->count >= 0) {           // a folder: the website's square, its path, how many
+			rect(s, 13, y + 7, 3, 3, C_RED_HI, 255);
+			char n[16];
+			snprintf(n, sizeof n, "%d", row->count);
+			int nw = text_w(ND_LABEL, n, 0);
+			if (row->dl)
+				fit(line, sizeof line, row->path, row->dl, (296 - nw - 22 - 10) / 6 - 1);
+			else
+				line[0] = 0;
+			strcat(line, "/");
+			text(s, ND_LABEL, 22, y + 13, C_LABEL, line, 0);
+			text(s, ND_LABEL, 300 - nw, y + 13, C_DIM, n, 0);
+		} else {                         // a file in it
+			if (r & 1)
+				rect(s, 10, y, 292, ROW, 0xffffff, 7);
+			const char* name = row->path + row->dl + (row->dl ? 1 : 0);
+			fit(line, sizeof line, name, (int)strlen(name), (300 - 32) / 6);
+			text(s, ND_LABEL, 32, y + 13, C_HI, line, 0);
+		}
+	}
+	if (!s_listed)
+		para(s, 16, LIST_TOP + s_nrows * ROW - scroll + 22, 280, 18, ND_ITALIC, C_DIM,
+		     "An older packer made this pack, so only its key files could be checked.");
+	s->clip[1] = 0, s->clip[3] = 240;
+
+	// the rows fade out under the edges, so the list reads as one that goes on
+	for (int k = 0; k < 10; k++) {
+		int a = 256 * k / 10;
+		for (int x = 0; x < 320; x++) {
+			u8* top = s->ov + ((LIST_TOP + k) * 320 + x) * 4;
+			u8* bottom = s->ov + ((LIST_BOTTOM - 1 - k) * 320 + x) * 4;
+			for (int c = 0; c < 4; c++) {
+				if (scroll > 0)
+					top[c] = (u8)(top[c] * a >> 8);
+				if (scroll < list_max_scroll())
+					bottom[c] = (u8)(bottom[c] * a >> 8);
+			}
+		}
+	}
+	int max = list_max_scroll();
+	if (max) {
+		int track = LIST_BOTTOM - LIST_TOP, thumb = track * track / list_height();
+		thumb = thumb < 14 ? 14 : thumb;
+		int y = LIST_TOP + (track - thumb) * scroll / max;
+		rect(s, 307, LIST_TOP, 1, track, C_RULE, 160);
+		rect(s, 306, y, 3, thumb, C_RING, 255);
+	}
+}
+
+static void ring(Screen* s, float cx, float cy, float r, u32 rgb)
+{
+	for (int y = (int)(cy - r - 2); y <= (int)(cy + r + 2); y++)
+		for (int x = (int)(cx - r - 2); x <= (int)(cx + r + 2); x++) {
+			float d = sqrtf((x + 0.5f - cx) * (x + 0.5f - cx) + (y + 0.5f - cy) * (y + 0.5f - cy));
+			float a = 1.0f - fabsf(d - r);
+			if (a > 0.0f)
+				blend(s, x, y, rgb, (int)(255.0f * a));
+		}
+}
+
+// The footer, as touchui.c draws it: a rule, then the prompts side by side, centred
+static void prompts(Screen* s, Prompt* p, int n)
+{
 	rule(s, 20, 300, 206, C_RULE, 255);
-	const char* what = "Close";
-	int tw = text_w(ND_LABEL, "START", ND_SUB), bw = tw + 12, ww = text_w(ND_BODY, what, 0);
-	int x = (320 - (bw + 8 + ww)) / 2, y = 214, h = 17;
-	for (int i = 1; i < bw - 1; i++) {
-		blend(s, x + i, y, C_RING, 255);
-		blend(s, x + i, y + h - 1, C_RING, 255);
+	int w[4], total = 0;
+	for (int i = 0; i < n; i++) {
+		int kw = p[i].key[1] ? text_w(ND_LABEL, p[i].key, ND_SUB) + 12 : 15;
+		w[i] = kw + 7 + text_w(ND_BODY, p[i].what, 0);
+		total += w[i] + (i ? 20 : 0);
 	}
-	for (int j = 1; j < h - 1; j++) {
-		blend(s, x, y + j, C_RING, 255);
-		blend(s, x + bw - 1, y + j, C_RING, 255);
+	int x = (320 - total) / 2, y = 214, h = 17;
+	for (int i = 0; i < n; i++) {
+		if (p[i].key[1]) {               // a tag, for START and the shoulder buttons
+			int bw = text_w(ND_LABEL, p[i].key, ND_SUB) + 12;
+			for (int k = 1; k < bw - 1; k++)
+				blend(s, x + k, y, C_RING, 255), blend(s, x + k, y + h - 1, C_RING, 255);
+			for (int k = 1; k < h - 1; k++)
+				blend(s, x, y + k, C_RING, 255), blend(s, x + bw - 1, y + k, C_RING, 255);
+			text(s, ND_LABEL, x + 6, y + 13, C_RING, p[i].key, ND_SUB);
+			text(s, ND_BODY, x + bw + 7, y + 13, C_TEXT2, p[i].what, 0);
+		} else {                         // a ring with the letter
+			ring(s, x + 7.5f, y + 8.5f, 7.0f, C_RING);
+			text(s, ND_LABEL, x + 8 - text_w(ND_LABEL, p[i].key, 0) / 2, y + 13, C_RING, p[i].key, 0);
+			text(s, ND_BODY, x + 22, y + 13, C_TEXT2, p[i].what, 0);
+		}
+		p[i].box[0] = x - 8, p[i].box[1] = y - 6, p[i].box[2] = x + w[i] + 8, p[i].box[3] = y + h + 6;
+		x += w[i] + 20;
 	}
-	text(s, ND_LABEL, x + 6, y + 13, C_RING, "START", ND_SUB);
-	text(s, ND_BODY, x + bw + 8, y + 13, C_TEXT2, what, 0);
-	touch[0] = x - 8, touch[1] = y - 6, touch[2] = x + bw + 8 + ww + 8, touch[3] = y + h + 6;
 }
 
 // ---------------------------------------------------------------- each frame
@@ -414,6 +685,7 @@ static bool screen_init(Screen* s, int w, bool fog)
 	s->base = malloc((size_t)w * 240 * 3);
 	s->ovr = malloc((size_t)w * 240 * 4);
 	s->fogm = fog ? malloc((size_t)w * 240) : NULL;
+	s->clip[0] = s->clip[1] = 0, s->clip[2] = w, s->clip[3] = 240;
 	return s->ov && s->base && s->ovr && (s->fogm || !fog);
 }
 
@@ -422,8 +694,8 @@ static void screen_free(Screen* s)
 	free(s->ov), free(s->base), free(s->ovr), free(s->fogm);
 }
 
-// The overlay into the framebuffer's order
-static void screen_finish(Screen* s)
+// The overlay into the framebuffer's order; keep: the overlay stays for drawing again
+static void screen_finish(Screen* s, bool keep)
 {
 	for (int y = 0; y < 240; y++)
 		for (int x = 0; x < s->w; x++) {
@@ -431,8 +703,10 @@ static void screen_finish(Screen* s)
 			u8* q = s->ovr + (x * 240 + 239 - y) * 4;
 			q[0] = p[2], q[1] = p[1], q[2] = p[0], q[3] = p[3];
 		}
-	free(s->ov);
-	s->ov = NULL;
+	if (!keep) {
+		free(s->ov);
+		s->ov = NULL;
+	}
 }
 
 // Background, fog drifting two ways, film grain (four frames, each held for five: the port's own
@@ -466,10 +740,10 @@ static void screen_frame(const Screen* s, u8* fb, const int* st)
 	}
 }
 
-static void show(const Screen* s, Shown* held, int screen, u32 t, int fade)
+static void show(const Screen* s, Shown* held, int screen, u32 t, int fade, int serial)
 {
 	u8* fb = gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL);
-	int st[4] = {(int)(t / 5 & 3), s->fogm ? (int)(t / 9) : 0, s->fogm ? (int)(t / 15) : 0, fade};
+	int st[5] = {(int)(t / 5 & 3), s->fogm ? (int)(t / 9) : 0, s->fogm ? (int)(t / 15) : 0, fade, serial};
 	Shown* h = held[0].fb == fb || !held[0].fb ? &held[0] : &held[1];
 	if (h->fb == fb && !memcmp(h->state, st, sizeof st))
 		return;
@@ -494,50 +768,126 @@ static void fallback(void)
 	}
 }
 
+// The touch screen's overlay for the view: the guide or the list, then the prompts for it
+static void bottom_draw(Screen* s, bool list, int scroll, Prompt* p, int* np)
+{
+	memset(s->ov, 0, (size_t)s->w * 240 * 4);
+	int n = 0;
+	if (list) {
+		list_view(s, scroll);
+		p[n++] = (Prompt){"B", "Back", KEY_B, {0}};
+	} else {
+		guide_view(s);
+		if (s_nmissing)
+			p[n++] = (Prompt){"Y", "Missing files", KEY_Y, {0}};
+	}
+	p[n++] = (Prompt){"START", "Close", KEY_START, {0}};
+	prompts(s, p, n);
+	*np = n;
+	screen_finish(s, true);
+}
+
 bool nodata_check(const char* pack_dir)
 {
-	const char* missing[NEED];
-	int nmissing = 0;
+	const char* key[NEED];
+	int nkey = 0;
 	for (int i = 0; i < NEED; i++)
 		if (!has_file(pack_dir, s_need[i]))
-			missing[nmissing++] = s_need[i];
-	if (!nmissing)
+			key[nkey++] = s_need[i];
+	if (!nkey)
 		return true;
+	// something is missing: now the whole list, if the pack has one
+	bool listed = scan(pack_dir);
+	if (!listed || !s_nmissing) {
+		free(s_missing);
+		s_missing = malloc(sizeof key);
+		s_nmissing = 0, s_listed = 0;
+		for (int i = 0; s_missing && i < nkey; i++)
+			s_missing[s_nmissing++] = key[i];
+	}
 	const char* found = NULL;
-	if (nmissing == NEED)
+	if (nkey == NEED && !listed)
 		for (int i = 0; i < ELSEWHERE && !found; i++)
 			if (has_file(s_elsewhere[i], s_need[0]))
 				found = s_elsewhere[i];
+	int kind = found ? KIND_ELSEWHERE : nkey == NEED && !listed ? KIND_NONE : KIND_INCOMPLETE;
+	if (kind != KIND_INCOMPLETE)
+		s_nmissing = 0;              // nothing to list: the whole pack is missing
+	list_rows();
 
 	Screen top = {0}, bottom = {0};
 	s_fog = malloc(FOG_W * FOG_H);
 	if (!s_fog || !screen_init(&top, 400, true) || !screen_init(&bottom, 320, false)) {
-		screen_free(&top), screen_free(&bottom), free(s_fog);
+		screen_free(&top), screen_free(&bottom), free(s_fog), free(s_missing), free(s_list), free(s_rows);
 		fallback();
 		return false;
 	}
-	int touch[4];
 	fog_init();
 	background(&top, 110.0f, 120.0f, 150.0f, 0.2f);
 	background(&bottom, 160.0f, 110.0f, 170.0f, 0.1f);
-	top_screen(&top, pack_dir, found, missing, nmissing == NEED ? 0 : nmissing);
-	bottom_screen(&bottom, touch);
-	screen_finish(&top);
-	screen_finish(&bottom);
+	top_screen(&top, pack_dir, kind, found);
+	screen_finish(&top, false);
+	Prompt prompt[3];
+	int nprompt, serial = 0, scroll = 0, drag = -1;
+	bool list = false;
+	bottom_draw(&bottom, list, scroll, prompt, &nprompt);
 
 	u32 t = 0, closing = 0;
 	Shown held_top[2] = {0}, held_bottom[2] = {0};
 	while (aptMainLoop()) {
 		hidScanInput();
-		u32 down = hidKeysDown();
-		if (down & KEY_TOUCH) {
-			touchPosition tp;
+		u32 down = hidKeysDown(), held = hidKeysHeld();
+		touchPosition tp = {0};
+		if (held & KEY_TOUCH)
 			hidTouchRead(&tp);
-			if (tp.px >= touch[0] && tp.px < touch[2] && tp.py >= touch[1] && tp.py < touch[3])
-				down |= KEY_START;
-		}
+		if (down & KEY_TOUCH)
+			for (int i = 0; i < nprompt; i++)
+				if (tp.px >= prompt[i].box[0] && tp.px < prompt[i].box[2] && tp.py >= prompt[i].box[1] &&
+				    tp.py < prompt[i].box[3])
+					down |= prompt[i].button;
 		if ((down & KEY_START) && !closing)
 			closing = 1;
+		bool redraw = false;
+		if (!closing && ((!list && (down & KEY_Y) && s_nmissing) || (list && (down & KEY_B)))) {
+			list = !list;
+			scroll = 0, drag = -1;
+			redraw = true;
+		}
+		if (list && !closing) {
+			// the D-Pad and Circle Pad scroll (the Circle Pad by how far it is pushed), L and R a
+			// page, and the list follows a finger dragged on it
+			int dy = 0, page = LIST_BOTTOM - LIST_TOP - ROW;
+			circlePosition cp;
+			hidCircleRead(&cp);
+			if (held & KEY_DDOWN)
+				dy += 4;
+			if (held & KEY_DUP)
+				dy -= 4;
+			if (cp.dy < -20 || cp.dy > 20)
+				dy -= cp.dy / 12;
+			if (down & KEY_R)
+				dy += page;
+			if (down & KEY_L)
+				dy -= page;
+			if (!(held & KEY_TOUCH))
+				drag = -1;
+			else if ((down & KEY_TOUCH) && tp.py >= LIST_TOP && tp.py < LIST_BOTTOM)
+				drag = tp.py;
+			else if (drag >= 0) {
+				dy += drag - tp.py;
+				drag = tp.py;
+			}
+			int to = scroll + dy, max = list_max_scroll();
+			to = to < 0 ? 0 : to > max ? max : to;
+			if (to != scroll) {
+				scroll = to;
+				redraw = true;
+			}
+		}
+		if (redraw) {
+			bottom_draw(&bottom, list, scroll, prompt, &nprompt);
+			serial++;
+		}
 		int fade = t < FADE_IN ? (int)(t * 256 / FADE_IN) : 256;
 		if (closing) {
 			if (closing > FADE_OUT)
@@ -546,13 +896,13 @@ bool nodata_check(const char* pack_dir)
 			fade = fade < out ? fade : out;
 			closing++;
 		}
-		show(&top, held_top, GFX_TOP, t, fade);
-		show(&bottom, held_bottom, GFX_BOTTOM, t, fade);
+		show(&top, held_top, GFX_TOP, t, fade, 0);
+		show(&bottom, held_bottom, GFX_BOTTOM, t, fade, serial);
 		gfxFlushBuffers();
 		gfxSwapBuffers();
 		gspWaitForVBlank();
 		t++;
 	}
-	screen_free(&top), screen_free(&bottom), free(s_fog);
+	screen_free(&top), screen_free(&bottom), free(s_fog), free(s_missing), free(s_list), free(s_rows);
 	return false;
 }

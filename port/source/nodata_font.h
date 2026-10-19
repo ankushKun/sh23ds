@@ -130,9 +130,7 @@ static const NdGlyph nd_label_glyph[] = {
 	{2256, 6, 7, 0, -7, 48},   // '~'
 };
 static const NdKern nd_label_kern[] = {
-	{102, 102, -48},
-	{102, 105, -48},
-	{102, 108, -48},
+	{0, 0, 0},
 };
 
 static const NdGlyph nd_mono_glyph[] = {
@@ -233,9 +231,7 @@ static const NdGlyph nd_mono_glyph[] = {
 	{6309, 8, 9, 0, -9, 64},   // '~'
 };
 static const NdKern nd_mono_kern[] = {
-	{102, 102, -64},
-	{102, 105, -64},
-	{102, 108, -64},
+	{0, 0, 0},
 };
 
 static const NdGlyph nd_title_glyph[] = {
@@ -634,7 +630,6 @@ static const NdKern nd_title_kern[] = {
 	{76, 41, -3},
 	{76, 42, -25},
 	{76, 57, -6},
-	{76, 65, -10},
 	{76, 74, -2},
 	{76, 84, -20},
 	{76, 85, -2},
@@ -1839,8 +1834,6 @@ static const NdKern nd_body_kern[] = {
 	{102, 63, 9},
 	{102, 92, 10},
 	{102, 93, 2},
-	{102, 105, -3},
-	{102, 108, -2},
 	{102, 118, -2},
 	{102, 119, -2},
 	{102, 121, -2},
@@ -2969,8 +2962,6 @@ static const NdKern nd_italic_kern[] = {
 	{102, 55, 2},
 	{102, 63, 8},
 	{102, 92, 8},
-	{102, 105, -6},
-	{102, 108, -3},
 	{103, 42, -5},
 	{103, 44, -2},
 	{103, 46, -2},
@@ -3081,11 +3072,11 @@ static const NdKern nd_italic_kern[] = {
 };
 
 static const NdFont nd_font[ND_STYLES] = {
-	{nd_label_glyph, nd_label_kern, 3, 12, 3},
-	{nd_mono_glyph, nd_mono_kern, 3, 16, 4},
-	{nd_title_glyph, nd_title_kern, 521, 32, 9},
-	{nd_body_glyph, nd_body_kern, 1012, 15, 4},
-	{nd_italic_glyph, nd_italic_kern, 1009, 16, 4},
+	{nd_label_glyph, nd_label_kern, 0, 12, 3},
+	{nd_mono_glyph, nd_mono_kern, 0, 16, 4},
+	{nd_title_glyph, nd_title_kern, 520, 32, 9},
+	{nd_body_glyph, nd_body_kern, 1010, 15, 4},
+	{nd_italic_glyph, nd_italic_kern, 1007, 16, 4},
 };
 
 static const unsigned char nd_bits[29599] = {

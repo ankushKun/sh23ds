@@ -53,7 +53,8 @@ and collision of that area), and the movies are 'any' tasks: the first free work
 waiting. The first worker joins in when its own list is done. Lighting needs every area's `rooms.txt`, so
 it waits for the rooms and gets those files copied over from the other workers first, and each worker that
 made rooms writes the area indexes for its own areas at the end. The Enhanced Edition logs (`ee_used.txt`)
-of all workers are merged.
+of all workers are merged, and the writer adds `files.txt`, the pack's file list, last (as `pack.py`
+does after a native run).
 
 Each worker holds its own Python, a few hundred MB, so the page picks one to three by the computer's
 cores and memory, and the Workers option overrides it. The per-area tasks write exactly what the rooms

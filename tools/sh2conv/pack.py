@@ -49,6 +49,26 @@ def is_extra(rel):
     return 'png' in parts[:-1] or rel.endswith('.json')
 
 
+LIST = 'files.txt'
+
+
+def write_list(out):
+    """files.txt: every file of the pack the 3DS reads, one per line. Written last, so a card with it
+    had a finished pack copied (or partly copied) to it; when files are missing, sh23ds names them
+    from this list (port/source/nodata.c). The browser packer writes the same (site/packer/writer.js)."""
+    rels = []
+    for dirpath, dirnames, filenames in os.walk(out):
+        dirnames[:] = [d for d in dirnames if d != '.steps']
+        for fn in filenames:
+            rel = os.path.relpath(os.path.join(dirpath, fn), out).replace(os.sep, '/')
+            if rel != LIST and not is_extra(rel):
+                rels.append(rel)
+    with open(os.path.join(out, LIST), 'w', newline='\n') as f:
+        f.write('# sh23ds: every file of this pack. sh23ds names the ones an SD card is missing.\n')
+        f.write(''.join(r + '\n' for r in sorted(rels)))
+    return len(rels)
+
+
 def exe_md5(path):
     h = hashlib.md5()
     with open(path, 'rb') as f:
@@ -365,6 +385,7 @@ def main():
     p.finish()
     if '--strip-extras' in sys.argv:
         strip_extras(out)
+    print('%s: %d files' % (LIST, write_list(out)))
     print('done: %s' % out)
 
 

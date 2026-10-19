@@ -84,7 +84,18 @@ three cases apart:
   `make_pack.sh` `pack` folder). Where it is, where it should be, and to keep any saves already in
   the right folder.
 - **Incomplete**: some of the files there, others missing (a copy that stopped, a packer run that
-  did not finish). The missing files and what to do.
+  did not finish), or `files.txt` there without them. How many are missing, the first ones and what
+  to do. Y (or tapping its prompt) shows every missing file on the touch screen.
+
+Boot only looks for the key files, so a good card costs nothing. Once one is missing, the pack's
+`files.txt` (the packer writes it last, see `tools/packer/README.md`) is compared with the card, one
+`readdir` per folder rather than a `stat` per file. A pack from before the list has only its key files
+checked, and the list says so.
+
+The missing files' list: each folder as a heading (the red square, its path, how many) with its files
+under it, the long names cut in the middle. The D-Pad and Circle Pad scroll it, L and R a page, and it
+follows a finger; a scroll bar on the right, the rows fading under the edges while there is more, and
+B goes back to the guide.
 
 The look is the website's (`site/site.css`, and its install card `site/assets/og/install.jpg`):
 

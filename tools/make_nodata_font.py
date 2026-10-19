@@ -55,10 +55,12 @@ def main():
         kern = []
         # pairs of a quarter pixel or more; the heading is set in capitals only
         chars = [chr(c) for c in range(FIRST + 1, LAST + 1) if name != 'ND_TITLE' or not chr(c).islower()]
-        single = {c: font.getlength(c) for c in chars}
+        # kerning only: with ligatures on, "fi" would measure as its ligature and pull the i under the f
+        nolig = ['-liga', '-clig', '-dlig', '-calt']
+        single = {c: font.getlength(c, features=nolig) for c in chars}
         for a in chars:
             for b in chars:
-                k = font.getlength(a + b) - single[a] - single[b]
+                k = font.getlength(a + b, features=nolig) - single[a] - single[b]
                 k8 = round(k * SUB)
                 if abs(k8) >= SUB // 4:
                     kern.append((ord(a), ord(b), k8))

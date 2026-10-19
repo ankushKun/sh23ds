@@ -4,6 +4,10 @@ The packer reads your `Silent Hill 2` folder (the one with `sh2pc.exe` and `data
 room, texture, character, animation, event, message, picture, map, sound and movie into the formats the
 port reads. It writes a `3ds` folder for the SD card and never changes the game folder.
 
+The last file written is `files.txt`, the list of every file in the pack (the inspection extras left out).
+If the game data on the card turns out incomplete, sh23ds compares the card against it and lists the
+missing files on the touch screen.
+
 There are two ways to run it. Both use the same converters (`tools/sh2conv`, driven by
 `tools/make_pack.sh`).
 
