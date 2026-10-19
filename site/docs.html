@@ -3,20 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Docs · sh23ds</title>
-  <meta name="description" content="How the sh23ds port of Silent Hill 2 fits together, how to build it, and how to port the next piece.">
+  <title>Silent Hill 2 3DS port docs: engine, build, debugging · sh23ds</title>
+  <meta name="description" content="How the Silent Hill 2 3DS port works on the ARM11 and PICA200: the engine, building the CIA and 3DSX, the converters, the debug file and porting a feature.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="author" content="Ankush Singh">
   <meta name="theme-color" content="#050505">
   <link rel="canonical" href="https://ankush.one/sh23ds/docs.html">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="alternate" type="text/plain" title="llms.txt" href="llms.txt">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="sh23ds">
+  <meta property="og:site_name" content="sh23ds: Silent Hill 2 for Nintendo 3DS">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="sh23ds docs">
-  <meta property="og:description" content="How the port fits together, how to build it, and how to port the next piece.">
+  <meta property="og:description" content="How the Silent Hill 2 3DS port fits together, how to build it, and how to port the next piece.">
   <meta property="og:url" content="https://ankush.one/sh23ds/docs.html">
-  <meta property="og:image" content="https://ankush.one/sh23ds/assets/banner.jpg">
+  <meta property="og:image" content="https://ankush.one/sh23ds/assets/og/docs.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="The sh23ds docs: James in a hotel room on the top screen and the debug page on the touch screen.">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:creator" content="@ankushKun_">
+  <meta name="twitter:title" content="sh23ds docs">
+  <meta name="twitter:description" content="How the Silent Hill 2 3DS port fits together, how to build it, and how to port the next piece.">
+  <meta name="twitter:image" content="https://ankush.one/sh23ds/assets/og/docs.jpg">
+  <meta name="twitter:image:alt" content="The sh23ds docs: James in a hotel room on the top screen and the debug page on the touch screen.">
   <link rel="preload" href="fonts/libre-caslon-display-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/crimson-pro-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/vt323-400-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -24,6 +38,52 @@
   <link rel="stylesheet" href="site.css">
   <script>document.documentElement.classList.add("js")</script>
   <script src="site.js" defer></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        "@id": "https://ankush.one/sh23ds/docs.html#page",
+        "url": "https://ankush.one/sh23ds/docs.html",
+        "name": "Silent Hill 2 3DS port docs: engine, build, debugging · sh23ds",
+        "description": "How the Silent Hill 2 3DS port works on the ARM11 and PICA200: the engine, building the CIA and 3DSX, the converters, the debug file and porting a feature.",
+        "isPartOf": {
+          "@id": "https://ankush.one/sh23ds/#website"
+        },
+        "about": {
+          "@id": "https://ankush.one/sh23ds/#app"
+        },
+        "inLanguage": "en",
+        "primaryImageOfPage": "https://ankush.one/sh23ds/assets/og/docs.jpg",
+        "dateModified": "2026-10-19",
+        "headline": "How the sh23ds port of Silent Hill 2 works",
+        "author": {
+          "@id": "https://ankush.one/#person"
+        },
+        "proficiencyLevel": "Expert",
+        "datePublished": "2026-10-18"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Silent Hill 2 for Nintendo 3DS",
+            "item": "https://ankush.one/sh23ds/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Docs",
+            "item": "https://ankush.one/sh23ds/docs.html"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body class="page">
   <a class="skip" href="#main">Skip to the content</a>

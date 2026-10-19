@@ -17,7 +17,11 @@ looks right when the site is served under `/sh23ds/`.)
 | `fonts/` | Libre Caslon Display (titles), Crimson Pro (text and menus), VT323 (system text and code). Latin subsets, SIL Open Font License (`OFL-*.txt`) |
 | `qr/` | FBI install codes pointing at `releases/latest/download/...`; `tools/make_site_qr.py` regenerates them |
 | `assets/shots/` | Screenshots of the port, built by `tools/site/make_shots.py` from captures and the mapping in `tools/site/shots.txt` |
-| `assets/banner.jpg` | The social image and README banner, rendered from `tools/site/banner.html` by `tools/site/render_banner.sh` |
+| `assets/og/` | Each page's social card (1200 x 630): the title beside the port's two screens. `tools/site/render_banner.sh` renders them from `tools/site/banner.html` |
+| `assets/banner.jpg` | The README banner, a copy of `assets/og/home.jpg` |
+| `sitemap.xml` | Every indexable page with its images. `https://ankush.one/robots.txt` (the root site) points at it |
+| `llms.txt` | A plain summary and link list for AI assistants and crawlers ([llmstxt.org](https://llmstxt.org)) |
+| `site.webmanifest`, `assets/icon-*.png` | The manifest and the nine squares at 192 and 512 px |
 
 ## How it is put together
 
@@ -35,5 +39,9 @@ from an SVG filter in those tokens, so there are no texture images. Motion stops
 `prefers-reduced-motion`.
 
 When the version, the controls or the install steps change, update `install.html` and the README together.
+Each page's `<head>` carries its title, description, social card and JSON-LD (the game and its source
+code on the home page with the questions, a HowTo on the install page, breadcrumbs on the rest). On a
+release, bump `softwareVersion` and `dateModified` in `index.html`, the facts in `llms.txt` and the
+`lastmod` dates in `sitemap.xml`. Questions added to the home page go in its FAQPage JSON-LD too.
 The release version, file sizes and any release newer than the ones written into `roadmap.html` come
 from the GitHub API at load time.

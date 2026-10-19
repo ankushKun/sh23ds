@@ -1,10 +1,12 @@
 <p align="center">
-  <img src="site/assets/banner.jpg" width="720" alt="sh23ds: Silent Hill 2 on the New Nintendo 3DS">
+  <img src="site/assets/banner.jpg" width="720" alt="sh23ds: Silent Hill 2 running on the Nintendo 3DS, James at the lake overlook on the top screen and the town map on the touch screen">
 </p>
 
+<h1 align="center">sh23ds: Silent Hill 2 for Nintendo 3DS</h1>
+
 <p align="center">
-  <b>Silent Hill 2 for the New Nintendo 3DS.</b><br>
-  A native port of the 2001 PC Director's Cut that runs on your own copy of the game.
+  A native homebrew port of the 2001 PC Director's Cut for the New 3DS and the original 3DS,<br>
+  with the Enhanced Edition's fixes built in. It runs on your own copy of the game.
 </p>
 
 <p align="center">
@@ -27,7 +29,7 @@
 
 <br>
 
-sh23ds is a new engine for Silent Hill 2, written in C for the New 3DS's ARM11 cores and its PICA200 GPU. The rooms, characters, camera, lighting, events, puzzles, enemies, cutscenes and endings are rebuilt from a study of the PC executable, then fed the PC version's own data, which a converter turns into 3DS formats on your computer. The fixes of the [Silent Hill 2: Enhanced Edition](https://enhanced.townofsilenthill.com/SH2/) project are built in wherever they apply.
+sh23ds is Silent Hill 2 as native Nintendo 3DS homebrew: a new engine written in C for the 3DS's ARM11 cores and its PICA200 GPU, that installs as a CIA on the HOME Menu or runs as a 3DSX from the Homebrew Launcher. The rooms, characters, camera, lighting, events, puzzles, enemies, cutscenes and endings are rebuilt from a study of the PC executable, then fed the PC version's own data, which a converter turns into 3DS formats on your computer. The fixes of the [Silent Hill 2: Enhanced Edition](https://enhanced.townofsilenthill.com/SH2/) project are built in wherever they apply.
 
 The repository and the releases contain **no game files**. You need the PC release of *Silent Hill 2: Director's Cut*, and the packer in this repository turns it into the data the 3DS reads from its SD card.
 
@@ -329,6 +331,12 @@ The full list, with how each part was checked, is in [port/STATUS.md](port/STATU
 ## ❓ FAQ
 
 <details>
+<summary><b>How do I play Silent Hill 2 on a 3DS?</b></summary>
+<br>
+You need a 3DS with Luma3DS and your PC copy of the Director's Cut. Run the <a href="https://ankush.one/sh23ds/packer.html">packer</a> on the game folder, copy the <code>3ds</code> folder it makes to the SD card, dump the DSP firmware once with DSP1, and install <code>sh23ds.cia</code> with FBI. The <a href="#-install">install section</a> has each step, and the <a href="https://ankush.one/sh23ds/install.html">install guide</a> on the website builds the packer command for you.
+</details>
+
+<details>
 <summary><b>Where do I get the game files?</b></summary>
 <br>
 From your own copy of the PC game. This project doesn't host, link to or share game files, and issues asking for them will be closed.
@@ -344,6 +352,12 @@ Yes, with lighter settings. The game detects the console and switches to its Old
 <summary><b>Can I use the v1.0 PC release, or a copy with the Enhanced Edition installed?</b></summary>
 <br>
 The v1.0 release, no: the converters read tables at fixed addresses in the Director's Cut exe, so the packer only accepts that build. The Enhanced Edition's packs, yes: the packer uses the files in your `sh2e` folder. Its Enhanced Executable replaces `sh2pc.exe`, so put the Director's Cut exe back before running the packer.
+</details>
+
+<details>
+<summary><b>Is this the 2024 remake?</b></summary>
+<br>
+No. It's the 2001 game, rebuilt from the PC Director's Cut, including Born From a Wish. The remake by Bloober Team isn't part of this project.
 </details>
 
 <details>

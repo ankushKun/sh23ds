@@ -1,0 +1,15 @@
+{
+  "name": "sh23ds: Silent Hill 2 for Nintendo 3DS",
+  "short_name": "sh23ds",
+  "description": "A native Nintendo 3DS port of Silent Hill 2, the PC Director's Cut, with the Enhanced Edition's fixes built in.",
+  "start_url": "/sh23ds/",
+  "scope": "/sh23ds/",
+  "display": "browser",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": [
+    { "src": "/sh23ds/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/sh23ds/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/sh23ds/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

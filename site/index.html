@@ -3,28 +3,252 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sh23ds: Silent Hill 2 on Nintendo 3DS</title>
-  <meta name="description" content="A native Nintendo 3DS port of Silent Hill 2, the 2001 PC Director's Cut, with the Enhanced Edition's fixes built in. Runs on your own copy of the game.">
+  <title>Silent Hill 2 for Nintendo 3DS: native homebrew port · sh23ds</title>
+  <meta name="description" content="Silent Hill 2 on the New 3DS and original 3DS: a native homebrew port of the PC Director’s Cut with the Enhanced Edition’s fixes. Free, and it plays your own copy.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="author" content="Ankush Singh">
   <meta name="theme-color" content="#050505">
   <link rel="canonical" href="https://ankush.one/sh23ds/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/icon-64.png" sizes="64x64" type="image/png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <link rel="alternate" type="text/plain" title="llms.txt" href="llms.txt">
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="sh23ds">
+  <meta property="og:site_name" content="sh23ds: Silent Hill 2 for Nintendo 3DS">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="Silent Hill 2 on Nintendo 3DS">
-  <meta property="og:description" content="A native port of the PC Director's Cut, with the Enhanced Edition's fixes built in.">
+  <meta property="og:description" content="A native port of the PC Director’s Cut for the New 3DS and 3DS, with the Enhanced Edition’s fixes built in.">
   <meta property="og:url" content="https://ankush.one/sh23ds/">
-  <meta property="og:image" content="https://ankush.one/sh23ds/assets/banner.jpg">
+  <meta property="og:image" content="https://ankush.one/sh23ds/assets/og/home.jpg">
+  <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Silent Hill 2 on Nintendo 3DS: the title beside the port’s two screens, James at the lake overlook on top and the town map on the touch screen.">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:creator" content="@ankushKun_">
+  <meta name="twitter:title" content="Silent Hill 2 on Nintendo 3DS">
+  <meta name="twitter:description" content="A native port of the PC Director’s Cut for the New 3DS and 3DS, with the Enhanced Edition’s fixes built in.">
+  <meta name="twitter:image" content="https://ankush.one/sh23ds/assets/og/home.jpg">
+  <meta name="twitter:image:alt" content="Silent Hill 2 on Nintendo 3DS: the title beside the port’s two screens, James at the lake overlook on top and the town map on the touch screen.">
   <link rel="preload" href="fonts/libre-caslon-display-400-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="fonts/crimson-pro-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="site.css">
   <script>document.documentElement.classList.add("js")</script>
   <script src="site.js" defer></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://ankush.one/sh23ds/#website",
+        "url": "https://ankush.one/sh23ds/",
+        "name": "sh23ds",
+        "alternateName": "Silent Hill 2 for Nintendo 3DS",
+        "inLanguage": "en",
+        "publisher": {
+          "@id": "https://ankush.one/#person"
+        }
+      },
+      {
+        "@type": "WebPage",
+        "@id": "https://ankush.one/sh23ds/#page",
+        "url": "https://ankush.one/sh23ds/",
+        "name": "Silent Hill 2 for Nintendo 3DS: native homebrew port · sh23ds",
+        "description": "Silent Hill 2 on the New 3DS and original 3DS: a native homebrew port of the PC Director’s Cut with the Enhanced Edition’s fixes. Free, and it plays your own copy.",
+        "isPartOf": {
+          "@id": "https://ankush.one/sh23ds/#website"
+        },
+        "about": {
+          "@id": "https://ankush.one/sh23ds/#app"
+        },
+        "inLanguage": "en",
+        "primaryImageOfPage": "https://ankush.one/sh23ds/assets/og/home.jpg",
+        "dateModified": "2026-10-19"
+      },
+      {
+        "@type": [
+          "VideoGame",
+          "SoftwareApplication"
+        ],
+        "@id": "https://ankush.one/sh23ds/#app",
+        "name": "sh23ds",
+        "alternateName": [
+          "Silent Hill 2 for Nintendo 3DS",
+          "Silent Hill 2 3DS port",
+          "SH2 3DS"
+        ],
+        "url": "https://ankush.one/sh23ds/",
+        "description": "A native Nintendo 3DS port of Silent Hill 2, rebuilt in C from the 2001 PC Director’s Cut with the Silent Hill 2: Enhanced Edition’s fixes. It runs as 3DS homebrew (CIA or 3DSX) on the console’s ARM11 CPU and PICA200 GPU, and reads game data converted from the player’s own PC copy.",
+        "applicationCategory": "GameApplication",
+        "applicationSubCategory": "Nintendo 3DS homebrew",
+        "genre": [
+          "Survival horror",
+          "Psychological horror"
+        ],
+        "gamePlatform": [
+          "New Nintendo 3DS",
+          "New Nintendo 3DS XL",
+          "New Nintendo 2DS XL",
+          "Nintendo 3DS",
+          "Nintendo 3DS XL",
+          "Nintendo 2DS"
+        ],
+        "operatingSystem": "Nintendo 3DS with Luma3DS custom firmware",
+        "softwareRequirements": "Your own copy of Silent Hill 2: Director’s Cut for PC, Luma3DS, FBI or the Homebrew Launcher",
+        "storageRequirements": "1.3 GB on the SD card",
+        "softwareVersion": "0.1.2",
+        "datePublished": "2026-10-18",
+        "dateModified": "2026-10-18",
+        "downloadUrl": "https://github.com/ankushKun/sh23ds/releases/latest/download/sh23ds.cia",
+        "installUrl": "https://ankush.one/sh23ds/install.html",
+        "releaseNotes": "https://ankush.one/sh23ds/roadmap.html#releases",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "inLanguage": "en",
+        "playMode": "SinglePlayer",
+        "numberOfPlayers": {
+          "@type": "QuantitativeValue",
+          "value": 1
+        },
+        "image": "https://ankush.one/sh23ds/assets/og/home.jpg",
+        "screenshot": [
+          "https://ankush.one/sh23ds/assets/shots/f-game.jpg",
+          "https://ankush.one/sh23ds/assets/shots/apartments-top.jpg",
+          "https://ankush.one/sh23ds/assets/shots/town-top.jpg",
+          "https://ankush.one/sh23ds/assets/shots/hotel-top.jpg",
+          "https://ankush.one/sh23ds/assets/shots/wish-top.jpg",
+          "https://ankush.one/sh23ds/assets/shots/apartments-bottom.jpg"
+        ],
+        "featureList": [
+          "The whole game: all 17 areas, every puzzle and boss, all six endings, New Game+ and Born From a Wish",
+          "All 128 in-engine cutscenes and the full-motion videos",
+          "The PC camera, lighting, fog and James’ flashlight, rebuilt for the PICA200 GPU",
+          "Two screens: the game on top, the map, items and memos on the touch screen",
+          "Silent Hill 2: Enhanced Edition fixes built in, and its packs used when present",
+          "New 3DS profile at full settings, a lighter 30 fps profile for the original 3DS and 2DS",
+          "Game data packed from your own copy in the browser or with Docker"
+        ],
+        "isBasedOn": {
+          "@type": "VideoGame",
+          "name": "Silent Hill 2: Director’s Cut",
+          "alternateName": "Silent Hill 2",
+          "gamePlatform": "PC",
+          "datePublished": "2001",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Konami"
+          },
+          "sameAs": "https://en.wikipedia.org/wiki/Silent_Hill_2"
+        },
+        "author": {
+          "@id": "https://ankush.one/#person"
+        },
+        "creator": {
+          "@id": "https://ankush.one/#person"
+        },
+        "sameAs": [
+          "https://github.com/ankushKun/sh23ds"
+        ]
+      },
+      {
+        "@type": "SoftwareSourceCode",
+        "@id": "https://ankush.one/sh23ds/#source",
+        "name": "sh23ds source code",
+        "codeRepository": "https://github.com/ankushKun/sh23ds",
+        "programmingLanguage": [
+          "C",
+          "Python"
+        ],
+        "runtimePlatform": "Nintendo 3DS (devkitARM, libctru, citro3d)",
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "targetProduct": {
+          "@id": "https://ankush.one/sh23ds/#app"
+        },
+        "author": {
+          "@id": "https://ankush.one/#person"
+        }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://ankush.one/#person",
+        "name": "Ankush Singh",
+        "alternateName": [
+          "Ankush Kun",
+          "ankushKun"
+        ],
+        "url": "https://ankush.one/",
+        "sameAs": [
+          "https://github.com/ankushKun",
+          "https://x.com/ankushKun_",
+          "https://linkedin.com/in/ankushkun",
+          "https://youtube.com/@ankushkun"
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://ankush.one/sh23ds/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Where do I get the game files?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "From your own copy of the PC game. This project doesn’t host or link to game files."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it run on an original 3DS?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, with a lighter profile that aims for 30 fps: fewer fog sprites, fewer streamed town tiles and no character shadows."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is this an emulator?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. The game’s code was rewritten in C from the PC exe and runs natively on the 3DS."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I use my v1.0 copy?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Not yet. The packer reads tables at fixed places in the Director’s Cut exe, so it only accepts that build."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is this the 2024 remake?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. It’s the 2001 game, rebuilt from the PC Director’s Cut, with Born From a Wish."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What do I need?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A New 3DS or any original 3DS with Luma3DS and FBI, 1.3 GB on the SD card, and your PC copy of the Director’s Cut."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body class="home">
   <a class="skip" href="#main">Skip to the content</a>
@@ -48,12 +272,12 @@
       <div class="title-block">
         <p class="eyebrow"><span data-version>v0.1.2</span></p>
         <h1 class="title">
-          <span class="sr">Silent Hill 2</span>
+          <span class="sr">Silent Hill 2 for Nintendo 3DS</span>
           <span aria-hidden="true"><span class="word"><span class="ch" style="animation-delay:0ms">S</span><span class="ch" style="animation-delay:55ms">i</span><span class="ch" style="animation-delay:110ms">l</span><span class="ch" style="animation-delay:165ms">e</span><span class="ch" style="animation-delay:220ms">n</span><span class="ch" style="animation-delay:275ms">t</span></span> <span class="word"><span class="ch" style="animation-delay:385ms">H</span><span class="ch" style="animation-delay:440ms">i</span><span class="ch" style="animation-delay:495ms">l</span><span class="ch" style="animation-delay:550ms">l</span><span class="ch" style="animation-delay:605ms">&nbsp;</span><span class="ch" style="animation-delay:660ms">2</span></span></span>
         </h1>
       </div>
 
-      <p class="lede">A native port of the PC Director’s Cut, with the Enhanced Edition’s fixes built in.</p>
+      <p class="lede">A native Nintendo 3DS port of the PC Director’s Cut, with the Enhanced Edition’s fixes built in.</p>
 
       <nav class="menu" aria-label="Main">
         <a class="is-sel" href="install.html"><span class="sq"></span>Install</a>
@@ -69,7 +293,7 @@
         <figure class="scene">
           <div class="scene-bar"></div>
           <div class="scene-frame">
-            <img src="assets/shots/f-game.jpg" width="400" height="240" alt="James at the lake overlook in the fog, on the port">
+            <img src="assets/shots/f-game.jpg" width="400" height="240" alt="Silent Hill 2 on the 3DS: James at the lake overlook in the fog">
           </div>
           <figcaption><span class="subtitle-line">In my restless dreams, I see that town.</span></figcaption>
         </figure>
@@ -112,8 +336,8 @@
                 <p>The game on top. The map, items and memos on the touch screen.</p>
               </div>
               <figure class="photo photo-pair">
-                <img src="assets/shots/apartments-top.jpg" width="400" height="240" alt="Top screen: James outside the apartments" loading="lazy">
-                <img src="assets/shots/apartments-bottom.jpg" width="320" height="240" alt="Touch screen: the live map, his condition and the weapon" loading="lazy">
+                <img src="assets/shots/apartments-top.jpg" width="400" height="240" alt="The 3DS top screen: James outside the apartments" loading="lazy">
+                <img src="assets/shots/apartments-bottom.jpg" width="320" height="240" alt="The 3DS touch screen: the live town map, his condition and the weapon" loading="lazy">
               </figure>
             </article>
             <article class="memo" role="tabpanel" id="m-native" aria-labelledby="t-native">
@@ -135,7 +359,7 @@
                 <h3>Enhanced Edition fixes</h3>
                 <p>Every fix that applies is built in and always on. The packer uses EE packs if you have them.</p>
               </div>
-              <figure class="photo"><img src="assets/shots/f-ee.jpg" width="800" height="480" alt="The Advanced Options on both screens" loading="lazy"></figure>
+              <figure class="photo"><img src="assets/shots/f-ee.jpg" width="800" height="480" alt="The Advanced Options on both 3DS screens" loading="lazy"></figure>
             </article>
             <article class="memo" role="tabpanel" id="m-any" aria-labelledby="t-any">
               <div class="memo-text">
@@ -240,6 +464,14 @@
           <article class="paper">
             <h3>Can I use my v1.0 copy?</h3>
             <p>Not yet. The packer reads tables at fixed places in the Director’s Cut exe, so it only accepts that build.</p>
+          </article>
+          <article class="paper">
+            <h3>Is this the 2024 remake?</h3>
+            <p>No. It’s the 2001 game, rebuilt from the PC Director’s Cut, with Born From a Wish.</p>
+          </article>
+          <article class="paper">
+            <h3>What do I need?</h3>
+            <p>A New 3DS or any original 3DS with Luma3DS and FBI, 1.3 GB on the SD card, and your PC copy of the Director’s Cut.</p>
           </article>
         </div>
       </div>

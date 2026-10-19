@@ -1,6 +1,7 @@
 <!doctype html>
-<!-- The social image and README banner (site/assets/banner.jpg), rendered at 1200 x 630 by
-     tools/site/render_banner.sh from the site's own fonts and stylesheet: the home page's title screen. -->
+<!-- The social cards (site/assets/og/<page>.jpg) and the README banner (site/assets/banner.jpg, the home
+     card), rendered at 1200 x 630 by tools/site/render_banner.sh from the site's own fonts and stylesheet.
+     The page after # picks the card: the title screen on the left, the port's two screens on the right. -->
 <html lang="en" class="js">
 <head>
 <meta charset="utf-8">
@@ -9,15 +10,25 @@
 <style>
   html, body { width: 1200px; height: 630px; min-height: 0; overflow: hidden; }
   body::before { animation: none; opacity: .14; }
-  .banner { width: 1200px; height: 630px; min-height: 0; padding: 0 40px; gap: 30px; }
-  .banner .title { font-size: 104px; }
-  .banner .title .ch { animation: none; }
-  .banner .lede { max-width: 44ch; font-size: 26px; }
+  .banner {
+    width: 1200px; height: 630px; min-height: 0; padding: 0 0 0 64px; gap: 0;
+    display: grid; grid-template-columns: 1fr 470px; align-items: center; justify-items: start; text-align: left;
+  }
   .banner .static { animation: none; opacity: .26; }
-  .banner .bloom { top: 40%; animation: none; opacity: 1; }
+  .banner .bloom { left: 30%; top: 46%; animation: none; opacity: 1; }
+  .card-text { display: flex; flex-direction: column; gap: 26px; padding-bottom: 30px; }
+  .banner .eyebrow { font-size: 26px; color: var(--menu); }
+  .banner .title { font-size: 76px; letter-spacing: .1em; padding-left: 0; line-height: 1.04; }
+  .banner .title.small { font-size: 58px; letter-spacing: .08em; }
+  .banner .lede { max-width: 30ch; font-size: 27px; text-wrap: balance; }
+  /* the console: top screen 400 x 240 over the 320 x 240 touch screen, as on the 3DS */
+  .ds { justify-self: center; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px; background: #101010; border: 1px solid var(--line); box-shadow: 0 0 60px rgba(0, 0, 0, .8); }
+  .ds img { display: block; outline: 1px solid #000; }
+  .ds .top { width: 400px; height: 240px; }
+  .ds .bottom { width: 320px; height: 240px; }
   .corner { position: absolute !important; bottom: 34px; display: flex; align-items: center; gap: 12px; }
-  .corner.left { left: 44px; }
-  .corner.right { right: 44px; font: 400 24px/1 var(--mono); letter-spacing: .14em; color: var(--dim); }
+  .corner.left { left: 64px; }
+  .corner.right { right: 64px; font: 400 24px/1 var(--mono); letter-spacing: .14em; color: var(--dim); }
 </style>
 </head>
 <body class="home">
@@ -25,15 +36,39 @@
   <div class="static"></div>
   <div class="bloom"></div>
   <div class="vig"></div>
-  <div class="title-block">
-    <h1 class="title">Silent Hill 2</h1>
+  <div class="card-text">
+    <p class="eyebrow" id="eyebrow">Nintendo 3DS</p>
+    <h1 class="title" id="title">Silent Hill 2</h1>
+    <p class="lede" id="lede">A native port of the PC Director’s Cut, with the Enhanced Edition’s fixes built in.</p>
   </div>
-  <p class="lede">A native port of the PC Director’s Cut, with the Enhanced Edition’s fixes built in.</p>
+  <div class="ds">
+    <img class="top" id="top" src="../../site/assets/shots/f-game.jpg" alt="">
+    <img class="bottom" id="bottom" src="../../site/assets/shots/apartments-bottom.jpg" alt="">
+  </div>
   <div class="corner left">
     <span class="mark"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
     <span class="brand-name">sh23ds</span>
   </div>
   <div class="corner right">ANKUSH.ONE/SH23DS</div>
 </div>
+<script>
+  // Keep these in step with each page's og:image:alt.
+  const cards = {
+    install: ["Install", "On your 3DS", "Your PC copy, an SD card and FBI. About an hour.", "title-top", "title-bottom"],
+    packer: ["Packer", "In the browser", "Your PC copy, made into the 3DS game data. Nothing is uploaded.", "town-top", "town-bottom"],
+    roadmap: ["Roadmap", "Every part is in", "17 areas, 128 cutscenes, six endings. What’s left, part by part.", "deck-top", "deck-bottom"],
+    docs: ["Docs", "How it works", "A new engine in C for the 3DS, fed the PC game’s own data.", "hotel-top", "hospital-bottom"],
+  };
+  const c = cards[location.hash.slice(1)];
+  const $ = (id) => document.getElementById(id);
+  if (c) {
+    $("eyebrow").textContent = "Silent Hill 2 · " + c[0];
+    $("title").textContent = c[1];
+    $("title").classList.add("small");
+    $("lede").textContent = c[2];
+    $("top").src = "../../site/assets/shots/" + c[3] + ".jpg";
+    $("bottom").src = "../../site/assets/shots/" + c[4] + ".jpg";
+  }
+</script>
 </body>
 </html>

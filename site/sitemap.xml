@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Listed in https://ankush.one/robots.txt. Update lastmod when a page changes. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://ankush.one/sh23ds/</loc><lastmod>2026-10-19</lastmod>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/og/home.jpg</image:loc></image:image>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/shots/f-game.jpg</image:loc></image:image>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/shots/apartments-top.jpg</image:loc></image:image>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/shots/apartments-bottom.jpg</image:loc></image:image>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/shots/wish-top.jpg</image:loc></image:image>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/shots/town-top.jpg</image:loc></image:image>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/shots/hotel-top.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://ankush.one/sh23ds/install.html</loc><lastmod>2026-10-19</lastmod>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/og/install.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://ankush.one/sh23ds/packer.html</loc><lastmod>2026-10-19</lastmod>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/og/packer.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://ankush.one/sh23ds/roadmap.html</loc><lastmod>2026-10-19</lastmod>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/og/roadmap.jpg</image:loc></image:image>
+  </url>
+  <url>
+    <loc>https://ankush.one/sh23ds/docs.html</loc><lastmod>2026-10-19</lastmod>
+    <image:image><image:loc>https://ankush.one/sh23ds/assets/og/docs.jpg</image:loc></image:image>
+  </url>
+</urlset>
