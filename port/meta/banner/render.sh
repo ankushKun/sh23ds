@@ -3,7 +3,7 @@
 # banner all come from code in this folder:
 #   textures.py          -> rust, fog and port/meta/icon.png (48 x 48, the HOME Menu icon)
 #   logo.html            -> the SILENT HILL 2 wordmark
-#                           atlas.png (256 x 256: wordmark on top, rust and fog below)
+#                           atlas.png (256 x 128: wordmark left, rust and fog right)
 #   model.py             -> banner.glb
 #   render.html?flat     -> port/meta/banner.png (the flat banner, used with SH23DS_FLAT_BANNER=1)
 #   render.html?frames   -> six frames of the loop, to look at (path printed at the end)
@@ -35,13 +35,13 @@ shoot --default-background-color=00000000 --window-size=1024,512 --screenshot="$
 import sys
 from PIL import Image
 src, dst = sys.argv[1], sys.argv[2]
-atlas = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
-logo = Image.open(src + "/logo.png").convert("RGBA").resize((256, 128), Image.LANCZOS)
+atlas = Image.new("RGBA", (256, 128), (0, 0, 0, 0))
+logo = Image.open(src + "/logo.png").convert("RGBA").resize((192, 96), Image.LANCZOS)
 a = logo.getchannel("A").point(lambda v: 255 if v >= 128 else 0)   # the cut-out the 3DS will make
 logo.putalpha(a)
 atlas.paste(logo, (0, 0))
-atlas.paste(Image.open(src + "/rust.png").convert("RGBA"), (0, 128))
-atlas.paste(Image.open(src + "/fog.png").convert("RGBA"), (128, 128))
+atlas.paste(Image.open(src + "/rust.png").convert("RGBA").resize((64, 64), Image.LANCZOS), (192, 0))
+atlas.paste(Image.open(src + "/fog.png").convert("RGBA").resize((64, 64), Image.LANCZOS), (192, 64))
 atlas.save(dst)
 PYEOF
 

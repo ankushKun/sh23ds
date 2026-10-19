@@ -26,8 +26,8 @@ from -20 to 20 and y from -11 to 13, and one unit is ten pixels of the 400 x 240
 Things with a larger z sit in front of the screen when the 3D slider is up. The loop is four
 seconds and ends where it starts.
 
-The one texture is atlas.png (render.sh): the wordmark in the top half, the rust bottom left, the
-fog bottom right. Colours are given as the 3DS will show them, not as linear values.
+The one texture is atlas.png (render.sh), 256 x 128 like 3dsDL's: the wordmark on the left, the
+rust and the fog stacked on the right. Colours are given as the 3DS will show them, not as linear values.
 
 Usage: python3 model.py atlas.png banner.glb [--static SECONDS]
 
@@ -231,11 +231,12 @@ def merge(*meshes_and_offsets):
 # ------------------------------------------------------------------ Shapes
 
 # Where each picture sits in atlas.png, as (u0, v0, u1, v1) with v down (glTF's convention). The
-# rust and fog are inset by a texel so filtering never picks up the neighbour.
-T = 1.0 / 256
-LOGO_UV = (T, T, 1.0 - T, 0.5 - T)
-RUST_UV = (T, 0.5 + T, 0.5 - T, 1.0 - T)
-FOG_UV = (0.5 + T, 0.5 + T, 1.0 - T, 1.0 - T)
+# atlas is 256 x 128: the wordmark at 192 x 96 top left, the rust and the fog at 64 x 64 down the
+# right. Each region is inset by a texel so filtering never picks up the neighbour.
+TU, TV = 1.0 / 256, 1.0 / 128
+LOGO_UV = (TU, TV, 0.75 - TU, 0.75 - TV)
+RUST_UV = (0.75 + TU, TV, 1.0 - TU, 0.5 - TV)
+FOG_UV = (0.75 + TU, 0.5 + TV, 1.0 - TU, 1.0 - TV)
 
 
 def planar_uv(mesh, rect, uv):
@@ -311,11 +312,11 @@ def wave(t, period=LOOP, phase=0.0):
 
 def mark_tracks():
     """Sways slowly like a sign on a chain and bobs, and pulses twice on the jingle's heartbeat
-    (0.8 s and 1.1 s): 3dsDL's card motion, with a smaller sway and a squash kept inside its range."""
+    (0.45 s and 0.75 s): 3dsDL's card motion, with a smaller sway and a squash kept inside its range."""
     rotation = sampled(lambda t: euler_quat(math.radians(-6), math.radians(11) * wave(t), math.radians(2) * wave(t, phase=1.2)))
     scale = [
-        (0.0, (1, 1, 1)), (0.7, (1, 1, 1)), (0.8, (1.05, 1.05, 1.05)), (0.95, (0.99, 0.99, 0.99)),
-        (1.1, (1.035, 1.035, 1.035)), (1.3, (1, 1, 1)), (LOOP, (1, 1, 1)),
+        (0.0, (1, 1, 1)), (0.35, (1, 1, 1)), (0.45, (1.05, 1.05, 1.05)), (0.6, (0.99, 0.99, 0.99)),
+        (0.75, (1.035, 1.035, 1.035)), (0.95, (1, 1, 1)), (LOOP, (1, 1, 1)),
     ]
     translation = sampled(lambda t: (0.0, 0.18 * wave(t, phase=math.pi / 2), 0.0))
     return translation, rotation, scale

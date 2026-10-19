@@ -8,13 +8,15 @@ The scene is the sh23ds mark, nine rusted red squares on a plate of black iron, 
 sways slowly like a sign on a chain and pulses twice on a heartbeat while ash drifts down through
 the scene, and the SILENT HILL 2 wordmark floats in front. The sound is the pocket radio's static
 swelling and cutting out, two heartbeats, and a low A minor chord with a distant bell. The loop is
-four seconds; the sound is 2.9.
+four seconds; the sound is 1.6.
 
-> **Status: not yet seen on a console.** The HOME Menu is the only thing that shows a CIA's banner,
-> and Azahar does not draw them. A bad banner crashes or freezes the HOME Menu, so the model keeps
-> to the shape of one that is known to work (below) and every build goes through the checks in
-> `build-cgfx.py` and `model.py`. Check it on a console before a release; `SH23DS_FLAT_BANNER=1
-> port/package.sh` packs the flat picture instead.
+> **Status: second console test pending.** The first build (v0.2.1-rc.1) crashed the HOME Menu
+> the moment sh23ds was selected, before anything was drawn. Its model passed every check below;
+> what it did not share with 3dsDL's banner was size: a 2.9 s jingle (bannertool stores the sound
+> uncompressed, 512 KB) and a 256 × 256 atlas made a 551 KB banner against 3dsDL's 315 KB. The
+> second build has 3dsDL's sound length and texture size and packs to 314 KB. The HOME Menu is the
+> only thing that shows a CIA's banner, and Azahar does not draw them, so check every change on a
+> console; `SH23DS_FLAT_BANNER=1 port/package.sh` packs the flat picture instead.
 
 | File | What it is |
 | --- | --- |
@@ -64,13 +66,16 @@ packaging). This model adds nothing that 3dsDL's banner hasn't shown to work:
   as 3dsDL's arrow does.
 - **The wordmark is a Y-axis billboard with a hard-edged cut-out (alpha MASK)**, never a blend:
   blending makes pycgfx reorder bones, and a flat plane seen from behind vanishes.
-- **One texture**, as 3dsDL's banner has: `atlas.png`, 256 × 256, with the wordmark on top and the
-  rust and the fog below. Each region is inset by a texel so filtering never reaches its neighbour.
+- **One texture**, as 3dsDL's banner has, and the same size: `atlas.png`, 256 × 128, with the
+  wordmark on the left and the rust and the fog down the right. Each region is inset by a texel so filtering never reaches its neighbour.
 - **Within 3dsDL's counts**: 12 bones (14), 9 meshes (11), 5 materials (7), 1,384 triangles and
-  1,448 vertices (2,000 and 2,048), and the CGFX at 214 KiB (512 KiB is the HOME Menu's limit).
-  `model.py` and `build-cgfx.py` check all of these.
-- **The sound** is 44.1 kHz 16-bit stereo and 2.9 s, the format of 3dsDL's working jingle, under the
-  HOME Menu's 3 second limit.
+  1,448 vertices (2,000 and 2,048), and the CGFX at 145 KiB against 3dsDL's 151 KiB (512 KiB is
+  the documented limit). `model.py` and `build-cgfx.py` check all of these.
+- **The sound** is 44.1 kHz 16-bit stereo and 1.6 s, exactly 3dsDL's jingle. The documented limit
+  is 3 seconds, but a 2.9 s sound is the likely cause of the first build's crash, so `jingle.py`
+  refuses anything longer than 3dsDL's.
+- **The packed banner stays under 330,000 bytes.** 3dsDL's and 3dsFM's working banners pack to
+  315 and 324 KB; `port/package.sh` stops if `build/banner.bnr` is bigger.
 - **The camera is fixed** at (0, 1, 44.786) looking down -z with a 30° field of view and a near plane
   at 26.5, so the plane z = 0 shows x from -20 to 20 and y from -11 to 13, one unit is ten pixels,
   and nothing may come closer than z = 18. The fog sits at z = -9, the mark at -1, the wordmark at

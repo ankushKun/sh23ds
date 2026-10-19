@@ -39,6 +39,12 @@ fi
 mkdir -p build
 # shellcheck disable=SC2086
 tool bannertool makebanner $BANNER_ART -a meta/banner/jingle.wav -o build/banner.bnr
+# 3dsDL's and 3dsFM's working banners pack to 315 and 324 KB; a 551 KB one crashed the HOME Menu.
+BANNER_SIZE=$(wc -c < build/banner.bnr)
+if [ "$BANNER_SIZE" -gt 330000 ]; then
+	echo "build/banner.bnr is $BANNER_SIZE bytes; the HOME Menu is only known to take up to 330000." >&2
+	exit 1
+fi
 tool bannertool makesmdh -s "$APP_NAME" -l "$APP_DESCRIPTION" -p "$APP_AUTHOR" \
 	-i meta/icon.png -f visible,nosavebackups -o build/icon.smdh
 tool makerom -f cia -o sh23ds.cia -elf sh23ds.elf -rsf meta/template.rsf \
