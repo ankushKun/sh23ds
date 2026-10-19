@@ -1,7 +1,9 @@
 <!doctype html>
 <!-- The social cards (site/assets/og/<page>.jpg) and the README banner (site/assets/banner.jpg, the home
      card), rendered at 1200 x 630 by tools/site/render_banner.sh from the site's own fonts and stylesheet.
-     The page after # picks the card: the title screen on the left, the port's two screens on the right. -->
+     The page after # picks the card: the title screen on the left, the port's two screens on the right.
+     #github is the home card at GitHub's 1280 x 640 with everything 80 px in from the edges, where
+     GitHub's template says nothing gets cropped (.github/social-preview.jpg, uploaded by hand). -->
 <html lang="en" class="js">
 <head>
 <meta charset="utf-8">
@@ -29,6 +31,18 @@
   .corner { position: absolute !important; bottom: 34px; display: flex; align-items: center; gap: 12px; }
   .corner.left { left: 64px; }
   .corner.right { right: 64px; font: 400 24px/1 var(--mono); letter-spacing: .14em; color: var(--dim); }
+
+  .gh, .gh body, .gh .banner { width: 1280px; height: 640px; }
+  .gh .banner { padding: 0 80px 0 104px; grid-template-columns: 1fr 400px; }
+  .gh .card-text { padding-bottom: 40px; }
+  .gh .title { font-size: 72px; }
+  .gh .lede { font-size: 26px; }
+  .gh .ds { padding: 12px; gap: 10px; }
+  .gh .ds .top { width: 360px; height: 216px; }
+  .gh .ds .bottom { width: 288px; height: 216px; }
+  .gh .corner.left { left: 104px; bottom: 100px; }
+  .gh .corner.right { display: none; }
+  .gh .brand-name small { margin-left: 14px; font-size: 22px; letter-spacing: .14em; color: var(--dim); }
 </style>
 </head>
 <body class="home">
@@ -61,6 +75,10 @@
   };
   const c = cards[location.hash.slice(1)];
   const $ = (id) => document.getElementById(id);
+  if (location.hash === "#github") {
+    document.documentElement.classList.add("gh");
+    document.querySelector(".brand-name").insertAdjacentHTML("beforeend", "<small>ANKUSH.ONE/SH23DS</small>");
+  }
   if (c) {
     $("eyebrow").textContent = "Silent Hill 2 · " + c[0];
     $("title").textContent = c[1];
