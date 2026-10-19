@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Rebuilds the 3D HOME Menu banner from this folder:
 #   jingle.py      -> jingle.wav    (the sound played when sh23ds is selected)
-#   model.py       -> banner.glb    (the animated model, from atlas.png; render.sh makes that)
+#   model.py       -> banner.glb    (the animated model, from logo.png; render.sh makes that)
 #   build-cgfx.py  -> sh23ds.cgfx   (what bannertool packs into the CIA's banner)
 #
 # The outputs are committed, so port/package.sh never needs this; run it after changing anything
@@ -45,7 +45,7 @@ PYTHON_PACKAGES="dataclasses-json==0.6.7 gltflib==1.0.13 marshmallow==3.26.1 myp
 fail() { printf 'error: %s\n' "$1" >&2; exit 1; }
 command -v docker >/dev/null 2>&1 || fail "Docker is required for the CGFX step."
 docker info >/dev/null 2>&1 || fail "Docker is not running."
-[ -f "${HERE}/atlas.png" ] || fail "atlas.png is missing: run render.sh first."
+[ -f "${HERE}/logo.png" ] || fail "logo.png is missing: run render.sh first."
 
 # Under port/build (ignored by git and inside the home folder Docker shares) rather than /tmp.
 mkdir -p "${ROOT}/port/build"
@@ -56,9 +56,9 @@ printf '==> Jingle\n'
 "${PY}" -I "${HERE}/jingle.py" "${HERE}/jingle.wav"
 
 printf '==> Model\n'
-"${PY}" -I "${HERE}/model.py" "${HERE}/atlas.png" "${HERE}/banner.glb"
+"${PY}" -I "${HERE}/model.py" "${HERE}/logo.png" "${HERE}/banner.glb"
 if [ -n "${BANNER_STILL:-}" ]; then
-    "${PY}" -I "${HERE}/model.py" "${HERE}/atlas.png" "${WORK}/still.glb" --static "${BANNER_STILL}"
+    "${PY}" -I "${HERE}/model.py" "${HERE}/logo.png" "${WORK}/still.glb" --static "${BANNER_STILL}"
 fi
 
 printf '==> Fetching pycgfx %s\n' "${PYCGFX_COMMIT:0:10}"

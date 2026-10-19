@@ -7,18 +7,26 @@ slowly, with a heartbeat that makes it pulse twice, ash drifting down through th
 SILENT HILL 2 wordmark in front. Every shape is generated here, so the model can be reviewed and
 changed as code, and needs no 3D editor.
 
-The pipeline and every rule below come from 3dsDL's banner (github.com/ankushKun/3dsDL,
-resources/banner), which took five test builds on a console to get right, and from 3dsFM's, whose
-first three builds froze the HOME Menu. The scene keeps to the shape of the 3dsDL banner that works:
+The pipeline comes from 3dsDL's banner (github.com/ankushKun/3dsDL, resources/banner), which
+works on a console. Its first build crashed the HOME Menu and its third froze it; 3dsFM's first
+three froze it; sh23ds's first crashed it and its second froze it. Each failed build had something
+the working banners (3dsDL's final one and 3dsFM's 0.2.3) do not, and no single feature explains
+them all, so this model is built only from patterns those two banners run on a console, and
+stats() refuses anything else:
 
-- Only rigid node animation (translation, rotation and scale keys), no skinning.
-- One unanimated rig node holding the placement, one animated bone under it with the sway, bob
-  and pulse (3dsDL's card motion, smaller), flat parts under that with no transform of their own.
-- The wordmark is a Y-axis billboard (build-cgfx.py) with a hard-edged cut-out (alpha MASK),
-  never a blend.
-- Nothing scales to (nearly) nothing; the pulse stays within 3dsDL's squash range.
-- Fewer bones, meshes and materials than the 3dsDL banner, one texture as there, under 2,000
-  triangles.
+- Rigid node animation only, no skinning.
+- The mark is 3dsDL's card: an unanimated rig node holds the placement, one animated bone under it
+  sways, bobs and pulses (with 3dsDL's card motion, smaller), and its parts hang under that with no
+  transform and no animation of their own.
+- The fog and the ash are 3dsDL's card and sparkles without the rig, as in 3dsFM's record: one
+  animated bone at the top (Air, which barely moves), the fog under it unanimated, and the flakes
+  under it with translation, rotation and scale tracks, jumping back to the top between two keys
+  0.01 s apart the way 3dsDL's arrow does.
+- Every animated bone has all three tracks, except the wordmark, which bobs on translation alone
+  as 3dsDL's does and is a Y-axis billboard (build-cgfx.py) with a hard-edged cut-out (alpha MASK).
+- The wordmark is the only textured part, with 3dsDL's 256 x 128 texture; the rust is shaped from
+  geometry in two colours.
+- Nothing scales to (nearly) nothing, no part spins, and the counts stay within 3dsDL's banner.
 
 Units follow the HOME Menu banner camera (pycgfx's banner-camera.gltf): the camera sits at
 (0, 1, 44.786) looking down -z with a 30 degree vertical field of view, so the plane z = 0 shows x
@@ -26,16 +34,16 @@ from -20 to 20 and y from -11 to 13, and one unit is ten pixels of the 400 x 240
 Things with a larger z sit in front of the screen when the 3D slider is up. The loop is four
 seconds and ends where it starts.
 
-The one texture is atlas.png (render.sh), 256 x 128 like 3dsDL's: the wordmark on the left, the
-rust and the fog stacked on the right. Colours are given as the 3DS will show them, not as linear values.
+Colours are given as the 3DS will show them, not as linear values.
 
-Usage: python3 model.py atlas.png banner.glb [--static SECONDS]
+Usage: python3 model.py logo.png banner.glb [--static SECONDS]
 
 --static writes the scene as it is at that moment, with no animation.
 """
 
 import json
 import math
+import random
 import struct
 import sys
 
@@ -203,7 +211,7 @@ def extrude(outline, depth, bevel):
 
 
 def plane(width, height, uv=(0.0, 0.0, 1.0, 1.0)):
-    """A camera-facing rectangle showing the atlas region uv (u0, v0, u1, v1; glTF puts the
+    """A camera-facing rectangle showing the texture region uv (u0, v0, u1, v1; glTF puts the
     image's top-left at 0, 0)."""
     mesh = Mesh()
     w, h = width / 2, height / 2
@@ -230,24 +238,6 @@ def merge(*meshes_and_offsets):
 
 # ------------------------------------------------------------------ Shapes
 
-# Where each picture sits in atlas.png, as (u0, v0, u1, v1) with v down (glTF's convention). The
-# atlas is 256 x 128: the wordmark at 192 x 96 top left, the rust and the fog at 64 x 64 down the
-# right. Each region is inset by a texel so filtering never picks up the neighbour.
-TU, TV = 1.0 / 256, 1.0 / 128
-LOGO_UV = (TU, TV, 0.75 - TU, 0.75 - TV)
-RUST_UV = (0.75 + TU, TV, 1.0 - TU, 0.5 - TV)
-FOG_UV = (0.75 + TU, 0.5 + TV, 1.0 - TU, 1.0 - TV)
-
-
-def planar_uv(mesh, rect, uv):
-    """Texture coordinates for every vertex from its x and y: rect (x0, y0, x1, y1) in model
-    units maps onto the atlas region uv, the image's top at y1."""
-    x0, y0, x1, y1 = rect
-    u0, v0, u1, v1 = uv
-    mesh.uvs = [(u0 + (u1 - u0) * (x - x0) / (x1 - x0), v0 + (v1 - v0) * (y1 - y) / (y1 - y0)) for x, y, _ in mesh.positions]
-    return mesh
-
-
 def square(size, radius):
     h = size / 2
     return rounded([(-h, -h), (h, -h), (h, h), (-h, h)], radius, 2)
@@ -263,15 +253,47 @@ def plate():
 
 
 def tiles():
-    """The nine squares as one solid, standing proud of the plate, each with its own patch of
-    rust (the atlas's rust picture is spread over the whole grid)."""
+    """The nine squares as one solid in red paint, standing proud of the plate."""
     parts = []
     for row in range(3):
         for col in range(3):
             parts.append((extrude(square(TILE, 0.22), 0.6, 0.16), ((col - 1) * STEP, (1 - row) * STEP, 0.75)))
-    grid = merge(*parts)
-    h = STEP + TILE / 2
-    return planar_uv(grid, (-h, -h, h, h), RUST_UV)
+    return merge(*parts)
+
+
+def flat(outline, z):
+    """A flat polygon facing the camera at depth z."""
+    if signed_area(outline) < 0:
+        outline = outline[::-1]
+    mesh = Mesh()
+    ids = [mesh.vertex((x, y, z), (0.0, 0.0, 1.0)) for x, y in outline]
+    for a, b, c in triangulate(outline):
+        mesh.indices += [ids[a], ids[b], ids[c]]
+    return mesh
+
+
+def rust():
+    """Rust eating through the paint: uneven patches on the face of every square, heavier toward
+    the lower edges where water would sit. Fixed random numbers, so it only changes with this code."""
+    rng = random.Random(2001)
+    face = 1.05 + 0.02                  # just in front of a square's face (z 0.75 + depth 0.6 / 2)
+    reach = TILE / 2 - 0.3              # stay inside the bevel
+    parts = []
+    for row in range(3):
+        for col in range(3):
+            cx, cy = (col - 1) * STEP, (1 - row) * STEP
+            for _ in range(rng.choice((2, 3, 3, 4))):
+                px = rng.uniform(-reach, reach)
+                py = rng.uniform(-reach, reach * 0.4)
+                size = rng.uniform(0.25, 0.5)
+                size = min(size, reach - abs(px) + 0.1, reach - abs(py) + 0.1)
+                points = []
+                for k in range(7):
+                    a = 2 * math.pi * k / 7 + rng.uniform(-0.25, 0.25)
+                    r = size * rng.uniform(0.6, 1.0)
+                    points.append((px + r * math.cos(a), py + r * math.sin(a)))
+                parts.append((flat(points, 0.0), (cx, cy, face)))
+    return merge(*parts)
 
 
 def ash():
@@ -280,11 +302,22 @@ def ash():
     return extrude(rounded(corners, 0.08, 1), 0.08, 0.02)
 
 
-def backdrop():
-    """The fog behind everything, as wide as the view at z = -9 and a little more."""
-    m = plane(50.0, 31.0, FOG_UV)
-    m.positions = [(x, y + 1.0, -9.0) for x, y, _ in m.positions]
-    return m
+def backdrop(nx=10, ny=6):
+    """The fog behind everything: a flat dark sheet wider than the view at z = -9, with normals
+    bowed as if its edges curved away, so the light from the upper left fades it into shadow
+    toward the lower right and the edges. The 3DS lights each pixel, so the fade is smooth."""
+    w, h, ax, ay = 50.0, 31.0, 0.02, 0.03
+    mesh = Mesh()
+    ids = {}
+    for j in range(ny + 1):
+        for i in range(nx + 1):
+            x, y = -w / 2 + w * i / nx, -h / 2 + h * j / ny
+            ids[i, j] = mesh.vertex((x, y + 1.0, -9.0), norm3(2 * ax * x, 2 * ay * y, 1.0))
+    for j in range(ny):
+        for i in range(nx):
+            a, b, c, d = ids[i, j], ids[i + 1, j], ids[i + 1, j + 1], ids[i, j + 1]
+            mesh.indices += [a, b, c, a, c, d]
+    return mesh
 
 
 def euler_quat(x, y, z):
@@ -337,8 +370,18 @@ def ash_tracks(x, z, phase, drift, spin):
     if 0.0 < wrap < LOOP:
         keys += [(wrap, (at(wrap - 1e-6)[0], bottom, z)), (wrap + 0.01, (at(wrap + 0.02)[0], top, z))]
     translation = sorted(keys)
-    rotation = sampled(lambda t: euler_quat(math.radians(30) * wave(t, LOOP, phase * 5.0), 0, math.radians(spin) * wave(t, LOOP, phase * 3.0)))
-    return translation, rotation, None
+    rotation = sampled(lambda t: euler_quat(math.radians(25) * wave(t, LOOP, phase * 5.0), 0, math.radians(spin) * wave(t, LOOP, phase * 3.0)))
+    scale = sampled(lambda t: (0.9 + 0.1 * wave(t, LOOP / 2, phase * 4.0),) * 3)
+    return translation, rotation, scale
+
+
+def air_tracks():
+    """The fog and the ash's parent: it holds still apart from a slow breath, as 3dsDL's stars do,
+    so its children move as if they hung from the root."""
+    translation = [(0.0, (0.0, 0.0, 0.0)), (LOOP, (0.0, 0.0, 0.0))]
+    rotation = sampled(lambda t: euler_quat(0, 0, math.radians(0.4) * wave(t)))
+    scale = sampled(lambda t: (1.0 + 0.008 * wave(t, phase=math.pi / 2),) * 3)
+    return translation, rotation, scale
 
 
 def logo_tracks():
@@ -483,39 +526,40 @@ class Gltf:
             out.write(struct.pack("<I4s", len(self.blob), b"BIN\0") + self.blob)
 
 
-def build(atlas_png, out_path, static=None):
+def build(logo_png, out_path, static=None):
     g = Gltf(static)
-    atlas = g.texture(atlas_png, "atlas")
-    iron = g.material("Iron", (0.09, 0.085, 0.085), 0.55)
-    rust = g.material("Rust", (1.0, 1.0, 1.0), 0.6, texture=atlas)
-    flake = g.material("Ash", (0.42, 0.4, 0.38), 0.8)
-    fog = g.material("Fog", (1.0, 1.0, 1.0), 1.0, texture=atlas)
-    logo = g.material("Logo", (1.0, 1.0, 1.0), 1.0, texture=atlas)
+    fog = g.material("Fog", (0.3, 0.31, 0.31), 1.0)
+    flake = g.material("Ash", (0.62, 0.6, 0.57), 0.8)
+    iron = g.material("Iron", (0.09, 0.085, 0.085), 1.0)
+    paint = g.material("Paint", (0.66, 0.05, 0.07), 1.0)
+    rusted = g.material("Rust", (0.3, 0.1, 0.04), 1.0)
+    logo = g.material("Logo", (1.0, 1.0, 1.0), 1.0, texture=g.texture(logo_png, "logo"))
 
     root = g.node("Banner")
 
-    # Behind everything, unanimated, its placement in its vertices (like the mark's parts).
-    g.node("Fog", g.mesh("Fog", backdrop(), fog), parent=root)
-
-    # The mark: an unanimated rig places it, one animated bone moves it, its two parts hang
-    # under that with no transform of their own (3dsDL's CardRig, Card and card parts).
-    rig = g.node("MarkRig", parent=root, translation=(-10.2, 0.6, -1.0), scale=(1.1, 1.1, 1.1))
-    mark = g.node("Mark", parent=rig)
-    g.node("MarkPlate", g.mesh("MarkPlate", plate(), iron), parent=mark)
-    g.node("MarkTiles", g.mesh("MarkTiles", tiles(), rust), parent=mark)
-    g.animate(mark, *mark_tracks())
-
-    wordmark = g.node("Logo", g.mesh("Logo", plane(20.0, 10.0, LOGO_UV), logo), parent=root)
-    g.animate(wordmark, *logo_tracks())
-
-    # Ash, drifting down at different depths, two of them in front of the wordmark.
+    # The fog and the ash, under one bone that barely moves (3dsDL's card and its sparkles).
+    air = g.node("Air", parent=root)
+    g.animate(air, *air_tracks())
+    g.node("Fog", g.mesh("Fog", backdrop(), fog), parent=air)
     flake_mesh = g.mesh("Ash", ash(), flake)
     for k, (x, z, phase, drift, spin) in enumerate([
         (-15.5, 1.5, 0.05, 0.8, 40), (-3.2, 3.6, 0.42, 1.0, -55), (3.8, 0.8, 0.71, 0.7, 35),
         (12.5, 4.2, 0.24, 0.9, -45), (17.0, -2.0, 0.88, 0.6, 50),
     ]):
-        node = g.node("Ash%d" % (k + 1), flake_mesh, parent=root)
+        node = g.node("Ash%d" % (k + 1), flake_mesh, parent=air)
         g.animate(node, *ash_tracks(x, z, phase, drift, spin))
+
+    # The mark: an unanimated rig places it, one animated bone moves it, its parts hang under
+    # that with no transform of their own (3dsDL's CardRig, Card and card parts).
+    rig = g.node("MarkRig", parent=root, translation=(-10.2, 0.6, -1.0), scale=(1.1, 1.1, 1.1))
+    mark = g.node("Mark", parent=rig)
+    g.node("MarkPlate", g.mesh("MarkPlate", plate(), iron), parent=mark)
+    g.node("MarkTiles", g.mesh("MarkTiles", tiles(), paint), parent=mark)
+    g.node("MarkRust", g.mesh("MarkRust", rust(), rusted), parent=mark)
+    g.animate(mark, *mark_tracks())
+
+    wordmark = g.node("Logo", g.mesh("Logo", plane(20.0, 10.0), logo), parent=root)
+    g.animate(wordmark, *logo_tracks())
 
     g.write(out_path)
 
@@ -541,6 +585,80 @@ def stats(path):
     print("model: " + ", ".join("%s %d (max %d)" % (k, out[k], limits[k]) for k in limits))
     if over:
         sys.exit("over the limits of the banner that works: " + ", ".join(over))
+    problems = patterns(doc, data)
+    if problems:
+        sys.exit("not a pattern the working banners use:\n  " + "\n  ".join(problems))
+    print("model: every node follows a pattern 3dsDL's or 3dsFM's working banner uses")
+
+
+def patterns(doc, data):
+    """What in this model the banners that work on a console (3dsDL's final one, 3dsFM's 0.2.3)
+    never do. Each frozen or crashed build had at least one such thing."""
+    n = struct.unpack_from("<I", data, 12)[0]
+    blob = data[20 + n + 8:]
+
+    def floats(index):
+        acc = doc["accessors"][index]
+        view = doc["bufferViews"][acc["bufferView"]]
+        width = {"SCALAR": 1, "VEC3": 3, "VEC4": 4}[acc["type"]]
+        values = struct.unpack_from("<%df" % (acc["count"] * width), blob, view["byteOffset"])
+        return [values[i:i + width] for i in range(0, len(values), width)]
+
+    nodes = doc["nodes"]
+    parent = {c: i for i, node in enumerate(nodes) for c in node.get("children", [])}
+    tracks = {}
+    problems = []
+    for anim in doc.get("animations", []):
+        for ch in anim["channels"]:
+            sampler = anim["samplers"][ch["sampler"]]
+            times = [t[0] for t in floats(sampler["input"])]
+            values = floats(sampler["output"])
+            node, path = ch["target"]["node"], ch["target"]["path"]
+            tracks.setdefault(node, {})[path] = values
+            name = "%s %s" % (nodes[node]["name"], path)
+            if abs(times[0]) > 1e-6 or abs(times[-1] - LOOP) > 1e-6:
+                problems.append("%s does not run from 0 to %g s" % (name, LOOP))
+            if min(b - a for a, b in zip(times, times[1:])) < 0.0099:
+                problems.append("%s has keys closer than 0.01 s" % name)
+            if path == "scale" and min(min(v) for v in values) < 0.3:
+                problems.append("%s scales below 0.3 (3dsDL's third build froze on 0.001)" % name)
+            if path == "rotation" and max(2 * math.degrees(math.acos(min(1.0, abs(v[3])))) for v in values) > 160:
+                problems.append("%s turns further than 3dsDL's sparkles (160 degrees)" % name)
+    if not tracks:
+        return problems              # a still: no animation to check
+    textured = {i for i, m in enumerate(doc["materials"]) if "baseColorTexture" in m["pbrMetallicRoughness"]}
+    for m in textured:
+        if doc["materials"][m]["name"] != "Logo":
+            problems.append("material %s is textured; only the billboard wordmark is" % doc["materials"][m]["name"])
+        if doc["materials"][m].get("alphaMode") != "MASK":
+            problems.append("material %s is not a MASK cut-out" % doc["materials"][m]["name"])
+    for i, node in enumerate(nodes):
+        name, own = node["name"], [k for k in ("translation", "rotation", "scale", "matrix") if k in node]
+        depth, j = 0, i
+        while j in parent:
+            j, depth = parent[j], depth + 1
+        if depth > 3:
+            problems.append("%s is %d deep; 3dsDL's deepest bone is 3" % (name, depth))
+        if i in tracks:
+            if own:
+                problems.append("%s is animated and has its own %s" % (name, "/".join(own)))
+            paths = set(tracks[i])
+            want = {"translation"} if name == "Logo" else {"translation", "rotation", "scale"}
+            if paths != want:
+                problems.append("%s animates %s; it should animate %s" % (name, "/".join(sorted(paths)), "/".join(sorted(want))))
+            up = parent.get(i)
+            if up is not None and up not in tracks and up in parent and parent[up] in parent:
+                problems.append("%s is animated under an unanimated bone that is not a rig on the root" % name)
+        elif i in parent:
+            animated_parent = parent[i] in tracks
+            if own and (node.get("mesh") is not None or animated_parent or parent[i] in parent
+                        or not any(c in tracks for c in node.get("children", []))):
+                problems.append("%s has its own transform but is not a rig on the root over an animated bone" % name)
+            if node.get("mesh") is not None and not animated_parent:
+                problems.append("%s draws a mesh but neither it nor its parent is animated" % name)
+            if not own and node.get("mesh") is None and not animated_parent:
+                problems.append("%s is an empty bone with nothing to do" % name)
+    return problems
 
 
 if __name__ == "__main__":

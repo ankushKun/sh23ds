@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Draws the pictures the HOME Menu art is made of, all from code:
 
-  rust.png   128 x 128  the rusted red metal of the nine squares (banner model)
-  fog.png    128 x 128  the fog behind the banner scene
   icon.png    48 x 48   the HOME Menu and Homebrew Launcher icon: the website's mark, nine rusted
                         red squares on black (site/assets/favicon.svg), at its proportions
   icon-1024.png         the same icon large, to look at
@@ -73,18 +71,6 @@ def rust(size=128, coverage=0.47):
     return img
 
 
-def fog(size=128):
-    """Dark, cold fog: near black at the top, a pale band of mist low in the middle, slow swirls."""
-    rng = np.random.default_rng(RNG.integers(1 << 30))
-    swirl = fractal(size, rng, 5, 2)
-    y = np.linspace(0, 1, size)[:, None]
-    band = np.exp(-((y - 0.62) / 0.22) ** 2)                           # the mist bank
-    x = np.linspace(-1, 1, size)[None, :]
-    light = 0.08 + 0.42 * band * (0.65 + 0.7 * swirl) * (1 - 0.35 * x * x) + 0.06 * swirl
-    col = ramp([(0.0, (0.02, 0.025, 0.03)), (0.35, (0.16, 0.17, 0.17)), (0.7, (0.42, 0.43, 0.41)), (1.0, (0.62, 0.62, 0.59))], light)
-    return Image.fromarray((np.clip(col, 0, 1) * 255).astype(np.uint8), "RGB")
-
-
 def icon(size, rust_img):
     """favicon.svg at any size: a black rounded square holding a 3 x 3 grid of red squares
     (16 units: margin 2.5, square 3, gap 1), here in rusted metal with a lit top edge."""
@@ -117,9 +103,7 @@ def icon(size, rust_img):
 
 def main(out):
     os.makedirs(out, exist_ok=True)
-    r = rust()
-    r.save(os.path.join(out, "rust.png"))
-    fog().save(os.path.join(out, "fog.png"))
+    RNG.integers(1 << 30, size=2)   # the seeds the banner's old rust and fog textures took
     # the icon is mostly paint, rust only at the edges of each square, so it still reads red at 48 px
     icon(48, rust(256, 0.6)).save(os.path.join(out, "icon.png"))
     icon(1024, rust(512, 0.6)).save(os.path.join(out, "icon-1024.png"))

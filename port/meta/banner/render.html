@@ -8,7 +8,7 @@
      ?mode=flat      a 512 x 256 still for the flat fallback banner
 
      The lighting imitates the CGFX after build-cgfx.py: one directional light from the upper
-     left, a soft ambient fill, and an unlit wordmark and fog. -->
+     left, a soft ambient fill, and an unlit wordmark. -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -45,12 +45,13 @@ gltf.scene.traverse((object) => {
   if (!object.isMesh) return;
   const source = object.material;
   const c = source.color;
-  if (source.map && (source.name === "Logo" || source.name === "Fog")) {
+  if (source.map) {
     object.material = new THREE.MeshBasicMaterial({ map: source.map, alphaTest: 0.5 });
-  } else if (source.map) {
-    object.material = new THREE.MeshPhongMaterial({ map: source.map, shininess: 20, specular: 0x222222 });
   } else {
-    const material = new THREE.MeshPhongMaterial({ shininess: 70, specular: 0x5a5a5a });
+    // pycgfx's specular: strength 1 - 0.9 * roughness, a Phong lobe of 800 / (1 + 100 * roughness).
+    // The lights below are scaled by pi for three.js's diffuse, so the strength is divided by it.
+    const r = source.roughness, k = (1 - 0.9 * r) / Math.PI;
+    const material = new THREE.MeshPhongMaterial({ shininess: 800 / (1 + 100 * r), specular: new THREE.Color(k, k, k) });
     // The 3DS shows a material's colour as given, with no gamma: show the glTF factor as is.
     material.color.setRGB(c.r, c.g, c.b, THREE.SRGBColorSpace);
     object.material = material;
@@ -60,7 +61,7 @@ gltf.scene.traverse((object) => {
 const sun = new THREE.DirectionalLight(0xffffff, Math.PI * 0.9);
 sun.position.copy(LIGHT.clone().multiplyScalar(-50));
 scene.add(sun);
-scene.add(new THREE.AmbientLight(0xffffff, Math.PI * 0.42));
+scene.add(new THREE.AmbientLight(0xffffff, Math.PI * 0.36));
 
 const mixer = new THREE.AnimationMixer(gltf.scene);
 gltf.animations.forEach((clip) => mixer.clipAction(clip).play());

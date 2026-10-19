@@ -28,8 +28,8 @@ works on a console; only the lighting and the unlit materials differ.
   ambient light, so anything turned away from the viewer goes black. The
   light is moved up and to the left, like a studio key light, and every
   material gets a soft ambient fill.
-- The wordmark and the fog are pictures, not surfaces, so they get full
-  ambient light and show their own colours whatever the angle.
+- The wordmark is a picture, not a surface, so it gets full ambient light
+  and shows its own colours whatever the angle.
 
 scripts/make-banner.sh runs this in a pinned Python container with pycgfx
 fetched at a pinned commit.
@@ -43,7 +43,7 @@ import sys
 LIMIT = 0x80000  # the HOME Menu refuses CGFX files above 512 KiB
 AMBIENT = 0.36  # a little darker than 3dsDL's 0.42: the scene sits in fog
 LIGHT = (0.35, -0.5, -0.8)  # direction the light travels: down, right, into the screen
-UNLIT = ("Logo", "Fog")
+UNLIT = ("Logo",)
 
 
 def lookup_failures(info):

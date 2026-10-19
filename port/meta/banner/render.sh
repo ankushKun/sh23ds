@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Draws every picture of the HOME Menu art, so the icon, the banner's textures and the flat
 # banner all come from code in this folder:
-#   textures.py          -> rust, fog and port/meta/icon.png (48 x 48, the HOME Menu icon)
-#   logo.html            -> the SILENT HILL 2 wordmark
-#                           atlas.png (256 x 128: wordmark left, rust and fog right)
+#   textures.py          -> port/meta/icon.png (48 x 48, the HOME Menu icon)
+#   logo.html            -> logo.png (256 x 128, the SILENT HILL 2 wordmark, the model's one texture)
 #   model.py             -> banner.glb
 #   render.html?flat     -> port/meta/banner.png (the flat banner, used with SH23DS_FLAT_BANNER=1)
 #   render.html?frames   -> six frames of the loop, to look at (path printed at the end)
@@ -29,24 +28,18 @@ printf '==> Textures and icon\n'
 "${PY}" -I "${HERE}/textures.py" "${OUT}"
 cp "${OUT}/icon.png" "${META}/icon.png"
 
-printf '==> Wordmark and atlas\n'
+printf '==> Wordmark\n'
 shoot --default-background-color=00000000 --window-size=1024,512 --screenshot="${OUT}/logo.png" "file://${HERE}/logo.html"
-"${PY}" -I - "${OUT}" "${HERE}/atlas.png" <<'PYEOF'
+"${PY}" -I - "${OUT}/logo.png" "${HERE}/logo.png" <<'PYEOF'
 import sys
 from PIL import Image
-src, dst = sys.argv[1], sys.argv[2]
-atlas = Image.new("RGBA", (256, 128), (0, 0, 0, 0))
-logo = Image.open(src + "/logo.png").convert("RGBA").resize((192, 96), Image.LANCZOS)
-a = logo.getchannel("A").point(lambda v: 255 if v >= 128 else 0)   # the cut-out the 3DS will make
-logo.putalpha(a)
-atlas.paste(logo, (0, 0))
-atlas.paste(Image.open(src + "/rust.png").convert("RGBA").resize((64, 64), Image.LANCZOS), (192, 0))
-atlas.paste(Image.open(src + "/fog.png").convert("RGBA").resize((64, 64), Image.LANCZOS), (192, 64))
-atlas.save(dst)
+logo = Image.open(sys.argv[1]).convert("RGBA").resize((256, 128), Image.LANCZOS)
+logo.putalpha(logo.getchannel("A").point(lambda v: 255 if v >= 128 else 0))   # the cut-out the 3DS will make
+logo.save(sys.argv[2])
 PYEOF
 
 printf '==> Model\n'
-"${PY}" -I "${HERE}/model.py" "${HERE}/atlas.png" "${HERE}/banner.glb"
+"${PY}" -I "${HERE}/model.py" "${HERE}/logo.png" "${HERE}/banner.glb"
 
 printf '==> Flat banner and preview frames\n'
 shoot --window-size=512,256 --screenshot="${OUT}/flat.png" "file://${HERE}/render.html?mode=flat"
