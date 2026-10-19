@@ -2,7 +2,7 @@
 """Builds sh23ds's 3D HOME Menu banner as a binary glTF (banner.glb).
 
 The banner is what the 3DS shows on the top screen while sh23ds is selected on the HOME Menu: the
-nine rusted red squares of the sh23ds mark on a plate of black iron, hanging in fog and swaying
+nine rusted red squares of the sh23ds mark on a plate of black iron, hanging and swaying
 slowly, with a heartbeat that makes it pulse twice, ash drifting down through the scene, and the
 SILENT HILL 2 wordmark in front. Every shape is generated here, so the model can be reviewed and
 changed as code, and needs no 3D editor.
@@ -18,9 +18,9 @@ stats() refuses anything else:
 - The mark is 3dsDL's card: an unanimated rig node holds the placement, one animated bone under it
   sways, bobs and pulses (with 3dsDL's card motion, smaller), and its parts hang under that with no
   transform and no animation of their own.
-- The fog and the ash are 3dsDL's card and sparkles without the rig, as in 3dsFM's record: one
-  animated bone at the top (Air, which barely moves), the fog under it unanimated, and the flakes
-  under it with translation, rotation and scale tracks, jumping back to the top between two keys
+- The ash is 3dsDL's sparkles under its card, without the rig, as in 3dsFM's record: one animated
+  bone at the top (Air, which barely moves) and the flakes under it with translation, rotation and
+  scale tracks, jumping back to the top between two keys
   0.01 s apart the way 3dsDL's arrow does.
 - Every animated bone has all three tracks, except the wordmark, which bobs on translation alone
   as 3dsDL's does and is a Y-axis billboard (build-cgfx.py) with a hard-edged cut-out (alpha MASK).
@@ -302,24 +302,6 @@ def ash():
     return extrude(rounded(corners, 0.08, 1), 0.08, 0.02)
 
 
-def backdrop(nx=10, ny=6):
-    """The fog behind everything: a flat dark sheet wider than the view at z = -9, with normals
-    bowed as if its edges curved away, so the light from the upper left fades it into shadow
-    toward the lower right and the edges. The 3DS lights each pixel, so the fade is smooth."""
-    w, h, ax, ay = 50.0, 31.0, 0.02, 0.03
-    mesh = Mesh()
-    ids = {}
-    for j in range(ny + 1):
-        for i in range(nx + 1):
-            x, y = -w / 2 + w * i / nx, -h / 2 + h * j / ny
-            ids[i, j] = mesh.vertex((x, y + 1.0, -9.0), norm3(2 * ax * x, 2 * ay * y, 1.0))
-    for j in range(ny):
-        for i in range(nx):
-            a, b, c, d = ids[i, j], ids[i + 1, j], ids[i + 1, j + 1], ids[i, j + 1]
-            mesh.indices += [a, b, c, a, c, d]
-    return mesh
-
-
 def euler_quat(x, y, z):
     """Quaternion for rotations about x, then y, then z (radians)."""
     cx, sx = math.cos(x / 2), math.sin(x / 2)
@@ -376,7 +358,7 @@ def ash_tracks(x, z, phase, drift, spin):
 
 
 def air_tracks():
-    """The fog and the ash's parent: it holds still apart from a slow breath, as 3dsDL's stars do,
+    """The ash's parent: it holds still apart from a slow breath, as 3dsDL's stars do,
     so its children move as if they hung from the root."""
     translation = [(0.0, (0.0, 0.0, 0.0)), (LOOP, (0.0, 0.0, 0.0))]
     rotation = sampled(lambda t: euler_quat(0, 0, math.radians(0.4) * wave(t)))
@@ -528,7 +510,6 @@ class Gltf:
 
 def build(logo_png, out_path, static=None):
     g = Gltf(static)
-    fog = g.material("Fog", (0.3, 0.31, 0.31), 1.0)
     flake = g.material("Ash", (0.62, 0.6, 0.57), 0.8)
     iron = g.material("Iron", (0.09, 0.085, 0.085), 1.0)
     paint = g.material("Paint", (0.66, 0.05, 0.07), 1.0)
@@ -537,10 +518,10 @@ def build(logo_png, out_path, static=None):
 
     root = g.node("Banner")
 
-    # The fog and the ash, under one bone that barely moves (3dsDL's card and its sparkles).
+    # The ash, under one bone that barely moves (3dsDL's card and its sparkles). There is no
+    # backdrop: a grey sheet over the HOME Menu's own background looked flat on a console.
     air = g.node("Air", parent=root)
     g.animate(air, *air_tracks())
-    g.node("Fog", g.mesh("Fog", backdrop(), fog), parent=air)
     flake_mesh = g.mesh("Ash", ash(), flake)
     for k, (x, z, phase, drift, spin) in enumerate([
         (-15.5, 1.5, 0.05, 0.8, 40), (-3.2, 3.6, 0.42, 1.0, -55), (3.8, 0.8, 0.71, 0.7, 35),
