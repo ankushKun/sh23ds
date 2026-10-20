@@ -6,12 +6,17 @@
 // Messages in:  {type: 'open', out: 'zip' | 'dir', dir, lanes}   then one {type: 'port', port} per worker
 //               {type: 'add', rel, data}                           a file from the page itself
 //               {type: 'finish'}                                   after every worker sent its 'end'
-// Messages out: {type: 'ready'} {type: 'done', name, size, files, bytes} {type: 'error', message}
+//               {type: 'abort'}                                    a failed run: close the zip's handle
+// Messages out: {type: 'ready'} {type: 'done', name, size, files, bytes} {type: 'aborted'} {type: 'error', message}
 import './sinks.js';    // self.SH2Sinks
 
-const ZIP_NAME = 'sh23ds-sd.zip';
+// A sync access handle is exclusive, so each run writes a zip of its own name: a handle a run left open
+// (a tab that stopped, a worker the browser hasn't torn down yet) can't block the next one. The page
+// saves it as sh23ds-sd.zip whatever it is called here.
+const ZIP_PREFIX = 'sh23ds-sd';
+const ZIP_NAME = ZIP_PREFIX + '-' + Date.now().toString(36) + '.zip';
 const post = (m) => self.postMessage(m);
-let sink = null, queue = Promise.resolve(), files = 0, bytes = 0;
+let sink = null, handle = null, queue = Promise.resolve(), files = 0, bytes = 0;
 let lanes = 0, ended = 0, finishing = null;
 const listed = new Set();   // what files.txt lists: every file but the inspection extras
 
@@ -35,9 +40,14 @@ async function zipSink() {
 		throw new Error('This browser window can’t store the zip (' + (e.message || e.name) + '). ' +
 			'A private window does that: use a normal window, or in Chrome and Edge save straight to a folder.');
 	}
-	try { await root.removeEntry(ZIP_NAME); } catch (e) { /* none yet */ }
+	// the zips earlier runs left behind; one still open somewhere refuses and stays
+	for await (const name of root.keys()) {
+		if (name.startsWith(ZIP_PREFIX) && name.endsWith('.zip')) {
+			try { await root.removeEntry(name); } catch (e) { /* in use */ }
+		}
+	}
 	const fh = await root.getFileHandle(ZIP_NAME, { create: true });
-	const handle = await fh.createSyncAccessHandle();
+	handle = await fh.createSyncAccessHandle();
 	const z = new SH2Sinks.ZipSink((u8, at) => {
 		const n = handle.write(u8, { at });
 		if (n !== u8.length) throw new Error('the browser storage is full (wrote ' + n + ' of ' + u8.length + ' bytes)');
@@ -47,6 +57,7 @@ async function zipSink() {
 		const size = await finish();
 		handle.flush();
 		handle.close();
+		handle = null;
 		return size;
 	};
 	return z;
@@ -94,6 +105,12 @@ self.onmessage = async (e) => {
 		} else if (m.type === 'finish') {
 			finishing = true;
 			maybeFinish();
+		} else if (m.type === 'abort') {
+			if (handle) {
+				try { handle.close(); } catch (e) { /* already closed */ }
+				handle = null;
+			}
+			post({ type: 'aborted' });
 		}
 	} catch (err) {
 		post({ type: 'error', message: String(err && err.message || err) });

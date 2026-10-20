@@ -229,12 +229,32 @@
 		});
 	}
 
+	// a failed run ends its workers too; the writer closes the zip first, so the next run can write one
 	async function pack(opt) {
 		const writer = new Worker('packer/writer.js', { type: 'module' });
-		let opened = null;
+		const lanes = [];
+		let aborted = null;
+		try {
+			return await packWith(opt, writer, lanes, (a) => { aborted = a; });
+		} catch (err) {
+			if (aborted) {
+				writer.postMessage({ type: 'abort' });
+				await Promise.race([aborted, new Promise((r) => setTimeout(r, 2000))]);
+			}
+			throw err;
+		} finally {
+			for (const w of lanes) w.worker.terminate();
+			writer.terminate();
+		}
+	}
+
+	async function packWith(opt, writer, lanes, onAbort) {
+		let opened = null, abortedDone = null;
+		onAbort(new Promise((r) => { abortedDone = r; }));
 		const writerDone = new Promise((resolve, reject) => {
 			writer.onmessage = (e) => {
 				if (e.data.type === 'done') resolve(e.data);
+				else if (e.data.type === 'aborted') abortedDone();
 				else if (e.data.type === 'ready') opened.resolve();
 				else if (e.data.type === 'error') {
 					const err = new Error(e.data.message);
@@ -259,7 +279,6 @@
 		writerDone.catch(fail);
 
 		// the workers
-		const lanes = [];
 		for (let i = 0; i < opt.lanes; i++) {
 			const ch = new MessageChannel();
 			writer.postMessage({ type: 'port', port: ch.port1 }, [ch.port1]);
@@ -380,8 +399,6 @@
 		for (const w of lanes) await ask(w, { type: 'end' }, 'ended');
 		writer.postMessage({ type: 'finish' });
 		const r = await writerDone;
-		for (const w of lanes) w.worker.terminate();
-		writer.terminate();
 		if (failed) throw failed;
 		return r;
 	}
@@ -443,7 +460,7 @@
 				const file = await (await root.getFileHandle(r.name)).getFile();
 				const a = $('[data-download]');
 				a.href = URL.createObjectURL(file);
-				a.download = r.name;
+				a.download = 'sh23ds-sd.zip';
 				a.hidden = false;
 				a.onclick = () => track('packer_zip_saved', { gb: gb(file.size) });
 				$('[data-size]').textContent = (file.size / 1e9).toFixed(2) + ' GB';
