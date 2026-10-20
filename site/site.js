@@ -144,6 +144,38 @@
       .catch(function () {});
   }
 
+  // Downloads of every file in every release, pre-releases included: the same sum as the shields.io badge
+  // in the README. Kept for an hour, so a returning visitor sees it at once and GitHub's 60 requests an
+  // hour go further. Hidden until there is a number to show.
+  function downloads() {
+    var els = $$("[data-downloads]");
+    if (!els.length || !window.fetch) return;
+    var key = "downloads:" + REPO, total = 0, saved = null;
+    function show(n) {
+      els.forEach(function (el) { el.textContent = n.toLocaleString("en") + (n === 1 ? " download" : " downloads"); el.hidden = false; });
+      $$("[data-downloads-sep]").forEach(function (el) { el.hidden = false; });
+    }
+    try { saved = JSON.parse(localStorage.getItem(key)); } catch (e) {}
+    if (saved && typeof saved.total === "number") {
+      show(saved.total);
+      if (Date.now() - saved.at < 3600000) return;
+    }
+    function page(n) {
+      return fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=100&page=" + n, { headers: { Accept: "application/vnd.github+json" } })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (data) {
+          data.forEach(function (rel) { (rel.assets || []).forEach(function (a) { total += a.download_count || 0; }); });
+          if (data.length === 100) return page(n + 1);
+        });
+    }
+    page(1)
+      .then(function () {
+        show(total);
+        try { localStorage.setItem(key, JSON.stringify({ total: total, at: Date.now() })); } catch (e) {}
+      })
+      .catch(function () {});
+  }
+
   function tabs() {
     $$("[data-tabs]").forEach(function (box) {
       var buttons = $$('[role="tab"]', box);
@@ -411,6 +443,7 @@
   }
 
   release();
+  downloads();
   tabs();
   copyButtons();
   scrollspy();
