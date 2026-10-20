@@ -17,6 +17,7 @@ Key facts:
 ## Pages
 
 - [Home](https://ankush.one/sh23ds/): what the port covers, the FBI install code and common questions
+- [Video](https://www.youtube.com/watch?v=l1cs-1I2atc): the install on a real 3DS and the first fifteen minutes of play (14:22)
 - [Install guide](https://ankush.one/sh23ds/install.html): the five steps from your PC copy to the HOME Menu, with a command builder for the Docker packer
 - [Browser packer](https://ankush.one/sh23ds/packer.html): builds the SD card data from your game folder in the page
 - [Roadmap](https://ankush.one/sh23ds/roadmap.html): every part's state and the release log

@@ -7,7 +7,7 @@ looks right when the site is served under `/sh23ds/`.)
 
 | File | What it is |
 | --- | --- |
-| `index.html` | Home: the title screen with its menu, the opening scene, the memo list of features, the save slots and FBI code, the results screen, questions |
+| `index.html` | Home: the title screen with its menu, the opening scene (which also plays the YouTube video), the memo list of features, the save slots and FBI code, the results screen, questions |
 | `install.html` | The install guide: five steps, with a command builder for the packer (system, game folder, copy buttons) |
 | `roadmap.html` | Chapters done and ahead, every part's state on memo paper, and the release log |
 | `docs.html` | How the port fits together, building, releases, the debug file, the converters and porting a feature |
@@ -56,7 +56,7 @@ portfolio and the other project pages. Nothing loads on localhost, so previews a
 send nothing, or when the browser sends Global Privacy Control.
 
 Custom events go through `window.track(name, props)`: `memo_viewed`, `tab_selected`,
-`install_os_changed` and `command_copied` from `site.js`, and `packer_folder`, `packer_started`,
+`install_os_changed`, `command_copied` and `video_played` from `site.js`, and `packer_folder`, `packer_started`,
 `packer_finished`, `packer_failed` (also sent to error tracking) and `packer_zip_saved` from
 `packer/page.js`. The packer's events carry counts, sizes and the chosen options, never file names or
 contents. What the site sends is listed on https://ankush.one/privacy/, so update that page when adding

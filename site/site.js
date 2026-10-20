@@ -246,6 +246,28 @@
     }
   }
 
+  // The opening still plays the video in its place. Nothing comes from YouTube until the click; a click
+  // meant for a new tab or window goes to YouTube as a plain link.
+  function tape() {
+    var link = $("[data-tape]");
+    if (!link) return;
+    link.addEventListener("click", function (e) {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      var scene = link.closest(".scene");
+      var player = document.createElement("iframe");
+      player.src = "https://www.youtube-nocookie.com/embed/" + link.dataset.tape + "?autoplay=1&rel=0&playsinline=1";
+      player.title = "Silent Hill 2 on a real 3DS: the install and the first fifteen minutes";
+      player.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      player.allowFullscreen = true;
+      player.referrerPolicy = "strict-origin-when-cross-origin";
+      scene.classList.add("is-playing");
+      scene.appendChild(player);
+      player.focus();
+      track("video_played", { video: link.dataset.tape });
+    });
+  }
+
   // Up and down move through the title menu, like the game's.
   function titleMenu() {
     var menu = $(".menu");
@@ -394,6 +416,7 @@
   scrollspy();
   titleMenu();
   titleVideo();
+  tape();
   memos();
   builder();
   releases();

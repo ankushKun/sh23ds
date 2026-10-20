@@ -292,6 +292,28 @@ body::after {
   text-shadow: 0 0 2px #000, 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
 }
 
+/* The still is also the video, a tape with a VCR's on-screen display in the letterbox. The player is
+   YouTube's, loaded only on a click; without the script the link opens the video on YouTube. */
+.scene-bar { display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 2.6vw, 30px); }
+.osd {
+  display: inline-flex; align-items: center; gap: 10px;
+  font: 400 clamp(19px, 1.9vw, 24px)/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+  color: #e9e9e9; text-shadow: 0 0 6px rgba(255, 255, 255, .3);
+}
+.osd-tri { width: .62em; height: .7em; background: currentColor; clip-path: polygon(0 0, 100% 50%, 0 100%); animation: blink 1.6s steps(1) infinite; }
+.tape { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; }
+.tape:focus-visible { outline: 1px solid var(--menu); outline-offset: -6px; }
+.tape-btn {
+  display: grid; place-items: center; width: clamp(56px, 6vw, 76px); aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, .72); background: rgba(5, 5, 5, .5);
+  transition: background-color .2s, border-color .2s;
+}
+.tape-btn::before { content: ""; width: 30%; height: 34%; margin-left: 8%; background: #fff; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.tape:hover .tape-btn, .tape:focus-visible .tape-btn { border-color: var(--red); background: var(--red); }
+.scene.is-playing { aspect-ratio: 16 / 9; }
+.scene.is-playing > :not(iframe) { display: none; }
+.scene iframe { display: block; flex: 1; width: 100%; height: 100%; border: 0; }
+
 /* ---------------------------------------------------------------- home: memos */
 
 .memos { display: flex; flex-wrap: wrap; gap: 36px; align-items: stretch; }
