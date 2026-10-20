@@ -45,3 +45,19 @@ release, bump `softwareVersion` and `dateModified` in `index.html`, the facts in
 `lastmod` dates in `sitemap.xml`. Questions added to the home page go in its FAQPage JSON-LD too.
 The release version, file sizes and any release newer than the ones written into `roadmap.html` come
 from the GitHub API at load time.
+
+## Analytics
+
+`site.js` starts with the same PostHog setup as the rest of ankush.one: the same project, sent through
+the first-party proxy at `p1.ankush.one`, with autocapture, heatmaps, Web Vitals, error capture and
+session replay (console and network calls included). Every event carries `site: "sh23ds"`, and since the
+pages share the ankush.one origin, a visitor keeps one id and one replay session across this site, the
+portfolio and the other project pages. Nothing loads on localhost, so previews and the packer's e2e test
+send nothing, or when the browser sends Global Privacy Control.
+
+Custom events go through `window.track(name, props)`: `memo_viewed`, `tab_selected`,
+`install_os_changed` and `command_copied` from `site.js`, and `packer_folder`, `packer_started`,
+`packer_finished`, `packer_failed` (also sent to error tracking) and `packer_zip_saved` from
+`packer/page.js`. The packer's events carry counts, sizes and the chosen options, never file names or
+contents. What the site sends is listed on https://ankush.one/privacy/, so update that page when adding
+an event.

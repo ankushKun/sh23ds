@@ -8,6 +8,10 @@
 	'use strict';
 	const $ = (s) => document.querySelector(s);
 	const canPickDir = typeof window.showDirectoryPicker === 'function';
+	// analytics (site.js): counts, sizes and options only, never file names or contents
+	const track = window.track || (() => {});
+	const trackError = window.trackError || (() => {});
+	const gb = (bytes) => Math.round(bytes / 1e8) / 10;
 
 	// workers: each holds its own Python (a few hundred MB), so fewer on a small machine
 	const cores = navigator.hardwareConcurrency || 4;
@@ -81,6 +85,7 @@
 			err.classList.add('is-on');
 			$('[data-found]').textContent = 'No folder chosen yet.';
 			$('[data-start]').disabled = true;
+			track('packer_folder', { ok: false, files: all.length, picker: canPickDir ? 'directory' : 'input' });
 			return;
 		}
 		err.classList.remove('is-on');
@@ -92,6 +97,7 @@
 		$('[data-found]').textContent = `${game.name}: ${files.length.toLocaleString()} files, ${(bytes / 1e9).toFixed(1)} GB` +
 			(ee ? ', with Enhanced Edition packs (they get used)' : '') + '.';
 		$('[data-start]').disabled = false;
+		track('packer_folder', { ok: true, files: files.length, gb: gb(bytes), ee, picker: canPickDir ? 'directory' : 'input' });
 	}
 
 	$('[data-pick]').addEventListener('click', async () => {
@@ -101,7 +107,10 @@
 				$('[data-found]').textContent = 'Reading the folder…';
 				useFiles(await walkHandle(dir, dir.name + '/', []), dir.name);
 			} catch (e) {
-				if (e.name !== 'AbortError') $('[data-found]').textContent = 'Could not read that folder: ' + e.message;
+				if (e.name !== 'AbortError') {
+					$('[data-found]').textContent = 'Could not read that folder: ' + e.message;
+					track('packer_folder', { ok: false, error: e.name, picker: 'directory' });
+				}
 			}
 		} else {
 			$('[data-pick-input]').click();
@@ -416,11 +425,16 @@
 		timer = setInterval(clock, 1000);
 		window.onbeforeunload = () => 'The packer is still running.';
 		try { lock = await navigator.wakeLock.request('screen'); } catch (e) { lock = null; }
+		const run = { quality: opt.quality, half: opt.half, out: opt.out, lanes: opt.lanes, lanes_auto: lanesOpt === 'auto',
+			ee: game.ee, files: game.files.length, gb: gb(game.bytes), partial: !!opt.only };
+		const seconds = () => Math.round((Date.now() - t0) / 1000);
+		track('packer_started', run);
 
 		try {
 			const r = await pack(opt);
 			stop();
 			clock();
+			track('packer_finished', { ...run, seconds: seconds(), output_files: r.files });
 			$('[data-status]').textContent = 'Done';
 			$('[data-count]').textContent = `${r.files.toLocaleString()} files`;
 			$('[data-done]').hidden = false;
@@ -431,6 +445,7 @@
 				a.href = URL.createObjectURL(file);
 				a.download = r.name;
 				a.hidden = false;
+				a.onclick = () => track('packer_zip_saved', { gb: gb(file.size) });
 				$('[data-size]').textContent = (file.size / 1e9).toFixed(2) + ' GB';
 				$('[data-done-text]').textContent = 'Packed in ' + $('[data-elapsed]').textContent + '. Save the zip, then unzip it.';
 			} else {
@@ -441,6 +456,8 @@
 			stop();
 			$('[data-status]').textContent = 'Stopped';
 			log('Stopped: ' + (err && err.message || err));
+			track('packer_failed', { ...run, seconds: seconds(), error: String(err && err.message || err).slice(0, 200) });
+			if (err instanceof Error) trackError(err, 'packer');
 		}
 	});
 })();
