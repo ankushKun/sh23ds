@@ -56,7 +56,8 @@ portfolio and the other project pages. Nothing loads on localhost, so previews a
 send nothing, or when the browser sends Global Privacy Control.
 
 Custom events go through `window.track(name, props)`: `memo_viewed`, `tab_selected`,
-`install_os_changed`, `command_copied` and `video_played` from `site.js`, and `packer_folder`, `packer_started`,
+`install_os_changed`, `command_copied` and `video_played` from `site.js`, and `packer_browser` (the
+browser check: the browser's name and the ids of what failed), `packer_folder`, `packer_started`,
 `packer_finished`, `packer_failed` (also sent to error tracking) and `packer_zip_saved` from
 `packer/page.js`. The packer's events carry counts, sizes and the chosen options, never file names or
 contents. What the site sends is listed on https://ankush.one/privacy/, so update that page when adding

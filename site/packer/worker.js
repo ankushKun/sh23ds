@@ -14,9 +14,7 @@
 //               {type: 'ended'}   and unasked {type: 'log' | 'progress' | 'error', ...}
 import './core.js';     // self.SH2Packer
 import createTexenc from './texenc.mjs';
-
-const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v314.0.7/full/';
-const FFMPEG_URL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/';
+import { PYODIDE_URL, FFMPEG_URL } from './cdn.js';
 
 // loaded behind a promise: a top-level await would let the page's first message arrive before
 // onmessage is set, and be dropped

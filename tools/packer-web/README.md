@@ -9,6 +9,7 @@ the step list for both, and the converters reach outside Python only through `to
 | Piece | Where | What it does |
 | --- | --- | --- |
 | Page | `site/packer.html`, `site/packer/page.js`, `packer.css` | Picks the game folder (the File System Access picker in Chromium, a folder input elsewhere), the options, progress, the download |
+| Browser check | `site/packer/check.js`, `probe.js` | Runs when the page opens, before anything is picked: what the packer needs, with a message per browser when something is missing (below) |
 | Coordinator | `site/packer/page.js` | Starts the writer and one to four packing workers, hands out `pack.py`'s tasks, copies files between workers when a task needs them, adds up the progress |
 | Packing workers | `site/packer/worker.js` | Module workers, each with its own Pyodide. Mount the picked files read-only with WORKERFS (each file is read when a task opens it), load ffmpeg.wasm only for a task that needs it, send their output to the writer over a MessageChannel |
 | Engine | `site/packer/core.js` | Runs `pack.py`'s tasks in Pyodide, provides `sh2host` for `host.py`, hands each output file to the sink between tasks |
@@ -16,9 +17,28 @@ the step list for both, and the converters reach outside Python only through `to
 | Textures | `tools/texenc/` → `site/packer/texenc.mjs` | tex3ds's pixel encoders and rg_etc1, built to WebAssembly; `tools/sh2conv/t3x.py` does the rest of what tex3ds does |
 | Converters | `tools/packer-web/bundle.py` → `site/packer/sh2conv.zip` | The Python files and two data tables, built by the Pages workflow from the same commit |
 
-Libraries come from jsDelivr at fixed versions: Pyodide 314.0.7 (Python 3.14, numpy, Pillow; pefile
+Libraries come from jsDelivr at fixed versions (`site/packer/cdn.js`): Pyodide 314.0.7 (Python 3.14, numpy, Pillow; pefile
 from PyPI through micropip) and `@ffmpeg/core` 0.12.10 (single-threaded, so the site needs no
 cross-origin isolation headers). The page and its files are static, so GitHub Pages serves it as is.
+
+### The browser check
+
+`check.js` runs when the page opens and fills the "This browser" panel in step 1. A finding is a stop
+(the buttons stay off), a warning or a note, worded for the browser it runs in (Brave, Edge, Opera,
+Vivaldi, Firefox, Safari, Chrome). On the page: a phone or tablet, a page not served over https, no way to
+pick a folder, the storage quota for the zip, the screen wake lock, and Brave's switched-off File System
+Access. Inside a module worker like the packing workers (`probe.js`): WebAssembly, and the legacy
+exception handling Pyodide is built with (a 35-byte module with one try/catch, which validates exactly
+where `pyodide.asm.wasm` does: V8 rejects both with legacy EH turned off), `FileReaderSync`, a file
+written through a sync access handle in the browser's storage as `writer.js` does, and jsDelivr: the
+Pyodide loader imported, the two big wasm files reached. When the zip can't be stored but the browser
+can write into a folder, Save as offers Folder only.
+
+Checked on 2026-10-21 in headless Chrome, normal and incognito (everything passes); with jsDelivr
+mapped to a dead address, `--js-flags=--jitless` (WebAssembly gone, as Lockdown Mode and Edge's
+enhanced security do) and `--js-flags=--no-experimental-wasm-legacy-eh` (each the right stop); as an
+iPhone (the computer stop); and in Playwright's WebKit with an ephemeral context, where only the storage
+fails, as in a Safari private window. A pack from the page still runs (`e2e.mjs --only=collision,james`).
 
 ### host.py's three seams
 

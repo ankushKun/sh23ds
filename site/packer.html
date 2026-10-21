@@ -39,6 +39,7 @@
   <link rel="stylesheet" href="packer/packer.css">
   <script>document.documentElement.classList.add("js")</script>
   <script src="site.js" defer></script>
+  <script src="packer/check.js" defer></script>
   <script src="packer/page.js" defer></script>
   <script type="application/ld+json">
   {
@@ -152,6 +153,12 @@
             <span class="step-time">1 min</span>
           </div>
           <p class="step-lede">Pick the Silent Hill 2 folder, the one with sh2pc.exe and data in it. Your browser may call this an upload, but the page only reads the files where they are.</p>
+          <div class="panel pk-check" data-check>
+            <div class="panel-head"><span>This browser</span><span class="sys" data-check-name></span></div>
+            <ul class="pk-check-list" data-check-list aria-live="polite">
+              <li class="is-wait"><span class="sq" aria-hidden="true"></span><span>Checking what the packer needs…</span></li>
+            </ul>
+          </div>
           <div class="panel">
             <div class="field-box">
               <div class="pk-actions">

@@ -42,6 +42,7 @@
 	const state = { quality: 0, half: 0, lanes: 0, out: 0 };
 	let game = null;          // {files: [{path, file}], name, bytes, ee}
 	let running = false;
+	let blocked = false;      // the browser check found something that stops the packer here
 
 	function showOptions() {
 		const notes = [];
@@ -64,6 +65,37 @@
 		});
 	}
 	showOptions();
+
+	// ---------------------------------------------------------------- the browser check (check.js)
+	function showCheck(r) {
+		const list = $('[data-check-list]');
+		list.textContent = '';
+		const items = r.items.length ? r.items
+			: [{ level: 'ok', text: `Everything the packer needs works in ${r.browser || 'this browser'}.` }];
+		for (const item of items) {
+			const li = document.createElement('li');
+			li.className = 'is-' + item.level;
+			li.innerHTML = '<span class="sq" aria-hidden="true"></span><span></span>';
+			li.lastChild.textContent = item.text;
+			list.appendChild(li);
+		}
+		$('[data-check-name]').textContent = r.browser;
+		blocked = r.items.some((i) => i.level === 'stop');
+		if (!blocked && !r.zip && OPTIONS.out.length > 1) {
+			// no room for the zip in this window, but the browser can write into a folder
+			OPTIONS.out = OPTIONS.out.filter((o) => o[0] !== 'zip');
+			state.out = 0;
+		}
+		$('[data-pick]').disabled = blocked || running;
+		$('[data-start]').disabled = !game || blocked || running;
+		showOptions();
+		const ids = (level) => r.items.filter((i) => i.level === level).map((i) => i.id).join(',');
+		track('packer_browser', { browser: r.browser || 'other', stop: ids('stop'), warn: ids('warn'), note: ids('note') });
+	}
+	(window.SH2Check ? SH2Check.run() : Promise.reject(new Error('check.js didn’t load')))
+		.catch((e) => ({ browser: '', zip: true, items: [{ level: 'warn', id: 'check',
+			text: `The browser check itself failed (${e && e.message || e}), so the packer may or may not work here.` }] }))
+		.then(showCheck);
 
 	// ---------------------------------------------------------------- the game folder
 	async function walkHandle(dir, prefix, out) {
@@ -96,11 +128,12 @@
 		game = { files, bytes, ee, name: root.replace(/\/$/, '').split('/').pop() || folderName };
 		$('[data-found]').textContent = `${game.name}: ${files.length.toLocaleString()} files, ${(bytes / 1e9).toFixed(1)} GB` +
 			(ee ? ', with Enhanced Edition packs (they get used)' : '') + '.';
-		$('[data-start]').disabled = false;
+		$('[data-start]').disabled = blocked;
 		track('packer_folder', { ok: true, files: files.length, gb: gb(bytes), ee, picker: canPickDir ? 'directory' : 'input' });
 	}
 
 	$('[data-pick]').addEventListener('click', async () => {
+		if (blocked) return;
 		if (canPickDir) {
 			try {
 				const dir = await window.showDirectoryPicker({ id: 'sh2game', mode: 'read' });
@@ -214,8 +247,8 @@
 		if (lock) lock.release().catch(() => {});
 		lock = null;
 		window.onbeforeunload = null;
-		$('[data-start]').disabled = !game;
-		$('[data-pick]').disabled = false;
+		$('[data-start]').disabled = !game || blocked;
+		$('[data-pick]').disabled = blocked;
 		showOptions();
 	}
 
@@ -404,7 +437,7 @@
 	}
 
 	$('[data-start]').addEventListener('click', async () => {
-		if (!game || running) return;
+		if (!game || running || blocked) return;
 		const lanesOpt = OPTIONS.lanes[state.lanes][0];
 		const opt = {
 			quality: OPTIONS.quality[state.quality][0],

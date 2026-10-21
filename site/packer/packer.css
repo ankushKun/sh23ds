@@ -42,3 +42,19 @@
 .pk-count { font: 400 17px/1.2 var(--mono); letter-spacing: .06em; color: var(--dim); }
 .pk-count:empty { display: none; }
 .pk-steps li.is-now .pk-count { color: var(--menu); }
+
+/* the browser check (check.js): one line per finding, the square says how much it matters */
+.pk-check { margin-bottom: 18px; }
+.pk-check-list { margin: 0; padding: 10px 0; list-style: none; }
+.pk-check-list li {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: baseline;
+  padding: 7px 22px; font-size: 18px; line-height: 1.5; color: var(--text-2);
+}
+.pk-check-list .sq { width: 8px; height: 8px; border: 1px solid var(--dim); background: none; transform: translateY(-2px); }
+.pk-check-list .is-ok .sq { border-color: var(--menu); background: var(--menu); }
+.pk-check-list .is-stop { color: #fff; }
+.pk-check-list .is-stop .sq { border-color: var(--red-hi); background: var(--red); }
+.pk-check-list .is-warn .sq { border-color: var(--red-hi); }
+.pk-check-list .is-note, .pk-check-list .is-wait { color: var(--dim); }
+.pk-check-list .is-wait .sq { animation: pk-blink 1.2s steps(2) infinite; }
+@media (prefers-reduced-motion: reduce) { .pk-check-list .is-wait .sq { animation: none; } }
