@@ -35,6 +35,7 @@ tracks, so only the first is kept. Every other file has one track.
 import argparse
 import json
 import os
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,12 +56,26 @@ SCREEN_W, SCREEN_H = 400, 240
 FPS = '30000/1001'                  # MPEG-1 only allows the standard rates; Bink's 29.94..29.97 map here
 
 
+class Unusable(Exception):
+    """A movie that cannot be converted; the pack goes on without it and the port skips it."""
+
+
 def probe(path):
-    out = host.run(['ffprobe', '-v', 'error', '-show_entries',
-                    'format=duration:stream=codec_type,width,height', '-of', 'json', path], capture=True)
+    """Width, height, seconds and audio track count, or None when there is no playable video in the
+    file. ffprobe fails on some broken files and on others exits 0 and leaves out "streams" (a
+    truncated file, or one encoded from a repack's emptied-out .bik), so both count as None."""
+    try:
+        out = host.run(['ffprobe', '-v', 'error', '-show_entries',
+                        'format=duration:stream=codec_type,width,height', '-of', 'json', path],
+                       capture=True)
+    except subprocess.CalledProcessError:
+        return None
     j = json.loads(out)
-    v = next(s for s in j['streams'] if s['codec_type'] == 'video')
-    na = sum(1 for s in j['streams'] if s['codec_type'] == 'audio')
+    streams = j.get('streams', [])
+    v = next((s for s in streams if s.get('codec_type') == 'video'), None)
+    if v is None or not v.get('width') or not v.get('height') or 'duration' not in j.get('format', {}):
+        return None
+    na = sum(1 for s in streams if s.get('codec_type') == 'audio')
     return v['width'], v['height'], float(j['format']['duration']), na
 
 
@@ -86,7 +101,10 @@ def picture(w, h, fit, half=False):
 
 
 def convert(name, src, dst, args, half=False):
-    w, h, dur, na = probe(src)
+    info = probe(src)
+    if info is None:
+        raise Unusable('%s has no video ffmpeg can read' % src)
+    w, h, dur, na = info
     ew, eh, vf = picture(w, h, args.fit, half)
     tracks = min(TRACKS.get(name, 1), na)
     cmd = ['ffmpeg', '-v', 'error', '-y', '-i', src, '-map', '0:v:0']
@@ -97,7 +115,16 @@ def convert(name, src, dst, args, half=False):
             '-subcmp', '2', '-g', '60', '-bf', '2',
             '-c:a', 'mp2', '-ar', str(args.rate), '-ac', '2', '-b:a', '%dk' % args.abr,
             '-f', 'mpeg', dst + '.part']
-    host.run(cmd)
+    try:
+        host.run(cmd)
+        made = probe(dst + '.part')
+    except subprocess.CalledProcessError:
+        made = None
+    if made is None:
+        # ffmpeg exits 0 on a .bik with no frames and writes an empty or header-only file
+        if os.path.exists(dst + '.part'):
+            os.remove(dst + '.part')
+        raise Unusable('%s did not convert to a playable movie' % src)
     os.replace(dst + '.part', dst)
     return name, ew, eh, dur, tracks, os.path.getsize(dst)
 
@@ -145,19 +172,27 @@ def main():
         origin = 'ee:%d' % os.path.getsize(src) if ee.is_ee(src) else 'data'
         if (not args.force and os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(src)
                 and made_from.get(n, 'data') == origin):
-            w, h, dur, na = probe(dst)
-            done.append((n, w, h, dur, na, os.path.getsize(dst), origin))
-            continue
+            info = probe(dst)
+            if info is not None:
+                done.append((n,) + info + (os.path.getsize(dst), origin))
+                continue
+            print('re-encoding %s, the earlier one is damaged' % dst, file=sys.stderr)
         jobs.append((n, src, dst, origin))
     def one(jp):
         k, (j, (lo, hi)) = jp
         host.progress(lo, k, len(jobs), 'movies, now ' + j[0])
-        with host.part(lo, hi):          # the step's progress bar, by each movie's share of the bytes
-            r = convert(j[0], j[1], j[2], args) + (j[3],)
+        try:
+            with host.part(lo, hi):      # the step's progress bar, by each movie's share of the bytes
+                r = convert(j[0], j[1], j[2], args) + (j[3],)
+        except Unusable as e:
+            skipped.append((j[0], str(e)))
+            return None
         print('%-10s %dx%d %6.1f s  %d track(s)  %5.1f MB  from %s' % (r[0], r[1], r[2], r[3], r[4], r[5] / 1e6, r[6]),
               flush=True)
         return r
-    done += host.pmap(one, enumerate(zip(jobs, host.parts([os.path.getsize(j[1]) for j in jobs]))), args.j)
+    skipped = []
+    done += [r for r in host.pmap(one, enumerate(zip(jobs, host.parts([os.path.getsize(j[1]) for j in jobs]))),
+                                  args.j) if r]
     if args.half:
         half_dir = os.path.join(out_dir, 'half')
         os.makedirs(half_dir, exist_ok=True)
@@ -171,9 +206,23 @@ def main():
                                         os.path.getmtime(dst) < os.path.getmtime(src)):
                 hjobs.append((n, src, dst))
         def half(j):
-            r = convert(j[0], j[1], j[2], args, True)
+            try:
+                r = convert(j[0], j[1], j[2], args, True)
+            except Unusable:
+                return          # already reported by the full-size pass
             print('half %-10s %dx%d %5.1f MB' % (r[0], r[1], r[2], r[5] / 1e6), flush=True)
         host.pmap(half, hjobs, args.j)
+
+    # A movie that could not be made is left out entirely, since a stale or broken .mpg would still
+    # count as present to movie_exists() in the port
+    for n, why in skipped:
+        rows.pop(n, None)
+        for f in (os.path.join(out_dir, n + '.mpg'), os.path.join(out_dir, 'half', n + '.mpg')):
+            if os.path.exists(f):
+                os.remove(f)
+        print('skipped %s: %s. This copy of the game has a damaged or stripped movie file; the port '
+              'plays on without it, or copy movie/%s.bik from a complete install and pack again'
+              % (n, why, n), file=sys.stderr)
 
     # Keep lines for movies converted earlier that this run did not touch
     for n, w, h, dur, tracks, size, origin in done:
