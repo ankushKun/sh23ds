@@ -14,7 +14,6 @@ movies for the Old 3DS profile, and SH2EE / SH2EE_SKIP / SH2EE_DIR choose the En
 (ee.py, EE_PACKS.md). --strip-extras (the Docker image) removes the inspection files that the 3DS
 doesn't read: the png folders and the .json files, about 0.6 GB.
 """
-import hashlib
 import os
 import runpy
 import shutil
@@ -25,7 +24,6 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-DC_MD5 = 'f3f5360298b6d0f6f2e09cf24a0925d1'   # sh2pc.exe of the Director's Cut (its addresses are baked in)
 # seconds each step took in the browser engine (fast textures, one core): the browser packer's weights
 STEP_SECONDS = {'rooms': 860, 'collision': 2, 'james': 3, 'characters': 36, 'events': 2, 'lighting': 1, 'fog': 1,
                 'ui': 1, 'pics': 13, 'maps': 6, 'music': 2, 'movies': 360, 'halfmovies': 150, 'sound': 13,
@@ -69,14 +67,6 @@ def write_list(out):
     return len(rels)
 
 
-def exe_md5(path):
-    h = hashlib.md5()
-    with open(path, 'rb') as f:
-        for chunk in iter(lambda: f.read(1 << 20), b''):
-            h.update(chunk)
-    return h.hexdigest()
-
-
 class Packer:
     def __init__(self, game, out, half=None):
         # absolute, so the links of the characters step point at the game from anywhere
@@ -84,6 +74,7 @@ class Packer:
         self.out = os.path.abspath(out)
         self.data = os.path.join(game, 'data')
         self.exe = os.path.join(game, 'sh2pc.exe')
+        self.exe_found = False      # check() or begin() picked the Director's Cut exe to read
         self.half = os.environ.get('HALF_MOVIES', '0') == '1' if half is None else half
 
     # ------------------------------------------------------------------ helpers
@@ -112,15 +103,32 @@ class Packer:
         finally:
             sys.argv = argv
 
-    def check(self):
-        """The game folder holds the Director's Cut exe and the data folder."""
+    def problem(self):
+        """Why this game folder can't be packed, as a message for the player, or None. Prints what it
+        found (gameversion.py: which release the exe is, how the data folder compares with the
+        Director's Cut's) and picks the exe to read, which can be a sh2pc.bak next to a replaced one."""
+        import gameversion
         if not os.path.isfile(self.exe) or not os.path.isdir(self.data):
-            raise RuntimeError('the game folder must hold sh2pc.exe and the data folder')
-        s = exe_md5(self.exe)
-        if s != DC_MD5:
-            raise RuntimeError("sh2pc.exe is not the Director's Cut build this port expects (md5 %s)" % s)
+            return 'The game folder must hold sh2pc.exe and the data folder.'
+        exe, notes, problem = gameversion.check(self.game)
+        for n in notes:
+            print(n, flush=True)
+        if exe:
+            self.exe, self.exe_found = exe, True
+        return problem
+
+    def check(self):
+        """The game folder holds the Director's Cut exe and its data folder."""
+        problem = self.problem()
+        if problem:
+            raise RuntimeError(problem)
 
     def begin(self, report=True):
+        if not self.exe_found:
+            # the browser's other workers don't run check(): they find the same exe here
+            import gameversion
+            self.exe = gameversion.check_exe(self.game)[0] or self.exe
+            self.exe_found = True
         os.makedirs(self.out, exist_ok=True)
         if report:      # the browser's other workers leave the report to the first
             import ee

@@ -32,6 +32,8 @@ data/
                      tools/ghidra/export.sh
   dc/port_names.tsv  PC names the port's comments cite (tools/ghidra/port_names.py)
   dc/view_aligned_names.tsv  camera module names from tools/align_names.py
+  dc/game_files.tsv  every file of the Director's Cut data folder and its size (no contents); the
+                     packer compares a player's data with it (tools/sh2conv/gameversion.py)
   dc/                Director's Cut: 82 labels, EE lookups, Ghidra functions (auto + fixed), import xrefs,
                      import names (dc_import_*), module map (module_*), CRI and hand-checked
                      names (cri_labels.json, manual_labels.json), source paths

@@ -165,9 +165,10 @@ those parts out. `SH2EE_DIR` names another mod folder, as `CustomModFolder` does
 
 - **The exe check is unchanged.** The packer still needs the Director's Cut `sh2pc.exe` (MD5
   `f3f5360298b6d0f6f2e09cf24a0925d1`). The Enhanced Executable package replaces `sh2pc.exe` with a
-  patched North American 1.0 exe, so a player who installed it must put the Director's Cut exe back
-  (third-party install scripts keep the old one as `sh2pc.bak`; the Setup Tool's own behaviour was
-  not checked).
+  patched North American 1.0 exe (MD5 `f9ccf14b5e5a31d9fe50e5b5efe50ed7`), which `gameversion.py`
+  recognises and names. Third-party install scripts keep the old exe as `sh2pc.bak`, and the packer
+  reads a Director's Cut exe it finds there by itself; otherwise the player puts it back (the Setup
+  Tool's own behaviour was not checked).
 - **Build into an empty folder** after adding or removing packs. Converters skip textures and models
   they already wrote (for resuming), so an old output folder keeps old textures. Movies are the
   exception: their source is tracked.

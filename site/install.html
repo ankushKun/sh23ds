@@ -199,7 +199,7 @@
           </div>
           <ul class="needs">
             <li><span class="bullet" aria-hidden="true"></span><div><b>A 3DS with Luma3DS and FBI</b><span>Any model; the original 3DS and 2DS get a lighter profile. Not set up yet? Follow <a class="tt" href="https://3ds.hacks.guide">3ds.hacks.guide</a>.</span></div></li>
-            <li><span class="bullet" aria-hidden="true"></span><div><b>Silent Hill 2 PC, Director’s Cut</b><span>Your own unmodified install, with sh2pc.exe and the data folder.</span></div></li>
+            <li><span class="bullet" aria-hidden="true"></span><div><b>Silent Hill 2 PC, Director’s Cut</b><span>The 2002 release, sometimes sold as Restless Dreams. Your own unmodified install, with sh2pc.exe and the data folder.</span></div></li>
             <li><span class="bullet" aria-hidden="true"></span><div><b>A browser, or Docker</b><span>Chrome, Edge, Firefox or Safari on a computer runs the packer in the page. Docker runs it on the command line.</span></div></li>
             <li><span class="bullet" aria-hidden="true"></span><div><b>Space</b><span>1.3 GB on the SD card, and about 1.5 GB free on the computer while the packer runs.</span></div></li>
           </ul>
@@ -242,7 +242,7 @@
               <div class="code-head"><span data-shell>Terminal</span><button class="copy" type="button" data-copy="md5">Copy</button></div>
               <pre class="code"><code data-out="md5">md5 -q "<mark>/Users/you/Games/Silent Hill 2</mark>/sh2pc.exe"</code></pre>
             </div>
-            <p class="text-2">It should print <span class="tt">f3f5360298b6d0f6f2e09cf24a0925d1</span>. Anything else is a different build, and the packer will stop.</p>
+            <p class="text-2">It should print <span class="tt">f3f5360298b6d0f6f2e09cf24a0925d1</span>. Anything else is a different build; the packer tells you which one and stops.</p>
           </div>
 
           <div class="step-block">
@@ -262,8 +262,12 @@ docker run --rm \
             <h3 class="sc" style="font-weight:400;font-size:21px;color:var(--menu)">If something goes wrong</h3>
             <div>
               <details class="trouble">
-                <summary><span class="plus" aria-hidden="true"></span>“sh2pc.exe is not the Director’s Cut build”</summary>
-                <p>Your exe is another version or was replaced; the Enhanced Edition’s setup swaps it, for one. Put the Director’s Cut exe back. EE packs in the sh2e folder are fine and get used.</p>
+                <summary><span class="plus" aria-hidden="true"></span>It says sh2pc.exe is another version</summary>
+                <p>The packer names what it found. Versions 1.0 and 1.1 are the 2001 release and can’t be used; you need the 2002 Director’s Cut, which some stores list as Restless Dreams. If the Enhanced Edition or a fix replaced your exe, put the original back, or leave it next to the new one as sh2pc.bak and the packer reads that. EE packs in the sh2e folder are fine and get used.</p>
+              </details>
+              <details class="trouble">
+                <summary><span class="plus" aria-hidden="true"></span>It says data files are missing or different</summary>
+                <p>Your data folder doesn’t match the Director’s Cut’s, which usually means a repack that shrank or dropped the movies. Movies it can’t read are left out and the game skips them. Anything else that’s missing may be missing on the 3DS too.</p>
               </details>
               <details class="trouble">
                 <summary><span class="plus" aria-hidden="true"></span>“Mount your Silent Hill 2 folder at /game”</summary>

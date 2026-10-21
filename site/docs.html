@@ -242,7 +242,7 @@ spawn er01 -19250 0 21250 90 2</pre>
 
         <section class="doc-section prose" id="converters" aria-labelledby="d-conv">
           <h2 class="doc-title" id="d-conv">The converters</h2>
-          <p><code>tools/make_pack.sh</code> runs them in order and stops early unless <code>sh2pc.exe</code> has the Director’s Cut MD5, because several converters read tables at fixed addresses in that exe. To rebuild one part of the pack, run its converter on its own:</p>
+          <p><code>tools/make_pack.sh</code> runs them in order and stops early unless <code>sh2pc.exe</code> has the Director’s Cut MD5, because several converters read tables at fixed addresses in that exe. <code>gameversion.py</code> makes that check: it names the release it finds, reads a Director’s Cut exe kept next to a replaced one as <code>sh2pc.bak</code>, and compares the data folder with the Director’s Cut’s file sizes. To rebuild one part of the pack, run its converter on its own:</p>
           <pre class="code">python3 -m venv .venv &amp;&amp; .venv/bin/pip install numpy pillow pefile
 .venv/bin/python -I tools/sh2conv/pics.py "Silent Hill 2/data" pack</pre>
           <div class="table-scroll">

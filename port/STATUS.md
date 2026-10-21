@@ -21,7 +21,7 @@ summary and the list of what to do next. How to run the tests is in TESTING.md.
 | Piece | Where | Notes |
 | --- | --- | --- |
 | 3DS app | `port/` | C, libctru + citro3d. `./build.sh` (devkitARM in Docker), `./package.sh` makes `sh23ds.cia` and `dist/` |
-| Asset converter | `tools/sh2conv/` (`pack.py` is the step list) | Reads the user's `Silent Hill 2` folder (checks the DC exe's MD5), writes the SD pack; `tools/make_pack.sh` runs it natively, `tools/packer/` in a Docker image (ghcr.io/ankushkun/sh23ds-packer) and `site/packer.html` in the browser (Pyodide, ffmpeg.wasm and `tools/texenc`, see `tools/packer-web/README.md`) |
+| Asset converter | `tools/sh2conv/` (`pack.py` is the step list) | Reads the user's `Silent Hill 2` folder (`gameversion.py` checks the DC exe's MD5, names any other release and compares the data folder's file sizes), writes the SD pack; `tools/make_pack.sh` runs it natively, `tools/packer/` in a Docker image (ghcr.io/ankushkun/sh23ds-packer) and `site/packer.html` in the browser (Pyodide, ffmpeg.wasm and `tools/texenc`, see `tools/packer-web/README.md`) |
 | Headless tests | `tools/lr3ds/`, `tests/playtest/` | Azahar's libretro core with the software renderer at 100 % clock, scripted input and screenshots; the smoke run and the playthrough suite (TESTING.md) |
 | Decomp tooling | `tools/*.py`, `sh2-3ds-port-kit/` | PS2 beta DWARF names and types for the Ghidra project, PC to PS2 name mapping (`docs/RESEARCH.md`) |
 | Website | `site/` | GitHub Pages, deployed on push |

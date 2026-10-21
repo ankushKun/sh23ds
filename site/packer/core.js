@@ -240,10 +240,17 @@ STEPS = [(s[0], s[1]) for s in P.steps()]
 		const steps = stepsProxy.toJs();
 		stepsProxy.destroy();
 
+		// which release the folder holds (gameversion.py); a wrong one stops with the message for the
+		// player alone, not Python's traceback
+		function checkGame() {
+			say('Checking the game folder');
+			const problem = py.runPython('P.problem() or ""');
+			if (problem) throw new Error(problem);
+		}
+
 		async function run(onStep) {
 			await ensureFFmpeg();
-			say('Checking the game folder');
-			py.runPython('P.check()');
+			checkGame();
 			py.runPython('P.begin()');
 			for (let i = 0; i < steps.length; i++) {
 				const [id, title] = steps[i];
@@ -274,10 +281,7 @@ STEPS = [(s[0], s[1]) for s in P.steps()]
 			py,
 			// the first worker checks the exe and prints the Enhanced Edition report; the others only set up
 			begin(first) {
-				if (first) {
-					say('Checking the game folder');
-					py.runPython('P.check()');
-				}
+				if (first) checkGame();
 				py.globals.set('FIRST', !!first);
 				py.runPython('P.begin(report=FIRST)');
 			},

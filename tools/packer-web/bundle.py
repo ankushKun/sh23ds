@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes site/packer/sh2conv.zip: the converters and the two data files they read, which the browser
+"""Writes site/packer/sh2conv.zip: the converters and the data files they read, which the browser
 packer unpacks into Pyodide at /sh23ds (the repository's layout, so the scripts find them as here).
 
   tools/packer-web/bundle.py [out.zip]
@@ -13,7 +13,7 @@ import zipfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 FILES = ['VERSION', 'sh2-3ds-port-kit/data/dc/stage_table.json',
-         'sh2-3ds-port-kit/data/dc/ghidra_functions_fixed.tsv']
+         'sh2-3ds-port-kit/data/dc/ghidra_functions_fixed.tsv', 'sh2-3ds-port-kit/data/dc/game_files.tsv']
 
 
 def main():
