@@ -147,10 +147,21 @@
 		async add(path, data) {
 			const parts = (this.prefix + path).split('/');
 			const d = await this.dir(parts.slice(0, -1));
-			const fh = await d.getFileHandle(parts[parts.length - 1], { create: true });
-			const w = await fh.createWritable();
-			await w.write(data);
-			await w.close();
+			const size = data.size !== undefined ? data.size : data.length;
+			// each file is read back for its size, and written again once if it didn't arrive whole: a card
+			// or a synced folder can lose a write without the browser saying so
+			for (let attempt = 0; ; attempt++) {
+				const fh = await d.getFileHandle(parts[parts.length - 1], { create: true });
+				const w = await fh.createWritable();
+				await w.write(data);
+				await w.close();
+				const got = (await fh.getFile()).size;
+				if (got === size) return;
+				if (attempt) {
+					throw new Error(`${path} didn’t arrive whole in the folder you picked (${got} of ${size} bytes). ` +
+						'Check that the disk or card has room and stays connected, then start again.');
+				}
+			}
 		}
 
 		async finish() {}

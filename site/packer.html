@@ -245,7 +245,7 @@
             <div>
               <details class="trouble">
                 <summary><span class="plus" aria-hidden="true"></span>It says sh2pc.exe is another version</summary>
-                <p>The packer names what it found. Versions 1.0 and 1.1 are the 2001 release and can’t be used; you need the 2002 Director’s Cut, which some stores list as Restless Dreams. If the Enhanced Edition or a fix replaced your exe, put the original back, or leave it next to the new one as sh2pc.bak and the packer reads that. EE packs in the sh2e folder are fine and get used.</p>
+                <p>The packer names what it found. Versions 1.0 and 1.1 are the 2001 release and can’t be used; you need the 2002 Director’s Cut, which some stores list as Restless Dreams. A Director’s Cut exe that a no-CD patch or a fix changed works as long as the change misses everything the packer reads, and the message says which part it hit when it doesn’t. If the Enhanced Edition or a fix replaced your exe, put the original back, or leave it next to the new one as sh2pc.bak and the packer reads that. EE packs in the sh2e folder are fine and get used.</p>
               </details>
               <details class="trouble">
                 <summary><span class="plus" aria-hidden="true"></span>It says data files are missing or different</summary>
@@ -256,8 +256,8 @@
                 <p>The browser most likely ran out of memory. Close other tabs, set Workers to 1 and start again, or use the <a class="lnk" href="install.html#step-2">Docker packer</a> if it keeps failing.</p>
               </details>
               <details class="trouble">
-                <summary><span class="plus" aria-hidden="true"></span>“The browser storage is full”</summary>
-                <p>The zip is built in the browser’s own storage before you save it, which needs about 1.5 GB free on the disk. In Chrome or Edge you can skip that by saving straight to a folder instead.</p>
+                <summary><span class="plus" aria-hidden="true"></span>It ran out of room for the zip</summary>
+                <p>The zip needs about 1.5 GB free. Chrome and Edge write it straight into the file you pick, so that disk needs the room; other browsers build it in their own storage first and you save it at the end. In Chrome or Edge you can also save straight to a folder, such as the SD card.</p>
               </details>
               <details class="trouble">
                 <summary><span class="plus" aria-hidden="true"></span>Is the result the same as the Docker packer’s?</summary>

@@ -8,10 +8,16 @@
 	'use strict';
 	const $ = (s) => document.querySelector(s);
 	const canPickDir = typeof window.showDirectoryPicker === 'function';
+	// the zip goes straight into a file the player picks where the browser can (writer.js), else it is
+	// built in the browser's storage and saved at the end
+	const canSaveFile = typeof window.showSaveFilePicker === 'function';
 	// analytics (site.js): counts, sizes and options only, never file names or contents
 	const track = window.track || (() => {});
 	const trackError = window.trackError || (() => {});
 	const gb = (bytes) => Math.round(bytes / 1e8) / 10;
+
+	// packer.html?simd=0 makes the workers take ffmpeg's build without WebAssembly SIMD (worker.js)
+	const WORKER_URL = 'packer/worker.js' + (new URLSearchParams(location.search).get('simd') === '0' ? '?simd=0' : '');
 
 	// workers: each holds its own Python (a few hundred MB), so fewer on a small machine
 	const cores = navigator.hardwareConcurrency || 4;
@@ -35,7 +41,8 @@
 			['4', '4', 'Four workers need about 2 GB of memory.'],
 		],
 		out: canPickDir
-			? [['zip', 'Zip', 'A zip you unzip onto the SD card. Needs about 1.5 GB free while it’s made.'],
+			? [['zip', 'Zip', canSaveFile ? 'A zip you unzip onto the SD card, about 1.5 GB, written where you pick as it’s made.'
+				: 'A zip you unzip onto the SD card. Needs about 1.5 GB free while it’s made.'],
 				['dir', 'Folder', 'Writes the files straight into a folder you pick, such as the SD card itself.']]
 			: [['zip', 'Zip', 'A zip you unzip onto the SD card. Needs about 1.5 GB free while it’s made.']],
 	};
@@ -304,7 +311,7 @@
 		writerDone.catch(() => {});
 		await new Promise((resolve, reject) => {
 			opened = { resolve, reject };
-			writer.postMessage({ type: 'open', out: opt.out, dir: opt.dir, lanes: opt.lanes });
+			writer.postMessage({ type: 'open', out: opt.out, dir: opt.dir, file: opt.file, lanes: opt.lanes });
 		});
 
 		let failed = null;
@@ -315,7 +322,7 @@
 		for (let i = 0; i < opt.lanes; i++) {
 			const ch = new MessageChannel();
 			writer.postMessage({ type: 'port', port: ch.port1 }, [ch.port1]);
-			const w = { worker: new Worker('packer/worker.js', { type: 'module' }), waiting: new Map(), index: i, rooms: false };
+			const w = { worker: new Worker(WORKER_URL, { type: 'module' }), waiting: new Map(), index: i, rooms: false };
 			w.worker.onmessage = (e) => {
 				const m = e.data;
 				if (m.type === 'log') {
@@ -454,7 +461,17 @@
 			} catch (e) {
 				return;
 			}
-		} else if (navigator.storage && navigator.storage.estimate) {
+		} else if (canSaveFile) {
+			try {
+				opt.file = await window.showSaveFilePicker({ id: 'sh2zip', suggestedName: 'sh23ds-sd.zip',
+					types: [{ description: 'Zip', accept: { 'application/zip': ['.zip'] } }] });
+				opt.out = 'file';
+			} catch (e) {
+				if (e.name === 'AbortError') return;
+				// a picker the browser refused: the zip is built in its storage as elsewhere
+			}
+		}
+		if (opt.out === 'zip' && navigator.storage && navigator.storage.estimate) {
 			const est = await navigator.storage.estimate();
 			if (est.quota && est.quota - (est.usage || 0) < 1.6e9) {
 				log('The browser says it has ' + ((est.quota - est.usage) / 1e9).toFixed(1) + ' GB of storage for this site; the zip needs about 1.5 GB.');
@@ -498,6 +515,9 @@
 				a.onclick = () => track('packer_zip_saved', { gb: gb(file.size) });
 				$('[data-size]').textContent = (file.size / 1e9).toFixed(2) + ' GB';
 				$('[data-done-text]').textContent = 'Packed in ' + $('[data-elapsed]').textContent + '. Save the zip, then unzip it.';
+			} else if (opt.out === 'file') {
+				$('[data-done-text]').textContent = 'Packed in ' + $('[data-elapsed]').textContent + ' into ' + opt.file.name +
+					' (' + (r.size / 1e9).toFixed(2) + ' GB). Unzip it.';
 			} else {
 				$('[data-done-text]').textContent = 'Packed in ' + $('[data-elapsed]').textContent + ', straight into the folder you picked, under 3ds/sh23ds.';
 			}

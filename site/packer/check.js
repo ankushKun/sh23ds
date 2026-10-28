@@ -72,6 +72,8 @@
 		const items = [];
 		const add = (level, id, text) => items.push({ level, id, text });
 		const dir = typeof window.showDirectoryPicker === 'function';
+		// where it can, the zip is written into a file the player picks, not the browser's storage (writer.js)
+		const saveFile = dir && typeof window.showSaveFilePicker === 'function';
 		const pick = dir || 'webkitdirectory' in document.createElement('input');
 		let zip = true;
 
@@ -124,7 +126,7 @@
 				'and reload.');
 		}
 
-		if (!p.opfs.ok) {
+		if (!saveFile && !p.opfs.ok) {
 			zip = false;
 			const priv = p.opfs.why === 'private';
 			const cause = priv
@@ -139,7 +141,7 @@
 					cause + '. ' + (priv ? 'Open this page in a normal window, or allow site data for it.'
 						: 'Update ' + it + ' to its current version.'));
 			}
-		} else if (navigator.storage && navigator.storage.estimate) {
+		} else if (!saveFile && navigator.storage && navigator.storage.estimate) {
 			try {
 				const est = await navigator.storage.estimate();
 				const free = (est.quota || 0) - (est.usage || 0);

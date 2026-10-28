@@ -13,13 +13,20 @@ the step list for both, and the converters reach outside Python only through `to
 | Coordinator | `site/packer/page.js` | Starts the writer and one to four packing workers, hands out `pack.py`'s tasks, copies files between workers when a task needs them, adds up the progress |
 | Packing workers | `site/packer/worker.js` | Module workers, each with its own Pyodide. Mount the picked files read-only with WORKERFS (each file is read when a task opens it), load ffmpeg.wasm only for a task that needs it, send their output to the writer over a MessageChannel |
 | Engine | `site/packer/core.js` | Runs `pack.py`'s tasks in Pyodide, provides `sh2host` for `host.py`, hands each output file to the sink between tasks |
-| Writer | `site/packer/writer.js`, `sinks.js` | The one place the output is written: a stored zip in the browser's private storage (OPFS; zip64 past 4 GB; a path written twice keeps the last copy) or a folder the player picked |
+| Writer | `site/packer/writer.js`, `sinks.js` | The one place the output is written: a stored zip (zip64 past 4 GB; a path written twice keeps the last copy), straight into a file the player picked where the browser has `showSaveFilePicker` (Chromium), else in the browser's private storage (OPFS) for the page to save; or a folder the player picked, each file read back for its size |
 | Textures | `tools/texenc/` → `site/packer/texenc.mjs` | tex3ds's pixel encoders and rg_etc1, built to WebAssembly; `tools/sh2conv/t3x.py` does the rest of what tex3ds does |
 | Converters | `tools/packer-web/bundle.py` → `site/packer/sh2conv.zip` | The Python files and two data tables, built by the Pages workflow from the same commit |
 
-Libraries come from jsDelivr at fixed versions (`site/packer/cdn.js`): Pyodide 314.0.7 (Python 3.14, numpy, Pillow; pefile
-from PyPI through micropip) and `@ffmpeg/core` 0.12.10 (single-threaded, so the site needs no
-cross-origin isolation headers). The page and its files are static, so GitHub Pages serves it as is.
+Libraries come from jsDelivr at fixed versions (`site/packer/cdn.js`): Pyodide 314.0.7 (Python 3.14, numpy,
+Pillow) and `@ffmpeg/core` 0.12.10 (single-threaded, so the site needs no cross-origin isolation headers).
+The page and its files are static, so GitHub Pages serves it as is.
+
+`@ffmpeg/core` is built with WebAssembly SIMD from 0.12.1 on, and browsers compile SIMD only on a processor
+with SSE4.1: on an older one (a Core 2 before Penryn, a Phenom II) the first task that loads ffmpeg failed
+with "Compiling function #81 failed: Wasm SIMD unsupported". Each worker compiles and calls a two-instruction
+SIMD function first and takes 0.12.0, the last build without SIMD, when that fails (`worker.js`;
+`packer.html?simd=0` forces it). 0.12.0 has no `ffprobe`, so `core.js` answers the one probe `movies.py`
+makes from `ffmpeg -i`'s log. Pyodide, numpy, Pillow and `texenc.mjs` have no SIMD.
 
 ### The browser check
 
@@ -96,11 +103,26 @@ node tools/packer-web/run.mjs "Silent Hill 2" /tmp/web-pack [--best] [--half]
 .venv/bin/python tools/packer-web/compare.py /tmp/web-pack pack
 
 # the whole page in headless Chrome: folder input, Start, the zip download
-node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip [--only=collision,james]
+node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip [--only=collision,james] [--nosimd] [--savefile]
+# the same against the live site (its analytics host is blocked)
+node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip --url=https://ankush.one/sh23ds/packer.html
 ```
 
 `compare.py` fails when a file is missing or a file differs in a way it doesn't expect. CI checks that
 `tools/texenc/build.sh` rebuilds the committed `texenc.mjs` byte for byte.
+
+### Changed exes, SIMD and the zip file (2026-10-27, Chrome for Testing on an 11-core Mac)
+
+- The whole page on the Director's Cut (zip in the browser's storage, ffmpeg 0.12.10): 8 min 26 s, 5,757
+  files. Again on a copy of the game whose `sh2pc.exe` has a byte of code and 64 KB of the SecuROM section
+  changed, with `--savefile --nosimd` (the zip written into a picked file, ffmpeg 0.12.0): 8 min 06 s, the
+  same 5,752 entries with the same CRCs except `movie/movies.txt`, where one duration reads 36.04 instead
+  of 36.03 (`ffmpeg -i` prints hundredths). `?simd=0` loads `@ffmpeg/core@0.12.0` and nothing of 0.12.10's
+  but the browser check's HEAD request.
+- In x86 Node under Docker with `--no-enable-sse4-1`: 0.12.10's wasm fails with exactly the players'
+  "Compiling function #81 failed: Wasm SIMD unsupported @+70121"; the worker's SIMD test fails the same
+  way, and 0.12.0's wasm compiles.
+- Folder output into a folder in the site's storage: every file read back at its size.
 
 ### Last results (2026-10-19, Chrome 155 on an 11-core Mac, with other jobs running)
 

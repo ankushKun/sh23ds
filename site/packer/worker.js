@@ -2,7 +2,8 @@
 // Each runs core.js with:
 //   - the game folder the player picked, mounted read-only and read only when a task needs a file
 //     (WORKERFS over the picked File objects; nothing is copied or sent anywhere)
-//   - Pyodide and ffmpeg.wasm from jsDelivr, at fixed versions, and texenc.mjs from this site
+//   - Pyodide and ffmpeg.wasm from jsDelivr, at fixed versions (ffmpeg's build without SIMD where the
+//     processor can't run SIMD, see simd()), and texenc.mjs from this site
 //   - its output sent to writer.js over a MessageChannel, so all workers write one zip or folder
 // The page hands out the tasks (pack.py tasks()) and moves files between workers when a task needs
 // another worker's output.
@@ -14,11 +15,27 @@
 //               {type: 'ended'}   and unasked {type: 'log' | 'progress' | 'error', ...}
 import './core.js';     // self.SH2Packer
 import createTexenc from './texenc.mjs';
-import { PYODIDE_URL, FFMPEG_URL } from './cdn.js';
+import { PYODIDE_URL, FFMPEG_URL, FFMPEG_NOSIMD_URL } from './cdn.js';
+
+// Whether this browser runs WebAssembly SIMD here: a function with two SIMD instructions, compiled and
+// called (V8 compiles lazily, and on a processor without SSE4.1 it fails only then, with "Wasm SIMD
+// unsupported"). packer.html?simd=0 takes the build without SIMD anyway.
+const SIMD_TEST = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 3, 2, 1, 0, 7, 5, 1, 1, 102,
+	0, 0, 10, 11, 1, 9, 0, 65, 1, 253, 17, 253, 27, 0, 11]);
+function simd() {
+	if (new URL(self.location.href).searchParams.get('simd') === '0') return false;
+	try {
+		return new WebAssembly.Instance(new WebAssembly.Module(SIMD_TEST)).exports.f() === 1;
+	} catch (e) {
+		return false;
+	}
+}
+const SIMD = simd();
+const FF_URL = SIMD ? FFMPEG_URL : FFMPEG_NOSIMD_URL;
 
 // loaded behind a promise: a top-level await would let the page's first message arrive before
 // onmessage is set, and be dropped
-const libs = Promise.all([import(PYODIDE_URL + 'pyodide.mjs'), import(FFMPEG_URL + 'ffmpeg-core.js')]);
+const libs = Promise.all([import(PYODIDE_URL + 'pyodide.mjs'), import(FF_URL + 'ffmpeg-core.js')]);
 const post = (m, t) => self.postMessage(m, t || []);
 let engine = null, port = null, current = null, req = null;   // req: the page's request being answered
 
@@ -28,10 +45,10 @@ async function init({ files, options, first }) {
 	const byPath = new Map(files.map((f) => [f.path, f.file]));
 	engine = await SH2Packer.createPacker({
 		loadPyodide: (o) => loadPyodide({ ...o, indexURL: PYODIDE_URL }),
-		createFFmpegCore: () => createFFmpegCore({
+		createFFmpegCore: () => createFFmpegCore(SIMD ? {
 			mainScriptUrlOrBlob: FFMPEG_URL + 'ffmpeg-core.js#' +
 				btoa(JSON.stringify({ wasmURL: FFMPEG_URL + 'ffmpeg-core.wasm' })),
-		}),
+		} : { locateFile: (name) => FF_URL + name }),
 		createTexenc: () => createTexenc(),
 		fetchBytes: async (name) => new Uint8Array(await (await fetch(name, { cache: 'no-cache' })).arrayBuffer()),
 		mountGame(py) {
@@ -59,6 +76,9 @@ async function init({ files, options, first }) {
 			else post({ type: 'log', ...m });
 		},
 	});
+	if (first && !SIMD) {
+		post({ type: 'log', kind: 'out', text: 'This processor can’t run WebAssembly SIMD, so the movies and sounds use an older ffmpeg build, which is a little slower.' });
+	}
 	engine.begin(first);
 	post({ type: 'ready', req, steps: engine.steps, tasks: first ? engine.tasks() : null });
 }

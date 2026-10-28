@@ -1,9 +1,10 @@
 // The browser packer's writer (a module worker that packer.html starts): the one place the output is
 // written, so several packing workers can run at once. Each packing worker sends its files here over its
-// own MessageChannel; this worker adds them, in the order each one sent them, to a zip in the browser's
-// private storage (OPFS) or to a folder the player picked.
+// own MessageChannel; this worker adds them, in the order each one sent them, to a zip: written straight
+// into a file the player picked where the browser can (Chrome, Edge), else built in the browser's private
+// storage (OPFS) for the page to save; or to a folder the player picked.
 //
-// Messages in:  {type: 'open', out: 'zip' | 'dir', dir, lanes}   then one {type: 'port', port} per worker
+// Messages in:  {type: 'open', out: 'zip' | 'file' | 'dir', dir, file, lanes}   then one {type: 'port', port} per worker
 //               {type: 'add', rel, data}                           a file from the page itself
 //               {type: 'finish'}                                   after every worker sent its 'end'
 //               {type: 'abort'}                                    a failed run: close the zip's handle
@@ -16,7 +17,7 @@ import './sinks.js';    // self.SH2Sinks
 const ZIP_PREFIX = 'sh23ds-sd';
 const ZIP_NAME = ZIP_PREFIX + '-' + Date.now().toString(36) + '.zip';
 const post = (m) => self.postMessage(m);
-let sink = null, handle = null, queue = Promise.resolve(), files = 0, bytes = 0;
+let sink = null, handle = null, writable = null, queue = Promise.resolve(), files = 0, bytes = 0;
 let lanes = 0, ended = 0, finishing = null;
 const listed = new Set();   // what files.txt lists: every file but the inspection extras
 
@@ -49,8 +50,13 @@ async function zipSink() {
 	const fh = await root.getFileHandle(ZIP_NAME, { create: true });
 	handle = await fh.createSyncAccessHandle();
 	const z = new SH2Sinks.ZipSink((u8, at) => {
-		const n = handle.write(u8, { at });
-		if (n !== u8.length) throw new Error('the browser storage is full (wrote ' + n + ' of ' + u8.length + ' bytes)');
+		let n;
+		try {
+			n = handle.write(u8, { at });
+		} catch (e) {
+			n = -1;
+		}
+		if (n !== u8.length) throw new Error(FULL);
 	}, '3ds/sh23ds/');
 	const finish = z.finish.bind(z);
 	z.finish = async () => {
@@ -58,6 +64,31 @@ async function zipSink() {
 		handle.flush();
 		handle.close();
 		handle = null;
+		return size;
+	};
+	return z;
+}
+
+const FULL = 'The browser ran out of room for the zip in its own storage. Free up some disk space and start ' +
+	'again, or pack in Chrome or Edge, which write the zip straight to where you pick.';
+
+// the zip straight into the file the player picked: no copy in the browser's storage, and nothing to save
+// at the end. The browser writes it beside the file as name.crswap and puts it in place when it's done.
+async function fileSink(fh) {
+	writable = await fh.createWritable();
+	const z = new SH2Sinks.ZipSink(async (u8, at) => {
+		try {
+			await writable.write({ type: 'write', position: at, data: u8 });
+		} catch (e) {
+			throw new Error(e.name === 'QuotaExceededError' ? 'The disk ran out of room for the zip. Free up some space, or pick another disk, and start again.'
+				: 'Writing the zip failed (' + (e.message || e.name) + ').');
+		}
+	}, '3ds/sh23ds/');
+	const finish = z.finish.bind(z);
+	z.finish = async () => {
+		const size = await finish();
+		await writable.close();
+		writable = null;
 		return size;
 	};
 	return z;
@@ -89,7 +120,8 @@ self.onmessage = async (e) => {
 	try {
 		if (m.type === 'open') {
 			lanes = m.lanes;
-			sink = m.out === 'dir' ? new SH2Sinks.DirSink(m.dir, '3ds/sh23ds/') : await zipSink();
+			sink = m.out === 'dir' ? new SH2Sinks.DirSink(m.dir, '3ds/sh23ds/')
+				: m.out === 'file' ? await fileSink(m.file) : await zipSink();
 			post({ type: 'ready' });
 		} else if (m.type === 'port') {
 			m.port.onmessage = (ev) => {
@@ -109,6 +141,11 @@ self.onmessage = async (e) => {
 			if (handle) {
 				try { handle.close(); } catch (e) { /* already closed */ }
 				handle = null;
+			}
+			if (writable) {
+				// leaves the picked file as it was, with no half-written zip
+				try { await writable.abort(); } catch (e) { /* already closed */ }
+				writable = null;
 			}
 			post({ type: 'aborted' });
 		}

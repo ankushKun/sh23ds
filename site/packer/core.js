@@ -11,8 +11,6 @@
 (function (root) {
 	'use strict';
 
-	const PEFILE = 'pefile==2024.8.26';
-
 	// Kinds of file no later step opens again (from SH2PACK_TRACE runs of the native packer), so they
 	// leave Python's memory once they are in the output: they are cut to 0 bytes rather than deleted,
 	// since converters skip a texture whose .t3x already exists. Everything else stays until the end:
@@ -35,8 +33,7 @@
 			stdout: (s) => log({ kind: 'out', text: s }),
 			stderr: (s) => log({ kind: 'err', text: s }),
 		});
-		await py.loadPackage(['numpy', 'pillow', 'micropip'], { messageCallback: () => {} });
-		await py.runPythonAsync(`import micropip\nawait micropip.install(${JSON.stringify(PEFILE)})`);
+		await py.loadPackage(['numpy', 'pillow'], { messageCallback: () => {} });
 
 		say('Loading the converters');
 		const bundle = await env.fetchBytes('sh2conv.zip');
@@ -79,6 +76,23 @@
 				p += '/' + d;
 				try { ff.FS.mkdir(p); } catch (e) { /* exists */ }
 			}
+		}
+
+		// ffprobe -show_entries format=duration:stream=codec_type,width,height -of json, for ffmpeg's build
+		// without SIMD (worker.js), which has no ffprobe: `ffmpeg -i` prints the same facts as it starts
+		function probeFromLog(lines) {
+			const text = lines.join('\n');
+			const d = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(text);
+			const streams = [];
+			for (const m of text.matchAll(/Stream #\d+:\d+[^:\n]*: (Video|Audio|Subtitle|Data): ([^\n]*)/g)) {
+				const s = { codec_type: m[1].toLowerCase() };
+				const wh = s.codec_type === 'video' && /(?:^|[ ,])(\d{2,5})x(\d{2,5})(?=[ ,[]|$)/.exec(m[2]);
+				if (wh) [s.width, s.height] = [Number(wh[1]), Number(wh[2])];
+				streams.push(s);
+			}
+			if (!d && !streams.length) return null;
+			const json = { streams, format: d ? { duration: String(3600 * d[1] + 60 * d[2] + Number(d[3])) } : {} };
+			return new TextEncoder().encode(JSON.stringify(json));
 		}
 
 		function ffInput(path, mounts) {
@@ -130,13 +144,21 @@
 				ff.setProgress(({ progress }) => {
 					if (lo !== undefined && progress >= 0 && progress <= 1) report(lo + progress * (hi - lo));
 				});
-				if (tool === 'ffprobe') ff.ffprobe(...args);
+				let probed = null;
+				if (tool === 'ffprobe' && !ff.ffprobe) {
+					// the log level stays as the last run set it (-v error), so name it
+					ff.exec('-hide_banner', '-v', 'info', '-i', args[args.length - 1]);
+					probed = probeFromLog(ffLog.err);
+				} else if (tool === 'ffprobe') ff.ffprobe(...args);
 				else if (tool === 'ffmpeg') ff.exec(...args);
 				else return { code: 127, stdout: new Uint8Array(0), stderr: 'no ' + tool + ' in the browser' };
-				let code = ff.ret;
+				let code = probed ? 0 : ff.ret;
 				ff.reset();
 				let stdout;
-				if (stdoutFile) {
+				if (tool === 'ffprobe' && !ff.ffprobe) {
+					stdout = probed || new Uint8Array(0);
+					if (!probed) code = 1;
+				} else if (stdoutFile) {
 					try { stdout = ff.FS.readFile(stdoutFile); ff.FS.unlink(stdoutFile); } catch (e) { stdout = new Uint8Array(0); }
 				} else {
 					stdout = new TextEncoder().encode(ffLog.out.join('\n') + (ffLog.out.length ? '\n' : ''));

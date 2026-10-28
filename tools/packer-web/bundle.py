@@ -13,7 +13,8 @@ import zipfile
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 FILES = ['VERSION', 'sh2-3ds-port-kit/data/dc/stage_table.json',
-         'sh2-3ds-port-kit/data/dc/ghidra_functions_fixed.tsv', 'sh2-3ds-port-kit/data/dc/game_files.tsv']
+         'sh2-3ds-port-kit/data/dc/ghidra_functions_fixed.tsv', 'sh2-3ds-port-kit/data/dc/game_files.tsv',
+         'sh2-3ds-port-kit/data/dc/exe_reads.tsv']
 
 
 def main():

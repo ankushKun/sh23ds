@@ -26,8 +26,10 @@ const [gameDir, outPath] = args.map((a) => path.resolve(a));
 // ffmpeg-core.js is built for browsers and workers; these are all it needs from one
 globalThis.self = globalThis;
 globalThis.location = { href: 'file:///' };
-const createFFmpegCore = require(path.join(HERE, 'node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.js'));
-const ffWasm = fs.readFileSync(path.join(HERE, 'node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.wasm'));
+// FFMPEG_CORE=<an @ffmpeg/core dist folder>: another build, such as 0.12.0's without SIMD (worker.js)
+const FF_DIR = process.env.FFMPEG_CORE || path.join(HERE, 'node_modules/@ffmpeg/core/dist');
+const createFFmpegCore = require(path.join(FF_DIR, 'umd/ffmpeg-core.js'));
+const ffWasm = fs.readFileSync(path.join(FF_DIR, 'umd/ffmpeg-core.wasm'));
 const { loadPyodide } = await import(path.join(HERE, 'node_modules/pyodide/pyodide.mjs'));
 const { default: createTexenc } = await import(path.join(SITE, 'texenc.mjs'));
 const { createPacker } = require(path.join(SITE, 'core.js'));
