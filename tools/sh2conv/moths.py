@@ -63,7 +63,7 @@ def main():
     vertices = {'pos': np.array(pos, float), 'uv': np.array(uv, float), 'bones': np.array(bones),
                 'weights': weights, 'nrm': np.tile([0.0, 0.0, -1.0], (n, 1)),
                 'groups': {0: np.array(tris)}}
-    m = SimpleNamespace(vertices=vertices, primitives=[SimpleNamespace(start=0, backface_culling=False)],
+    m = SimpleNamespace(vertices=vertices, primitives=[SimpleNamespace(start=0, backface_culling=False, pose_index=0)],
                         bone_count=4, parents=[255] * 4, initial=[np.eye(4)] * 4)
     m.bind_locals = None
     # chr.convert_model reads the bind locals through sh2mdl.bind_locals(m): identity for root bones

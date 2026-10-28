@@ -11,8 +11,8 @@ Maria; 512x512 DXT3 squeezed to 512x256 RGB565 like the stills: pack/ui/savebg.t
 and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg), and the options
 screens' texts (option_msg_e.mes as pack/events/option.msg) and the blood effects' texture
 (pack/effect/blood.t3x, see write_blood), the hyper spray's mist (pack/effect/mist.t3x, see
-write_mist), and the title background, the game over text and its
-sound (see write_screens).
+write_mist), the room effects' sprites (pack/effect/fire.t3x, smoke.t3x, flare.t3x, see
+write_room_fx), and the title background, the game over text and its sound (see write_screens).
 
 Also writes the PC's text font (pack/ui/font.t3x and font.bin, see write_font), which the exe carries
 compressed; pass --exe to read another sh2pc.exe than the default one.
@@ -58,25 +58,26 @@ def decode_tex(path):
 # by 0) where the glyph offsets wrap past 64K dwords, the widths of codes below 0xe0 at +0x10 and
 # the u16 dword offsets of every code's bitstream at +0xf0. Codes below 0xe0 are the text
 # characters (Windows-1252 minus 0x20) and are as wide as their width byte; the codes from 0xe0
-# on are the full-width set (Japanese, symbols, the 0x138 star and the 0x172.. Latin letters).
+# on are the full-width set (Japanese, symbols, the 0x138 star and the 0x172.. Latin letters; 0xe7
+# and 0x11b are in the save screen's and the German Game Options' titles).
 FONT_SIZES = 0x806480
 FONT_DATA = 0x806488
 FONT_LEVELS = 0x806490
-FONT_CODES = list(range(0xe0)) + [0x138] + list(range(0x172, 0x1b0))
+FONT_CODES = list(range(0xe0)) + [0xe7, 0x11b, 0x138] + list(range(0x172, 0x1b0))
 
 
-def font_glyph(img, va, f, code):
+def font_glyph(exe, f, code):
     """Decodes one glyph: 3-bit codes read LSB first from dwords (0x480e00); 7 starts a run of
     transparent pixels whose length follows in up to five more codes."""
     def u16(a):
-        return struct.unpack_from('<H', img, a)[0]
-    fw, fh = u16(va(FONT_SIZES + 4 * f)), u16(va(FONT_SIZES + 4 * f + 2))
-    fa = va(struct.unpack_from('<I', img, va(FONT_DATA + 4 * f))[0])
-    levels = img[va(FONT_LEVELS):va(FONT_LEVELS) + 8]
+        return struct.unpack('<H', exe.read(a, 2))[0]
+    fw, fh = u16(FONT_SIZES + 4 * f), u16(FONT_SIZES + 4 * f + 2)
+    fa = exe.u32(FONT_DATA + 4 * f)
+    levels = exe.read(FONT_LEVELS, 8)
     bounds = []
     while u16(fa + 2 * len(bounds)):
         bounds.append(u16(fa + 2 * len(bounds)))
-    w = img[fa + 0x10 + code] if code < 0xe0 else fw
+    w = exe.read(fa + 0x10 + code, 1)[0] if code < 0xe0 else fw
     off = u16(fa + 0xf0 + 2 * code)
     px = np.zeros((fh, max(w, 1)), np.uint8)
     if not off or not w:
@@ -87,7 +88,7 @@ def font_glyph(img, va, f, code):
     def sym():
         nonlocal bits, nb, p
         if nb < 3:
-            bits |= struct.unpack_from('<I', img, p)[0] << nb
+            bits |= exe.u32(p) << nb
             p += 4
             nb += 32
         s = bits & 7
@@ -127,23 +128,18 @@ def write_font(pack, exe_path):
     corner), u8 width, u8 height (the rectangle, in 3DS pixels), u8 advance (PC units), u8 0. The
     advance is the PC's: the width plus 2, 7 for the space and the cell width plus 2 for the
     full-width codes (0x47f400)."""
-    import pefile
-    pe = pefile.PE(data=open(exe_path, 'rb').read(), fast_load=True)
-    img = pe.get_memory_mapped_image()
-    base = pe.OPTIONAL_HEADER.ImageBase
-
-    def va(a):
-        return a - base
+    from pcexe import Exe
+    exe = Exe(exe_path)
     atlas = np.zeros((512, 512), np.uint8)
     out = [b'FNT1', struct.pack('<H', 2)]
     x = y = 0
     pad = 1
     for f in (0, 1):
-        fw, fh = struct.unpack_from('<HH', img, va(FONT_SIZES + 4 * f))
+        fw, fh = struct.unpack('<HH', exe.read(FONT_SIZES + 4 * f, 4))
         sh = int(round(fh * FONT_SY))
         recs = []
         for code in FONT_CODES:
-            w, px = font_glyph(img, va, f, code)
+            w, px = font_glyph(exe, f, code)
             adv = 7 if code == 0 else w + 2 if code < 0xe0 else fw + 2
             if code == 0 or not w or not px.any():
                 recs.append(struct.pack('<HHHBBBB', code, 0, 0, 0, 0, adv, 0))
@@ -180,8 +176,7 @@ def write_font(pack, exe_path):
 
 def write_save_screen(data, pack):
     """The save screen's pictures and texts (0x453fc0 / 0x4537b0, the PC's file list)."""
-    import sh2mes
-    from events_pack import write_msg
+    from events_pack import write_msg_langs
     jobs = []
     for name in ('savebg', 'savebg2'):
         # 512x512 DXT3; the Image Enhancement Pack's are 2732x2048 (4:3 at square pixels), which
@@ -196,9 +191,7 @@ def write_save_screen(data, pack):
     encode_textures(jobs, pack, fmt='rgb565', mipmaps=False)
     for png, _, _ in jobs:
         os.remove(os.path.join(pack, png))
-    os.makedirs(os.path.join(pack, 'events'), exist_ok=True)
-    write_msg(os.path.join(pack, 'events', 'mcard.msg'),
-              sh2mes.load(os.path.join(data, 'etc', 'message', 'm_card_x_msg_e.mes')))
+    write_msg_langs(pack, 'mcard.msg', os.path.join(data, 'etc', 'message', 'm_card_x_msg'))
     print('wrote ui/savebg.t3x, ui/savebg2.t3x and events/mcard.msg')
 
 
@@ -234,6 +227,29 @@ def write_mist(data, pack):
     encode_textures([(png, t3x, True)], pack, fmt='a8', mipmaps=False)
     os.remove(os.path.join(pack, png))
     print('wrote', t3x)
+
+
+def write_room_fx(data, pack):
+    """The sprites of the effects a room posts on entry (port/source/roomfx.c). The PC finds each by
+    its texture id through the effect texture table at 0x6bc0b8 (0x4c9b20): index 3 (id 0x52e4,
+    data/pic/effect/fire01.tbn2) for the burning stairs' flames (classes 47..49, 0x4ec920), index 0
+    (0x52e3, playable0.tbn2) for their smoke (class 52, 0x4ecad0) and index 22 (0x10df, flear.tbn2)
+    for the lake's guiding light (class 56, 0x4db440). All are 512x512 sprite sheets with alpha:
+    fire01 a 4x4 grid of flames, playable0 smoke puffs in its lower half, flear one glow. Written
+    as ETC1A4 without mipmaps, fire and smoke at 256x256, the glow at 128x128."""
+    os.makedirs(os.path.join(pack, 'effect'), exist_ok=True)
+    jobs = []
+    for src, name, size in (('fire01', 'fire', 256), ('playable0', 'smoke', 256), ('flear', 'flare', 128)):
+        img = load_tex(os.path.join(data, 'pic', 'effect', src + '.tbn2')).convert('RGBA')
+        png, t3x = 'effect/%s.png' % name, 'effect/%s.t3x' % name
+        img.resize((size, size), Image.LANCZOS).save(os.path.join(pack, png))
+        if os.path.exists(os.path.join(pack, t3x)):
+            os.remove(os.path.join(pack, t3x))
+        jobs.append((png, t3x, True))
+    encode_textures(jobs, pack, fmt='etc1a4', mipmaps=False)
+    for png, t3x, _ in jobs:
+        os.remove(os.path.join(pack, png))
+        print('wrote', t3x)
 
 
 def write_screens(data, pack, out_voice=True):
@@ -275,13 +291,43 @@ def write_screens(data, pack, out_voice=True):
 
 
 def write_options(data, pack):
-    """The options screens' texts (0x461600 / 0x464eb0 draw option_msg_e.mes by number)."""
-    import sh2mes
-    from events_pack import write_msg
-    os.makedirs(os.path.join(pack, 'events'), exist_ok=True)
-    write_msg(os.path.join(pack, 'events', 'option.msg'),
-              sh2mes.load(os.path.join(data, 'etc', 'message', 'option_msg_e.mes')))
+    """The options screens' texts (0x461600 / 0x464eb0 draw option_msg_?.mes by number)."""
+    from events_pack import write_msg_langs
+    write_msg_langs(pack, 'option.msg', os.path.join(data, 'etc', 'message', 'option_msg'))
     print('wrote events/option.msg')
+
+
+# The pause menu's strings are in the exe, nine per language (0x407310 picks the table by the
+# language 0x1dbec06): the title, Resume, Save Game, Load Game, Options, Quit, the quit question
+# (0x407620), Yes and No.
+PAUSE_TABLES = (('e', 0x7abd84), ('f', 0x7abda8), ('g', 0x7abdcc), ('i', 0x7abe14), ('s', 0x7abdf0))
+
+
+def exe_text(s):
+    """A string the exe hands to 0x482ea0, as the pack's text: after \\h a byte b is the code
+    b - 0x20, which is the pack's character b; \\n starts a line and the other escapes (\\c
+    centre, \\h, ...) are dropped."""
+    out, i = [], 0
+    while i < len(s):
+        if s[i] == '\\' and i + 1 < len(s):
+            if s[i + 1] == 'n':
+                out.append('\n')
+            i += 2
+            continue
+        out.append(s[i])
+        i += 1
+    return ''.join(out)
+
+
+def write_pause(pack, exe_path):
+    """pack/events/pause.msg and events/<f, g, i, s>/pause.msg: the pause menu's strings."""
+    from pcexe import Exe
+    from events_pack import lang_dir, write_msg
+    exe = Exe(exe_path)
+    for lang, table in PAUSE_TABLES:
+        write_msg(os.path.join(lang_dir(pack, lang), 'pause.msg'),
+                  [exe_text(exe.cstr(exe.u32(table + 4 * i), 96)) for i in range(9)])
+    print('wrote events/pause.msg')
 
 
 def main():
@@ -298,8 +344,10 @@ def main():
     write_font(pack, exe_path)
     write_save_screen(data, pack)
     write_options(data, pack)
+    write_pause(pack, exe_path)
     write_blood(data, pack)
     write_mist(data, pack)
+    write_room_fx(data, pack)
     write_screens(data, pack)
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
     logo = os.path.join(data, 'pic', 'etc', 'sh2dc.tex')

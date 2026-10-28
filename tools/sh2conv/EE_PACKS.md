@@ -163,12 +163,19 @@ those parts out. `SH2EE_DIR` names another mod folder, as `CustomModFolder` does
 
 ### Notes and limits
 
-- **The exe check is unchanged.** The packer still needs the Director's Cut `sh2pc.exe` (MD5
-  `f3f5360298b6d0f6f2e09cf24a0925d1`). The Enhanced Executable package replaces `sh2pc.exe` with a
-  patched North American 1.0 exe (MD5 `f9ccf14b5e5a31d9fe50e5b5efe50ed7`), which `gameversion.py`
-  recognises and names. Third-party install scripts keep the old exe as `sh2pc.bak`, and the packer
-  reads a Director's Cut exe it finds there by itself; otherwise the player puts it back (the Setup
-  Tool's own behaviour was not checked).
+- **The exe.** The packer still needs the Director's Cut `sh2pc.exe` (MD5
+  `f3f5360298b6d0f6f2e09cf24a0925d1`), or that file changed only where the converters don't read it
+  (`pcexe.py`). The Enhanced Executable package replaces `sh2pc.exe` with a patched North American 1.0
+  exe (MD5 `f9ccf14b5e5a31d9fe50e5b5efe50ed7`), which `gameversion.py` names, as it names any 1.0 or
+  1.1 exe in a folder with the EE's module or `sh2e` folder. Third-party install scripts keep the old
+  exe as `sh2pc.bak`, and the packer reads a usable exe it finds there, or in a backup subfolder, by
+  itself; otherwise the player puts it back (the Setup Tool's own behaviour was not checked).
+- **Memory in the browser.** The Image Enhancement Pack's maps (5464x4096, `mapboldwin.tex`
+  10928x8192) took 1.3 GB and 5 GB to decode in one go. Pyodide's memory never shrinks, so every
+  worker that decoded one kept over 2 GB, and the big one failed outright and fell back to the
+  original. `sh2map.decode_dxt` now decodes in runs of 32768 blocks (same pixels, about 115 MB for
+  a 5464x4096 map). The movie task's weight grows with the size of the movies it converts
+  (`pack.movie_scale`), so the progress bar doesn't sit near the end while the 1080p FMV pack converts.
 - **Build into an empty folder** after adding or removing packs. Converters skip textures and models
   they already wrote (for resuming), so an old output folder keeps old textures. Movies are the
   exception: their source is tracked.

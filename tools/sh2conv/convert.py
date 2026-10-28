@@ -140,6 +140,16 @@ def encode_textures(jobs, pack_root, fmt=None, mipmaps=True, what=None):
         import t3x
         t3x.encode_jobs(jobs, pack_root, fmt, mipmaps, what)
         return
+    if os.environ.get('SH2_TEXENC') == 'native':
+        # the browser packer's encoder built for this machine (tools/texenc/build.sh native), one
+        # process per core: no tex3ds and no container
+        import t3x
+        from concurrent.futures import ProcessPoolExecutor
+        full = [(os.path.join(pack_root, p), os.path.join(pack_root, t), fmt or ('etc1a4' if a else 'etc1'), mipmaps)
+                for p, t, a in jobs]
+        with ProcessPoolExecutor() as ex:
+            list(ex.map(t3x.encode, *zip(*full), chunksize=8))
+        return
     mip = '-m lanczos' if mipmaps else ''
     cmds = []
     for png, t3x, alpha in jobs:

@@ -10,7 +10,8 @@ Writes pack/map/:
                Pack (ee.py) its 5464x4096 maps are the source, and its 4x marker sheets are
                brought back to the original sheets' sizes.
   map.dat      the PC's tables (see below), read from sh2pc.exe
-and pack/events/memo.msg from memo_x_msg_e.mes, the memo list's titles and texts.
+and pack/events/memo.msg from memo_x_msg_e.mes, the memo list's titles and texts (and
+pack/events/<f, g, i, s>/memo.msg from the other languages' files).
 
 map.dat (little endian), all from the exe:
   "SHMP" u32 version 1
@@ -38,8 +39,7 @@ from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from convert import encode_textures  # noqa: E402
 from events import DEFAULT_EXE, Exe  # noqa: E402
-from events_pack import write_msg  # noqa: E402
-import sh2mes  # noqa: E402
+from events_pack import write_msg_langs  # noqa: E402
 import ee  # noqa: E402
 from ui import load_tex  # noqa: E402
 
@@ -147,7 +147,7 @@ def main():
         for png, _, _ in j:
             os.remove(os.path.join(pack, png))
     mdir = os.path.join(data, 'etc', 'message')
-    write_msg(os.path.join(pack, 'events', 'memo.msg'), sh2mes.load(os.path.join(mdir, 'memo_x_msg_e.mes')))
+    write_msg_langs(pack, 'memo.msg', os.path.join(mdir, 'memo_x_msg'))
     print('wrote map.dat,', len(textures), 'textures and memo.msg')
 
 

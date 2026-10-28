@@ -170,6 +170,12 @@ pickup model}; bits 28..26 are a difficulty class and 24..20 a condition type, b
 0x48cb20 (`EventItemConditionCheck`); bits 13..0 are a flag n. The pickup is offered while flags
 n and n+1 are both clear and the pickup sets n+1. It is tested by 0x48b980 (`ItemCheckLookPoint`):
 same 400 radius and 30 degree cone as a look point, height window `py - 750 <= y <= py + 100`.
+`EventItemConditionCheck` leaves class 2, 3 and 6 pickups out on easy, 1, 3 and 5 on normal and 1, 2
+and 4 on hard (every Director's Cut pickup is class 0). Condition type 1 needs flag 251 (35 pickups in
+the town at night), type 2 lets the pickup be taken only while flag 108 is clear (four boxes in ap64),
+and type 3 hides the model on flag 232 and the pickup on flag 240 (hp210). The room loader 0x490080
+puts each pickup's model down (kind 1..7: 0x703, 0x724, 0x723, 0x700, 0x701, 0x733, 0x749) when the
+model test passes; in a dark room the pickup also needs the flashlight lit (0x48e520).
 Items live in rooms but often sit on furniture, so their y is commonly a few hundred units above
 the floor.
 
@@ -194,6 +200,23 @@ file name (`ap06` means data/bg/ap/ap06.map and .cld), the floor height under th
 `on_floor` (a floor triangle of that room under the point within 300 units of its y). Door
 triggers also get `wall_dist`, the distance from the door line's midpoint to the nearest wall of
 the room.
+
+## Stage walls
+
+`stagewalls.py` writes `events/stagewalls.bin` (run by the events step): the `_CL_HITPOLY_PLANE`
+lists (80 bytes a plane, ended by kind 0) that the stages' per-frame functions hand to
+`clAddDynamicWall` (0x5228e0), each plane turned into a wall the way `collision.py` turns a .cld wall
+(`plane_wall`). Layout: `"SWL1"`, u32 version 2, u32 list count, then per list u32 exe address,
+u32 wall count and that many walls of six floats (x0, z0, x1, z1, y_top, y_bottom). The conditions
+(stage, room, tile around James, flags) are in the port, `port/source/stagewalls.c`, which looks the
+lists up by address.
+
+Like the rooms' walls, these stop a body only on their front: clCheckColumn2WallHit (0x522b50)
+pushes while n . (c - p2) >= 0, with n = (p2 - p1) x (p1 - p0) the plane's normal (0x529b10) and c
+the body's centre, and the line tests (0x528840, 0x528350) hit a wall only going from its front to
+its back. Version 2 orders each wall's ends so that its front is where
+(x - x0) * (z1 - z0) - (z - z0) * (x1 - x0) >= 0, as `collision.py` does for the S3L walls (S3L
+version 2). The port reads a version 1 file, which had the same layout, as two-sided walls.
 
 ## Validation
 

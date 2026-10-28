@@ -13,7 +13,10 @@ S3C v2 (little-endian)
   inv_bind    bones x f32[12]   3x4 row-major, model space -> bone space
   bind_local  bones x f32[12]   3x4 row-major, parent-relative bind transform
   draw        u32 texture_slot (0xffffffff none), u32 first_index, u32 index_count, u32 flags
-              (bit0 texture alpha, bit1 transparent part, bit2 cull back faces),
+              (bit0 texture alpha, bit1 transparent part (drawn after the others, blended: the
+              .mdl's transparent primitives, 0x504a50), bit2 cull back faces, bits 8..15 the
+              primitive's pose index: 0 always drawn, others only when the game shows that part,
+              such as one of James' hands, 0x50dfc0),
               u32 palette_count, u8 palette[28] (skeleton bone per slot), pad to 48 bytes
   vertex      f32 x, y, z (bind pose, model space), f32 u, v, u8 slot*3 [4], u8 weight [4],
               s8 normal x, y, z (bind pose, model space, x127), u8 pad (32 bytes)
@@ -60,6 +63,18 @@ def split_palettes(tris, bones, weights):
     return chunks
 
 
+def textures_of_primitives(m):
+    """Primitive -> texture id (texture_pairs[texture_index].texture_index -> main_texture_ids), the
+    opaque primitives first and the transparent ones after them, in convert_model's order."""
+    out = {}
+    for k, pr in enumerate(list(m.primitives) + list(m.tprimitives)):
+        if pr.texture_index < len(m.texture_pairs):
+            ti = m.texture_pairs[pr.texture_index][0]
+            if ti < len(m.main_texture_ids) and m.main_texture_ids[ti] in m.textures:
+                out[k] = m.main_texture_ids[ti]
+    return out
+
+
 def convert_model(m, out_path, tex_slot_of_prim, tex_alpha, src=None):
     """Writes the S3C. src, when a list, receives the .mdl vertex index of every S3C vertex in order
     (palette splitting duplicates vertices; demos.py needs this for the face clusters)."""
@@ -67,7 +82,8 @@ def convert_model(m, out_path, tex_slot_of_prim, tex_alpha, src=None):
     tex_ids = sorted(set(tex_slot_of_prim.values()))
     slot_of_id = {t: i for i, t in enumerate(tex_ids)}
     verts, indices, draws = [], [], []
-    for k, pr in enumerate(m.primitives):
+    n_opaque = len(m.primitives)
+    for k, pr in enumerate(list(m.primitives) + list(getattr(m, 'tprimitives', []))):
         tris = v['groups'].get(pr.start)
         if tris is None or not len(tris):
             continue
@@ -80,8 +96,8 @@ def convert_model(m, out_path, tex_slot_of_prim, tex_alpha, src=None):
                 for vi in t:
                     if vi not in remap:
                         remap[vi] = len(verts)
-                        if src is not None:
-                            src.append(int(vi))
+                        if src is not None:      # transparent vertices are not .mdl opaque ones
+                            src.append(int(vi) if k < n_opaque else -1)
                         b = [slot.get(int(x), 0) * 3 for x in v['bones'][vi]]
                         w = np.round(v['weights'][vi] * 255).astype(int)
                         w[0] += 255 - w.sum()            # keep the sum exactly 255
@@ -91,7 +107,8 @@ def convert_model(m, out_path, tex_slot_of_prim, tex_alpha, src=None):
                     indices.append(remap[vi])
             tid = tex_slot_of_prim.get(k)
             ts = slot_of_id[tid] if tid is not None else 0xFFFFFFFF
-            flags = (1 if tex_alpha.get(tid) else 0) | (4 if pr.backface_culling else 0)
+            flags = (1 if tex_alpha.get(tid) else 0) | (2 if k >= n_opaque else 0) | \
+                (4 if pr.backface_culling else 0) | pr.pose_index << 8
             draws.append(struct.pack('<5I', ts, first, len(indices) - first, flags, len(palette)) +
                          bytes(palette) + b'\0' * (PALETTE_MAX - len(palette)))
     if len(verts) > 65536:
@@ -151,13 +168,7 @@ def main():
     os.makedirs(os.path.join(out, 'png'), exist_ok=True)
     m = sh2mdl.load_mdl(os.path.join(src, a.model))
 
-    # primitive -> texture id (texture_pairs[texture_index].texture_index -> main_texture_ids)
-    tex_of_prim, tex_alpha, jobs = {}, {}, []
-    for k, pr in enumerate(m.primitives):
-        if pr.texture_index < len(m.texture_pairs):
-            ti = m.texture_pairs[pr.texture_index][0]
-            if ti < len(m.main_texture_ids) and m.main_texture_ids[ti] in m.textures:
-                tex_of_prim[k] = m.main_texture_ids[ti]
+    tex_of_prim, tex_alpha, jobs = textures_of_primitives(m), {}, []
     for tid in sorted(set(tex_of_prim.values())):
         rgba = sh2mdl.texture_rgba(m, tid)
         alpha = bool((rgba[:, :, 3] < 250).any())

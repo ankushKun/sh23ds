@@ -52,35 +52,52 @@ def _color_blocks(blk, four_color_only):
     return np.take_along_axis(pal, sel[:, :, None].astype(np.int64).repeat(4, 2), 1).astype(np.uint8)
 
 
+def _decode_blocks(raw, kind):
+    """(n, 8 or 16) uint8 blocks -> (n, 16, 4) RGBA."""
+    if kind == 1:
+        return _color_blocks(raw, False)
+    px = _color_blocks(raw[:, 8:], True)
+    if kind == 3:
+        a = raw[:, :8]
+        nib = np.stack([a & 15, a >> 4], -1).reshape(-1, 16)
+        px[:, :, 3] = (nib * 17).astype(np.uint8)
+    else:
+        a0, a1 = raw[:, 0].astype(np.int32), raw[:, 1].astype(np.int32)
+        bits = np.zeros(len(raw), np.uint64)
+        for i in range(6):
+            bits |= raw[:, 2 + i].astype(np.uint64) << np.uint64(8 * i)
+        sel = ((bits[:, None] >> (3 * np.arange(16, dtype=np.uint64))) & np.uint64(7)).astype(np.int64)
+        pal = np.empty((len(raw), 8), np.int32)
+        pal[:, 0], pal[:, 1] = a0, a1
+        eight = a0 > a1
+        for i in range(1, 7):
+            pal[:, i + 1] = np.where(eight, ((7 - i) * a0 + i * a1) // 7,
+                                     ((5 - i) * a0 + i * a1) // 5 if i < 5 else 0)
+        pal[:, 6] = np.where(eight, pal[:, 6], 0)
+        pal[:, 7] = np.where(eight, pal[:, 7], 255)
+        px[:, :, 3] = np.take_along_axis(pal, sel, 1).astype(np.uint8)
+    return px
+
+
+# blocks decoded at a time: the work arrays take about 1.5 KB a block, so a run of 32768 needs some
+# 50 MB whatever the texture's size (a 5464x4096 Enhanced Edition map needed 1.3 GB in one go, and
+# its 10928x8192 one 5 GB, more than the browser packer's Python can have)
+DXT_RUN = 1 << 15
+
+
 def decode_dxt(data, width, height, kind):
     """kind: 1 (DXT1), 3 (DXT2/3), 5 (DXT4/5). Returns (h, w, 4) uint8 RGBA."""
     bw, bh = max(1, (width + 3) // 4), max(1, (height + 3) // 4)
     bsize = 8 if kind == 1 else 16
     raw = np.frombuffer(data[:bw * bh * bsize], np.uint8).reshape(-1, bsize)
-    if kind == 1:
-        px = _color_blocks(raw, False)
-    else:
-        px = _color_blocks(raw[:, 8:], True)
-        if kind == 3:
-            a = raw[:, :8]
-            nib = np.stack([a & 15, a >> 4], -1).reshape(-1, 16)
-            px[:, :, 3] = (nib * 17).astype(np.uint8)
-        else:
-            a0, a1 = raw[:, 0].astype(np.int32), raw[:, 1].astype(np.int32)
-            bits = np.zeros(len(raw), np.uint64)
-            for i in range(6):
-                bits |= raw[:, 2 + i].astype(np.uint64) << np.uint64(8 * i)
-            sel = ((bits[:, None] >> (3 * np.arange(16, dtype=np.uint64))) & np.uint64(7)).astype(np.int64)
-            pal = np.empty((len(raw), 8), np.int32)
-            pal[:, 0], pal[:, 1] = a0, a1
-            eight = a0 > a1
-            for i in range(1, 7):
-                pal[:, i + 1] = np.where(eight, ((7 - i) * a0 + i * a1) // 7,
-                                         ((5 - i) * a0 + i * a1) // 5 if i < 5 else 0)
-            pal[:, 6] = np.where(eight, pal[:, 6], 0)
-            pal[:, 7] = np.where(eight, pal[:, 7], 255)
-            px[:, :, 3] = np.take_along_axis(pal, sel, 1).astype(np.uint8)
-    img = px.reshape(bh, bw, 4, 4, 4).transpose(0, 2, 1, 3, 4).reshape(bh * 4, bw * 4, 4)
+    if len(raw) != bw * bh:
+        raise ValueError('DXT data holds %d of %dx%d blocks' % (len(raw), bw, bh))
+    img = np.empty((bh * 4, bw * 4, 4), np.uint8)
+    rows = max(1, DXT_RUN // bw)            # block rows per run
+    for y in range(0, bh, rows):
+        n = min(rows, bh - y)
+        px = _decode_blocks(raw[y * bw:(y + n) * bw], kind)
+        img[y * 4:(y + n) * 4] = px.reshape(n, bw, 4, 4, 4).transpose(0, 2, 1, 3, 4).reshape(n * 4, bw * 4, 4)
     return np.ascontiguousarray(img[:height, :width])
 
 

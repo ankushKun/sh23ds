@@ -26,7 +26,7 @@ sys.path.insert(0, HERE)
 
 # seconds each step took in the browser engine (fast textures, one core): the browser packer's weights
 STEP_SECONDS = {'rooms': 860, 'collision': 2, 'james': 3, 'characters': 36, 'events': 2, 'lighting': 1, 'fog': 1,
-                'ui': 1, 'pics': 13, 'maps': 6, 'music': 2, 'movies': 360, 'halfmovies': 150, 'sound': 13,
+                'ui': 1, 'pics': 13, 'maps': 6, 'music': 60, 'movies': 360, 'halfmovies': 150, 'sound': 13,
                 'demos': 530, 'stagemodels': 77, 'shadows': 1}
 
 CHARACTERS = [
@@ -72,8 +72,8 @@ class Packer:
         # absolute, so the links of the characters step point at the game from anywhere
         self.game = os.path.abspath(game)
         self.out = os.path.abspath(out)
-        self.data = os.path.join(game, 'data')
-        self.exe = os.path.join(game, 'sh2pc.exe')
+        self.data = os.path.join(self.game, 'data')
+        self.exe = os.path.join(self.game, 'sh2pc.exe')
         self.exe_found = False      # check() or begin() picked the Director's Cut exe to read
         self.half = os.environ.get('HALF_MOVIES', '0') == '1' if half is None else half
 
@@ -178,7 +178,7 @@ class Packer:
         for sid in ('james', 'characters', 'events', 'fog', 'ui', 'pics', 'maps', 'music', 'sound', 'demos',
                     'stagemodels'):
             t.append({'id': sid, 'step': sid, 'lane': 'main', 'weight': STEP_SECONDS.get(sid, 5),
-                      'ffmpeg': sid in ('sound', 'demos')})
+                      'ffmpeg': sid in ('music', 'sound', 'demos')})
         t.append({'id': 'shadows', 'step': 'shadows', 'lane': 'main', 'weight': 1})
         for bg in ('bg', 'bg2'):
             for area in sorted(os.listdir(os.path.join(self.data, bg))):
@@ -186,13 +186,29 @@ class Packer:
                 if os.path.isdir(d):
                     maps = sum(f.lower().endswith('.map') for f in os.listdir(d))
                     t.append({'id': 'rooms:%s:%s' % (bg, area), 'step': 'rooms', 'lane': 'any', 'weight': 2 * maps + 1})
-        t.append({'id': 'movies', 'step': 'movies', 'lane': 'any', 'weight': STEP_SECONDS['movies'], 'ffmpeg': True})
+        movies = self.movie_scale()
+        t.append({'id': 'movies', 'step': 'movies', 'lane': 'any', 'weight': STEP_SECONDS['movies'] * movies,
+                  'ffmpeg': True})
         if self.half:
-            t.append({'id': 'halfmovies', 'step': 'halfmovies', 'lane': 'any', 'weight': STEP_SECONDS['halfmovies'],
-                      'ffmpeg': True})
+            t.append({'id': 'halfmovies', 'step': 'halfmovies', 'lane': 'any',
+                      'weight': STEP_SECONDS['halfmovies'] * movies, 'ffmpeg': True})
         t.append({'id': 'lighting', 'step': 'lighting', 'lane': 'main', 'weight': 1, 'after': ['rooms:*'],
                   'needs': ['bg/*/rooms.txt']})
         return t
+
+    def movie_scale(self):
+        """How much longer than the originals the movies take to convert, by their sources' size: the
+        Enhanced Edition's are 1920x1080 or 1920x1230 (EE_PACKS.md), several times the work, which the
+        progress bar should know about rather than sit near the end for the last hour."""
+        import ee
+        src = os.path.join(self.data, 'movie')
+        orig = used = 0
+        for fn in os.listdir(src) if os.path.isdir(src) else ():
+            if fn.lower().endswith('.bik'):
+                p = os.path.join(src, fn)
+                orig += os.path.getsize(p)
+                used += os.path.getsize(ee.file(p, note=False))
+        return max(1.0, used / orig) if orig else 1.0
 
     def run_task(self, tid):
         """Runs one task of tasks(), or 'areaindex'."""
@@ -284,6 +300,7 @@ class Packer:
         self.run('events.py', '--exe', self.exe, '--data', self.data, '--out', os.path.join(self.out, 'events'))
         self.run('events_pack.py', self.data, self.out)
         self.run('enemies_pack.py', self.out)
+        self.run('stagewalls.py', '--exe', self.exe, '--out', os.path.join(self.out, 'events'))
 
     def step_lighting(self):
         self.run('lighting.py', '--exe', self.exe, '--pack', self.out)
@@ -301,12 +318,17 @@ class Packer:
         self.run('maps.py', self.data, self.out, '--exe', self.exe)
 
     def step_music(self):
-        # the BGM (the Audio Enhancement Pack's when there); voice/ is left out: the cutscene voices
-        # are taken from voice.afs by the demos step and the effects in it by the sound step
-        self.run('ee.py', 'copytree', self.data, 'sound/adx', os.path.join(self.out, 'sound', 'adx'), 'voice')
+        # the BGM (the Audio Enhancement Pack's when there) and its loudness for the port's levels;
+        # voice/ is left out: the cutscene voices are taken from voice.afs by the demos step and the
+        # effects in it by the sound step
+        adx = os.path.join(self.out, 'sound', 'adx')
+        self.runs((1, 'ee.py', 'copytree', self.data, 'sound/adx', adx, 'voice'),
+                  (20, 'levels.py', adx, '--from', os.path.join(self.data, 'sound', 'adx'), '--skip', 'voice',
+                   '*.adx', '*.aix'))
 
     def step_movies(self):
-        self.run('movies.py', '--data', self.data, '--out', self.out)
+        self.runs((40, 'movies.py', '--data', self.data, '--out', self.out),
+                  (1, 'levels.py', os.path.join(self.out, 'movie'), '--each', '--skip', 'half', '*.mpg'))
 
     def step_halfmovies(self):
         # a half-size set in movie/half/ (about 75 MB more) that the Old 3DS profile plays (port/OLD3DS.md)
@@ -318,7 +340,8 @@ class Packer:
     def step_demos(self):
         # then the motions the stage code sets by id outside any scene (Maria lying in the day room in S3)
         self.runs((20, 'demos.py', '--data', self.data, '--exe', self.exe, '--out', self.out),
-                  (1, 'motion.py', '--data', self.data, '--exe', self.exe, '--out', self.out))
+                  (1, 'motion.py', '--data', self.data, '--exe', self.exe, '--out', self.out),
+                  (1, 'levels.py', os.path.join(self.out, 'sound', 'voice'), '*.adx'))
 
     def step_stagemodels(self):
         self.run('stagemodels.py', '--data', self.data, '--exe', self.exe, '--out', self.out,

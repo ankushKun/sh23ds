@@ -10,7 +10,8 @@ How the PC places them
   a turn. The character loader (0x493430, Event/chara_data_load.c) finds the kind in the table at
   0x88d4f8 (16 bytes: s32 kind, then file records for the .mdl, an .anm and a .kg1) and loads the
   ones whose place is in the room James is in; the 0x3xx kinds (the town's cars and trailers) go
-  to 0x53b510 instead in James' game, which places them the same way.
+  to 0x53b510 instead in James' game, which places them the same way. A few stages' room loaders
+  create a model themselves (INIT_MODELS): the endings' last stairwell.
 
 What this writes
   <out>/chr/item/<model>.s3c, chr/item2/... (data/chr2, Born From a Wish) with their textures,
@@ -37,6 +38,12 @@ from sound import Exe  # noqa: E402
 import host  # noqa: E402
 
 MODEL_TABLE = 0x88d4f8
+# Models a stage's room loader (Stage_Data +0x1c) creates itself with 0x48fcc0 rather than through
+# its Model_List: (stage, kind, place, turn, flag_off). The four endings' loaders (0x440350,
+# 0x4410d0, 0x43f500, 0x574c80) put the last stairwell (lsi) up while flag 505 (0x1f7d61c bit 25)
+# is clear; each has its own copy of the place.
+INIT_MODELS = [(48, 0x517, 0x7b4054, 0x7b4064, 505), (49, 0x517, 0x7b4c64, 0x7b4c74, 505),
+               (50, 0x517, 0x7b333c, 0x7b334c, 505), (51, 0x517, 0x8c9804, 0x8c9814, 505)]
 ITEM_KINDS, N_ITEMS = 0x892640, 86
 PICKUP_TABLE, N_PICKUPS = 0x88d2b8, 7     # {s32 kind, file record}: the drinks, kits and rounds
 
@@ -64,9 +71,14 @@ def main():
     table = model_table(exe)
     events = json.load(open(a.events or os.path.join(a.out, 'events', 'events.json')))
     lines, done, missing = [], {}, set()
+    init = {}
+    for stage, kind, place, turn, flag_off in INIT_MODELS:
+        init.setdefault(stage, []).append({'kind': '%#x' % kind, 'flag_off': flag_off, 'flag_on': 0,
+                                           'pos': list(struct.unpack('<3f', exe.read(place, 12))),
+                                           'rot': list(struct.unpack('<3f', exe.read(turn, 12)))})
     for n, st in enumerate(events['stages']):
         host.progress(0.9 * n / len(events['stages']), n, len(events['stages']), 'stages')
-        for m in st.get('models') or []:
+        for m in (st.get('models') or []) + init.get(st['id'], []):
             kind = int(m['kind'], 16)
             path = table.get(kind)
             if not path or not path.startswith(('data/chr/', 'data/chr2/')):

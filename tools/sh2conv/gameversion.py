@@ -5,12 +5,14 @@ one sh23ds is built from.
   gameversion.py <Silent Hill 2 folder>             report on the exe and the data folder
   gameversion.py --manifest <Silent Hill 2 folder>  rewrite game_files.tsv from a Director's Cut install
 
-The converters read tables at fixed addresses of the Director's Cut sh2pc.exe (MD5 DC_MD5), so the
-packer needs exactly that file. The exe is named by its MD5 where we know the file, and otherwise by
-the code bytes at 0x401005 that Silent Hill 2 Enhancements tells v1.0, v1.1 and the Director's Cut
-apart by (refsrc/sh2ee dllmain.cpp GetGameVersion; sh2-3ds-port-kit/tools/sh2version.py does the same).
-Installers of the Enhanced Edition and of fixes keep the replaced exe next to the new one, so when
-sh2pc.exe is wrong, a Director's Cut exe under another name in the folder (sh2pc.bak) is used instead.
+The converters read tables at fixed addresses of the Director's Cut sh2pc.exe (MD5 DC_MD5). Any exe
+that holds the same bytes everywhere they read makes the same pack, so a Director's Cut exe that a
+no-CD patch, a fix or a rip changed elsewhere is used as it is (pcexe.py, exe_reads.tsv). Any other exe
+is named by its MD5 where we know the file, and otherwise by the code bytes at 0x401005 that Silent
+Hill 2 Enhancements tells v1.0, v1.1 and the Director's Cut apart by (refsrc/sh2ee dllmain.cpp
+GetGameVersion; sh2-3ds-port-kit/tools/sh2version.py does the same). Installers of the Enhanced
+Edition and of fixes may keep the replaced exe next to the new one, so when sh2pc.exe can't be used, a
+usable exe under another name in the folder or a backup folder (sh2pc.bak, backup/sh2pc.exe) is.
 
 The data folder is compared with the file sizes of a Director's Cut install
 (sh2-3ds-port-kit/data/dc/game_files.tsv, sizes only). That catches the case the exe check can't: the
@@ -22,12 +24,16 @@ import struct
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import pcexe  # noqa: E402
+
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 MANIFEST = os.path.join(ROOT, 'sh2-3ds-port-kit', 'data', 'dc', 'game_files.tsv')
 
 DC_MD5 = 'f3f5360298b6d0f6f2e09cf24a0925d1'
 WANTED = ("Silent Hill 2: Director's Cut for PC, the 2002 release on two CDs (some stores list it as "
-          "Restless Dreams). Its sh2pc.exe has MD5 " + DC_MD5)
+          "Restless Dreams). Its sh2pc.exe has MD5 " + DC_MD5 + ", or is that file changed only in places the "
+          "packer doesn't read")
 
 # exes we know by hash, and where that is written down
 KNOWN = {
@@ -94,45 +100,77 @@ def describe(path, md5=None):
 
 
 def other_exes(game):
-    """Files next to sh2pc.exe that may be the exe an installer replaced: sh2pc.bak, sh2pc.exe.orig,
-    sh2pc_original.exe and so on. Sizes are bounded so nothing big gets hashed."""
-    out = []
+    """Files that may be the exe an installer or a fix replaced: next to sh2pc.exe, sh2pc.bak,
+    sh2pc.exe.orig, sh2pc_original.exe, any other .exe and so on; in a subfolder named like a backup
+    (backup, _bak, Original), the same. Sizes are bounded so nothing big gets hashed."""
+    def candidates(d):
+        try:
+            names = sorted(os.listdir(d))
+        except OSError:
+            return []
+        out = []
+        for name in names:
+            low, p = name.lower(), os.path.join(d, name)
+            if (low != 'sh2pc.exe' or d != game) and (low.startswith('sh2pc') or
+                                                      low.endswith(('.exe', '.bak', '.orig', '.old'))):
+                if os.path.isfile(p) and 1 << 20 <= os.path.getsize(p) <= 16 << 20:
+                    out.append(p)
+        return out
+    out = candidates(game)
     for name in sorted(os.listdir(game)):
-        low = name.lower()
         p = os.path.join(game, name)
-        if (low != 'sh2pc.exe' and (low.startswith('sh2pc') or low.endswith(('.bak', '.orig', '.old')))
-                and os.path.isfile(p) and 1 << 20 <= os.path.getsize(p) <= 16 << 20):
-            out.append(p)
+        if os.path.isdir(p) and any(k in name.lower() for k in ('backup', 'bak', 'orig', 'old')):
+            out += candidates(p)
     return out
 
 
+def ee_installed(game):
+    """The Enhanced Edition's module or its mod folder is in the game folder."""
+    names = {n.lower() for n in os.listdir(game)}
+    return 'sh2eeconfig.exe' in names or ('d3d8.dll' in names and 'd3d8.ini' in names) or 'sh2e' in names
+
+
+def usable(path, md5=None):
+    """None when the packer can read this exe, else a few words on why not."""
+    if (md5 or md5_of(path)) == DC_MD5:
+        return None
+    if family(path) in ('v10', 'v11', None):
+        return 'not the Director\'s Cut'
+    ok, why = pcexe.matches(path)
+    return None if ok else why
+
+
 def check_exe(game):
-    """(exe, notes, problem): the Director's Cut exe to read, lines to show the player, and the
-    message that stops the packer (None when it can go on)."""
+    """(exe, notes, problem): the exe to read, lines to show the player, and the message that stops
+    the packer (None when it can go on)."""
     exe = os.path.join(game, 'sh2pc.exe')
     md5 = md5_of(exe)
     if md5 == DC_MD5:
         return exe, ["sh2pc.exe: the Director's Cut (MD5 %s)" % md5], None
+    differs = usable(exe, md5)
+    if differs is None:
+        return exe, ["sh2pc.exe: a Director's Cut exe that something changed (MD5 %s). Everything the packer "
+                     "reads from it is the same as in the original, so it's used as it is." % md5], None
     for alt in other_exes(game):
-        if md5_of(alt) == DC_MD5:
-            return alt, ["sh2pc.exe is %s, but %s next to it is the original Director's Cut exe, so the "
-                         "packer reads that one" % (describe(exe, md5), os.path.basename(alt))], None
+        if usable(alt) is None:
+            return alt, ["sh2pc.exe is %s, but %s is a Director's Cut exe the packer can read, so it uses that "
+                         "one" % (describe(exe, md5), os.path.relpath(alt, game))], None
 
     known, fam = KNOWN.get(md5), family(exe)
     size = os.path.getsize(exe)
-    if known == 'ee':
+    if known == 'ee' or (fam in ('v10', 'v11', 'other') and ee_installed(game)):
         why = ("sh2pc.exe is the Enhanced Edition's own exe. Installing Silent Hill 2 Enhancements replaces "
                "the game's exe with a patched North American 1.0, which sh23ds can't read. Put the "
-               "Director's Cut sh2pc.exe back while you pack; the EE packs in the sh2e folder still get used.")
+               "Director's Cut sh2pc.exe back while you pack, or next to this one as sh2pc.bak; the EE "
+               "packs in the sh2e folder still get used.")
     elif fam in ('v10', 'v11') or (known and known != KNOWN[DC_MD5]):
         why = ("sh2pc.exe is Silent Hill 2 PC %s. sh23ds reads its tables out of the Director's Cut exe, "
                "where they sit at other addresses, so this release can't be used."
                % (known or FAMILY[fam]))
     elif fam == 'dc':
-        why = ("sh2pc.exe is a Director's Cut exe that something changed (a no-CD patch, a widescreen or "
-               "frame rate fix, or another mod). The packer reads tables straight out of the file and only "
-               "accepts the exe as the CDs install it. Fix installers usually keep that one as sh2pc.bak or "
-               "similar; put it back as sh2pc.exe, or leave it next to the changed one and the packer finds it.")
+        why = ("sh2pc.exe is a Director's Cut exe that a patch or mod changed, and the change touches what "
+               "the packer reads for %s. Put back the exe as the CDs install it, or leave that one next to "
+               "this as sh2pc.bak and the packer finds it." % differs)
     elif fam is None:
         why = ("sh2pc.exe isn't a Windows program (%d bytes). It may be a shortcut or a placeholder left by "
                "a launcher; the packer needs the game's real exe." % size)

@@ -120,8 +120,9 @@ def _candidates(path):
         yield os.path.realpath(path)
 
 
-def file(path):
-    """The Enhanced Edition replacement of a game file, or the path itself."""
+def file(path, note=True):
+    """The Enhanced Edition replacement of a game file, or the path itself. note=False leaves it out of
+    the report of replacements used (SH2EE_LOG), for a look that doesn't read the file."""
     if not enabled():
         return path
     for cand in _candidates(path):
@@ -137,7 +138,8 @@ def file(path):
         for alias in ALIASES.get(rel.lower(), (rel,)):
             repl = _find_ci(root, alias)
             if repl and os.path.isfile(repl) and repl not in _rejected:
-                _note(rel, repl)
+                if note:
+                    _note(rel, repl)
                 return repl
     return path
 

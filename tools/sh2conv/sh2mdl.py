@@ -52,8 +52,7 @@ class Model:
     primitives: list
     strip_indices: np.ndarray      # opaque u16 strip list
     vertices: dict                 # opaque: pos (bind, model space), uv, nrm, bones (n,4), weights (n,4)
-    transparent: dict = None
-    tstrip_indices: np.ndarray = None
+    tprimitives: list = field(default_factory=list)   # the transparent parts (Primitive, transparent=True)
     textures: dict = field(default_factory=dict)   # texture_id -> (w, h, kind, bytes)
     main_texture_ids: list = field(default_factory=list)
     texture_pairs: list = field(default_factory=list)   # (texture_index, sprite_id)
@@ -172,6 +171,57 @@ def _load_mdl(path):
     weights = np.where(s > 0, weights / np.where(s > 0, s, 1), np.array([1.0, 0, 0, 0]))
     verts = dict(pos=pos, uv=vt['uv'].astype(np.float64), nrm=nrm, bones=bones, weights=weights, groups=groups)
 
+    # transparent parts (hair, eyelashes, Angela's bangs): their own primitive headers, strip and
+    # vertices (72 bytes: position, four weights, normal, uv, then s16 bones: the first a skeleton
+    # bone, the rest bone pairs, -1 ends the list). The PC draws them after the opaque ones with
+    # alpha blending (0x504a50: vertices 0x504280, states 0x503450 and per primitive 0x5037f0).
+    # Their vertices follow the opaque ones in `vertices`; their groups are keyed ('t', start).
+    tprims = []
+    if tprim_count:
+        p = B + tprim_ofs
+        for _ in range(tprim_count):
+            size = struct.unpack_from('<I', d, p)[0]
+            tofs = struct.unpack_from('<I', d, p + 0xc)[0]
+            mtype, pose = d[p + 0x14], d[p + 0x16]
+            cull = struct.unpack_from('<I', d, p + 0x18)[0]
+            start, length = struct.unpack_from('<II', d, p + 0x64)
+            tidx = struct.unpack_from('<H', d, p + tofs)[0]
+            diffuse = struct.unpack_from('<3f', d, p + 0x34)
+            tprims.append(Primitive([], [], tidx, ('t', start), length, pose, mtype, cull, diffuse,
+                                    (0.0, 0.0, 0.0), (0.0, 0.0, 0.0), True))
+            p += size
+        tv = np.frombuffer(d, dtype=[('p', '<f4', 4), ('w', '<f4', 4), ('n', '<f4', 4), ('uv', '<f4', 2),
+                                     ('pad', '<u4', 2), ('b', '<i2', 4)], count=tvertex_count, offset=B + tvertex_ofs)
+        tstrip = np.frombuffer(d, '<u2', (tvertex_ofs - ttri_ofs) // 2, B + ttri_ofs)
+        ttotal = max(pr.start[1] + pr.length for pr in tprims)
+        tgroups = _strip_groups(tstrip, [pr.start[1] for pr in tprims], ttotal)
+        n0 = vertex_count
+        for st, tris in tgroups.items():
+            groups[('t', st)] = tris + n0
+        tpos = np.zeros((tvertex_count, 3))
+        tnrm = -tv['n'][:, :3].astype(np.float64)
+        tbones = np.zeros((tvertex_count, 4), np.int64)
+        tweights = tv['w'].astype(np.float64)
+        for i in range(tvertex_count):
+            b = [int(x) for x in tv['b'][i]]
+            if b[0] < 0 or b[0] >= bone_count:
+                continue
+            M = initial[b[0]]
+            tpos[i] = (M @ np.r_[tv['p'][i][:3], 1.0])[:3]
+            tnrm[i] = M[:3, :3] @ tnrm[i]
+            tbones[i, 0] = b[0]
+            for j in (1, 2, 3):
+                if b[j] < 0:
+                    tweights[i, j:] = 0.0
+                    break
+                if b[j] < len(pairs) and tweights[i, j] > 0:
+                    tbones[i, j] = pairs[b[j]][1]
+        ts = tweights.sum(1, keepdims=True)
+        tweights = np.where(ts > 0, tweights / np.where(ts > 0, ts, 1), np.array([1.0, 0, 0, 0]))
+        verts = dict(pos=np.vstack([pos, tpos]), uv=np.vstack([verts['uv'], tv['uv'].astype(np.float64)]),
+                     nrm=np.vstack([nrm, tnrm]), bones=np.vstack([bones, tbones]),
+                     weights=np.vstack([weights, tweights]), groups=groups)
+
     textures = {}
     if tex_count and not no_tex:
         t = tex_ofs + 16
@@ -187,7 +237,7 @@ def _load_mdl(path):
             textures[tid] = (w, h, kind, d[t:t + size])
             t += size
 
-    return Model(bone_count, parents, initial, pairs, prims, strip, verts,
+    return Model(bone_count, parents, initial, pairs, prims, strip, verts, tprims,
                  textures=textures, main_texture_ids=main_ids, texture_pairs=tpairs)
 
 

@@ -75,7 +75,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import ee  # noqa: E402
 import sh2mdl  # noqa: E402
-from chr import convert_model  # noqa: E402
+from chr import convert_model, textures_of_primitives  # noqa: E402
 from convert import encode_textures, pow2_floor  # noqa: E402
 from sound import Exe, afs_files, wav_to_adx  # noqa: E402
 import host  # noqa: E402
@@ -89,6 +89,7 @@ STAGE_TABLE = os.path.join(ROOT, 'sh2-3ds-port-kit', 'data', 'dc', 'stage_table.
 
 DRAMA_DEMO_MAIN = 0x4a1c80
 SUBTITLES_EXEC = 0x49fe30         # voice and subtitles without a script
+INLINE_VOICES = [(0x588e60, 0x8d82e8, 0x20, 60107)]   # (program, times, first message, stream)
 LOAD_FILE = 0x492a50              # loads a file list entry into a new buffer
 DEMO_BUFFER = 0x1dbec40          # where the stage programs load a script (FUN_00448f30)
 # PlayInfos a program plays with more than one script: it loads one of them into DEMO_BUFFER first
@@ -245,30 +246,26 @@ def functions():
 
 def playinfo_calls(exe):
     """Every `push imm32; call DramaDemoMain` in the code: (call address, PlayInfo, function)."""
-    base, _, raw, rsize = exe.secs[0]
-    code = exe.d[raw:raw + rsize]
+    base = code_start(exe)
     funcs = functions()
     starts = [a for a, _ in funcs]
     out = []
-    for m in re.finditer(b'\xe8', code):
-        o = m.start()
-        if o < 5 or o + 5 > len(code):
-            continue
-        if base + o + 5 + struct.unpack_from('<i', code, o + 1)[0] != DRAMA_DEMO_MAIN:
-            continue
+    for va in exe.calls_to(DRAMA_DEMO_MAIN):
         # the PlayInfo is pushed as an immediate, or moved into EAX on two branches and pushed;
         # take every immediate in the instructions just before the call that looks like one
         pis = []
-        for k in range(max(0, o - 40), o - 4):
-            if code[k] in (0x68, 0xb8):
-                v = struct.unpack_from('<I', code, k + 1)[0]
+        lo = max(base, va - 40)
+        pre = exe.read(lo, va - lo)
+        for k in range(len(pre) - 4):
+            if pre[k] in (0x68, 0xb8):
+                v = struct.unpack_from('<I', pre, k + 1)[0]
                 if 0x7b0000 <= v < 0x900000 and plausible_playinfo(exe, v) and v not in pis:
                     pis.append(v)
-        i = bisect.bisect_right(starts, base + o) - 1
-        fn = funcs[i] if i >= 0 and funcs[i][0] <= base + o <= funcs[i][1] else None
+        i = bisect.bisect_right(starts, va) - 1
+        fn = funcs[i] if i >= 0 and funcs[i][0] <= va <= funcs[i][1] else None
         lists = []
         if fn:
-            seg = code[fn[0] - base:fn[1] - base + 1]
+            seg = exe.read(fn[0], fn[1] - fn[0] + 1)
             for k in re.finditer(b'\x68', seg):
                 if k.start() + 5 > len(seg):
                     continue
@@ -281,7 +278,7 @@ def playinfo_calls(exe):
                     if s.startswith('data/demo') and s.endswith('.dds'):
                         lists.append(s)
         for pi in pis:
-            out.append((base + o, pi, fn[0] if fn else None, lists))
+            out.append((va, pi, fn[0] if fn else None, lists))
     return out
 
 
@@ -528,12 +525,7 @@ def convert_model_files(pack, folder, model, mdl_path, max_tex):
     m = sh2mdl.load_mdl(mdl_path)
     os.makedirs(os.path.join(out, 'tex'), exist_ok=True)
     os.makedirs(os.path.join(out, 'png'), exist_ok=True)
-    tex_of_prim, tex_alpha, jobs = {}, {}, []
-    for k, pr in enumerate(m.primitives):
-        if pr.texture_index < len(m.texture_pairs):
-            ti = m.texture_pairs[pr.texture_index][0]
-            if ti < len(m.main_texture_ids) and m.main_texture_ids[ti] in m.textures:
-                tex_of_prim[k] = m.main_texture_ids[ti]
+    tex_of_prim, tex_alpha, jobs = textures_of_primitives(m), {}, []
     for tid in sorted(set(tex_of_prim.values())):
         t3x = f'chr/{folder}/tex/{tid:08x}.t3x'
         rgba = sh2mdl.texture_rgba(m, tid)
@@ -679,17 +671,10 @@ def write_dem(path, pi, sc_bytes, sc, ids, msgs, chars, voice, fov_init, fov_pla
     return head_len + len(body)
 
 
-def code_bytes(exe):
-    base, _, raw, rsize = exe.secs[0]
-    return base, exe.d[raw:raw + rsize]
-
-
-def calls_to(exe, target):
-    base, code = code_bytes(exe)
-    for m in re.finditer(b'\xe8', code):
-        o = m.start()
-        if o >= 5 and o + 5 <= len(code) and base + o + 5 + struct.unpack_from('<i', code, o + 1)[0] == target:
-            yield o
+def code_start(exe):
+    """The code section's address. The code is searched with exe.calls_to and exe.find_all, and
+    the bytes near what they find are read with exe.read, so pcexe.py sees every byte used."""
+    return exe.secs[0][0]
 
 
 def stage_programs(exe):
@@ -713,9 +698,10 @@ def stage_programs(exe):
 def buffer_scripts(exe, data):
     """Stage buffers the programs load scripts into: FUN_00492a50(list, flags) with the result
     stored by `mov [buffer], eax` (0x593dc4: hei_lau_b.dds into 0x1d865a8)."""
-    base, code = code_bytes(exe)
     out = {}
-    for o in calls_to(exe, LOAD_FILE):
+    for va in exe.calls_to(LOAD_FILE):
+        # the bytes from 15 before the call to 28 after it: the pushes and the store that follows
+        code, o = exe.read(va - 15, 43), 15
         lst = next((struct.unpack_from('<I', code, k + 1)[0] for k in range(o - 5, o - 16, -1)
                     if code[k] == 0x68 and 0x600000 < struct.unpack_from('<I', code, k + 1)[0] < 0x900000), None)
         if lst is None:
@@ -736,13 +722,11 @@ def buffer_scripts(exe, data):
 def playinfo_buffer(exe, pa):
     """The stage buffer a program copies into PlayInfo.adr_dds_top before playing it, or None:
     `mov reg, [buffer]` ... `mov [PlayInfo + 4], reg` (0x5948a1 copies 0x1d865a0 through edx)."""
-    base, code = code_bytes(exe)
-    pat = struct.pack('<I', pa + 4)
-    i = 0
-    while True:
-        i = code.find(pat, i)
-        if i < 0:
-            return None
+    base = code_start(exe)
+    for va in exe.find_all(struct.pack('<I', pa + 4)):
+        # the 40 bytes before the address: the store it is part of and the load before that
+        lo = max(base, va - 40)
+        code, i = exe.read(lo, va - lo), va - lo
         reg = 0 if code[i - 1] == 0xa3 else (code[i - 1] >> 3) & 7 if code[i - 2] == 0x89 and code[i - 1] & 0xc7 == 5 else None
         for k in range(i - 6, max(0, i - 40), -1) if reg is not None else ():
             load = None
@@ -754,25 +738,28 @@ def playinfo_buffer(exe, pa):
                 if 0x1d80000 <= load < 0x1e00000 and load != DEMO_BUFFER:
                     return load
                 break
-        i += 1
+    return None
 
 
 def voice_sequences(exe, programs):
     """SubtitlesExec (0x49fe30) calls: (program, times, first message, voice stream)."""
-    base, code = code_bytes(exe)
     funcs = functions()
     starts = [x for x, _ in funcs]
     out = []
-    for o in calls_to(exe, SUBTITLES_EXEC):
-        seg = code[o - 28:o]
+    for va in exe.calls_to(SUBTITLES_EXEC):
+        seg = exe.read(va - 28, 28)
         imm = [(k, struct.unpack_from('<I', seg, k + 1)[0]) for k in range(len(seg) - 4) if seg[k] == 0x68]
         times = next((v for k, v in reversed(imm) if 0x7b0000 <= v < 0x900000), 0)
         stream = next((v for k, v in imm if 60000 <= v < 61000), 0)
         kt = next((k for k, v in reversed(imm) if v == times), None)
         msg = struct.unpack('<b', seg[kt - 1:kt])[0] if kt and seg[kt - 2] == 0x6a else 0
-        i = bisect.bisect_right(starts, base + o) - 1
+        i = bisect.bisect_right(starts, va) - 1
         fn = funcs[i][0] if i >= 0 else None
         out.append((fn, times, msg, stream))
+    # programs that run SubtitlesManager's loop inline instead of calling SubtitlesExec: the radio
+    # quiz in the otherworld hospital elevator (0x588e60 EvProgElevatorButton step 0x30 starts
+    # stream 0xeacb, the times at 0x8d82e8 show stage messages from 0x20)
+    out += [x for x in INLINE_VOICES if x[0] not in {o[0] for o in out}]
     return out
 
 

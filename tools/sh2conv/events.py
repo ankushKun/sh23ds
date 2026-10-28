@@ -22,7 +22,9 @@ import struct
 import sys
 
 import numpy as np
-import pefile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pcexe import Exe  # noqa: E402,F401  (maps.py and pics.py take it from here)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
@@ -30,7 +32,6 @@ DEFAULT_EXE = os.path.join(ROOT, 'Silent Hill 2', 'sh2pc.exe')
 DEFAULT_STAGES = os.path.join(ROOT, 'sh2-3ds-port-kit', 'data', 'dc', 'stage_table.json')
 DEFAULT_OUT = os.path.join(ROOT, 'pack', 'events')
 
-IMAGE_BASE = 0x400000
 
 # ------------------------------------------------------------------ constants from the exe
 DOOR_OFFSET = 250.0          # _DAT_006a91d4: player placed this far in front of a door line
@@ -79,26 +80,6 @@ DOOR_RESULTS = {4, 5}
 
 DOOR_SE_ADDR = 0x88cb70      # Event_DoorSound door_se[22] {open, close, unlock, jam, lock, pad}
 ITEM_KIND_ADDR = 0x88cca0    # Item_List.st>>29 -> {s16 item given, s16 system message, s16 model, pad}
-
-
-# ------------------------------------------------------------------ exe access
-class Exe:
-    def __init__(self, path):
-        self.pe = pefile.PE(data=open(path, 'rb').read(), fast_load=True)
-        self.data = open(path, 'rb').read()
-        self.secs = [(s.VirtualAddress + IMAGE_BASE, max(s.Misc_VirtualSize, s.SizeOfRawData),
-                      s.PointerToRawData, s.SizeOfRawData) for s in self.pe.sections]
-
-    def read(self, va, n):
-        for base, vsize, raw, rsize in self.secs:
-            if base <= va < base + vsize:
-                o = va - base
-                out = self.data[raw + o: raw + min(o + n, rsize)] if o < rsize else b''
-                return out + b'\0' * (n - len(out))
-        raise ValueError('address %#x not mapped' % va)
-
-    def u32(self, va):
-        return struct.unpack('<I', self.read(va, 4))[0]
 
 
 def half(h):

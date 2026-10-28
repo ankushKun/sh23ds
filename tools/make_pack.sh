@@ -3,9 +3,11 @@
 #
 #   tools/make_pack.sh "<Silent Hill 2 folder>" [output dir, default ./pack]
 #
-# Needs Python 3 with numpy, Pillow and pefile (in .venv, or set PY), ffmpeg (it decodes the Bink movies)
+# Needs Python 3 with numpy and Pillow (in .venv, or set PY), ffmpeg (it decodes the Bink movies)
 # and tex3ds (from devkitPro if installed, else run through Docker with devkitpro/devkitarm; with Colima the
 # output folder must then be under your home folder). The packer image (tools/packer) bundles all of it.
+# SH2_TEXENC=native encodes the textures with the browser packer's encoder built for this machine
+# (tools/texenc/build.sh native), on every core, with no tex3ds or Docker.
 # Copy the result to the SD card as sdmc:/3ds/sh23ds/ (the png/ folders and *.json files are not
 # needed on the card). Real consoles also need sdmc:/3ds/dspfirm.cdc (dump it with DSP1) for sound.
 #

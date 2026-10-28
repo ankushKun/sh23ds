@@ -292,6 +292,11 @@ clear colour to `clear_r/g/b`, and the projection near/far to `clip_near`/`clip_
 `pack/lighting.txt`: one line per map and variant, whitespace separated, `#` lines are comments.
 The default variant `-` comes first for every map; the others are `night` (town, flag 251 set),
 `flag251` (er), `bfaw` (Born From a Wish; for `ma` the default line already is Born From a Wish).
+Lines named `@1` to `@4` hold each open area's default for a tile of another area's grid: 0x494ef0
+finds no cell in the stage's own table there and gives `glb << 16`, so FUN_0047c780 takes that area's
+default (the whole-area record in the town). The port reads them when the stage's area is open and not
+the tile's (`main.c` `env_room_changed`), which lights the Leave ending's road (cb03 in the forest
+stage) as the forest.
 
 ```
 name variant glb map_id dark

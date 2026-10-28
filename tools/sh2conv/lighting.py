@@ -19,23 +19,20 @@ The Enhanced Edition fixes that change these records or their selection are appl
 (see EE_* below and port/EE_FIXES.md); --pc writes the unmodified PC values.
 """
 import argparse
-import hashlib
 import json
 import math
 import os
 import struct
 import sys
 
-import pefile
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 DEFAULT_EXE = os.path.join(ROOT, 'Silent Hill 2', 'sh2pc.exe')
 DEFAULT_PACK = os.path.join(ROOT, 'pack')
-SH2EE_HEADER = os.path.expanduser('~/Developer/refsrc/sh2ee/Patches/Patches.h')
+sys.path.insert(0, HERE)
+from pcexe import Exe  # noqa: E402
 
-EXE_MD5 = 'f3f5360298b6d0f6f2e09cf24a0925d1'
-IMAGE_BASE = 0x400000
+SH2EE_HEADER = os.path.expanduser('~/Developer/refsrc/sh2ee/Patches/Patches.h')
 
 ENV_TABLE = 0x8063c8        # DrawEnvData* per glb_crd 0..16 (read in FUN_0047c780)
 N_GLB = 17
@@ -142,30 +139,6 @@ def ee_patch_record(b, va):
 BFAW_CLEAR_ROOMS = {0xd0049, 0xb00c1, 0xb00b9, 0x50001, 0x90048, 0xb00bd, 0xc005b, 0xc0029,
                     0xc0047, 0xd0035, 0x100031, 0x100035, 0x10003d, 0x100051, 0x100055,
                     0x100015, 0xe0005, 0x10000d, 0x10001d}
-
-
-class Exe:
-    def __init__(self, path):
-        raw = open(path, 'rb').read()
-        md5 = hashlib.md5(raw).hexdigest()
-        if md5 != EXE_MD5:
-            print('warning: %s has md5 %s, expected %s (Director\'s Cut)' % (path, md5, EXE_MD5),
-                  file=sys.stderr)
-        self.data = raw
-        pe = pefile.PE(data=open(path, 'rb').read(), fast_load=True)
-        self.secs = [(s.VirtualAddress + IMAGE_BASE, max(s.Misc_VirtualSize, s.SizeOfRawData),
-                      s.PointerToRawData, s.SizeOfRawData) for s in pe.sections]
-
-    def read(self, va, n):
-        for base, vsize, raw, rsize in self.secs:
-            if base <= va < base + vsize:
-                o = va - base
-                out = self.data[raw + o: raw + min(o + n, rsize)] if o < rsize else b''
-                return out + b'\0' * (n - len(out))
-        raise ValueError('address %#x not mapped' % va)
-
-    def u32(self, va):
-        return struct.unpack('<I', self.read(va, 4))[0]
 
 
 def r5(v):
@@ -610,6 +583,16 @@ def main():
             lines.append(txt_line(name, var, glb, map_id, res))
             chr_lines.append(chr_line(name, var, glb, chr_lights(rec, glb, res['dark'], map_id, ee)))
         maps.append(entry)
+    # "@<glb>": the open areas' default for a tile of another area's grid. 0x494ef0 finds no cell in the
+    # stage's own grid table there and gives glb << 16 with no map, so FUN_0047c780 takes that area's
+    # default (the town's whole-area record): the Leave ending's road in the forest stage is cb03.
+    for area in ('ca', 'cb', 'cc', 'cd'):
+        glb = AREA_GLB[area]
+        for var, chapter, flag in variants_for(area):
+            rec, how = select_record(recs[glb], glb, glb << 16, chapter, flag, ee)
+            res = resolve(rec, glb << 16, chapter, ee)
+            lines.append(txt_line('@%d' % glb, var, glb, glb << 16, res))
+            chr_lines.append(chr_line('@%d' % glb, var, glb, chr_lights(rec, glb, res['dark'], glb << 16, ee)))
 
     doc = {
         'source': os.path.basename(a.exe),

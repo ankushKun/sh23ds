@@ -4,9 +4,10 @@ files the 3DS app reads: pack/events/sNN.s3e, plus pack/events/rooms.txt (map ->
 
   events_pack.py <game data dir> <pack dir>
 
-Also writes the English message text the events use: pack/events/sNN.msg (stage messages) and
+Also writes the message text the events use: pack/events/sNN.msg (stage messages) and
 pack/events/common.msg (system messages: locked doors, pickups, ...) and pack/events/item.msg (item n is
-named by message 18 + 2n and described by 19 + 2n), from data/etc/message.
+named by message 18 + 2n and described by 19 + 2n), from data/etc/message, in English and in the
+other languages in pack/events/<f, g, i, s>/ (see LANGUAGES).
 
 S3E v2 (little-endian)
   char[4] "S3E1", u32 version (2), u32 stage, u32 events, u32 items, u32 glb_crd, char name[24]  (48 bytes)
@@ -22,10 +23,12 @@ S3E v2 (little-endian)
     char dest_map[8], char trigger_map[8]
     u32 pad
   item (32 bytes)
-    f32 pos[3], f32 rot_y, u16 flag, u16 gives_item, u16 system_message, u16 pad, char map[8]
+    f32 pos[3], f32 rot_y, u16 flag, u16 gives_item, u16 system_message, u16 cond, char map[8]
+    cond: bit 15 set, bits 0..2 the difficulty class and 3..7 the condition type that
+    EventItemConditionCheck (0x48cb20) tests (Item_List.st bits 28..26 and 24..20); 0 in older packs
 rooms.txt: one line per bg map, "<map> <stage>", the stage whose events use that map the most.
 MSG v1: char[4] "MSG1", u32 count, u32 offset[count] (from the file start), then NUL-terminated
-  ASCII strings; '\n' is a line break and '\f' a page break.
+  Windows-1252 strings (sh2mes.py); '\n' is a line break and '\f' a page break.
 """
 import collections
 import json
@@ -40,6 +43,28 @@ import sh2mes  # noqa: E402
 # the stage table and were matched by building and by the message numbers their events use.
 DC_STAGE_MSG = {53: 'x_heaven', 54: 'x_town', 55: 'x_mansion_1f', 56: 'x_mansion_2f', 57: 'x_mansion_bf',
                 58: 'x_apart'}
+
+# The PC's languages: 0x1dbec06 picks each message file from a table (0x445980; 0x7b4f50 for
+# common_msg, 1 English, 2 French, 3 German, 4 Italian, 5 Spanish). English goes in events/, the
+# others in events/<letter>/ with the same names. Japanese (0) is only reachable through the PC's
+# language.ini and needs the whole full-width font, so it is left out.
+LANGUAGES = 'efgis'
+
+
+def lang_dir(pack, lang):
+    d = os.path.join(pack, 'events') if lang == 'e' else os.path.join(pack, 'events', lang)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def write_msg_langs(pack, name, mes):
+    """events/<name> from <mes>_e.mes, events/<l>/<name> from <mes>_<l>.mes where the game has it."""
+    for lang in LANGUAGES:
+        src = f'{mes}_{lang}.mes'
+        if lang != 'e' and not os.path.exists(src):
+            continue
+        write_msg(os.path.join(lang_dir(pack, lang), name), sh2mes.load(src))
+
 
 SHAPES = {'point': 1, 'line': 2, 'polyline': 2, 'rect': 3, 'triangle': 4, 'quad': 4}
 
@@ -77,14 +102,15 @@ def pack_event(e, stage):
 
 
 def pack_item(it):
+    cond = 0x8000 | it['diff_class'] | it['cond_type'] << 3
     rec = struct.pack('<4f4H8s', *it['pos'], it.get('rot_y') or 0.0, it['flag'], it['gives_item'],
-                      it.get('system_message') or 0, 0, name8((it.get('room') or {}).get('map')))
+                      it.get('system_message') or 0, cond, name8((it.get('room') or {}).get('map')))
     assert len(rec) == 32
     return rec
 
 
 def write_msg(path, messages):
-    blobs = [m.encode('ascii', 'replace') + b'\0' for m in messages]
+    blobs = [m.encode('latin-1', 'replace') + b'\0' for m in messages]
     o = 8 + 4 * len(blobs)
     offs = []
     for b in blobs:
@@ -97,12 +123,12 @@ def write_msg(path, messages):
 def main():
     data, pack = sys.argv[1], sys.argv[2]
     mdir = os.path.join(data, 'etc', 'message')
-    write_msg(os.path.join(pack, 'events', 'common.msg'), sh2mes.load(os.path.join(mdir, 'common_msg_e.mes')))
+    write_msg_langs(pack, 'common.msg', os.path.join(mdir, 'common_msg'))
     # item_x is the Director's Cut table (revolver, cleaver and the DC items); with it item n is
     # message 18 + 2n for every item id, item_msg_e.mes drifts from id 10 on
-    write_msg(os.path.join(pack, 'events', 'item.msg'), sh2mes.load(os.path.join(mdir, 'item_x_msg_e.mes')))
+    write_msg_langs(pack, 'item.msg', os.path.join(mdir, 'item_x_msg'))
     # the results screen after an ending (0x447650)
-    write_msg(os.path.join(pack, 'events', 'result.msg'), sh2mes.load(os.path.join(mdir, 'result_msg_e.mes')))
+    write_msg_langs(pack, 'result.msg', os.path.join(mdir, 'result_msg'))
     src = os.path.join(pack, 'events')
     uses = collections.defaultdict(collections.Counter)
     n_files = 0
@@ -126,11 +152,11 @@ def main():
             f.write(head + b''.join(recs) + b''.join(items))
         n_files += 1
         msg_name = DC_STAGE_MSG.get(stage) or st['name'][4:].lower()
-        mp = os.path.join(mdir, f'stage_{msg_name}_msg_e.mes')
-        if os.path.exists(mp):
-            write_msg(os.path.join(src, f's{stage:02d}.msg'), sh2mes.load(mp))
+        mp = os.path.join(mdir, f'stage_{msg_name}_msg')
+        if os.path.exists(mp + '_e.mes'):
+            write_msg_langs(pack, f's{stage:02d}.msg', mp)
         else:
-            print(f'  stage {stage}: no message file {mp}')
+            print(f'  stage {stage}: no message file {mp}_e.mes')
     with open(os.path.join(src, 'rooms.txt'), 'w') as f:
         for m in sorted(uses):
             f.write(f'{m} {uses[m].most_common(1)[0][0]}\n')

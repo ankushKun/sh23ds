@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from convert import encode_textures  # noqa: E402
 import ee  # noqa: E402
 from ui import load_tex  # noqa: E402
+from pcexe import Exe  # noqa: E402
 
 # the files FUN_004849d0 loads (0x7c53c8.. name table)
 FCL = [('bg', 'ca', 'caGB'), ('bg', 'cb', 'cbGB'), ('bg', 'cc', 'ccGB'), ('bg', 'cc', 'park'),
@@ -38,20 +39,13 @@ FCL = [('bg', 'ca', 'caGB'), ('bg', 'cb', 'cbGB'), ('bg', 'cc', 'ccGB'), ('bg', 
 BLOW = [(0x8e, 0x887fa0, 14, 20), (0x8f, 0x888160, 10, 30), (0x90, 0x8882a0, 16, 60)]
 
 
-def write_blow(exe, out):
-    try:
-        import pefile
-    except ImportError:
-        print('fog: pefile missing, no blow.txt')
-        return False
-    pe = pefile.PE(data=open(exe, 'rb').read(), fast_load=True)
-    img = pe.get_memory_mapped_image()
-    base = pe.OPTIONAL_HEADER.ImageBase
+def write_blow(exe_path, out):
+    exe = Exe(exe_path)
     lines = []
     for room, va, n, interval in BLOW:
         lines.append('%d %d %d' % (room, interval, n))
         for i in range(n):
-            v = struct.unpack_from('<8f', img, va - base + 32 * i)
+            v = struct.unpack('<8f', exe.read(va + 32 * i, 32))
             lines.append(' '.join('%g' % x for x in v))
     with open(os.path.join(out, 'blow.txt'), 'w') as f:
         f.write('# blow points (tools/sh2conv/fog.py from 0x489ee0): room interval count, then sources\n')

@@ -55,6 +55,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import ee  # noqa: E402
+from pcexe import Exe  # noqa: E402,F401  (motion.py and stagemodels.py take it from here)
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 DEFAULT_DATA = os.path.join(ROOT, 'Silent Hill 2', 'data')
 DEFAULT_EXE = os.path.join(ROOT, 'Silent Hill 2', 'sh2pc.exe')
@@ -93,35 +94,6 @@ KNOWN = {
 
 def u32(b, o):
     return struct.unpack_from('<I', b, o)[0]
-
-
-class Exe:
-    """Just enough PE parsing to read initialised data by virtual address."""
-
-    def __init__(self, path):
-        d = open(path, 'rb').read()
-        pe = u32(d, 0x3c)
-        nsec, opt = struct.unpack_from('<H', d, pe + 6)[0], struct.unpack_from('<H', d, pe + 20)[0]
-        base = u32(d, pe + 24 + 28)
-        self.d, self.secs = d, []
-        for i in range(nsec):
-            o = pe + 24 + opt + 40 * i
-            vsize, va, rsize, raw = struct.unpack_from('<4I', d, o + 8)
-            self.secs.append((base + va, max(vsize, rsize), raw, rsize))
-
-    def read(self, va, n):
-        for base, vsize, raw, rsize in self.secs:
-            if base <= va < base + vsize:
-                o = va - base
-                out = self.d[raw + o: raw + min(o + n, rsize)] if o < rsize else b''
-                return out + b'\0' * (n - len(out))
-        raise ValueError('address %#x not mapped' % va)
-
-    def u32(self, va):
-        return struct.unpack('<I', self.read(va, 4))[0]
-
-    def cstr(self, va):
-        return self.read(va, 64).split(b'\0')[0].decode('latin-1')
 
 
 # ------------------------------------------------------------------ sddata.bin
