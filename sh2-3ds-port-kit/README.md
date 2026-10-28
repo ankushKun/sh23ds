@@ -34,6 +34,13 @@ data/
   dc/view_aligned_names.tsv  camera module names from tools/align_names.py
   dc/game_files.tsv  every file of the Director's Cut data folder and its size (no contents); the
                      packer compares a player's data with it (tools/sh2conv/gameversion.py)
+  dc/exe_reads.tsv   every range of sh2pc.exe the converters read and every code scan they run, as
+                     addresses and sizes, with digests of what the Director's Cut returns: the
+                     packer takes another exe (a no-CD patch, a rip) when they all match
+                     (tools/sh2conv/pcexe.py). No game data can be recovered from it: each digest
+                     covers at least 32 bytes, and a scan's digest covers only the addresses it
+                     found. Rewrite it with `tools/sh2conv/pcexe.py trace "Silent Hill 2" <scratch
+                     folder>` whenever a converter reads the exe differently
   dc/                Director's Cut: 82 labels, EE lookups, Ghidra functions (auto + fixed), import xrefs,
                      import names (dc_import_*), module map (module_*), CRI and hand-checked
                      names (cri_labels.json, manual_labels.json), source paths

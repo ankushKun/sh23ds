@@ -2935,7 +2935,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x004ca630		DEFAULT	0x004ca630-0x004ca694		unknown	DEFAULT		
 0x004ca6a0		DEFAULT	0x004ca6a0-0x004ca6a5		unknown	DEFAULT		
 0x004ca6b0		DEFAULT	0x004ca6b0-0x004ca6c4		unknown	DEFAULT		
-0x004ca6d0		DEFAULT	0x004ca6d0-0x004ca71e		unknown	DEFAULT		
+0x004ca6d0	HH_Effect_Object_AutoPost	USER_DEFINED	0x004ca6d0-0x004ca71e		unknown	DEFAULT		
 0x004ca720		DEFAULT	0x004ca720-0x004ca77f		unknown	DEFAULT		
 0x004ca780		DEFAULT	0x004ca780-0x004ca792		unknown	DEFAULT		
 0x004ca7e0		DEFAULT	0x004ca7e0-0x004ca80d		unknown	DEFAULT		
@@ -3067,15 +3067,15 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x004d0d30		DEFAULT	0x004d0d30-0x004d0d34	0x0047de20	unknown	DEFAULT		import
 0x004d0d70		DEFAULT	0x004d0d70-0x004d1046		unknown	DEFAULT		
 0x004d1050		DEFAULT	0x004d1050-0x004d10f6		unknown	DEFAULT		
-0x004d1120		DEFAULT	0x004d1120-0x004d12ee		unknown	DEFAULT		
+0x004d1120	WaveArea_Calculator	USER_DEFINED	0x004d1120-0x004d12ee		unknown	DEFAULT		
 0x004d12f0		DEFAULT	0x004d12f0-0x004d1376		unknown	DEFAULT		
 0x004d1400		DEFAULT	0x004d1400-0x004d14f3		unknown	DEFAULT		
-0x004d1500		DEFAULT	0x004d1500-0x004d1542		unknown	DEFAULT		
+0x004d1500	WaveElement_Addition	USER_DEFINED	0x004d1500-0x004d1542		unknown	DEFAULT		
 0x004d15a0		DEFAULT	0x004d15a0-0x004d15c2		unknown	DEFAULT		
 0x004d15d0		DEFAULT	0x004d15d0-0x004d15ea		unknown	DEFAULT		
 0x004d15f0		DEFAULT	0x004d15f0-0x004d15f8		unknown	DEFAULT		
 0x004d1600		DEFAULT	0x004d1600-0x004d1615		unknown	DEFAULT		
-0x004d1620		DEFAULT	0x004d1620-0x004d1715		unknown	DEFAULT		
+0x004d1620	HH_Class_WaterCommon_WaveElement_Time_Count	USER_DEFINED	0x004d1620-0x004d1715		unknown	DEFAULT		
 0x004d1720		DEFAULT	0x004d1720-0x004d1732		unknown	DEFAULT		
 0x004d1740		DEFAULT	0x004d1740-0x004d174c		unknown	DEFAULT		
 0x004d1750		DEFAULT	0x004d1750-0x004d17ac		unknown	DEFAULT		
@@ -4193,7 +4193,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x00522940		DEFAULT	0x00522940-0x00522a2f		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522a30		DEFAULT	0x00522a30-0x00522b43		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522b50		DEFAULT	0x00522b50-0x00522dd5		unknown	DEFAULT		game/Collision/cl_main.c
-0x00522de0		DEFAULT	0x00522de0-0x00522e84		unknown	DEFAULT		game/Collision/cl_main.c
+0x00522de0	clCheckColumn2ColumnHit	USER_DEFINED	0x00522de0-0x00522e84		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522e90	clBattleCheckExec	USER_DEFINED	0x00522e90-0x00522ed3		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522ee0		DEFAULT	0x00522ee0-0x00522f39		unknown	DEFAULT		game/Collision/cl_main.c
 0x005230b0	clSetThrustBattleResult	USER_DEFINED	0x005230b0-0x0052327a		unknown	DEFAULT		game/Collision/cl_main.c
@@ -4247,7 +4247,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x00528840		DEFAULT	0x00528840-0x00528ef0		unknown	DEFAULT		game/Collision/cl_main.c
 0x00528f00		DEFAULT	0x00528f00-0x0052947b		unknown	DEFAULT		game/Collision/cl_main.c
 0x00529480		DEFAULT	0x00529480-0x00529898		unknown	DEFAULT		game/Collision/cl_main.c
-0x005298a0		DEFAULT	0x005298a0-0x00529a61		unknown	DEFAULT		game/Collision/cl_main.c
+0x005298a0	clCheckSubColumnToColumn	USER_DEFINED	0x005298a0-0x00529a61		unknown	DEFAULT		game/Collision/cl_main.c
 0x00529b10		DEFAULT	0x00529b10-0x00529b9f		unknown	DEFAULT		game/Collision/cl_main.c
 0x00529cc0		DEFAULT	0x00529cc0-0x00529cd0		unknown	DEFAULT		
 0x00529d60		DEFAULT	0x00529d60-0x00529e01		unknown	DEFAULT		
@@ -4278,10 +4278,10 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x0052aa00		DEFAULT	0x0052aa00-0x0052ab03		unknown	DEFAULT		
 0x0052ab10		DEFAULT	0x0052ab10-0x0052ac95		unknown	DEFAULT		
 0x0052adc0	MariaSetStraightRoot	USER_DEFINED	0x0052adc0-0x0052b2eb		unknown	DEFAULT		
-0x0052b330		DEFAULT	0x0052b330-0x0052b402		unknown	DEFAULT		
+0x0052b330	MariaSetHitColumn	USER_DEFINED	0x0052b330-0x0052b402		unknown	DEFAULT		
 0x0052b410		DEFAULT	0x0052b410-0x0052b4aa		unknown	DEFAULT		
 0x0052b4b0		DEFAULT	0x0052b4b0-0x0052b4b0		unknown	DEFAULT		
-0x0052b4c0		DEFAULT	0x0052b4c0-0x0052b630		unknown	DEFAULT		
+0x0052b4c0	MariaSetHeight	USER_DEFINED	0x0052b4c0-0x0052b630		unknown	DEFAULT		
 0x0052b640		DEFAULT	0x0052b640-0x0052b7e6		unknown	DEFAULT		
 0x0052b7f0		DEFAULT	0x0052b7f0-0x0052b8cb		unknown	DEFAULT		
 0x0052b8d0		DEFAULT	0x0052b8d0-0x0052ba14		unknown	DEFAULT		
@@ -4327,7 +4327,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x0052ed50		DEFAULT	0x0052ed50-0x0052ed5c		unknown	DEFAULT		
 0x0052ed60		DEFAULT	0x0052ed60-0x0052f2b5		unknown	DEFAULT		
 0x0052f2c0		DEFAULT	0x0052f2c0-0x0052f695		unknown	DEFAULT		
-0x0052f6a0		DEFAULT	0x0052f6a0-0x0052f948		unknown	DEFAULT		
+0x0052f6a0	PlayerCheckModelParts	USER_DEFINED	0x0052f6a0-0x0052f948		unknown	DEFAULT		
 0x0052f9e0		DEFAULT	0x0052f9e0-0x0052fa1b		unknown	DEFAULT		
 0x0052fa20		DEFAULT	0x0052fa20-0x0052fa4a		unknown	DEFAULT		
 0x0052fa50		DEFAULT	0x0052fa50-0x0052fad4		unknown	DEFAULT		
@@ -4341,9 +4341,9 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x00533aa0		DEFAULT	0x00533aa0-0x00533aa8		unknown	DEFAULT		
 0x00533ab0		DEFAULT	0x00533ab0-0x00533ac2		unknown	DEFAULT		
 0x00533ad0		DEFAULT	0x00533ad0-0x00533be1		unknown	DEFAULT		
-0x00533c10		DEFAULT	0x00533c10-0x00533c96		unknown	DEFAULT		
-0x00533ca0		DEFAULT	0x00533ca0-0x00533cc5		unknown	DEFAULT		
-0x00533cd0		DEFAULT	0x00533cd0-0x00533cf6		unknown	DEFAULT		
+0x00533c10	PlayerGetTargetInfo	USER_DEFINED	0x00533c10-0x00533c96		unknown	DEFAULT		
+0x00533ca0	PlayerGetTarget	USER_DEFINED	0x00533ca0-0x00533cc5		unknown	DEFAULT		
+0x00533cd0	PlayerChangeTarget	USER_DEFINED	0x00533cd0-0x00533cf6		unknown	DEFAULT		
 0x00533d00		DEFAULT	0x00533d00-0x00533e2b		unknown	DEFAULT		
 0x00533e60		DEFAULT	0x00533e60-0x00533fb3		unknown	DEFAULT		
 0x00533ff0		DEFAULT	0x00533ff0-0x005341e1		unknown	DEFAULT		
@@ -4909,7 +4909,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x005567b0		DEFAULT	0x005567b0-0x0055683e		unknown	DEFAULT		
 0x00556840		DEFAULT	0x00556840-0x0055687d		unknown	DEFAULT		
 0x00556880		DEFAULT	0x00556880-0x005568bd		unknown	DEFAULT		
-0x005568c0		DEFAULT	0x005568c0-0x005569a3		unknown	DEFAULT		game/Chacter/m3_play_common.c
+0x005568c0	PlayerCheckAimingToEnemy	USER_DEFINED	0x005568c0-0x005569a3		unknown	DEFAULT		game/Chacter/m3_play_common.c
 0x005569b0		DEFAULT	0x005569b0-0x005570d5		unknown	DEFAULT		game/Chacter/m3_play_common.c
 0x00557100		DEFAULT	0x00557100-0x005578da		unknown	DEFAULT		game/Chacter/m3_play_common.c
 0x00557960		DEFAULT	0x00557960-0x00557b19		unknown	DEFAULT		game/Chacter/m3_play_common.c

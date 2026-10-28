@@ -517,16 +517,17 @@ addr	kind	text
 0x0047e452	EOL	SecuROM -> MSVCR70.DLL!malloc
 0x00480d63	EOL	SecuROM -> MSVCR70.DLL!vsprintf
 0x00480f67	EOL	SecuROM -> MSVCR70.DLL!printf
-0x004880f0	PRE	sh23ds: port/source/fog.c:273
-0x004893f0	PRE	sh23ds: port/source/fog.c:348
-0x0048bee0	PRE	sh23ds: port/source/events.c:544
-0x0048c110	PRE	sh23ds: port/source/events.c:728
+0x004880f0	PRE	sh23ds: port/source/fog.c:273\nsh23ds: port/source/fog.c:276
+0x004893f0	PRE	sh23ds: port/source/fog.c:348\nsh23ds: port/source/fog.c:351
+0x0048bee0	PRE	sh23ds: port/source/events.c:544\nsh23ds: port/source/events.c:608\nsh23ds: port/source/events.c:693
+0x0048c110	PRE	sh23ds: port/source/events.c:728\nsh23ds: port/source/events.c:792\nsh23ds: port/source/events.c:877
 0x0048c9e8	EOL	SecuROM -> MSVCR70.DLL!printf
-0x0048cb20	PRE	sh23ds: port/source/events.c:152
+0x0048cb20	PRE	sh23ds: port/source/events.c:152\nsh23ds: port/source/events.c:100\nsh23ds: port/source/events.c:103
+0x0048e520	PRE	sh23ds: port/source/events.c:101\nsh23ds: port/source/events.c:104
 0x0048e9f5	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0048ea11	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0048ec40	EOL	SecuROM -> MSVCR70.DLL!printf
-0x0048ecb0	PRE	sh23ds: port/source/maria.c:76
+0x0048ecb0	PRE	sh23ds: port/source/maria.c:76\nsh23ds: port/source/maria.c:77
 0x0048f557	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0048fa4d	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0048fbdb	EOL	SecuROM -> MSVCR70.DLL!printf
@@ -565,13 +566,13 @@ addr	kind	text
 0x00496048	EOL	SecuROM -> MSVCR70.DLL!printf
 0x004960b8	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00498b8a	EOL	SecuROM -> MSVCR70.DLL!printf
-0x0049e310	PRE	sh23ds: port/source/events.c:148
+0x0049e310	PRE	sh23ds: port/source/events.c:148\nsh23ds: port/source/events.c:211\nsh23ds: port/source/events.c:214
 0x0049e70b	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0049f4c3	EOL	SecuROM -> MSVCR70.DLL!qsort
-0x0049f750	PRE	sh23ds: port/source/demo.c:281
-0x0049f7e0	PRE	sh23ds: port/source/demo.c:307
-0x0049fd30	PRE	sh23ds: port/source/demo.c:509
-0x004a0270	PRE	sh23ds: port/source/demo.c:207
+0x0049f750	PRE	sh23ds: port/source/demo.c:281\nsh23ds: port/source/demo.c:284\nsh23ds: port/source/demo.c:285
+0x0049f7e0	PRE	sh23ds: port/source/demo.c:307\nsh23ds: port/source/demo.c:310\nsh23ds: port/source/demo.c:311
+0x0049fd30	PRE	sh23ds: port/source/demo.c:509\nsh23ds: port/source/demo.c:512\nsh23ds: port/source/demo.c:513
+0x004a0270	PRE	sh23ds: port/source/demo.c:207\nsh23ds: port/source/demo.c:208\nsh23ds: port/source/demo.c:209
 0x004a0b96	EOL	SecuROM -> MSVCR70.DLL!strncmp
 0x004a0bb2	EOL	SecuROM -> MSVCR70.DLL!printf
 0x004a0ca8	EOL	SecuROM -> MSVCR70.DLL!printf
@@ -580,7 +581,7 @@ addr	kind	text
 0x004a1d24	EOL	SecuROM -> MSVCR70.DLL!printf
 0x004a2201	EOL	SecuROM -> MSVCR70.DLL!printf
 0x004a77a0	PRE	sh23ds: port/source/enemy.c:313
-0x004a91f0	PRE	sh23ds: port/source/enemy.c:5985
+0x004a91f0	PRE	sh23ds: port/source/enemy.c:5985\nsh23ds: port/source/enemy.c:5995
 0x004a96c0	PRE	sh23ds: port/source/blood.h:11
 0x004aa743	EOL	SecuROM -> MSVCR70.DLL!printf
 0x004ae1f0	PRE	sh23ds: port/source/enemy.c:2660
@@ -631,12 +632,16 @@ addr	kind	text
 0x004c9b0b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
 0x004c9beb	EOL	SecuROM -> MSVCR70.DLL!operator_delete
 0x004c9c1b	EOL	SecuROM -> MSVCR70.DLL!operator_delete
+0x004ca6d0	PRE	sh23ds: port/source/roomfx.h:7
 0x004cda7b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
 0x004cda9a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
 0x004cf0fb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
 0x004cf11a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
 0x004d026b	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
 0x004d028a	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
+0x004d1120	PRE	sh23ds: port/source/water.c:108
+0x004d1500	PRE	sh23ds: port/source/water.c:77
+0x004d1620	PRE	sh23ds: port/source/water.c:95
 0x004d58cb	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
 0x004d58ea	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
 0x004d67db	EOL	SecuROM -> MSVCR70.DLL!_CIfmod
@@ -977,7 +982,7 @@ addr	kind	text
 0x00514bd8	EOL	SecuROM -> OLE32.DLL!CoInitialize
 0x00514eb9	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00514f1b	EOL	SecuROM -> MSVCR70.DLL!printf
-0x00515c20	PRE	sh23ds: port/source/bgm.c:112
+0x00515c20	PRE	sh23ds: port/source/bgm.c:112\nsh23ds: port/source/bgm.c:118
 0x00516362	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00516458	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00516b75	EOL	SecuROM -> MSVCR70.DLL!printf
@@ -989,7 +994,7 @@ addr	kind	text
 0x0051872a	EOL	SecuROM -> KERNEL32.DLL!QueryPerformanceFrequency
 0x005187b9	EOL	SecuROM -> MSVCR70.DLL!_beginthread
 0x00518add	EOL	SecuROM -> MSVCR70.DLL!printf
-0x00518d60	PRE	sh23ds: port/source/gamecam.c:166
+0x00518d60	PRE	sh23ds: port/source/gamecam.c:166\nsh23ds: port/source/gamecam.c:177
 0x00519460	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 169 vs 204, ratio 0.69, cost 0.17)
 0x00519510	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 11 vs 20, ratio 0.69, cost 0.14)
 0x005195a0	PRE	sh23ds: tools/align_names.py: aligned with PS2 view/vc_main.c between anchors (size 172 vs 252, ratio 0.69, cost 0.01)
@@ -1040,6 +1045,7 @@ addr	kind	text
 0x0051f0db	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0051f544	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0051f6fe	EOL	SecuROM -> MSVCR70.DLL!printf
+0x00522de0	PRE	sh23ds: port/source/collide.c:198
 0x00522e7a	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00522ea9	EOL	SecuROM -> MSVCR70.DLL!printf
 0x005230d4	EOL	SecuROM -> MSVCR70.DLL!printf
@@ -1048,15 +1054,23 @@ addr	kind	text
 0x0052512a	EOL	SecuROM -> MSVCR70.DLL!printf
 0x005278f3	EOL	SecuROM -> MSVCR70.DLL!printf
 0x005280ba	EOL	SecuROM -> MSVCR70.DLL!printf
-0x0052adc0	PRE	sh23ds: port/source/maria.c:300
-0x0052d550	PRE	sh23ds: port/source/maria.c:248
+0x005298a0	PRE	sh23ds: port/source/collide.c:198
+0x0052adc0	PRE	sh23ds: port/source/maria.c:300\nsh23ds: port/source/maria.c:301
+0x0052b330	PRE	sh23ds: port/source/maria.c:344\nsh23ds: port/source/maria.c:345
+0x0052b4c0	PRE	sh23ds: port/source/maria.c:348\nsh23ds: port/source/maria.c:349
+0x0052d550	PRE	sh23ds: port/source/maria.c:248\nsh23ds: port/source/maria.c:249
+0x0052f6a0	PRE	sh23ds: port/source/combat.c:1739\nsh23ds: port/source/combat.c:1746\nsh23ds: port/source/combat.c:1887
+0x00533c10	PRE	sh23ds: port/source/combat.c:906
+0x00533ca0	PRE	sh23ds: port/source/combat.c:965
+0x00533cd0	PRE	sh23ds: port/source/combat.c:987
 0x005377b9	EOL	SecuROM -> MSVCR70.DLL!printf
 0x005384b1	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00538a85	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00539154	EOL	SecuROM -> MSVCR70.DLL!printf
 0x0053a303	EOL	SecuROM -> MSVCR70.DLL!printf
-0x0054f850	PRE	sh23ds: port/source/demo.c:291
+0x0054f850	PRE	sh23ds: port/source/demo.c:291\nsh23ds: port/source/demo.c:294\nsh23ds: port/source/demo.c:295
 0x005544e7	EOL	SecuROM -> MSVCR70.DLL!printf
+0x005568c0	PRE	sh23ds: port/source/combat.c:972
 0x005570cb	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00558e94	EOL	SecuROM -> MSVCR70.DLL!printf
 0x00558fc8	EOL	SecuROM -> MSVCR70.DLL!printf
@@ -1227,157 +1241,157 @@ addr	kind	text
 0x00573a60	PRE	sh23ds: port/source/prog_wish.c:55
 0x005740c0	PRE	sh23ds: port/source/prog_wish.c:16
 0x00574590	PRE	sh23ds: port/source/prog_wish.c:48
-0x00574600	PRE	sh23ds: port/source/prog_hotel.c:1116
-0x00575630	PRE	sh23ds: port/source/prog_hotel.c:1037
-0x00575750	PRE	sh23ds: port/source/prog_hotel.c:1037
-0x00575ae0	PRE	sh23ds: port/source/prog_hotel.c:1029
-0x00575b80	PRE	sh23ds: port/source/prog_hotel.c:1003
-0x00575c70	PRE	sh23ds: port/source/prog_hotel.c:1012
-0x00576050	PRE	sh23ds: port/source/prog_hotel.c:825
-0x00576200	PRE	sh23ds: port/source/prog_hotel.c:836
-0x00576370	PRE	sh23ds: port/source/prog_hotel.c:845
-0x00576440	PRE	sh23ds: port/source/prog_hotel.c:845
-0x00576a90	PRE	sh23ds: port/source/prog_hotel.c:859
-0x005777f0	PRE	sh23ds: port/source/prog_hotel.c:761
-0x00577e80	PRE	sh23ds: port/source/prog_hotel.c:715
-0x00577f80	PRE	sh23ds: port/source/prog_hotel.c:715
-0x00577fa0	PRE	sh23ds: port/source/prog_hotel.c:728
-0x00578440	PRE	sh23ds: port/source/prog_hotel.c:742
-0x00579220	PRE	sh23ds: port/source/prog_hotel.c:285
-0x00579420	PRE	sh23ds: port/source/prog_hotel.c:396
-0x00579440	PRE	sh23ds: port/source/prog_hotel.c:396
-0x00579500	PRE	sh23ds: port/source/prog_hotel.c:485
-0x005796e0	PRE	sh23ds: port/source/prog_hotel.c:516
-0x00579ab0	PRE	sh23ds: port/source/prog_hotel.c:587
-0x00579ae0	PRE	sh23ds: port/source/prog_hotel.c:587
-0x0057a310	PRE	sh23ds: port/source/prog_hotel.c:695
-0x0057a320	PRE	sh23ds: port/source/prog_hotel.c:695
+0x00574600	PRE	sh23ds: port/source/prog_hotel.c:1116\nsh23ds: port/source/prog_hotel.c:1137
+0x00575630	PRE	sh23ds: port/source/prog_hotel.c:1037\nsh23ds: port/source/prog_hotel.c:1052
+0x00575750	PRE	sh23ds: port/source/prog_hotel.c:1037\nsh23ds: port/source/prog_hotel.c:1052
+0x00575ae0	PRE	sh23ds: port/source/prog_hotel.c:1029\nsh23ds: port/source/prog_hotel.c:1044
+0x00575b80	PRE	sh23ds: port/source/prog_hotel.c:1003\nsh23ds: port/source/prog_hotel.c:1018
+0x00575c70	PRE	sh23ds: port/source/prog_hotel.c:1012\nsh23ds: port/source/prog_hotel.c:1027
+0x00576050	PRE	sh23ds: port/source/prog_hotel.c:825\nsh23ds: port/source/prog_hotel.c:840
+0x00576200	PRE	sh23ds: port/source/prog_hotel.c:836\nsh23ds: port/source/prog_hotel.c:851
+0x00576370	PRE	sh23ds: port/source/prog_hotel.c:845\nsh23ds: port/source/prog_hotel.c:860
+0x00576440	PRE	sh23ds: port/source/prog_hotel.c:845\nsh23ds: port/source/prog_hotel.c:860
+0x00576a90	PRE	sh23ds: port/source/prog_hotel.c:859\nsh23ds: port/source/prog_hotel.c:874
+0x005777f0	PRE	sh23ds: port/source/prog_hotel.c:761\nsh23ds: port/source/prog_hotel.c:776
+0x00577e80	PRE	sh23ds: port/source/prog_hotel.c:715\nsh23ds: port/source/prog_hotel.c:728
+0x00577f80	PRE	sh23ds: port/source/prog_hotel.c:715\nsh23ds: port/source/prog_hotel.c:728
+0x00577fa0	PRE	sh23ds: port/source/prog_hotel.c:728\nsh23ds: port/source/demo.c:746\nsh23ds: port/source/demo.c:747
+0x00578440	PRE	sh23ds: port/source/prog_hotel.c:742\nsh23ds: port/source/prog_hotel.c:757
+0x00579220	PRE	sh23ds: port/source/prog_hotel.c:285\nsh23ds: port/source/prog_hotel.c:298
+0x00579420	PRE	sh23ds: port/source/prog_hotel.c:396\nsh23ds: port/source/prog_hotel.c:409
+0x00579440	PRE	sh23ds: port/source/prog_hotel.c:396\nsh23ds: port/source/prog_hotel.c:409
+0x00579500	PRE	sh23ds: port/source/prog_hotel.c:485\nsh23ds: port/source/prog_hotel.c:498
+0x005796e0	PRE	sh23ds: port/source/prog_hotel.c:516\nsh23ds: port/source/prog_hotel.c:529
+0x00579ab0	PRE	sh23ds: port/source/prog_hotel.c:587\nsh23ds: port/source/prog_hotel.c:600
+0x00579ae0	PRE	sh23ds: port/source/prog_hotel.c:587\nsh23ds: port/source/prog_hotel.c:600
+0x0057a310	PRE	sh23ds: port/source/prog_hotel.c:695\nsh23ds: port/source/prog_hotel.c:708
+0x0057a320	PRE	sh23ds: port/source/prog_hotel.c:695\nsh23ds: port/source/prog_hotel.c:708
 0x0057a3c2	EOL	SecuROM -> MSVCR70.DLL!printf
-0x0057a790	PRE	sh23ds: port/source/prog_hotel.c:418
-0x0057ac90	PRE	sh23ds: port/source/prog_hotel.c:569
-0x0057afc0	PRE	sh23ds: port/source/prog_hotel.c:597
-0x0057b1f0	PRE	sh23ds: port/source/prog_hotel.c:645
-0x0057b580	PRE	sh23ds: port/source/prog_hotel.c:109
-0x0057b590	PRE	sh23ds: port/source/prog_hotel.c:109
-0x0057b5a0	PRE	sh23ds: port/source/prog_hotel.c:113
-0x0057b5b0	PRE	sh23ds: port/source/prog_hotel.c:113
-0x0057bcc0	PRE	sh23ds: port/source/prog_hotel.c:228
-0x0057be80	PRE	sh23ds: port/source/prog_hotel.c:250
-0x0057be90	PRE	sh23ds: port/source/prog_hotel.c:250
-0x0057bea0	PRE	sh23ds: port/source/prog_hotel.c:250
-0x0057beb0	PRE	sh23ds: port/source/prog_hotel.c:255
-0x0057c470	PRE	sh23ds: port/source/prog_hotel.c:117
-0x0057d190	PRE	sh23ds: port/source/prog_hotel.c:236
-0x0057d530	PRE	sh23ds: port/source/prog_hotel.c:66
-0x0057d540	PRE	sh23ds: port/source/prog_hotel.c:66
-0x0057d550	PRE	sh23ds: port/source/prog_hotel.c:70
-0x0057d570	PRE	sh23ds: port/source/prog_hotel.c:78
-0x0057da50	PRE	sh23ds: port/source/prog_hotel.c:94
-0x0057da80	PRE	sh23ds: port/source/prog_hotel.c:94
-0x0057dd20	PRE	sh23ds: port/source/prog_hotel.c:14
-0x0057de40	PRE	sh23ds: port/source/prog_hotel.c:27
-0x0057df80	PRE	sh23ds: port/source/prog_hotel.c:39
-0x0057df90	PRE	sh23ds: port/source/prog_hotel.c:42
-0x0057f2c0	PRE	sh23ds: port/source/prog_prison.c:656
-0x0057f730	PRE	sh23ds: port/source/prog_prison.c:537
-0x0057f950	PRE	sh23ds: port/source/prog_prison.c:562
-0x0057fc80	PRE	sh23ds: port/source/prog_prison.c:588
-0x0057fd20	PRE	sh23ds: port/source/prog_prison.c:599
-0x0057fd30	PRE	sh23ds: port/source/prog_prison.c:602
-0x0057fd40	PRE	sh23ds: port/source/prog_prison.c:605
-0x0057fd50	PRE	sh23ds: port/source/prog_prison.c:608
-0x005801c0	PRE	sh23ds: port/source/prog_prison.c:627
-0x00580330	PRE	sh23ds: port/source/prog_prison.c:637
-0x00580bf0	PRE	sh23ds: port/source/prog_prison.c:471
-0x00580c00	PRE	sh23ds: port/source/prog_prison.c:474
-0x00580e30	PRE	sh23ds: port/source/prog_prison.c:484
-0x00581260	PRE	sh23ds: port/source/prog_prison.c:504
-0x00581cc0	PRE	sh23ds: port/source/prog_prison.c:385
-0x00581e10	PRE	sh23ds: port/source/prog_prison.c:395
-0x00581e20	PRE	sh23ds: port/source/prog_prison.c:398
-0x00582750	PRE	sh23ds: port/source/prog_prison.c:438
-0x005829c0	PRE	sh23ds: port/source/prog_prison.c:448
-0x005829d0	PRE	sh23ds: port/source/prog_prison.c:451
-0x005829e0	PRE	sh23ds: port/source/prog_prison.c:454
-0x00583c60	PRE	sh23ds: port/source/prog_prison.c:339
-0x00583db0	PRE	sh23ds: port/source/prog_prison.c:358
-0x00583fb0	PRE	sh23ds: port/source/prog_prison.c:339
-0x00584100	PRE	sh23ds: port/source/prog_prison.c:362
-0x005841b0	PRE	sh23ds: port/source/prog_prison.c:358
-0x005844f0	PRE	sh23ds: port/source/prog_prison.c:245
-0x00584520	PRE	sh23ds: port/source/prog_prison.c:245
-0x00584530	PRE	sh23ds: port/source/prog_prison.c:245
-0x00584980	PRE	sh23ds: port/source/prog_prison.c:262
-0x00584fc0	PRE	sh23ds: port/source/prog_prison.c:170
-0x00585350	PRE	sh23ds: port/source/prog_prison.c:180
-0x00585360	PRE	sh23ds: port/source/prog_prison.c:180
-0x00585370	PRE	sh23ds: port/source/prog_prison.c:180
-0x00585380	PRE	sh23ds: port/source/prog_prison.c:181
-0x00585390	PRE	sh23ds: port/source/prog_prison.c:181
-0x005853a0	PRE	sh23ds: port/source/prog_prison.c:188
-0x005855c0	PRE	sh23ds: port/source/prog_prison.c:203
-0x00585950	PRE	sh23ds: port/source/prog_prison.c:235
-0x00585d00	PRE	sh23ds: port/source/prog_prison.c:219
+0x0057a790	PRE	sh23ds: port/source/prog_hotel.c:418\nsh23ds: port/source/prog_hotel.c:431
+0x0057ac90	PRE	sh23ds: port/source/prog_hotel.c:569\nsh23ds: port/source/prog_hotel.c:582
+0x0057afc0	PRE	sh23ds: port/source/prog_hotel.c:597\nsh23ds: port/source/prog_hotel.c:610
+0x0057b1f0	PRE	sh23ds: port/source/prog_hotel.c:645\nsh23ds: port/source/prog_hotel.c:658
+0x0057b580	PRE	sh23ds: port/source/prog_hotel.c:109\nsh23ds: port/source/prog_hotel.c:110
+0x0057b590	PRE	sh23ds: port/source/prog_hotel.c:109\nsh23ds: port/source/prog_hotel.c:110
+0x0057b5a0	PRE	sh23ds: port/source/prog_hotel.c:113\nsh23ds: port/source/prog_hotel.c:114
+0x0057b5b0	PRE	sh23ds: port/source/prog_hotel.c:113\nsh23ds: port/source/prog_hotel.c:114
+0x0057bcc0	PRE	sh23ds: port/source/prog_hotel.c:228\nsh23ds: port/source/prog_hotel.c:236
+0x0057be80	PRE	sh23ds: port/source/prog_hotel.c:250\nsh23ds: port/source/prog_hotel.c:258
+0x0057be90	PRE	sh23ds: port/source/prog_hotel.c:250\nsh23ds: port/source/prog_hotel.c:258
+0x0057bea0	PRE	sh23ds: port/source/prog_hotel.c:250\nsh23ds: port/source/prog_hotel.c:258
+0x0057beb0	PRE	sh23ds: port/source/prog_hotel.c:255\nsh23ds: port/source/demo.c:743\nsh23ds: port/source/demo.c:744
+0x0057c470	PRE	sh23ds: port/source/prog_hotel.c:117\nsh23ds: port/source/prog_hotel.c:118
+0x0057d190	PRE	sh23ds: port/source/prog_hotel.c:236\nsh23ds: port/source/prog_hotel.c:244
+0x0057d530	PRE	sh23ds: port/source/prog_hotel.c:66\nsh23ds: port/source/prog_hotel.c:67
+0x0057d540	PRE	sh23ds: port/source/prog_hotel.c:66\nsh23ds: port/source/prog_hotel.c:67
+0x0057d550	PRE	sh23ds: port/source/prog_hotel.c:70\nsh23ds: port/source/prog_hotel.c:71
+0x0057d570	PRE	sh23ds: port/source/prog_hotel.c:78\nsh23ds: port/source/prog_hotel.c:79
+0x0057da50	PRE	sh23ds: port/source/prog_hotel.c:94\nsh23ds: port/source/prog_hotel.c:95
+0x0057da80	PRE	sh23ds: port/source/prog_hotel.c:94\nsh23ds: port/source/prog_hotel.c:95
+0x0057dd20	PRE	sh23ds: port/source/prog_hotel.c:14\nsh23ds: port/source/prog_hotel.c:15
+0x0057de40	PRE	sh23ds: port/source/prog_hotel.c:27\nsh23ds: port/source/prog_hotel.c:28
+0x0057df80	PRE	sh23ds: port/source/prog_hotel.c:39\nsh23ds: port/source/prog_hotel.c:40
+0x0057df90	PRE	sh23ds: port/source/prog_hotel.c:42\nsh23ds: port/source/prog_hotel.c:43
+0x0057f2c0	PRE	sh23ds: port/source/prog_prison.c:656\nsh23ds: port/source/prog_prison.c:659
+0x0057f730	PRE	sh23ds: port/source/prog_prison.c:537\nsh23ds: port/source/prog_prison.c:540
+0x0057f950	PRE	sh23ds: port/source/prog_prison.c:562\nsh23ds: port/source/prog_prison.c:565
+0x0057fc80	PRE	sh23ds: port/source/prog_prison.c:588\nsh23ds: port/source/prog_prison.c:591
+0x0057fd20	PRE	sh23ds: port/source/prog_prison.c:599\nsh23ds: port/source/prog_prison.c:602
+0x0057fd30	PRE	sh23ds: port/source/prog_prison.c:602\nsh23ds: port/source/prog_prison.c:605
+0x0057fd40	PRE	sh23ds: port/source/prog_prison.c:605\nsh23ds: port/source/prog_prison.c:608
+0x0057fd50	PRE	sh23ds: port/source/prog_prison.c:608\nsh23ds: port/source/prog_prison.c:611
+0x005801c0	PRE	sh23ds: port/source/prog_prison.c:627\nsh23ds: port/source/prog_prison.c:630
+0x00580330	PRE	sh23ds: port/source/prog_prison.c:637\nsh23ds: port/source/prog_prison.c:640
+0x00580bf0	PRE	sh23ds: port/source/prog_prison.c:471\nsh23ds: port/source/prog_prison.c:474
+0x00580c00	PRE	sh23ds: port/source/prog_prison.c:474\nsh23ds: port/source/prog_prison.c:477
+0x00580e30	PRE	sh23ds: port/source/prog_prison.c:484\nsh23ds: port/source/prog_prison.c:487
+0x00581260	PRE	sh23ds: port/source/prog_prison.c:504\nsh23ds: port/source/prog_prison.c:507
+0x00581cc0	PRE	sh23ds: port/source/prog_prison.c:385\nsh23ds: port/source/prog_prison.c:388
+0x00581e10	PRE	sh23ds: port/source/prog_prison.c:395\nsh23ds: port/source/prog_prison.c:398
+0x00581e20	PRE	sh23ds: port/source/prog_prison.c:398\nsh23ds: port/source/prog_prison.c:401
+0x00582750	PRE	sh23ds: port/source/prog_prison.c:438\nsh23ds: port/source/prog_prison.c:441
+0x005829c0	PRE	sh23ds: port/source/prog_prison.c:448\nsh23ds: port/source/prog_prison.c:451
+0x005829d0	PRE	sh23ds: port/source/prog_prison.c:451\nsh23ds: port/source/prog_prison.c:454
+0x005829e0	PRE	sh23ds: port/source/prog_prison.c:454\nsh23ds: port/source/prog_prison.c:457
+0x00583c60	PRE	sh23ds: port/source/prog_prison.c:339\nsh23ds: port/source/prog_prison.c:342
+0x00583db0	PRE	sh23ds: port/source/prog_prison.c:358\nsh23ds: port/source/prog_prison.c:361
+0x00583fb0	PRE	sh23ds: port/source/prog_prison.c:339\nsh23ds: port/source/prog_prison.c:342
+0x00584100	PRE	sh23ds: port/source/prog_prison.c:362\nsh23ds: port/source/prog_prison.c:365
+0x005841b0	PRE	sh23ds: port/source/prog_prison.c:358\nsh23ds: port/source/prog_prison.c:361
+0x005844f0	PRE	sh23ds: port/source/prog_prison.c:245\nsh23ds: port/source/prog_prison.c:248
+0x00584520	PRE	sh23ds: port/source/prog_prison.c:245\nsh23ds: port/source/prog_prison.c:248
+0x00584530	PRE	sh23ds: port/source/prog_prison.c:245\nsh23ds: port/source/prog_prison.c:248
+0x00584980	PRE	sh23ds: port/source/prog_prison.c:262\nsh23ds: port/source/prog_prison.c:265
+0x00584fc0	PRE	sh23ds: port/source/prog_prison.c:170\nsh23ds: port/source/prog_prison.c:173
+0x00585350	PRE	sh23ds: port/source/prog_prison.c:180\nsh23ds: port/source/prog_prison.c:183
+0x00585360	PRE	sh23ds: port/source/prog_prison.c:180\nsh23ds: port/source/prog_prison.c:183
+0x00585370	PRE	sh23ds: port/source/prog_prison.c:180\nsh23ds: port/source/prog_prison.c:183
+0x00585380	PRE	sh23ds: port/source/prog_prison.c:181\nsh23ds: port/source/prog_prison.c:184
+0x00585390	PRE	sh23ds: port/source/prog_prison.c:181\nsh23ds: port/source/prog_prison.c:184
+0x005853a0	PRE	sh23ds: port/source/prog_prison.c:188\nsh23ds: port/source/prog_prison.c:191
+0x005855c0	PRE	sh23ds: port/source/prog_prison.c:203\nsh23ds: port/source/prog_prison.c:206
+0x00585950	PRE	sh23ds: port/source/prog_prison.c:235\nsh23ds: port/source/prog_prison.c:238
+0x00585d00	PRE	sh23ds: port/source/prog_prison.c:219\nsh23ds: port/source/prog_prison.c:222
 0x00586040	PRE	sh23ds: port/source/prog_prison.c:42
 0x00586160	PRE	sh23ds: port/source/prog_prison.c:52
 0x00586210	PRE	sh23ds: port/source/prog_prison.c:66
 0x00586bb0	PRE	sh23ds: port/source/prog_prison.c:136
 0x00586d40	PRE	sh23ds: port/source/prog_prison.c:149
-0x00586f40	PRE	sh23ds: port/source/prog_prison.c:152
+0x00586f40	PRE	sh23ds: port/source/prog_prison.c:152\nsh23ds: port/source/enemy.c:5835
 0x00587470	PRE	sh23ds: port/source/prog_prison.c:78
 0x00587920	PRE	sh23ds: port/source/prog_prison.c:35
 0x00587c00	PRE	sh23ds: port/source/prog_prison.c:11
 0x00587c10	PRE	sh23ds: port/source/prog_prison.c:11
-0x00587ed0	PRE	sh23ds: port/source/prog_hospital.c:1054
-0x00587f10	PRE	sh23ds: port/source/prog_hospital.c:1058
-0x005881a0	PRE	sh23ds: port/source/prog_hospital.c:1001
-0x005883f0	PRE	sh23ds: port/source/prog_hospital.c:1014
-0x005885c0	PRE	sh23ds: port/source/prog_hospital.c:1030
-0x005885d0	PRE	sh23ds: port/source/prog_hospital.c:1030
-0x00588a50	PRE	sh23ds: port/source/prog_hospital.c:1037
-0x00588e60	PRE	sh23ds: port/source/prog_hospital.c:1034
-0x00589790	PRE	sh23ds: port/source/prog_hospital.c:920
-0x00589f70	PRE	sh23ds: port/source/prog_hospital.c:992
-0x0058a260	PRE	sh23ds: port/source/prog_hospital.c:863
-0x0058a6e0	PRE	sh23ds: port/source/prog_hospital.c:930
-0x0058a8a0	PRE	sh23ds: port/source/prog_hospital.c:815
-0x0058ac20	PRE	sh23ds: port/source/prog_hospital.c:836
-0x0058aed0	PRE	sh23ds: port/source/prog_hospital.c:853
-0x0058aee0	PRE	sh23ds: port/source/prog_hospital.c:853
-0x0058af50	PRE	sh23ds: port/source/prog_hospital.c:769
-0x0058b040	PRE	sh23ds: port/source/prog_hospital.c:779
-0x0058b060	PRE	sh23ds: port/source/prog_hospital.c:782
-0x0058b660	PRE	sh23ds: port/source/prog_hospital.c:806
-0x0058b670	PRE	sh23ds: port/source/prog_hospital.c:713
-0x0058b750	PRE	sh23ds: port/source/prog_hospital.c:713
-0x0058b910	PRE	sh23ds: port/source/prog_hospital.c:732
-0x0058ba80	PRE	sh23ds: port/source/prog_hospital.c:732
-0x0058cc80	PRE	sh23ds: port/source/prog_hospital.c:665
-0x0058cca0	PRE	sh23ds: port/source/prog_hospital.c:668
-0x0058cea0	PRE	sh23ds: port/source/prog_hospital.c:678
-0x0058ced0	PRE	sh23ds: port/source/prog_hospital.c:681
-0x0058d1c0	PRE	sh23ds: port/source/prog_hospital.c:695
-0x0058d480	PRE	sh23ds: port/source/prog_hospital.c:662
-0x0058d7e0	PRE	sh23ds: port/source/prog_hospital.c:336
-0x0058d990	PRE	sh23ds: port/source/prog_hospital.c:349
-0x0058db00	PRE	sh23ds: port/source/prog_hospital.c:360
-0x0058dc60	PRE	sh23ds: port/source/prog_hospital.c:388
-0x0058dd70	PRE	sh23ds: port/source/prog_hospital.c:388
-0x0058de80	PRE	sh23ds: port/source/prog_hospital.c:407
-0x0058e0b0	PRE	sh23ds: port/source/prog_hospital.c:419
-0x0058ebd0	PRE	sh23ds: port/source/prog_hospital.c:570
-0x0058ed40	PRE	sh23ds: port/source/prog_hospital.c:628
-0x0058ee40	PRE	sh23ds: port/source/prog_hospital.c:641
-0x0058ee60	PRE	sh23ds: port/source/prog_hospital.c:644
-0x0058f090	PRE	sh23ds: port/source/prog_hospital.c:370
-0x0058f2d0	PRE	sh23ds: port/source/prog_hospital.c:429
-0x0058fae0	PRE	sh23ds: port/source/prog_hospital.c:573
-0x0058fcb0	PRE	sh23ds: port/source/prog_hospital.c:253
-0x0058fcc0	PRE	sh23ds: port/source/prog_hospital.c:266
-0x0058ff50	PRE	sh23ds: port/source/prog_hospital.c:291
-0x00590090	PRE	sh23ds: port/source/prog_hospital.c:305
-0x005902a0	PRE	sh23ds: port/source/prog_hospital.c:315
-0x005902c0	PRE	sh23ds: port/source/prog_hospital.c:318
+0x00587ed0	PRE	sh23ds: port/source/prog_hospital.c:1054\nsh23ds: port/source/prog_hospital.c:1055
+0x00587f10	PRE	sh23ds: port/source/prog_hospital.c:1058\nsh23ds: port/source/demo.c:744\nsh23ds: port/source/demo.c:745
+0x005881a0	PRE	sh23ds: port/source/prog_hospital.c:1001\nsh23ds: port/source/prog_hospital.c:1002
+0x005883f0	PRE	sh23ds: port/source/prog_hospital.c:1014\nsh23ds: port/source/prog_hospital.c:1015
+0x005885c0	PRE	sh23ds: port/source/prog_hospital.c:1030\nsh23ds: port/source/prog_hospital.c:1031
+0x005885d0	PRE	sh23ds: port/source/prog_hospital.c:1030\nsh23ds: port/source/prog_hospital.c:1031
+0x00588a50	PRE	sh23ds: port/source/prog_hospital.c:1037\nsh23ds: port/source/prog_hospital.c:1038
+0x00588e60	PRE	sh23ds: port/source/prog_hospital.c:1034\nsh23ds: port/source/prog_hospital.c:1035
+0x00589790	PRE	sh23ds: port/source/prog_hospital.c:920\nsh23ds: port/source/prog_hospital.c:921
+0x00589f70	PRE	sh23ds: port/source/prog_hospital.c:992\nsh23ds: port/source/prog_hospital.c:993
+0x0058a260	PRE	sh23ds: port/source/prog_hospital.c:863\nsh23ds: port/source/prog_hospital.c:864
+0x0058a6e0	PRE	sh23ds: port/source/prog_hospital.c:930\nsh23ds: port/source/prog_hospital.c:931
+0x0058a8a0	PRE	sh23ds: port/source/prog_hospital.c:815\nsh23ds: port/source/prog_hospital.c:816
+0x0058ac20	PRE	sh23ds: port/source/prog_hospital.c:836\nsh23ds: port/source/prog_hospital.c:837
+0x0058aed0	PRE	sh23ds: port/source/prog_hospital.c:853\nsh23ds: port/source/prog_hospital.c:854
+0x0058aee0	PRE	sh23ds: port/source/prog_hospital.c:853\nsh23ds: port/source/prog_hospital.c:854
+0x0058af50	PRE	sh23ds: port/source/prog_hospital.c:769\nsh23ds: port/source/prog_hospital.c:770
+0x0058b040	PRE	sh23ds: port/source/prog_hospital.c:779\nsh23ds: port/source/prog_hospital.c:780
+0x0058b060	PRE	sh23ds: port/source/prog_hospital.c:782\nsh23ds: port/source/prog_hospital.c:783
+0x0058b660	PRE	sh23ds: port/source/prog_hospital.c:806\nsh23ds: port/source/prog_hospital.c:807
+0x0058b670	PRE	sh23ds: port/source/prog_hospital.c:713\nsh23ds: port/source/prog_hospital.c:714
+0x0058b750	PRE	sh23ds: port/source/prog_hospital.c:713\nsh23ds: port/source/prog_hospital.c:714
+0x0058b910	PRE	sh23ds: port/source/prog_hospital.c:732\nsh23ds: port/source/prog_hospital.c:733
+0x0058ba80	PRE	sh23ds: port/source/prog_hospital.c:732\nsh23ds: port/source/prog_hospital.c:733
+0x0058cc80	PRE	sh23ds: port/source/prog_hospital.c:665\nsh23ds: port/source/prog_hospital.c:666
+0x0058cca0	PRE	sh23ds: port/source/prog_hospital.c:668\nsh23ds: port/source/prog_hospital.c:669
+0x0058cea0	PRE	sh23ds: port/source/prog_hospital.c:678\nsh23ds: port/source/prog_hospital.c:679
+0x0058ced0	PRE	sh23ds: port/source/prog_hospital.c:681\nsh23ds: port/source/prog_hospital.c:682
+0x0058d1c0	PRE	sh23ds: port/source/prog_hospital.c:695\nsh23ds: port/source/prog_hospital.c:696
+0x0058d480	PRE	sh23ds: port/source/prog_hospital.c:662\nsh23ds: port/source/prog_hospital.c:663
+0x0058d7e0	PRE	sh23ds: port/source/prog_hospital.c:336\nsh23ds: port/source/prog_hospital.c:337
+0x0058d990	PRE	sh23ds: port/source/prog_hospital.c:349\nsh23ds: port/source/prog_hospital.c:350
+0x0058db00	PRE	sh23ds: port/source/prog_hospital.c:360\nsh23ds: port/source/prog_hospital.c:361
+0x0058dc60	PRE	sh23ds: port/source/prog_hospital.c:388\nsh23ds: port/source/prog_hospital.c:389
+0x0058dd70	PRE	sh23ds: port/source/prog_hospital.c:388\nsh23ds: port/source/prog_hospital.c:389
+0x0058de80	PRE	sh23ds: port/source/prog_hospital.c:407\nsh23ds: port/source/prog_hospital.c:408
+0x0058e0b0	PRE	sh23ds: port/source/prog_hospital.c:419\nsh23ds: port/source/prog_hospital.c:420
+0x0058ebd0	PRE	sh23ds: port/source/prog_hospital.c:570\nsh23ds: port/source/prog_hospital.c:571
+0x0058ed40	PRE	sh23ds: port/source/prog_hospital.c:628\nsh23ds: port/source/prog_hospital.c:629
+0x0058ee40	PRE	sh23ds: port/source/prog_hospital.c:641\nsh23ds: port/source/prog_hospital.c:642
+0x0058ee60	PRE	sh23ds: port/source/prog_hospital.c:644\nsh23ds: port/source/prog_hospital.c:645
+0x0058f090	PRE	sh23ds: port/source/prog_hospital.c:370\nsh23ds: port/source/prog_hospital.c:371
+0x0058f2d0	PRE	sh23ds: port/source/prog_hospital.c:429\nsh23ds: port/source/prog_hospital.c:430
+0x0058fae0	PRE	sh23ds: port/source/prog_hospital.c:573\nsh23ds: port/source/prog_hospital.c:574
+0x0058fcb0	PRE	sh23ds: port/source/prog_hospital.c:253\nsh23ds: port/source/prog_hospital.c:254
+0x0058fcc0	PRE	sh23ds: port/source/prog_hospital.c:266\nsh23ds: port/source/prog_hospital.c:267
+0x0058ff50	PRE	sh23ds: port/source/prog_hospital.c:291\nsh23ds: port/source/prog_hospital.c:292
+0x00590090	PRE	sh23ds: port/source/prog_hospital.c:305\nsh23ds: port/source/prog_hospital.c:306
+0x005902a0	PRE	sh23ds: port/source/prog_hospital.c:315\nsh23ds: port/source/prog_hospital.c:316
+0x005902c0	PRE	sh23ds: port/source/prog_hospital.c:318\nsh23ds: port/source/prog_hospital.c:319
 0x00590420	PRE	sh23ds: port/source/prog_hospital.c:177
 0x00590430	PRE	sh23ds: port/source/prog_hospital.c:180
 0x00590730	PRE	sh23ds: port/source/prog_hospital.c:196
@@ -1392,23 +1406,23 @@ addr	kind	text
 0x00591860	PRE	sh23ds: port/source/prog_hospital.c:12
 0x00591a40	PRE	sh23ds: port/source/prog_hospital.c:21
 0x00591c10	PRE	sh23ds: port/source/prog_hospital.c:32
-0x00592830	PRE	sh23ds: port/source/prog_town.c:470
-0x005928e0	PRE	sh23ds: port/source/prog_town.c:478
-0x00592c90	PRE	sh23ds: port/source/prog_town.c:495
-0x00592e00	PRE	sh23ds: port/source/prog_town.c:506
-0x00592e40	PRE	sh23ds: port/source/prog_town.c:509
-0x00592fd0	PRE	sh23ds: port/source/prog_town.c:519
-0x00593300	PRE	sh23ds: port/source/prog_town.c:547
-0x00593330	PRE	sh23ds: port/source/prog_town.c:555
-0x00593340	PRE	sh23ds: port/source/prog_town.c:558
-0x00593570	PRE	sh23ds: port/source/prog_town.c:574
-0x005937c0	PRE	sh23ds: port/source/prog_town.c:591
-0x00593800	PRE	sh23ds: port/source/prog_town.c:599
-0x00593940	PRE	sh23ds: port/source/prog_town.c:611
-0x00593980	PRE	sh23ds: port/source/prog_town.c:620
-0x00593ba0	PRE	sh23ds: port/source/prog_town.c:633
-0x00593bb0	PRE	sh23ds: port/source/prog_town.c:636
-0x00594a90	PRE	sh23ds: port/source/prog_town.c:577
+0x00592830	PRE	sh23ds: port/source/prog_town.c:470\nsh23ds: port/source/prog_town.c:475
+0x005928e0	PRE	sh23ds: port/source/prog_town.c:478\nsh23ds: port/source/prog_town.c:483
+0x00592c90	PRE	sh23ds: port/source/prog_town.c:495\nsh23ds: port/source/prog_town.c:505
+0x00592e00	PRE	sh23ds: port/source/prog_town.c:506\nsh23ds: port/source/prog_town.c:516
+0x00592e40	PRE	sh23ds: port/source/prog_town.c:509\nsh23ds: port/source/prog_town.c:519
+0x00592fd0	PRE	sh23ds: port/source/prog_town.c:519\nsh23ds: port/source/prog_town.c:529
+0x00593300	PRE	sh23ds: port/source/prog_town.c:547\nsh23ds: port/source/prog_town.c:557
+0x00593330	PRE	sh23ds: port/source/prog_town.c:555\nsh23ds: port/source/prog_town.c:565
+0x00593340	PRE	sh23ds: port/source/prog_town.c:558\nsh23ds: port/source/prog_town.c:568
+0x00593570	PRE	sh23ds: port/source/prog_town.c:574\nsh23ds: port/source/prog_town.c:584
+0x005937c0	PRE	sh23ds: port/source/prog_town.c:591\nsh23ds: port/source/prog_town.c:601
+0x00593800	PRE	sh23ds: port/source/prog_town.c:599\nsh23ds: port/source/prog_town.c:609
+0x00593940	PRE	sh23ds: port/source/prog_town.c:611\nsh23ds: port/source/prog_town.c:621
+0x00593980	PRE	sh23ds: port/source/prog_town.c:620\nsh23ds: port/source/prog_town.c:630
+0x00593ba0	PRE	sh23ds: port/source/prog_town.c:633\nsh23ds: port/source/prog_town.c:643
+0x00593bb0	PRE	sh23ds: port/source/prog_town.c:636\nsh23ds: port/source/prog_town.c:646
+0x00594a90	PRE	sh23ds: port/source/prog_town.c:577\nsh23ds: port/source/prog_town.c:587
 0x00594b23	EOL	SecuROM -> MSVCR70.DLL!malloc
 0x00594bd4	EOL	SecuROM -> MSVCR70.DLL!free
 0x005959d0	PRE	sh23ds: port/source/prog_apart.c:768
@@ -1462,28 +1476,28 @@ addr	kind	text
 0x0059cbf0	PRE	sh23ds: port/source/prog_apart.c:13
 0x0059cdd0	PRE	sh23ds: port/source/prog_apart.c:22
 0x0059cf00	PRE	sh23ds: port/source/prog_apart.c:31
-0x0059d2a0	PRE	sh23ds: port/source/prog_town.c:241
-0x0059d4f0	PRE	sh23ds: port/source/prog_town.c:256
-0x0059d8f0	PRE	sh23ds: port/source/prog_town.c:279
-0x0059da20	PRE	sh23ds: port/source/combat.c:1317
-0x0059dbd0	PRE	sh23ds: port/source/prog_town.c:304
-0x0059dd40	PRE	sh23ds: port/source/prog_town.c:316
-0x0059de50	PRE	sh23ds: port/source/prog_town.c:326
-0x0059dea0	PRE	sh23ds: port/source/prog_town.c:334
-0x0059dec0	PRE	sh23ds: port/source/prog_town.c:342
-0x0059dee0	PRE	sh23ds: port/source/prog_town.c:345
-0x0059f480	PRE	sh23ds: port/source/prog_town.c:164
-0x0059f670	PRE	sh23ds: port/source/prog_town.c:194
-0x0059f790	PRE	sh23ds: port/source/prog_town.c:194
-0x0059f8b0	PRE	sh23ds: port/source/prog_town.c:224
-0x0059fc90	PRE	sh23ds: port/source/prog_town.c:215
-0x005a0740	PRE	sh23ds: port/source/prog_town.c:182
-0x005a0a30	PRE	sh23ds: port/source/prog_town.c:77
-0x005a0b80	PRE	sh23ds: port/source/prog_town.c:90
-0x005a0e70	PRE	sh23ds: port/source/prog_town.c:110
-0x005a0e80	PRE	sh23ds: port/source/prog_town.c:126
-0x005a0fb0	PRE	sh23ds: port/source/prog_town.c:137
-0x005a10e0	PRE	sh23ds: port/source/prog_town.c:148
+0x0059d2a0	PRE	sh23ds: port/source/prog_town.c:241\nsh23ds: port/source/prog_town.c:246
+0x0059d4f0	PRE	sh23ds: port/source/prog_town.c:256\nsh23ds: port/source/prog_town.c:261
+0x0059d8f0	PRE	sh23ds: port/source/prog_town.c:279\nsh23ds: port/source/prog_town.c:284
+0x0059da20	PRE	sh23ds: port/source/combat.c:1317\nsh23ds: port/source/combat.c:1319\nsh23ds: port/source/combat.c:1324\nsh23ds: port/source/combat.c:1469
+0x0059dbd0	PRE	sh23ds: port/source/prog_town.c:304\nsh23ds: port/source/prog_town.c:309
+0x0059dd40	PRE	sh23ds: port/source/prog_town.c:316\nsh23ds: port/source/prog_town.c:321
+0x0059de50	PRE	sh23ds: port/source/prog_town.c:326\nsh23ds: port/source/prog_town.c:331
+0x0059dea0	PRE	sh23ds: port/source/prog_town.c:334\nsh23ds: port/source/prog_town.c:339
+0x0059dec0	PRE	sh23ds: port/source/prog_town.c:342\nsh23ds: port/source/prog_town.c:347
+0x0059dee0	PRE	sh23ds: port/source/prog_town.c:345\nsh23ds: port/source/prog_town.c:350
+0x0059f480	PRE	sh23ds: port/source/prog_town.c:164\nsh23ds: port/source/prog_town.c:165
+0x0059f670	PRE	sh23ds: port/source/prog_town.c:194\nsh23ds: port/source/prog_town.c:199
+0x0059f790	PRE	sh23ds: port/source/prog_town.c:194\nsh23ds: port/source/prog_town.c:199
+0x0059f8b0	PRE	sh23ds: port/source/prog_town.c:224\nsh23ds: port/source/prog_town.c:229
+0x0059fc90	PRE	sh23ds: port/source/prog_town.c:215\nsh23ds: port/source/prog_town.c:220
+0x005a0740	PRE	sh23ds: port/source/prog_town.c:182\nsh23ds: port/source/prog_town.c:183
+0x005a0a30	PRE	sh23ds: port/source/prog_town.c:77\nsh23ds: port/source/demo.c:742\nsh23ds: port/source/demo.c:743
+0x005a0b80	PRE	sh23ds: port/source/prog_town.c:90\nsh23ds: port/source/prog_town.c:91
+0x005a0e70	PRE	sh23ds: port/source/prog_town.c:110\nsh23ds: port/source/prog_town.c:111
+0x005a0e80	PRE	sh23ds: port/source/prog_town.c:126\nsh23ds: port/source/prog_town.c:127
+0x005a0fb0	PRE	sh23ds: port/source/prog_town.c:137\nsh23ds: port/source/prog_town.c:138
+0x005a10e0	PRE	sh23ds: port/source/prog_town.c:148\nsh23ds: port/source/prog_town.c:149
 0x005a1670	PRE	sh23ds: port/source/prog_town.c:10
 0x005a9c5a	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
 0x005a9d5f	EOL	SecuROM -> KERNEL32.DLL!OutputDebugStringA
