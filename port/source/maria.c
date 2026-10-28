@@ -8,6 +8,7 @@
 #include "events.h"
 #include "prog.h"
 #include "sfx.h"
+#include "stereo.h"
 
 // The PC keeps all of this in shMariaWork (sh2mar at 0x1fb3860). Main states (0x8bced0): stand,
 // close to James, alert, discover, recover, boredom, damaged. Sub states (0x8bcef0) pick the
@@ -341,8 +342,15 @@ static void move(float dt)
 	float v = M.speed * 500.0f * dt;
 	float nx = M.x + sinf(dir) * v, nz = M.z + cosf(dir) * v;
 	float ny;
-	col_push(s_col, &nx, &nz, M.y, 1500.0f, M.radius);
-	if (col_floor(s_col, nx, nz, M.y, 200.0f, &ny))
+	// MariaSetHitColumn (0x52b330): the column that meets the walls runs from 50 to 800 above her
+	// feet (col_push tests from 10 above the y it is given), so a stair's step or the flight
+	// overhead does not stop her
+	col_push(s_col, &nx, &nz, M.y - 40.0f, 760.0f, M.radius);
+	// MariaSetHeight (0x52b4c0): her height is the first floor a ray meets from 250 above her feet
+	// to 1500 below them (2100 either way in stage 14), 0x526560; nearest-to-her kept her on the
+	// floor under a flight of stairs
+	float up = ev_stage() == 14 ? 2100.0f : 250.0f, down = ev_stage() == 14 ? 2100.0f : 1500.0f;
+	if (col_floor_climb(s_col, nx, nz, M.y, up, down, &ny))
 		M.x = nx, M.z = nz, M.y = ny;
 }
 
@@ -536,8 +544,11 @@ void maria_draw(const C3D_Mtx* view, int uModelView, int uBones)
 	// Stage programs stop the world (enemy_update is not called) while they hold James for a demo,
 	// and the demos show their own Maria: she is left out when she was not updated since the last
 	// frame.
-	bool fresh = M.updated != M.drawn;
-	M.drawn = M.updated;
+	static bool fresh;               // the second eye of a 3D frame takes the first one's (stereo.h)
+	if (!stereo_eye()) {
+		fresh = M.updated != M.drawn;
+		M.drawn = M.updated;
+	}
 	if (!fresh || !maria_present() || !s_loaded)
 		return;
 	C3D_Mtx model, mv;
@@ -546,7 +557,8 @@ void maria_draw(const C3D_Mtx* view, int uModelView, int uBones)
 	Mtx_RotateY(&model, M.yaw, true);
 	Mtx_Multiply(&mv, view, &model);
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
-	chr_pose(&s_chr, &s_anim, M.frame);
+	const MarAnim* t = &ANIM[M.anim];
+	chr_pose_loop(&s_chr, &s_anim, M.frame, t->loop ? t->start : 0, t->loop ? t->end : 0);
 	float at[3] = { M.x, M.y, M.z };
 	chrlight_at(at, false);
 	chr_draw(&s_chr, uBones);

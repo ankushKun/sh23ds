@@ -6,10 +6,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include "audio.h"
+#include "bgm.h"
 #include "chr.h"
 #include "events.h"
 #include "movie.h"
 #include "prog.h"
+#include "stereo.h"
 
 // In-engine cutscenes, ported from the PC's DramaDemo player (Event/demoview.c in the PS2 beta):
 // DramaDemoMain 0x4a1c80, DramaDemoInit 0x4a0b30, DdsPlay 0x4a0f30 and the readers it calls
@@ -98,7 +100,7 @@ static const char* const s_seq[DEMO_COUNT] = {
 	[DEMO_REFRIGERATOR_ALONE] = "reizouko_jms",                // 0x58ac20
 	[DEMO_MARIA_MEET_AGAIN] = "@saikai mar_saikai",            // 0x5881a0
 	[DEMO_EMPTY_SHELF] = "kakushi",                            // 0x5883f0
-	[DEMO_ELEVATOR_MARIA] = "quiz",                            // 0x588e60
+	[DEMO_ELEVATOR_MARIA] = "!voice_588e60:5175 quiz",        // 0x588e60: the radio quiz (0x72ab54 frames), then the scene
 	[DEMO_MARIA_KILLED] = "mar_dead_a mar_dead_b",             // 0x587f10
 	[DEMO_JUMP1] = "jump1",                                    // 0x587a2a
 	[DEMO_BOTTOM_OF_WELL] = "ido",                             // 0x586040
@@ -265,9 +267,11 @@ static struct {
 	u32 msg_index;
 	bool msg_shown;
 	int msg_serial;
-	const char* msg_text;
+	const char* msg_text;      // msg_buf while a subtitle shows, else NULL
+	char msg_buf[320];
 	DemoChar chars[DEMO_MAX_CHARS];
 	char key[32];
+	u32 cues;                  // the s_cues already done in this scene
 	char status[64];
 } S;
 
@@ -731,6 +735,32 @@ static Character* load_model(const char* pack_dir, int upto, const DemChar* rec,
 	return c;
 }
 
+// What the PC programs do while their scene plays (they run every frame beside DramaDemoMain; the
+// port's wait for the whole request): set a flag the stage's bgm_control reads once gCutsceneTimer
+// passes a frame, or the BGM page between two scenes of one program (frame -1: at the start).
+typedef struct { const char* key; float frame; short flag, page; } Cue;
+static const Cue s_cues[] = {
+	{ "tenbou", 1400.0f, 517, -1 },      // 0x5a0a30 EvProgLetterFromMary (_DAT_006b61a8)
+	{ "piano_lau_b", 243.0f, 528, -1 },  // 0x57beb0 EvProgLauraPlayPiano state 0x17 (_DAT_00715f0c)
+	{ "mar_dead_b", -1.0f, 0, 0x17 },    // 0x587f10 EvProgMariaKilled state 6
+	{ "mar_dead_b", 380.0f, 522, -1 },   // its state 0x18 (_DAT_00729388)
+	{ "tomatta", -1.0f, 527, 0x25 },     // 0x577fa0 EvProgVideoReplay state 6
+};
+
+static void scene_cues(void)
+{
+	for (u32 i = 0; i < sizeof s_cues / sizeof *s_cues; i++) {
+		const Cue* c = &s_cues[i];
+		if ((S.cues >> i & 1) || strcmp(S.key, c->key) || (c->frame >= 0.0f && !(S.cur - 1.0f > c->frame)))
+			continue;
+		S.cues |= 1u << i;
+		if (c->flag)
+			ev_flag_set(c->flag, true);
+		if (c->page >= 0)
+			bgm_set_page(c->page);
+	}
+}
+
 // Frees the scene (models, motions, its voice); a sequence going on is kept.
 static void scene_end(void)
 {
@@ -801,9 +831,21 @@ static struct {
 	const u16* times;
 	float elapsed;
 	bool shown;
-	const char* text;
+	const char* text;          // textbuf while a subtitle shows, else NULL
+	char textbuf[320];
+	int stage;                 // the stage whose messages the track reads
 	int serial;
 } Q;
+
+// A subtitle is kept as a copy: the stage's message file is freed when another stage loads (a door
+// taken while a voice track plays), which left the old pointer showing garbage.
+static const char* subtitle_copy(char* buf, size_t size, const char* text)
+{
+	if (!text)
+		return NULL;
+	snprintf(buf, size, "%s", text);
+	return buf;
+}
 
 static void track_stop(void)
 {
@@ -839,6 +881,7 @@ static bool track_start(const char* key)
 	Q.elapsed = 0.0f;
 	Q.shown = false;
 	Q.voice_on = true;
+	Q.stage = ev_stage();
 	if (Q.voice >= 0) {
 		snprintf(path, sizeof path, "%s/sound/voice/%ld.adx", Q.pack, (long)Q.voice);
 		Q.voice_started = audio_play_voice(path, 1.0f);
@@ -864,7 +907,7 @@ static void track_update(float dt)
 	}
 	if (Q.index < Q.n_times && Q.times[2 * Q.index] < now && !Q.shown && Q.msg_no >= 0) {
 		Q.shown = true;
-		Q.text = ev_stage_message(Q.msg_no + (int)Q.index);
+		Q.text = subtitle_copy(Q.textbuf, sizeof Q.textbuf, ev_stage_message(Q.msg_no + (int)Q.index));
 		Q.serial++;
 	}
 	if (!sounding && Q.index >= Q.n_times)
@@ -1012,6 +1055,12 @@ bool demo_voice_free_tick(float dt)
 {
 	if (!Q.free || !Q.voice_on)
 		return false;
+	// the stage function that drives it (0x5769b0 calls SubtitlesManager 0x49fe70 every frame) is
+	// gone once James leaves its stage, so the track ends there
+	if (ev_stage() != Q.stage) {
+		track_stop();
+		return false;
+	}
 	track_update(dt);
 	return Q.voice_on;
 }
@@ -1032,7 +1081,7 @@ static void subtitles(void)
 	}
 	if (S.msg_index < S.h->n_msgs && t[S.msg_index * 2] < now && !S.msg_shown) {
 		S.msg_shown = true;
-		S.msg_text = ev_stage_message(S.h->msg_start + (int)S.msg_index);
+		S.msg_text = subtitle_copy(S.msg_buf, sizeof S.msg_buf, ev_stage_message(S.h->msg_start + (int)S.msg_index));
 		S.msg_serial++;
 	}
 }
@@ -1062,8 +1111,10 @@ static bool scene_update(float dt)
 				step = 0.0f;
 			} else {
 				float want = S.h->voice_start + 1.0f + pos * DEMO_FPS;
+				// never backwards: a stream behind the scene (a slow card) holds it, as the PC's
+				// clock does when its stream stalls
 				if (fabsf(S.cur + step - want) > 2.0f && want < (float)S.h->total_frames)
-					step = want - S.cur;
+					step = want > S.cur ? want - S.cur : 0.0f;
 			}
 		}
 		S.elapsed += step;
@@ -1072,6 +1123,7 @@ static bool scene_update(float dt)
 		if (S.cur > (float)S.h->total_frames)
 			S.cur = (float)S.h->total_frames;
 		dds_advance((int)S.cur + 1);
+		scene_cues();
 		subtitles();
 		// DramaDemoMain: the voice stream starts once gCutsceneTimer (cur - 1) passes stream_start
 		if (S.h->voice >= 0 && !S.voice_started && S.cur - 1.0f >= S.h->voice_start) {
@@ -1151,7 +1203,7 @@ static float blend(void)
 static bool s_reduce_fov = true;
 void demo_set_reduce_fov(bool on) { s_reduce_fov = on; }
 
-bool demo_camera(C3D_Mtx* view, float* fovy, float eye_out[3])
+bool demo_camera(C3D_Mtx* view, float* fovy, float eye_out[3], float* focus)
 {
 	if (!S.active)
 		return false;
@@ -1198,6 +1250,8 @@ bool demo_camera(C3D_Mtx* view, float* fovy, float eye_out[3])
 	*fovy = 2.0f * atanf(SCREEN_SY * 0.5f / scr_z);
 	if (eye_out)
 		memcpy(eye_out, eye, sizeof eye);
+	if (focus)
+		*focus = fl;
 	return true;
 }
 
@@ -1468,7 +1522,8 @@ void demo_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		Mtx_Multiply(&mv, view, &model);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
 		float mf = pose_char(dc);
-		morph_char(dc, mf);
+		if (!stereo_eye())               // the second eye of a 3D frame keeps the face (stereo.h)
+			morph_char(dc, mf);
 		float k = char_light(dc);
 		if (own) {
 			chr_light_ambient(&s_lenv, s_amb[0] * k, s_amb[1] * k, s_amb[2] * k);
@@ -1477,6 +1532,13 @@ void demo_draw(const C3D_Mtx* view, int uModelView, int uBones)
 			if (s_light_hook && k != 1.0f)
 				s_light_hook(k);
 		}
+		// James' parts: hhl and hhh James (0x102, 0x103) by 0x540d80, lll and hll James by the
+		// player's 0x52f6a0 in its event state. The port's scenes never show his weapon, and an
+		// unshown weapon leaves both hands open (right 3, left 14; hhh has no hands to swap, hhl no
+		// left ones). The flashlight (21) once he has it.
+		int kind = dc->rec->kind;
+		if (kind >= 0x100 && kind <= 0x103)
+			chr_set_parts(dc->model, kind <= 0x101 ? 14 : 0, kind == 0x103 ? 0 : 3, ev_have_item(18) ? 21 : 0);
 		chr_draw(dc->model, uBones);
 		if (!own && s_light_hook && k != 1.0f)
 			s_light_hook(1.0f);

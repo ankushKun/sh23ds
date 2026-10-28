@@ -95,3 +95,16 @@ tools/texenc/build/
 # HOME Menu banner: the still made for console tests
 port/meta/banner/still.cgfx
 port/meta/banner/__pycache__/
+
+# Issue triage: reports gathered from players (local only)
+.triage/
+.packnew/
+.packnew.log
+.fix*/
+.stuck/
+.quickpack/
+.quickpack.log
+.packtrace/
+.packtrace.log
+.webpack/
+.webpack.log

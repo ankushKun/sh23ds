@@ -40,6 +40,8 @@ void blood_footstep(const float foot[3], float yaw);
 void blood_forget(const float* owner);
 
 void blood_update(float dt);
-// After the opaque scene, with the light environment unbound.
-void blood_draw(const C3D_Mtx* proj, const C3D_Mtx* view);
+// After the opaque scene, with the light environment unbound. fog_start, fog_end: the room's fog
+// (D3DRS_FOGSTART / FOGEND), near, far: the depth range, for the blood's own fog table. It leaves the
+// fog colour black and its table bound: the caller puts the room's back.
+void blood_draw(const C3D_Mtx* proj, const C3D_Mtx* view, float fog_start, float fog_end, float near, float far);
 const char* blood_status(void);          // debug HUD line

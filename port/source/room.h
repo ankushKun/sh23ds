@@ -18,11 +18,26 @@ typedef struct {
 	u32 group, material, first_vertex, vertex_count, first_index, index_count;
 } RoomBatchFile;
 
+// A box around map vertices (world space), for culling per eye (main.c box_test): its centre and
+// half size; e[0] < 0 holds nothing.
+typedef struct { float c[3], e[3]; } RoomBox;
+
+// Each batch is culled in runs of ROOM_CHUNK_TRIS triangles in its own order, so a run of visible
+// chunks is still one draw and the triangles go out in the same order. A multiple of 8, so that a
+// chunk's indices start 16 bytes into the batch's (the alignment the PICA's index address takes).
+// ROOM_GROUP_CHUNKS of them share a box too, so that most chunks need no test of their own.
+#define ROOM_CHUNK_TRIS 32
+#define ROOM_GROUP_CHUNKS 8
+
 typedef struct {
 	u32 group, material, first_vertex, vertex_count, index_count;
 	u16* indices;       // own linear allocation: the PICA index buffer address must be aligned
 	u16 part;           // the map geometry's id: variant (low byte) and part group (high byte)
 	u8 hidden;          // a part the stage code has not switched on (see room_parts_apply)
+	RoomBox box;        // around all its triangles
+	RoomBox* chunks;    // around each ROOM_CHUNK_TRIS of them in order (in the room's chunk_mem), or NULL
+	RoomBox* groups;    // around each ROOM_GROUP_CHUNKS chunks (likewise)
+	u32 n_chunks;
 } RoomBatch;
 
 typedef struct {
@@ -31,11 +46,16 @@ typedef struct {
 	RoomMaterial* materials;
 	RoomBatch* batches;
 	void* vertices;     // linear memory, 28-byte vertices (pos, uv, color, normal)
+	RoomBox* chunk_mem; // the batches' chunk and group boxes (heap)
 	u32 missing_textures;
 	u32 map_id;         // the PC's map file id, glb_crd << 16 | the map's number (ap22: 0x90016)
 } Room;
 
 #define ROOM_VERTEX_SIZE 28
+
+// Sample the map textures' smaller levels too (debug.txt "mapmips 1"); off, as on the PC, which
+// makes them with one level. Textures loaded after the call follow it.
+void room_set_map_mipmaps(bool on);
 
 // Loads <pack>/bg/<area>/<name>.s3m and its textures. Returns false with a message in err.
 bool room_load(Room* room, const char* pack, const char* area, const char* name, char* err, size_t errlen);
@@ -55,9 +75,10 @@ bool room_load_mem(Room* room, const char* pack, const char* area, const char* n
 // least one), so that room_load_mem finds them there and a tile's uploads spread over a few frames.
 // True when every blob is in the cache. Main thread only.
 bool room_tex_warm(const char* pack, const char* area, const RoomTexBlob* tex, int ntex, u64 deadline);
-// Rebases an .s3m's indices to room-global vertex numbers in place, as room_load_mem would, and
-// marks it done (safe on any thread: the reader thread does it, so the join does not).
-void room_prepare(u8* data, long size);
+// Rebases an .s3m's indices to room-global vertex numbers in place, as room_load_mem would, appends
+// the chunk boxes (room.h) and marks both done (safe on any thread: the reader thread does it, so the
+// join does not). Returns the data, moved when it grew; size is updated.
+u8* room_prepare(u8* data, long* size);
 // The texture ids an .s3m uses (no allocation; safe on any thread).
 int room_texture_ids(const u8* data, long size, u32* out, int max);
 // Texture ids the cache holds for an area (a snapshot for the reader thread).

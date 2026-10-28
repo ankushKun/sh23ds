@@ -1,6 +1,10 @@
 #include "bgm.h"
 #include "audio.h"
+#include "demo.h"
 #include "events.h"
+#include "levels.h"
+#include "prog.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +35,11 @@ static bool s_ok;
 static int s_stage = -1, s_room = -1;
 static int s_page, s_playing_page;   // page wanted, page whose file is loaded (0 none)
 static bool s_hold;                 // file chosen but the stage program starts it (stage 15)
+static bool s_reload = true;        // SeBgmChange is due: a stage load or a warp
+static int s_prog_page = -1;        // a page a program set since the last bgm_update
+static bool s_music_box;            // 0x1d85fa4: EvProgOrgel plays the box with a wrong order
 static float s_master = 0.4f;
+static float s_duck = 1.0f;         // 0x1f837d4
 static int s_situation;
 static Track s_tracks[TRACKS];
 static char s_status[64] = "bgm off";
@@ -89,7 +97,6 @@ void bgm_exit(void)
 }
 
 bool bgm_ready(void) { return s_ok; }
-void bgm_set_situation(int page) { s_situation = page; }
 
 // FUN_00494db0 via tools/sh2conv/sh2rooms.py: 20000-unit cells, exact cells first, then the
 // even corner of a 2x2 block, else the glb's default room.
@@ -243,6 +250,113 @@ static float master_for(int start_id)
 	}
 }
 
+// The stages' bgm_control (Stage_Data + 0x30, PS2 EvBgmControl), which 0x515690 calls every frame
+// in play: the situation page the sound areas take their tracks from, 6 and up a fixed mix. scene:
+// a scripted scene runs (0x934d94 & 0x40, set by DramaDemoMain 0x4a1c80); demo: DramaDemoNumber
+// (0x1f7d3c4, 0x49fe20). Read from the disassembly; most of these are not functions in Ghidra.
+static int bgm_control(int stage, int room, bool scene, int demo)
+{
+#define F(n) ev_flag(n)
+	switch (stage) {
+	case 2:                              // 0x5a1d00
+		return F(36) ? 1 : F(33) ? 0 : 4;
+	case 3:                              // 0x5a1560
+		if (scene)
+			return F(517) ? 0xe : 4;
+		return F(36);
+	case 4:                              // 0x5a0430
+		return demo == 3 ? 4 : F(36);
+	case 6:                              // 0x59d200
+		return F(85);
+	case 7:                              // 0x59c070
+	case 8:                              // 0x599c10
+		return F(540) ? 0xe : 0;
+	case 10:                             // 0x598850: 0x1d866a8, which the room init 0x598700 sets
+		return room == 0x24 && F(85) && !F(109) ? 4 : 0;
+	case 12:                             // 0x596810
+		return F(529) && !F(526);
+	case 14:                             // 0x593f80
+		return F(525) ? 1 : F(519) ? 0xe : 0;
+	case 15:                             // 0x591f00
+		return F(530) ? 0 : 0xe;
+	case 0x12:                           // 0x590ea0
+		return scene && demo == 0x27 ? 4 : 0;
+	case 0x16:                           // 0x58c480
+		return scene && demo == 0x28 ? 4 : scene && demo == 0x29 ? 0xe : 0;
+	case 0x1b:                           // 0x588120
+		return F(522) ? 4 : 0;
+	case 0x1d:                           // 0x587b10
+		return scene ? 0xe : 0;
+	case 0x23:                           // 0x581780
+		return F(335) ? 0 : F(334) ? 0xe : 4;
+	case 0x24:                           // 0x580800
+		return F(524) ? 4 : 0;
+	case 0x25:                           // 0x57f570
+		if (scene)
+			return 0xe;
+		if (F(375) && !F(376))
+			return 4;
+		return F(377) && !F(378) ? 5 : 0xe;
+	case 0x28:                           // 0x57c400: Laura at the piano, then the music box's layers
+		if (demo == 0x4e)
+			return F(528) ? 5 : 0xe;
+		if (F(472))
+			return 4;
+		if (!s_music_box)
+			return 0;
+		// one layer per box on the seats: Snow White, the Little Mermaid, Cinderella
+		return 6 + (F(461) || F(465) || F(469)) + 2 * (F(462) || F(466) || F(470)) + 4 * (F(463) || F(467) || F(471));
+	case 0x2a:                           // 0x578ae0
+		return F(527) ? 4 : 0;
+	case 0x2b:                           // 0x577680
+		return F(482) ? 4 : 0;
+	case 0x2c:                           // 0x576920
+		if (room != 0xac)
+			return 0;
+		return demo == 0x54 ? 4 : F(483) ? 0 : 3;
+	case 0x30:                           // 0x440440
+	case 0x31:                           // 0x4411c0
+	case 0x32:                           // 0x43f5f0
+	case 0x33:                           // 0x574d70
+		return F(531) && !F(508) ? 4 : 0xe;
+	default:
+		return 0;
+	}
+#undef F
+}
+
+// 0x515690: bgm_control's page when it is 4 or more. Below that an enemy within 6000 units (3) or
+// James' 0x144 under 0.2 (2) would win; not ported (enemy flags 0x148 & 0x400 and the 0x144 value
+// not traced), so the stage's own page stands.
+static int situation(int stage, int room, bool scene, int demo)
+{
+	return bgm_control(stage, room, scene, demo);
+}
+
+// 0x8a9eb8: the fixed mixes of situation pages 6..15, fade-in type per track (0 off), fade-out type
+static const u8 s_mix[10][2][TRACKS] = {
+	{ { 2, 0, 0, 0, 0, 0, 0 }, { 1, 0, 0, 0, 0, 0, 0 } }, { { 2, 2, 0, 0, 0, 0, 0 }, { 1, 1, 0, 0, 0, 0, 0 } },
+	{ { 2, 0, 2, 0, 0, 0, 0 }, { 1, 0, 1, 0, 0, 0, 0 } }, { { 2, 2, 2, 0, 0, 0, 0 }, { 1, 1, 1, 0, 0, 0, 0 } },
+	{ { 2, 0, 0, 2, 0, 0, 0 }, { 1, 0, 0, 1, 0, 0, 0 } }, { { 2, 2, 0, 2, 0, 0, 0 }, { 1, 1, 0, 1, 0, 0, 0 } },
+	{ { 2, 0, 2, 2, 0, 0, 0 }, { 1, 0, 1, 1, 0, 0, 0 } }, { { 2, 2, 2, 2, 0, 0, 0 }, { 1, 1, 1, 1, 0, 0, 0 } },
+	{ { 0 }, { 0 } },
+	{ { 1, 0, 0, 0, 0, 0, 0 }, { 1, 0, 0, 0, 0, 0, 0 } },
+};
+
+// SeBgmManager's duck (0x516080, its end): 1.0 or 0.7 by DramaDemoNumber, moving 0.5 a second.
+// It is 0.5 while gEventIndex is 5..9 (the menus that stop the game); not ported.
+static float duck_target(int demo)
+{
+	switch (demo) {
+	case 0: case 1: case 2: case 3: case 0xe: case 0x10: case 0x12: case 0x15: case 0x16: case 0x26:
+	case 0x27: case 0x28: case 0x29: case 0x31: case 0x32: case 0x35: case 0x36: case 0x37: case 0x38:
+	case 0x39: case 0x3a: case 0x3b: case 0x3c: case 0x3d: case 0x3e: case 0x50: case 0x61:
+		return 1.0f;
+	default:
+		return 0.7f;
+	}
+}
+
 static const char* page_path(int page)
 {
 	if (page <= 0 || (u32)page >= s_npages)
@@ -265,7 +379,9 @@ static void start_page(int page)
 	snprintf(path, sizeof path, PACK_DIR "/sound/adx/%s", rel);
 	if (!audio_play_layers(path, 1.0f))       // tracks start silent and fade in from the areas
 		return;
-	s_master = master_for(s_pages[page].start_id);
+	// the file brought to the music's loudness (levels.h) in place of the PC's master; a pack with
+	// no measurement keeps the master, 2 dB up
+	s_master = levels_gain(PACK_DIR "/sound/adx", rel, -1, LEVEL_MUSIC, LEVEL_PEAK_MUSIC, master_for(s_pages[page].start_id) * 1.26f);
 	s_playing_page = page;
 }
 
@@ -275,6 +391,11 @@ static void area_tracks(int stage, const float pos[3], u8 in[TRACKS], u8 out[TRA
 {
 	memset(in, 0, TRACKS);
 	memset(out, 0, TRACKS);
+	if (s_situation > 5) {               // a fixed mix instead of the areas
+		memcpy(in, s_mix[s_situation - 6][0], TRACKS);
+		memcpy(out, s_mix[s_situation - 6][1], TRACKS);
+		return;
+	}
 	if (stage < 0 || (u32)stage >= s_nstages || !s_stages[stage].count)
 		return;
 	const SoundArea* a = (const SoundArea*)(s_blob + s_stages[stage].offset);
@@ -316,25 +437,59 @@ void bgm_stop(void)
 	audio_stop_music();
 	s_stage = s_room = -1;
 	s_page = s_playing_page = 0;
+	s_reload = true;
+	s_prog_page = -1;
+	s_music_box = false;
+	s_duck = 1.0f;
 	memset(s_tracks, 0, sizeof s_tracks);
 }
+
+// FUN_005155e0: a new page fades every sounding track out over 3 s first
+static void set_page(int page)
+{
+	if (page == s_playing_page)
+		return;
+	s_page = page;
+	for (int t = 0; t < TRACKS; t++)
+		if (s_tracks[t].status != TR_OFF && !(s_tracks[t].status == TR_OUT && s_tracks[t].fade_out != 3))
+			s_tracks[t].status = TR_OUT, s_tracks[t].fade_out = 1;
+}
+
+void bgm_set_page(int page)
+{
+	if (s_ok && page >= 0 && (u32)page < s_npages) {
+		set_page(page);
+		s_prog_page = page;          // the PC runs SeBgmChange before the programs (0x401fc0)
+	}
+}
+
+bool bgm_page_pending(void) { return s_ok && s_page != s_playing_page; }
+void bgm_warped(void) { s_reload = true; }
+void bgm_set_music_box(bool on) { s_music_box = on; }
 
 void bgm_update(int stage, int glb, const float pos[3], float dt)
 {
 	if (!s_ok)
 		return;
 	int room = bgm_room_id(glb, pos[0], pos[2]);
-	if (stage != s_stage || room != s_room) {
+	s_hold = stage == 0xf && !ev_flag(159);    // the stage program starts this one, in the room
+	// SeBgmChange runs while a stage loads (0x401fc0 gEventIndex 3, through 0x516760), so after a
+	// stage change or a warp, not as James walks from room to room; a page a program set
+	// (bgm_set_page) holds until then
+	s_room = room;
+	if (stage != s_stage || s_reload) {
 		s_stage = stage;
-		s_room = room;
-		s_page = pick_page(stage, room);
-		s_hold = stage == 0xf && !ev_flag(159);    // the stage program starts this one
-		// FUN_005155e0: a new page fades every sounding track out over 3 s first
-		if (s_page != s_playing_page)
-			for (int t = 0; t < TRACKS; t++)
-				if (s_tracks[t].status != TR_OFF && !(s_tracks[t].status == TR_OUT && s_tracks[t].fade_out != 3))
-					s_tracks[t].status = TR_OUT, s_tracks[t].fade_out = 1;
+		s_reload = false;
+		set_page(s_prog_page >= 0 ? s_prog_page : pick_page(stage, room));
 	}
+	s_prog_page = -1;
+	int demo = demo_number();            // the scene's, else the one the stage program set
+	bool scene = demo >= 0;
+	if (!scene)
+		demo = prog_demo_number();
+	s_situation = situation(stage, room, scene, demo);
+	float duck = duck_target(demo);
+	s_duck = s_duck > duck ? fmaxf(duck, s_duck - 0.5f * dt) : fminf(duck, s_duck + 0.5f * dt);
 	if (s_page != s_playing_page) {
 		bool silent = true;
 		for (int t = 0; t < TRACKS; t++)
@@ -370,10 +525,10 @@ void bgm_update(int stage, int glb, const float pos[3], float dt)
 				tr->vol = 0.0f, tr->status = TR_OFF;
 		}
 		if (t < nl)
-			audio_set_layer_volume(t, tr->vol * s_master);
+			audio_set_layer_volume(t, tr->vol * s_master * s_duck);
 	}
-	snprintf(s_status, sizeof s_status, "bgm st%d rm%#x pg%d %.2f %.2f %.2f %.2f", stage, room, s_playing_page,
-	         s_tracks[0].vol, s_tracks[1].vol, s_tracks[2].vol, s_tracks[3].vol);
+	snprintf(s_status, sizeof s_status, "bgm st%d rm%#x pg%d s%d %.1f %.1f %.1f %.1f", stage, room, s_playing_page,
+	         s_situation, s_tracks[0].vol, s_tracks[1].vol, s_tracks[2].vol, s_tracks[3].vol);
 }
 
 const char* bgm_status(void) { return s_status; }

@@ -12,6 +12,7 @@
 typedef struct { float m[3][4]; } Mtx34;   // row-major 3x4 affine
 
 typedef struct {
+	// flags: bit0 texture alpha, bit1 transparent part, bit2 cull back faces, bits 8..15 the pose
 	u32 texture_slot, first_index, index_count, flags, palette_count;
 	u8 palette[CHR_PALETTE_MAX];
 	u16* indices;     // own linear allocation
@@ -47,6 +48,7 @@ typedef struct {
 	Mtx34 skin[CHR_MAX_BONES];   // current pose: world * inv_bind
 	void* kg1;                   // <name>.kg1 shadow model (shadow.c), NULL when there is none
 	u32 kg1_size;
+	u32 parts[4];                // poses drawn, one bit each (draw flags bits 8..15); all at load
 } Character;
 
 bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t errlen);
@@ -57,6 +59,9 @@ int clips_load(AnimClip* clips, int max, const char* path);
 
 // Poses the character at a (fractional) frame; frames are blended linearly.
 void chr_pose(Character* c, const Anim* a, float frame);
+// The same for a frame of the looping clip start..end: past its last frame it blends back to start
+// (0x551820). end <= start: no loop, as chr_pose.
+void chr_pose_loop(Character* c, const Anim* a, float frame, int start, int end);
 
 // Crossfades between clips, as the PC's anime interpolation does (0x551820 with the modes 0x538920
 // sets): when a clip starts, chr_blend_start keeps the pose shown last and chr_pose_blend mixes it
@@ -64,6 +69,9 @@ void chr_pose(Character* c, const Anim* a, float frame);
 typedef struct {
 	Mtx34 from[CHR_MAX_BONES], last[CHR_MAX_BONES];   // local transforms
 	float t, dur;
+	// The looping clip the frame given to chr_pose_blend is in (see chr_pose_loop); end <= start:
+	// none. upper_loop_* the same for upper_frame. Set before each chr_pose_blend.
+	int loop_start, loop_end, upper_loop_start, upper_loop_end;
 	bool have_last;
 	const Anim* sync;                                  // see chr_blend_start_sync
 	float sync_from, sync_to, sync_len;
@@ -72,6 +80,13 @@ typedef struct {
 	// neck bone `neck_share` more. Bones < 0: none.
 	int look_head, look_neck;
 	float look_yaw, look_pitch, neck_share;
+	// The upper body on another clip (the PC plays a character's two body parts on their own
+	// anime, 0x539140 part 1 the upper and 2 the lower): every bone under the root bone upper_root
+	// takes upper_anim at upper_frame, the rest the clip given to chr_pose_blend. upper_root < 0 or
+	// upper_anim NULL: one clip for all.
+	int upper_root;
+	const Anim* upper_anim;
+	float upper_frame;
 } ChrBlend;
 void chr_blend_start(ChrBlend* b, float seconds);
 // The PC's mode 10 (walk, run and strafe clips into each other): the old clip, starting at frame
@@ -84,6 +99,11 @@ void chr_pose_blend(Character* c, const Anim* a, float frame, ChrBlend* b, float
 // light environment (the shader outputs normal quaternions), whose colours must come from the two
 // setters below: chr_draw's combiner doubles the lighting and clamps it to 1.
 void chr_draw(Character* c, int uBones);
+
+// The parts a model swaps (0x50dfc0): pose 0 is always drawn, and of the rest only the three given,
+// such as James' right hand, left hand and the flashlight on his chest. A model nobody sets keeps
+// all of its parts.
+void chr_set_parts(Character* c, int a, int b, int d);
 
 // The PICA keeps 8 bits per light colour (255 is 1.0): a brighter light wraps round to a dim one,
 // although Azahar reads 10 bits and shows it as meant. Characters' lights have colours up to about

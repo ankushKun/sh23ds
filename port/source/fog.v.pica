@@ -1,4 +1,5 @@
-; Fog sprites and the screen fog layer (fog.c): position, texcoord and a 0..255 colour, no lighting.
+; Fog sprites and the screen fog layer (fog.c): position, texcoord, the place on the sprite for its
+; fade (texcoord1, read by the procedural texture) and a 0..255 colour, no lighting.
 ; The PC draws them with D3D fog off and the texture stage set to MODULATE2X (0x487470).
 
 .fvec projection[4], modelView[4]
@@ -9,11 +10,13 @@
 
 .out outpos position
 .out outtc0 texcoord0
+.out outtc1 texcoord1
 .out outclr color
 
 .alias inpos v0
 .alias intex v1
-.alias inclr v2
+.alias inmask v2
+.alias inclr v3
 
 .proc main
 	mov r0.xyz, inpos
@@ -30,6 +33,7 @@
 	dp4 outpos.w, projection[3], r1
 
 	mov outtc0, intex
+	mov outtc1, inmask
 	mul outclr, inv255, inclr
 	end
 .end

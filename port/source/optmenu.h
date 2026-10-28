@@ -3,16 +3,16 @@
 #include "map.h"
 
 // The PC's options screens (0x469ad0 runs them, 0x461600 / 0x464eb0 draw them, the texts are
-// data/etc/message/option_msg_e.mes, pack/events/option.msg), drawn on the top screen in the PC's
+// data/etc/message/option_msg_?.mes, pack/events/option.msg), drawn on the top screen in the PC's
 // layout and driven from the touch screen (touchui.c) and the buttons:
 //
-//   OPTIONS           Game Options, Advanced Options, Control Options, Control Type, Subtitles,
-//                     Speaker Config., BGM Volume, SE Volume (the PC's Vibration and Language
-//                     rows have nothing to set on the 3DS)
+//   OPTIONS           Game Options, Advanced Options, Control Options, Control Type, Language,
+//                     Subtitles, Speaker Config., BGM Volume, SE Volume (the PC's Vibration row
+//                     has nothing to set on the 3DS)
 //   GAME OPTIONS      Weapon Control, Map, Walk/Run Control, View Control, Blood Color, and
 //                     Bullet Adjust once a game has been cleared
 //   ADVANCED OPTIONS  Brightness Level (its own screen), Noise Effect, Shadows, Fog, then the
-//                     port's display settings (messages, Enhanced Edition looks)
+//                     port's display settings (messages, 3D, Enhanced Edition looks)
 //   Control Options   the PC's key setup has no 3DS counterpart: the port's control settings
 //
 // Values change at once; leaving the screen with changes asks "Change the settings?" as the PC
@@ -21,6 +21,7 @@
 typedef struct {
 	// OPTIONS (Playing_Info 0x1dbeb80 + offsets, defaults from 0x4f6ae0 / 0x4f6c70)
 	u8 control_type;     // gControlType: 0 Rotational Style (3D tank), 1 Directional Style
+	u8 lang;             // 0x1dbec06: 1 English, 2 French, 3 German, 4 Italian, 5 Spanish
 	u8 subtitles;        // 0x1dbec07: 0 Off, 1 On
 	u8 speaker;          // 0x1dbebfb on the PC; here 0 Mono, 1 Stereo, 2 Surround (the 3DS's modes)
 	u8 bgm, se;          // 0x1dbebfc / 0x1dbebfd: 0..15, 12 by default
@@ -38,6 +39,7 @@ typedef struct {
 	u8 bullet;           // 0x1dbec05: Bullet Adjust 1..3
 	// the port's own: display and Enhanced Edition settings (all EE ones on by default as in the EE)
 	u8 msg_top;          // messages and subtitles on the top screen
+	u8 stereo;           // stereoscopic 3D on the top screen (stereo.h), on by default
 	u8 ps2_flash;        // EE "PS2FlashlightBrightness"
 	u8 noise_ps2;        // EE "PS2StyleNoiseFilter"
 	u8 ps2_camera;       // EE PS2 camera speed
@@ -51,6 +53,7 @@ typedef struct {
 	u8 quality;          // Advanced Options "Quality"
 	u8 framerate;        // Advanced Options "Frame Rate"
 	u8 ctrllayout;       // Control Options "Layout"
+	u8 camera;           // Control Options "Camera": 0 the PC's, 1 the port's behind camera (tpcam.c)
 	// Cheats (the port's): Infinite Stamina on by default, the rest off
 	u8 inf_stamina;      // James runs without tiring
 	u8 inf_ammo;         // firing takes no rounds

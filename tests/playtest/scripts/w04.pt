@@ -16,9 +16,18 @@ pt expect stage 11
 pt ev 3
 pt expect flag 102 1
 # the dial at 0 (flags 103..107): right turns it down, left up (0x5971a0)
+pt flag 103 0
+pt flag 104 0
+pt flag 105 0
+pt flag 106 0
+pt flag 107 0
+pt prog safe 20 19 20 19
 pt evgo 4
 pt until panel 20
-pt solve safe
+pt press RIGHT
+pt press RIGHT
+pt press LEFT
+pt press RIGHT
 pt idle
 pt expect flag 108 1
 pt ev 31
@@ -35,17 +44,48 @@ pt ev 12
 pt ev 27
 pt ev 22
 pt ev 7
+# the coins (0x598c30): the holes of the snake, the old man and the prisoner by riddle level, from
+# need[] in prog_apart.c (easy 3 1 5, normal 5 2 3, hard 4 2 5, extra 3 1 4)
 pt evgo 1
 pt until panel 20
-pt solve coin
+pt riddle 0 press DOWN
+pt riddle 0 press DOWN
+pt riddle 1 press DOWN
+pt riddle 1 press DOWN
+pt riddle 1 press DOWN
+pt riddle 1 press DOWN
+pt riddle 2 press DOWN
+pt riddle 2 press DOWN
+pt riddle 2 press DOWN
+pt riddle 3 press DOWN
+pt riddle 3 press DOWN
+pt press A
+pt press A
 pt idle
 pt evgo 2
 pt until panel 20
-pt solve coin
+pt riddle 1 press DOWN
+pt riddle 2 press DOWN
+pt press A
+pt press A
 pt idle
 pt evgo 3
 pt until panel 20
-pt solve coin
+pt riddle 0 press DOWN
+pt riddle 0 press DOWN
+pt riddle 0 press DOWN
+pt riddle 0 press DOWN
+pt riddle 1 press DOWN
+pt riddle 1 press DOWN
+pt riddle 2 press DOWN
+pt riddle 2 press DOWN
+pt riddle 2 press DOWN
+pt riddle 2 press DOWN
+pt riddle 3 press DOWN
+pt riddle 3 press DOWN
+pt riddle 3 press DOWN
+pt press A
+pt press A
 pt idle
 pt expect flag 142 1
 pt ev 4

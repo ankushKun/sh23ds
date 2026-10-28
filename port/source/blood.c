@@ -549,9 +549,38 @@ static V* decal(V* v, float x, float y, float z, float rot, float sx, float sz, 
 	return v + 6;
 }
 
+// 0x4ec330 (every blood class's draw starts with it) turns on D3D's table fog, D3DFOG_LINEAR from
+// D3DRS_FOGSTART to FOGEND (the room's fog start and end, 0x458e50), and with blend-op support
+// keeps the room's fog colour (0x8a1430, put back by 0x4ec840) and sets D3DRS_FOGCOLOR 0. The
+// subtracted colour goes to black in the fog, so the blood fades out with distance as the floor under
+// it goes into the fog. The room's own fog table (A + B / w, main.c) would turn it grey, a dark
+// smear floating in the fog.
+static C3D_FogLut s_fog_lut;
+static float s_fog_key[4] = { -1.0f };
+
+static void fog_lut(float fog_start, float fog_end, float near, float far)
+{
+	if (s_fog_key[0] == fog_start && s_fog_key[1] == fog_end && s_fog_key[2] == near && s_fog_key[3] == far)
+		return;
+	s_fog_key[0] = fog_start, s_fog_key[1] = fog_end, s_fog_key[2] = near, s_fog_key[3] = far;
+	float k = fog_end - fog_start != 0.0f ? 1.0f / (fog_end - fog_start) : 1.0f;
+	float data[256];
+	for (int i = 0; i <= 128; i++) {
+		float w = FogLut_CalcZ(i / 128.0f, near, far);
+		float v = w <= fog_start ? 1.0f : w >= fog_end ? 0.0f : (fog_end - w) * k;   // D3DFOG_LINEAR
+		if (i < 128)
+			data[i] = v;
+		if (i > 0)
+			data[i + 127] = v - data[i - 1];
+	}
+	FogLut_FromArray(&s_fog_lut, data);
+}
+
 static void begin(const C3D_Mtx* proj, const C3D_Mtx* view, C3D_Tex* tex, bool decal)
 {
 	s_bind(proj, view);
+	C3D_FogColor(0);                // 0x4ec330: D3DRS_FOGCOLOR 0 (the fog's on or off as the room has it)
+	C3D_FogLutBind(&s_fog_lut);
 	// the room's depth mapping; the floor decals get the offset of its decal group (main.c)
 	C3D_DepthMap(true, -1.0f, decal ? 0.0002f : 0.0f);
 	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
@@ -581,10 +610,11 @@ static void flush(V* first, V* end)
 	C3D_DrawArrays(GPU_TRIANGLES, 0, n);
 }
 
-void blood_draw(const C3D_Mtx* proj, const C3D_Mtx* view)
+void blood_draw(const C3D_Mtx* proj, const C3D_Mtx* view, float fog_start, float fog_end, float near, float far)
 {
 	if (!s_bind || !s_verts[0] || !s_verts[1])
 		return;
+	fog_lut(fog_start, fog_end, near, far);
 	s_buf ^= 1;
 	V* base = s_verts[s_buf];
 	V* v = base;

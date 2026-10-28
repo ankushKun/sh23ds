@@ -11,7 +11,8 @@
 // Angles follow the port: yaw grows when James turns left. Speeds are units per second.
 
 typedef struct {
-	float x, y;               // circle pad, -1..1 (y forward), dead zone already taken off
+	float x, y;               // circle pad, -1..1 (y forward); move.c reads it as the PC's stick bytes
+	                          // (0x52e110's dead zones), main.c only takes the 3DS pad's noise off
 	bool run;                 // run held (or latched by the toggle option)
 	bool strafe_l, strafe_r;  // held
 	bool strafe_l_down, strafe_r_down;   // pressed this frame (the PC turns round on both at once)
@@ -23,6 +24,26 @@ typedef struct {
 	bool maria;               // Born From a Wish: Maria plays, at 0.8 of James' speed
 	bool drag;                // the great knife in hand: dragged, no running (0x54b3b0, 0x52e110)
 	bool enemy_near;          // an enemy is about (0x5422b0): standing still he looks round, not relaxes
+	int place;                // 0x1fba8d8 (0x556490): 0 out of doors, 1 indoors, 2 a room whose byte
+	                          // in 0x8bcce0 is 0; run3 only out of doors, the walk turns 1.3 x in 2
+	// The weapon is up (the PC's upper status 0x1a, or 0x1c while attacking; combat_legs): the legs
+	// keep the lower states of 0x6cf878's row 26 (stand still in the hold stance, walk, back off,
+	// strafe, run1, strafe at a run), as far as the weapon's row of 0x6cf7cc lets them.
+	bool aim;
+	bool locked;              // 0x1fbad07: a target is locked, combat turns James; the stick does not
+	bool attack_seq;          // 0x1fbad16 != 0xff: he has attacked since raising the weapon
+	bool aim_walk, aim_run;   // the weapon's flags allow walking / running under it now
+	bool cam_live;            // the port's behind camera turns smoothly: the 2D direction follows it
+	bool stick_strafe;        // the behind camera's aim at a lock: the circle pad's x strafes
+	bool keep_gait;           // an attack is under way (upper status 0x1c): 0x54e0f0 / 0x547bf0 keep the
+	                          // lower state while the weapon's flags let it go on (combat_legs)
+	bool digital;             // the D-Pad walks him (0x52e110: 0x1fbac6a 0, a direction key held): the
+	                          // movers' key ramps instead of the stick's tilt
+	// A stage program walks him to a point (0x53b010): auto_gait 0 stops, 1 walks, 2 runs, turning
+	// him to auto_yaw. The stick and the keys are not read.
+	bool autowalk;
+	int auto_gait;
+	float auto_yaw;
 } MoveInput;
 
 typedef struct {
@@ -49,8 +70,10 @@ typedef struct {
 
 enum {
 	MV_STAND, MV_RELAX, MV_TIRED, MV_LROUND, MV_RROUND, MV_BACK, MV_WALK, MV_LSWALK, MV_RSWALK,
-	MV_RUN1, MV_RUN2, MV_RUN3, MV_LSRUN, MV_RSRUN, MV_LTURN, MV_RTURN, MV_ALERT, MV_COUNT
+	MV_RUN1, MV_RUN2, MV_RUN3, MV_LSRUN, MV_RSRUN, MV_LTURN, MV_RTURN, MV_ALERT, MV_HOLD, MV_COUNT
 };
+// MV_HOLD is the PC's lower status 0x1a: standing with the weapon up, turned by the stick at
+// 2.4 rad/s (3.6 with run held) while nothing is locked (0x54dcc0).
 
 // The Options' Control Type (gControlType): 0 Rotational Style (3D, tank), 1 Directional Style (2D).
 enum { MOVE_TANK, MOVE_2D };
@@ -63,3 +86,9 @@ const MoveOut* move_last(void);
 void move_interrupt(void);
 void move_set_infinite_stamina(bool on);   // Cheats: running never tires (no third pace limit, no panting)
 const char* move_status(void);
+// The weapon can come up now: the legs are in one of the states whose upper row of 0x6cf7f8 lets the
+// upper body take status 0x1a (standing, idling, turning on the spot, already holding). Walking,
+// running, backing off and the quick turn have to end first (0x557100).
+bool move_can_aim(void);
+// The PC's lower status number of the state (the camera's anim status, 0x1fba8e8).
+int move_pc_status(int state);

@@ -24,21 +24,28 @@ page of the Options' Control Options (`controls.c`, drawn in the Options screen'
 | Items | Y | Y |
 | Quick turn (180 degrees) | ZR | D-Pad down |
 | Strafe left / right | none (bindable) | none (bindable) |
+| Target left / right (while aiming) | C-Stick left / right | none (bindable) |
 | Map | tap the map on the touch screen, or the pause menu | the same |
 | Brightness | the Options (Advanced Options) | the same |
 | Pause | START | START |
 | Debug page | SELECT twice | SELECT twice |
 
-The circle pad walks and turns James, so on the New 3DS the C-Stick carries nothing in play
-(decided 2026-10-19 after the first console runs). The D-Pad walks him as well, like the circle pad
-at full tilt, in each direction no action is bound to (`main.c` `dpad_walk`): all four on the New
-3DS, left and right on the Old 3DS, whose up and down keep the next weapon and the quick turn. The
+The circle pad walks and turns James. On the New 3DS the C-Stick moves the lock to the next enemy
+left or right while James aims (the PC has two keys of its own for that, 0x54f100), and turns the
+behind camera otherwise. The D-Pad walks him as the PC's direction keys do (0x52e110): full turns,
+and the speed ramps up as it does for the keys (walk to 1.5 m/s at 2.5 m/s/s, back to 1.2 after a
+stop), in each direction no action is bound to (`main.c` `dpad_walk`): all four on the New
+3DS, left and right on the Old 3DS, whose up and down keep the next weapon and the quick turn. With
+Rotational Style the Old 3DS defaults leave up and down free too, since the PC's 3D type walks James
+with the direction keys (0x52e110): the next weapon is then a tap on the touch screen's weapon and the
+quick turn both strafe buttons together (0x54b290), unless the player binds them. The
 circle pad wins while it is pushed, and menus keep the D-Pad for moving through rows. Strafing and
 the map can still be bound to the D-Pad or the C-Stick on the Buttons page. The Control Type defaults to Directional
 Style; an `options.txt` written before that (no `optver` line) is moved to it once.
 
-Console test combo (`main.c`): SELECT held with R steps the fog test (`chr.c`,
-port/TESTING.md). (A SELECT + L frame capture froze the console and was taken out.)
+Console test combos (`main.c`): SELECT held with R steps the fog test (`chr.c`, port/TESTING.md),
+and SELECT held with L the map test. (An earlier SELECT + L frame capture froze the console and was
+taken out.)
 
 Pressing both strafe buttons together also turns James round, as on the PC (0x54b290). Menus keep
 their own keys whatever the bindings: the D-Pad moves, A takes, B goes back, START closes.
@@ -50,6 +57,16 @@ old one), Y puts that action back to its default and "Defaults" resets the whole
 does one thing: binding it to an action takes it off the action that had it. The page edits the
 layout in use, so an Old 3DS player never sees ZL, ZR or the C-Stick offered.
 
+## Reading the circle pad (main.c player_update, move.c)
+
+The pad reads about 156 at its rim, taken as the PC stick's 127. Rest noise under 12 % of the rim
+reads as centred (the PC's DirectInput dead zone is in the encrypted 0x56e3b0, so this one is the
+port's). Then 0x52e110: with Rotational Style an axis tilted less than half the other (at most 64 of
+127) reads 0, and once that half passes 31 the turn counts from there; the turn is full at 85 and
+the forward tilt at 100. Directional Style skips the cross and takes the length of both (0x52dd20).
+The Analog Walk/Run Control runs past 110 of 127 while the stick is in use, and the run key still
+counts with the D-Pad (0x52e110).
+
 ## Directional Style
 
 Directional Style is the PC's 2D type (0x547bf0, 0x546760, 0x548bf0): the direction is taken from the
@@ -59,6 +76,9 @@ or runs along the way he faces as fast as the stick is tilted. The camera behave
 for that type. (The port's earlier camera-relative mode is gone: it turned at a fixed 7 rad/s to the
 current camera's direction and spun James round at camera cuts, which Directional Style is built
 to avoid, so it added nothing.)
+
+Aiming, he turns to the stick; locked on, the stick's direction against his facing walks, backs or
+strafes him that way (0x547bf0, 0x548bf0). The behind camera keeps the Rotational reading while aiming.
 
 ## James' head (main.c head_update, combat_look_target)
 
@@ -71,8 +91,21 @@ or looks round, and while he is kicking, hurt, held or dying.
 
 ## Aiming (combat.c)
 
-Holding Aim locks on to a target as James readies (0x533ca0): the nearest enemy in his sight with
-nothing of the room in between, one on its feet before one on the floor (0x542560). His sight is a
+The weapon comes up only while James stands, idles or turns on the spot: walking, running, backing
+off and the quick turn go on until they end (the upper rows of 0x6cf7f8 that allow status 0x1a,
+0x557100). Holding Aim locks on to a target as it comes up (0x533ca0): the nearest enemy in his sight
+with nothing of the room in between, one on its feet before one on the floor (0x542560). With a lock
+James turns to it by 0.3235 x 15 of the gap a second (0x5568c0) while he aims and attacks, and the
+stick turns him not at all; without one the stick turns him in the stance at 2.4 rad/s, 3.6 with run
+held (0x54dcc0). The handgun and Maria's revolver lock again with each shot if the lock was lost.
+
+Under the weapon the legs keep moving as the PC's grip flags allow (0x6cf7cc, 0x54e0f0): the plank,
+bare hands, the spray and Maria's knife walk, back off, strafe and run (no running indoors for the
+spray, plank and knife, 0x52dac0); the handgun, the pipe and Maria's revolver walk; the shotgun and
+the chainsaw walk while aiming but stop to fire; the rifle and the great knife stand. Before the
+first attack since raising, any weapon may break into a run. Locked on, run held quickens the walk
+1.5 x (at most 2.25 m/s, 1.8 backing off or strafing). The legs play their gait while the upper body
+keeps the weapon's pose (the two body parts on their own anime, 0x539140). His sight is a
 "look" sphere ahead of him (its centre as far ahead as its radius) and a "feel" sphere round him,
 which shrink with the light and the action level (0x52f2c0, in metres x 500):
 
@@ -83,13 +116,24 @@ which shrink with the light and the action level (0x52f2c0, in metres x 500):
 | Dark, flashlight off | 3, 3, 1.8, 1.5 | 3, 3, 2.3, 2 | 0.1 |
 | Maria in the dark | 6, 6, 5, 4 | 5, 5, 4, 3 | 0.5 |
 
-The lock holds while the target lives and stays in sight (0x533c10). While aiming, the strafe
-buttons move it to the nearest other enemy on that side (0x542740; the PC has two keys of its own
-for that, which the 3DS has no room for).
+The lock holds while the target lives and any candidate stays in clear sight (0x533c10); lowering
+the weapon or changing it drops it. While aiming, Target left / right move it to the nearest other
+enemy on that side (0x542740). The strafe buttons strafe, as on the PC.
+With Aim held, Attack with an enemy lying on the floor ahead of James within 600 units (0x542a10)
+kicks or stomps it, whatever James holds (0x5569b0 picks that branch before it looks at the weapon),
+and the kick turns him to it (0x558f40). With the Enhanced Edition's Hold to Stomp,
+a tap kicks and holding Attack for 0.2 s stomps.
 The attack windows were checked against the exe's sh2_attack_list (0x6ec568): the plank's swings 12
 to 15, 8 to 11 and 8 to 10, the kicks 7 to 10 and the stomps 3 to 9 for every weapon the port has
 (0x53b190 picks kick type 0, 1 or 2 for bare hands and the handgun, the long guns and the plank, all
 with that window).
+
+A light swing (a tap with Swap Light/Heavy on, a combo, or any swing while running) of the plank,
+Maria's knife or the pipe lets the legs walk or run on through it (grip flags 0x10 / 0x20, 0x556840,
+0x556880); heavy swings, the lunge, the chainsaw and the great knife stop him (0x5569b0). While any
+attack plays the legs keep their gait (0x54e0f0). Holding Action attacks again, light, as each attack
+ends (0x52e110, 0x533ff0). On beginner and easy, holding Action with an enemy close ahead raises the
+weapon by itself (0x542620), unless the press opens an event.
 
 ## How James moves (move.c)
 
@@ -122,3 +166,16 @@ on frames 5 and 17 of the walking clips (6 and 13 when turning on the spot), at 
 
 All of it runs on real time, and the frame time is snapped to whole screen refreshes, so motion stays
 even when the frame rate is not a multiple of 30.
+
+## The behind camera (tpcam.c, port only)
+
+Control Options, Camera: Original is the PC camera; Behind is the port's own third-person camera,
+not in the PC game. It sits behind and above James and follows the way he walks once the player has
+left it alone a moment (not when he walks towards it or sideways, so the stick never chases it). The
+C-Stick turns it on the New 3DS layout; on the Old one the D-Pad's free directions do (they then do
+not walk James), and a drag on an empty part of the touch screen does on both. The Look key swings it
+back behind him. It stops short of walls (col_clamp_ray) and stays above the floor. With the weapon
+up it goes over his right shoulder; with a target locked it frames James and the target together, and
+the circle pad's x strafes instead of turning. In this mode the stick moves James relative to the
+camera (Directional Style's reading, taken every frame). Cutscenes, the event roads and program shots
+of the .cam data, the boat and the viewer keep the PC camera.

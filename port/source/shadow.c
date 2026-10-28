@@ -4,6 +4,8 @@
 #include <string.h>
 #include "shadow_shbin.h"
 #include "quality.h"
+#include "stereo.h"
+#include "gpucost.h"
 
 // How the PC does it (sh2pc.exe, Director's Cut):
 //   0x5aad70  every frame: the shadow light (0x47e000: the flashlight, or an event's light), then
@@ -38,6 +40,7 @@ typedef struct { float x, y, z; } V3;
 
 static struct {
 	bool ready, on;
+	bool parallel;               // light kind 4 (shadow_begin_parallel): along dir, from far away
 	DVLB_s* dvlb;
 	shaderProgram_s prog;
 	int uProj, uMv;
@@ -135,6 +138,7 @@ void shadow_begin(const float pos[3], const float dir[3], float cone, float stre
 	S.drop = false;
 	S.ndv = S.dcasters = 0;
 	S.cast_ticks = 0;
+	S.parallel = false;
 	S.on = S.ready && strength > 0.0f && S.debug != 6 && quality()->stencil_shadows;   // off on the low quality level (quality.h, set by profile.c)
 	if (!S.on)
 		return;
@@ -145,6 +149,13 @@ void shadow_begin(const float pos[3], const float dir[3], float cone, float stre
 	S.cos_cone = cosf(cone);
 	S.sin_cone = sinf(cone);
 	S.strength = strength > 1.0f ? 1.0f : strength;
+}
+
+void shadow_begin_parallel(const float dir[3], float strength)
+{
+	static const float none[3] = { 0.0f, 0.0f, 0.0f };
+	shadow_begin(none, dir, 0.0f, strength);
+	S.parallel = S.on;
 }
 
 // One triangle (world space), wound so that its normal points along "out" (the GPU culls by screen
@@ -164,6 +175,8 @@ static void emit(V3 a, V3 b, V3 c, V3 out)
 
 static V3 pull(V3 p, V3 L)
 {
+	if (S.parallel)
+		return add(p, scl(v3(S.dir[0], S.dir[1], S.dir[2]), EXTRUDE));
 	V3 d = sub(p, L);
 	float l = sqrtf(dot(d, d));
 	return l > 1.0f ? add(L, scl(d, EXTRUDE / l)) : p;
@@ -337,6 +350,8 @@ static void drop_cast(const Character* c, const float pos[3], float yaw)
 
 void shadow_cast(const Character* c, const float pos[3], float yaw)
 {
+	if (stereo_eye())                // the second eye of a 3D frame draws the first one's (stereo.h)
+		return;
 	if (S.drop && c->kg1 && c->kg1_size >= 16) {
 		u64 t0 = svcGetSystemTick();
 		drop_cast(c, pos, yaw);
@@ -349,8 +364,10 @@ void shadow_cast(const Character* c, const float pos[3], float yaw)
 	const u8* d = c->kg1;
 	u32 size = c->kg1_size;
 	V3 Lw = v3(S.light[0], S.light[1], S.light[2]), D = v3(S.dir[0], S.dir[1], S.dir[2]);
+	if (S.parallel)                  // the light tests see a point far back along the light's way
+		Lw = sub(v3(pos[0], pos[1], pos[2]), scl(D, 100000.0f));
 	V3 at = sub(v3(pos[0], pos[1], pos[2]), Lw);
-	if (dot(at, at) > (RANGE + 2000.0f) * (RANGE + 2000.0f))
+	if (!S.parallel && dot(at, at) > (RANGE + 2000.0f) * (RANGE + 2000.0f))
 		return;                                    // the whole character is out of reach
 	C3D_Mtx cm;
 	Mtx_Identity(&cm);
@@ -382,8 +399,8 @@ void shadow_cast(const Character* c, const float pos[3], float yaw)
 			// 0x444b20's object test: inside the range and the cone (with the bounding sphere)
 			V3 cw = sub(xf(&w, s16v(bnd)), Lw);
 			float r = bnd[3], dist = sqrtf(dot(cw, cw));
-			bool in = dist <= RANGE + r;
-			if (in && dist > r) {
+			bool in = S.parallel || dist <= RANGE + r;
+			if (in && !S.parallel && dist > r) {
 				float ca = dot(cw, D) / dist, sa = sqrtf(fmaxf(0.0f, 1.0f - ca * ca));
 				float sr = r / dist, cr = sqrtf(fmaxf(0.0f, 1.0f - sr * sr));
 				// angle to the axis minus the sphere's half angle, against the cone
@@ -444,6 +461,12 @@ static void drop_draw(const C3D_Mtx* proj, const C3D_Mtx* view)
 	C3D_DepthMap(true, -1.0f, 0.0f);
 	C3D_CullFace(GPU_CULL_NONE);
 	C3D_DrawArrays(GPU_TRIANGLES, 0, S.ndv);
+	if (gpucost_on()) {                  // debug.txt gpucost (gpucost.h)
+		C3D_Mtx pv;
+		Mtx_Multiply(&pv, proj, view);
+		for (int i = 0; i + 2 < S.ndv; i += 3)
+			gpucost_tri(GC_DROP, &pv, &S.dbuf[i].x, &S.dbuf[i + 1].x, &S.dbuf[i + 2].x, false);
+	}
 	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
 	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
 }
@@ -506,6 +529,12 @@ void shadow_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 	else C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_DECR, GPU_STENCIL_KEEP);
 	C3D_DrawArrays(GPU_TRIANGLES, 0, S.nv);
 	C3D_CullFace(GPU_CULL_NONE);
+	if (gpucost_on()) {                  // debug.txt gpucost (gpucost.h): both passes together
+		C3D_Mtx pv;
+		Mtx_Multiply(&pv, proj, view);
+		for (int i = 0; i + 2 < S.nv; i += 3)
+			gpucost_tri(GC_SHADOW_VOL, &pv, &S.vbuf[i].x, &S.vbuf[i + 1].x, &S.vbuf[i + 2].x, false);
+	}
 
 	// the darkening quad: every pixel above 0x80 times (1 - strength)
 	V3* q = S.quad;
@@ -527,6 +556,7 @@ void shadow_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 	C3D_StencilTest(S.debug != 3, S.debug == 2 || S.debug >= 5 ? GPU_NOTEQUAL : S.debug == 4 ? GPU_EQUAL : GPU_LESS, 0x80, 0xff, 0x00);
 	C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_KEEP);
 	C3D_DrawArrays(GPU_TRIANGLES, 0, 6);
+	gpucost_px(GC_SHADOW_QUAD, 400.0f * 240.0f, 6);
 
 	C3D_StencilTest(false, GPU_ALWAYS, 0, 0xff, 0x00);
 	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);

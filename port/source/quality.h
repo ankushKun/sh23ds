@@ -12,6 +12,7 @@ typedef struct {
 	bool drop_shadows;        // the drop shadows of the lit rooms (main.c shadow_frame)
 	float tile_distance;      // how close James must be to a touching tile for it to load (main.c)
 	int frame_cap;            // 0: 60 when the frame fits, an even 30 when it does not; 30 or 60 fixed
+	float fog_fill_3d;        // in 3D, the fog sprites' area per eye in screens (fog.c stereo_thin); 0: no limit
 } Quality;
 
 const Quality* quality(void);

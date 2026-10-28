@@ -15,6 +15,15 @@
 //   0x543600  gunshot: one ray from the muzzle along the aim, min to max range of the attack; 0x543810
 //             shotgun: 10 rays in a 30 degree cone (0x6a91c0), each a full hit.
 //   0x6ec568  sh2_attack_list (the copy the battle code reads): ap, sp, ranges, frame windows.
+//   0x533c10  per frame: the candidates in James' sight (0x542300, nearest first), whether one is in
+//             clear sight (0x542860), the downed one at his feet (0x542a10); the lock is dropped
+//             when none is in clear sight or the target dies. 0x533ca0 locks the nearest in clear
+//             sight as the weapon comes up (0x542560, one on its feet first), 0x54f100 / 0x542740
+//             move it to the nearest other one on the left or right, 0x5568c0 turns James to it.
+//   0x6cf7cc  per grip, what the legs may do under the weapon: 4 walk, 8 run while aiming, 0x40
+//             walk, 0x80 run while attacking (0x54e0f0), 0x10 / 0x20 a light swing goes on walking /
+//             running (0x556840, 0x556880); 0x52dac0 takes the runs off the spray, the plank and
+//             Maria's knife indoors.
 //   Every weapon model shares its root bind matrix with James' bone 35 (right hand); bone 1 of the
 //   guns is the muzzle (handgun 125, shotgun 294, rifle 483 units out), the plank's second bone is its
 //   grip offset (frame 4 of wp/jms_weapon.anm). They are drawn rigidly on bone 35.
@@ -28,8 +37,10 @@
 #include <string.h>
 #include "demo.h"
 #include "events.h"
+#include "boat.h"
 #include "maria.h"
 #include "mist.h"
+#include "move.h"
 #include "prog.h"
 #include "sfx.h"
 
@@ -288,7 +299,16 @@ static float s_muzzle[3];               // gun muzzle in James' bind space
 static void* s_flash_vbo;               // linear memory, muzzle flash quads (S3C vertex layout)
 static char s_line[48];
 static const Collision* s_col;          // the room, for shots
-static Enemy* s_target;                 // the locked target (0x1fbacc4), see find_target
+static Enemy* s_target;                 // the locked target (0x1fbacc4), see combat_scan
+static Enemy* s_cand[ENEMY_MAX];        // 0x542300: enemies in James' sight, nearest first
+static int s_ncand;
+static Enemy* s_vis;                    // 0x542860: the nearest candidate in clear sight
+static Enemy* s_stompable;              // 0x542a10: a downed one ahead within 600 (kick / stomp)
+static bool s_attack_seq;               // 0x1fbad16 != 0xff: an attack since the weapon came up
+static bool s_swing_legs;               // this swing lets the legs walk or run on (0x5569b0, 0x556840)
+static float s_action_held = -1.0f;     // seconds Action has been held, -1 up (0x52e110 key history)
+static Enemy* s_stomp_e;                // the downed one a kick or stomp turns James to
+static int s_place;                     // 0x1fba8d8 (combat_set_place)
 static bool s_god;                      // debug.txt "god 1": blows do not reach James (for testing)
 // A Flesh Lip that kills James in its hold carries the body up into the dark (see
 // combat_carry_james)
@@ -449,6 +469,8 @@ static void unload_weapon(void)
 
 static bool load_weapon(int w)
 {
+	s_target = NULL;                 // 0x534610 with every change of weapon
+	s_attack_seq = false;
 	unload_weapon();
 	const WeaponDef* d = &WEAPONS[w];
 	char path[128], dir[96], err[128];
@@ -523,6 +545,9 @@ void combat_reset(void)
 	s_side = 0;
 	s_invuln = s_dead_t = s_flash = 0.0f;
 	s_target = NULL;
+	s_ncand = 0;
+	s_vis = s_stompable = s_stomp_e = NULL;
+	s_attack_seq = false;
 	s_carried = false;
 	int w = s_maria ? W_MNONE : W_NONE;    // bare hands until a weapon is picked up
 	if (s_ok && s_weapon != w)
@@ -761,6 +786,11 @@ void combat_damage_james(int attack_id, float ap, float from_x, float from_z)
 		sfx_play(pdef()->snd_hurt + (int)(s_hp) % pdef()->n_hurt, 1.0f, 0.0f);
 		return;
 	}
+	// 0x5350d0: a blow that lands while the damage motion still plays (0x1fbad18 set, cleared by the
+	// damage state 0x547900 / 0x54db90 at the motion's end) takes its health and nothing more; the
+	// motion is not started again, so a room of biting creepers cannot keep James from moving.
+	if (s_mode == M_HURT)
+		return;
 	s_mode = M_HURT;
 	s_invuln = 1.0f;
 	sfx_play(pdef()->snd_hurt + (int)(s_hp) % pdef()->n_hurt, 1.0f, 0.0f);   // injured (four or five takes)
@@ -860,42 +890,128 @@ static float angle_to(const CombatBody* b, const Enemy* e)
 	return a;
 }
 
-// 0x542560: the nearest candidate in clear sight, one still on its feet before one on the floor.
-// dir +1 / -1 (0x542740, changing target): the nearest other one to the left / right instead.
+// 0x5420f0's look sphere alone (bits 0 and 1 of the candidate's flags): ahead of James
+static bool in_look(const CombatBody* b, float x, float z)
+{
+	int mode = !s_dark ? 0 : s_maria ? 3 : s_light ? 1 : 2;
+	int lvl = enemy_difficulty();
+	lvl = lvl < 0 ? 0 : lvl > 4 ? 4 : lvl;
+	float lc = LOOK_AREA[mode][lvl] * 500.0f;
+	return hypotf(x - (*b->x + sinf(*b->yaw) * lc), z - (*b->z + cosf(*b->yaw) * lc)) <= lc;
+}
+
+static float dist3(const CombatBody* b, const Enemy* e)
+{
+	float dx = e->x - *b->x, dy = e->y - *b->y, dz = e->z - *b->z;
+	return sqrtf(dx * dx + dy * dy + dz * dz);
+}
+
+// 0x533c10 PlayerGetTargetInfo, once a frame (combat_scan): the candidate list (0x542300: the enemies in James' look or
+// feel area, sorted by distance; the PC's list also holds Maria and items, which the lock never
+// takes), the nearest one in clear sight (0x542860) and the downed one to kick (0x542a10). The lock
+// is dropped when no candidate is in clear sight or the target is dead; it is NOT dropped when only
+// the target goes out of sight while another candidate stays in view.
+void combat_scan(const CombatBody* b)
+{
+	s_ncand = 0;
+	float d[ENEMY_MAX];
+	for (int i = 0; i < enemy_count() && s_ncand < ENEMY_MAX; i++) {
+		Enemy* e = enemy_get(i);
+		if (!enemy_alive(e) || !in_sight(b, e))
+			continue;
+		float de = dist3(b, e);
+		int k = s_ncand++;
+		while (k > 0 && d[k - 1] > de) {
+			d[k] = d[k - 1];
+			s_cand[k] = s_cand[k - 1];
+			k--;
+		}
+		d[k] = de;
+		s_cand[k] = e;
+	}
+	s_vis = NULL;
+	s_stompable = NULL;
+	for (int i = 0; i < s_ncand; i++) {
+		Enemy* e = s_cand[i];
+		bool clear = clear_line(b, e);
+		if (clear && !s_vis)
+			s_vis = e;
+		if (clear && !s_stompable && enemy_is_down(e) && in_look(b, e->x, e->z) && d[i] < 600.0f)
+			s_stompable = e;
+	}
+	// 3DS-only: else a body he killed and has not walked away from (enemy_corpse_stompable)
+	for (int i = 0; i < enemy_count() && !s_stompable; i++) {
+		Enemy* e = enemy_get(i);
+		if (enemy_corpse_stompable(e) && dist3(b, e) < 600.0f && in_look(b, e->x, e->z) && clear_line(b, e))
+			s_stompable = e;
+	}
+	if (s_target && (!s_vis || !enemy_alive(s_target)))
+		s_target = NULL;
+}
+
+// 0x542560 (dir 0): the first candidate in clear sight, one still on its feet before one on the floor.
+// 0x542740 (dir +1 right, -1 left, by the angle from James' facing): the first other candidate on that
+// side in clear sight, down or not.
 static Enemy* pick_target(const CombatBody* b, int dir)
 {
-	Enemy* best = NULL;
-	float bd = 1e9f;
-	bool best_down = true;
-	for (int i = 0; i < enemy_count(); i++) {
-		Enemy* e = enemy_get(i);
-		if (!enemy_alive(e) || (dir && e == s_target) || !in_sight(b, e))
+	Enemy* down = NULL;
+	for (int i = 0; i < s_ncand; i++) {
+		Enemy* e = s_cand[i];
+		if (!enemy_alive(e) || (dir && e == s_target))
 			continue;
 		if (dir && (angle_to(b, e) > 0.0f) != (dir > 0))
 			continue;
-		float d = hypotf(e->x - *b->x, e->z - *b->z);
-		bool down = enemy_is_down(e);
-		if (dir)
-			down = false;            // changing target takes the nearest, down or not
-		if ((down && !best_down) || (down == best_down && d >= bd))
-			continue;
 		if (!clear_line(b, e))
 			continue;
-		best = e;
-		bd = d;
-		best_down = down;
+		if (dir || !enemy_is_down(e))
+			return e;
+		if (!down)
+			down = e;
 	}
-	return best;
+	return down;
 }
 
-// The target James turns to and shoots at (PlayerGetTarget): the one locked when he readied,
-// while it lives and he can still see it (0x533c10), within reach.
+// 0x533ca0 PlayerGetTarget: the lock as the weapon comes up, when there are candidates and none is locked
+static void lock_on(const CombatBody* b)
+{
+	if (s_ncand && !s_target)
+		s_target = pick_target(b, 0);
+}
+
+// 0x5568c0 PlayerCheckAimingToEnemy: James turns to e by 0.3235 x 15 of the gap a second, landing on it rather than past
+static void face(CombatBody* b, const Enemy* e, float dt)
+{
+	if (!e)
+		return;
+	float to = atan2f(e->x - *b->x, e->z - *b->z);
+	float gap = remainderf(*b->yaw - to, 2.0f * PI);
+	float st = gap * 0.3234578690569946f * dt * 15.0f;
+	if ((gap < 0.0f && gap - st >= 0.0f) || (gap >= 0.0f && gap - st <= 0.0f))
+		*b->yaw = to;
+	else
+		*b->yaw -= st;
+	*b->yaw = remainderf(*b->yaw, 2.0f * PI);
+}
+
+// 0x54f100 with 0x533cd0 PlayerChangeTarget: the target keys move the lock while one is held
+static void change_target(const CombatBody* b, u32 down)
+{
+	if (!s_target)
+		return;
+	Enemy* t = NULL;
+	if (down & GK_TARGET_R)
+		t = pick_target(b, 1);
+	if (down & GK_TARGET_L)
+		t = pick_target(b, -1);
+	if (t)
+		s_target = t;
+}
+
+// The target fire() aims at (PlayerGetTarget): the locked one, within reach.
 static Enemy* find_target(const CombatBody* b, float* angle, float reach)
 {
-	if (s_target && (!enemy_alive(s_target) || !in_sight(b, s_target)))
-		s_target = NULL;
 	Enemy* t = s_target;
-	if (!t || hypotf(t->x - *b->x, t->z - *b->z) > reach)
+	if (!t || !enemy_alive(t) || hypotf(t->x - *b->x, t->z - *b->z) > reach)
 		return NULL;
 	*angle = angle_to(b, t);
 	return t;
@@ -925,6 +1041,21 @@ static float seg_dist2d(const float a[3], const float b[3], float px, float pz)
 	return sqrtf(dx * dx + dz * dz);
 }
 
+// The looping clip s_frame is in, for chr_pose_loop (0, 0: none)
+static void cur_loop(int loop[2])
+{
+	bool l = s_cur && s_cur->loop;
+	loop[0] = l ? s_cur->start : 0;
+	loop[1] = l ? s_cur->end : 0;
+}
+
+static void pose_james(void)
+{
+	int l[2];
+	cur_loop(l);
+	chr_pose_loop(s_james, &s_anim, s_frame, l[0], l[1]);
+}
+
 // shBattleAttackByHumanFightType (PS2 sh_character_battle.c), reduced: inside the attack's frame
 // window the plank segment (hand to far end) is tested against each enemy's hit column.
 static void swing_hits(const CombatBody* b)
@@ -934,7 +1065,7 @@ static void swing_hits(const CombatBody* b)
 	float f = s_frame - s_cur->start;
 	if (f < s_atk->first || f > s_atk->last + 0.99f)
 		return;
-	chr_pose(s_james, &s_anim, s_frame);
+	pose_james();
 	float a[3], t[3];
 	to_world(b, s_root, a);
 	to_world(b, s_tip, t);
@@ -969,11 +1100,20 @@ static void swing_hits(const CombatBody* b)
 	}
 }
 
+static u8 grip_flags(void);
+
 static void start_swing(const CombatBody* b, bool combo, bool heavy)
 {
 	const MeleeDef* m = md();
 	float ang = 0.0f;
 	Enemy* t = find_target(b, &ang, 4000.0f);
+	// 0x557960 sets 0x1fbad08 while the legs run (lower status 0xc..0x10), and 0x5569b0 then gives
+	// the plank and Maria's knife the light swing (request 3) whatever was pressed
+	int legs = move_last()->state;
+	bool legs_run = legs >= MV_RUN1 && legs <= MV_RSRUN, legs_walk = legs >= MV_BACK && legs <= MV_RSWALK;
+	if (m->kind == MK_PLANK && legs_run)
+		heavy = false;
+	s_attack_seq = true;             // 0x52fae0 sets the attack side byte with every swing
 	memset(s_hit, 0, sizeof s_hit);
 	s_hit_any = false;
 	s_swing_wall = false;
@@ -984,7 +1124,7 @@ static void start_swing(const CombatBody* b, bool combo, bool heavy)
 	if (m->kind == MK_PLANK) {
 		// heavy: the plank's attack 14 (request 4); a downed target also gets it (port choice, as a
 		// level swing passes over a body on the floor)
-		if (heavy || (t && enemy_is_down(t) && t->p_dist < 1400.0f)) {
+		if (heavy || (!legs_run && t && enemy_is_down(t) && t->p_dist < 1400.0f)) {
 			s_atk = &m->a_heavy[side], s_atk_heavy = true;
 			play(&m->heavy[side]);
 		} else if (combo) {
@@ -1034,6 +1174,13 @@ static void start_swing(const CombatBody* b, bool combo, bool heavy)
 		sfx_play_at(m->snd_swing, 0.7f, s_body_pos);   // the engine at work (0x52fae0)
 	}
 	s_mode = M_SWING;
+	// 0x5569b0: a light swing (request 3) of the plank, Maria's knife or the pipe leaves the walking
+	// and running states their row; the heavy and the lunge (requests 4, 5), the chainsaw and the
+	// great knife take the moves off it and stop him (lower status 0x1a or 0x1c). The walking and
+	// running movers then let the swing go on (0x556840 grip flag 0x10, 0x556880 flag 0x20; a run
+	// without 0x20 drops to the walk, 0x54e0f0).
+	s_swing_legs = (m->kind == MK_PLANK || m->kind == MK_PIPE) && !s_atk_heavy && s_atk != &m->a_extra &&
+	               (legs_walk || legs_run) && (grip_flags() & 0x10);
 	if (s_maria) {
 		// the knife's swish 0x428a with one of her two efforts 0x4286 / 0x4287 (0x549500)
 		sfx_play(17034, 1.0f, 0.0f);
@@ -1066,7 +1213,7 @@ static void spray_hits(const CombatBody* b, const AttackInfo* a, float dt)
 		return;
 	float k = s_spray < 10.0f ? s_spray * 0.1f : 1.0f;
 	float reach = a->max_range * k;
-	chr_pose(s_james, &s_anim, s_frame);
+	pose_james();
 	float o[3];
 	to_world(b, s_muzzle, o);
 	static const float fan[5][2] = { { 0, 0 }, { 0.12f, 0 }, { -0.12f, 0 }, { 0, 0.1f }, { 0, -0.1f } };
@@ -1134,7 +1281,7 @@ static float ray_enemy(const float o[3], const float d[3], float t0, float t1, E
 static void fire(const CombatBody* b)
 {
 	const WeaponDef* w = wdef();
-	chr_pose(s_james, &s_anim, s_frame);
+	pose_james();
 	float o[3];
 	to_world(b, s_muzzle, o);
 	// aim: at the locked target's body, else level along James' facing (0x5460b0)
@@ -1195,7 +1342,7 @@ static Enemy* stomp_target(const CombatBody* b)
 {
 	for (int i = 0; i < enemy_count(); i++) {
 		Enemy* e = enemy_get(i);
-		if (!enemy_alive(e) || !enemy_is_down(e))
+		if (!(enemy_alive(e) && enemy_is_down(e)) && !enemy_corpse_stompable(e))
 			continue;
 		float cx, cz, r, top, bottom;
 		enemy_hit_cylinder(e, &cx, &cz, &r, &top, &bottom);
@@ -1209,6 +1356,8 @@ static Enemy* stomp_target(const CombatBody* b)
 static void start_stomp(bool stomp)
 {
 	s_mode = M_STOMP;
+	s_stomp_e = s_stompable;
+	s_attack_seq = false;            // 0x5569b0: a kick or stomp sets 0x1fbad16 back to 0xff
 	s_stomp_atk = stomp ? &ATK_STOMPS[kick_type()] : &ATK_KICKS[kick_type()];
 	memset(s_hit, 0, sizeof s_hit);
 	play(stomp ? &J_STOMP : &J_KICK);
@@ -1292,15 +1441,82 @@ static void free_moves(const CombatBody* b, const circlePosition* cp, u32 held, 
 		maria_steps(b, want);
 }
 
-static void turn_to_target(CombatBody* b, const circlePosition* cp, float dt, float reach)
+// The upper hold and attack movers (0x5584e0, 0x558bd0): with a target locked (0x1fbad07) James is
+// turned to it; without one the legs' hold stance turns him with the stick (move.c MV_HOLD) and an
+// attack turns him not at all.
+static void aim_turn(CombatBody* b, float dt)
 {
-	float ang = 0.0f;
-	if (find_target(b, &ang, reach)) {
-		float st = 4.0f * dt;
-		*b->yaw += ang > st ? st : ang < -st ? -st : ang;
-	} else {
-		*b->yaw += cp->dx / 156.0f * 2.0f * dt;
+	if (s_target)
+		face(b, s_target, dt);
+}
+
+// The PC's grip flags (0x6cf7cc, set by 0x52dac0 as the weapon comes up): 0 none 0xff, 1 handgun
+// 0x55, 2 shotgun 5, 3 rifle 0, 4 spray 0xff, 5 plank 0xff, 6 pipe 0x55, 7 chainsaw 5, 8 great
+// knife 0, 9 Maria's revolver 0x55, 10 her knife 0xff
+static u8 grip_flags(void)
+{
+	static const u8 F[11] = { 0xff, 0x55, 0x05, 0x00, 0xff, 0xff, 0x55, 0x05, 0x00, 0x55, 0xff };
+	int g = wdef()->grip;
+	u8 f = g >= 0 && g < 11 ? F[g] : 0;
+	if ((g == 4 || g == 5 || g == 10) && s_place != 0)
+		f &= 0x55;             // 0x52dac0: no running under these indoors
+	return f;
+}
+
+void combat_set_place(int place) { s_place = place; }
+
+int combat_candidates(Enemy** out, int max)
+{
+	int n = s_ncand < max ? s_ncand : max;
+	memcpy(out, s_cand, sizeof(Enemy*) * n);
+	return n;
+}
+
+const Enemy* combat_target(void) { return s_ok && s_target && enemy_alive(s_target) ? s_target : NULL; }
+bool combat_attack_seq(void) { return s_attack_seq; }
+
+bool combat_legs(CombatLegs* o)
+{
+	memset(o, 0, sizeof *o);
+	if (!s_ok)
+		return o->free = true;
+	bool swing = s_mode == M_SWING || s_mode == M_REBOUND || s_mode == M_RECOVER;
+	bool attacking = s_mode == M_SHOT || s_mode == M_RELOAD || s_mode == M_SPRAY || (swing && s_swing_legs);
+	// the rifle's shot and reload hold the legs in the lower attack status (0x5569b0 grip 3); a
+	// swing does unless it was a light one begun on the move (s_swing_legs)
+	o->free = s_mode == M_FREE || s_mode == M_RAISE || s_mode == M_READY || s_mode == M_LOWER ||
+	          (attacking && s_weapon != W_RIFLE);
+	o->aim = o->free && s_mode != M_FREE && s_mode != M_LOWER;
+	o->locked = o->aim && s_target != NULL;
+	o->attack_seq = s_attack_seq;
+	o->attacking = attacking;
+	u8 f = grip_flags();
+	o->walk = (f & (attacking ? 0x40 : 4)) != 0;
+	o->run = !s_attack_seq || (f & (attacking ? 0x80 : 8)) != 0;
+	return o->free;
+}
+
+// 0x52e110 on beginner and easy (gActionDifficulty < 2): Action held readies the weapon by itself
+// (0x1fbab12 = 4) while 0x542620 (from 0x533c10) finds an enemy ahead: the first candidate in clear
+// sight within 2500 of the point 2500 in front of James. Not on a press an event ahead takes
+// (EventCheckLookLine 0x48e520), not with Aim held, nor with one on the floor to kick (0x1fbad00).
+// The PC measures from James' 0xa0 height to the enemy's feet; the port takes both feet.
+bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead)
+{
+	if (!s_ok || enemy_difficulty() >= 2 || !(held & KEY_A) || (held & KEY_R) || s_stompable)
+		return false;
+	if ((down & KEY_A) && event_ahead)
+		return false;
+	float cx = *b->x + sinf(*b->yaw) * 2500.0f, cz = *b->z + cosf(*b->yaw) * 2500.0f;
+	for (int i = 0; i < s_ncand; i++) {
+		const Enemy* e = s_cand[i];
+		if (!enemy_alive(e) || !clear_line(b, e))
+			continue;
+		float dx = cx - e->x, dy = *b->y - e->y, dz = cz - e->z;
+		if (sqrtf(dx * dx + dy * dy + dz * dz) <= 2500.0f)
+			return true;
 	}
+	return false;
 }
 
 bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, float dt,
@@ -1327,6 +1543,19 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	step(dt);
 	s_body_pos[0] = *b->x, s_body_pos[1] = *b->y, s_body_pos[2] = *b->z;
 	s_run_held = (held & KEY_B) != 0;
+	// 0x52e110 keeps ten frames of the keys: Action held through all of them gives 0x533ff0 a
+	// pressure again (0x1fbab0f), so holding it attacks again, light, as each attack ends. On
+	// beginner and easy letting go of it drops a queued attack (0x1fbad13, 0x1fbad14).
+	bool action_down = (down & KEY_A) != 0;
+	if (!(held & KEY_A))
+		s_action_held = -1.0f;
+	else if (action_down || s_action_held < 0.0f)
+		s_action_held = 0.0f;
+	else
+		s_action_held += dt;
+	bool action_again = !action_down && s_action_held >= 8.5f / 30.0f;
+	if (enemy_difficulty() < 2 && !(held & KEY_A))
+		s_combo_req = false;
 	if (s_weapon == W_CSAW && (s_mode == M_FREE || s_mode == M_LOWER) && sfx_playing(11044)) {
 		sfx_stop(11044);                // 0x549e20: the engine dies down once the saw is lowered
 		sfx_stop(11045);
@@ -1338,8 +1567,10 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			cycle_weapon();
 			return false;
 		}
-		if (held & KEY_R) {
-			s_target = pick_target(b, 0);    // 0x533ca0: locked as he readies
+		// 0x557100: the weapon comes up only from the states whose upper row allows status 0x1a;
+		// walking, running and the quick turn go on until they end
+		if ((held & KEY_R) && move_can_aim()) {
+			lock_on(b);                      // 0x533ca0: locked as he readies
 			if (is_bare()) {
 				s_mode = M_READY;          // bare hands: nothing to raise
 			} else if (is_melee()) {
@@ -1364,18 +1595,14 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	case M_READY:
 		if (!(held & KEY_R)) {
 			s_charge = -1.0f;
-			if (is_bare()) { s_mode = M_FREE; play(&J_STAND); return false; }
+			s_target = NULL;                 // 0x557100: upper status 0x1b drops the lock
+			if (is_bare()) { s_mode = M_FREE; s_attack_seq = false; play(&J_STAND); return false; }
 			s_mode = M_LOWER;
 			play(is_melee() ? &md()->lower[s_side] : &w->lower);
 			break;
 		}
-		// 0x54f100: the strafe buttons move the lock to the nearest other enemy on that side
-		if (down & (GK_STRAFE_L | GK_STRAFE_R)) {
-			Enemy* t = pick_target(b, (down & GK_STRAFE_L) ? 1 : -1);
-			if (t)
-				s_target = t;
-		}
-		turn_to_target(b, cp, dt, is_melee() || is_bare() ? 4000.0f : w->atk.max_range);
+		change_target(b, down);           // 0x54f100
+		aim_turn(b, dt);
 		if (s_charge >= 0.0f) {
 			// tap or hold (EE timers): decided on release, or once A has been held 0.2 s
 			s_charge += dt;
@@ -1389,28 +1616,38 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			}
 			break;
 		}
-		if (down & KEY_A) {
-			bool stomps = is_bare() || is_gun() || s_weapon == W_SPRAY || s_weapon == W_PIPE ||
-			              s_weapon == W_NATA || s_weapon == W_CSAW;   // 0x5569b0: a body at his feet
-			if (stomps && stomp_target(b)) {
-				if (s_hold_to_stomp)
+		if (action_down || action_again) {
+			// 0x5569b0 takes the kick / stomp branch before it looks at the grip: 0x533c10 sets
+			// DAT_01fbad00 from 0x542a10 (a downed enemy at his feet) whatever James holds, so every
+			// one of his weapons stomps, the plank too. Maria's knife keeps to her own attacks.
+			// Held on, the low pressure of 0x1fbab0f makes the melee swing the light one (0x533ff0);
+			// the stomp reads the key's own pressure and stays the stomp (0x534210).
+			bool stomps = s_weapon <= W_SPRAY || is_bare() || is_gun();
+			if (stomps && s_stompable) {
+				if (s_hold_to_stomp && action_down)
 					s_charge = 0.0f, s_charge_stomp = true;
 				else
 					start_stomp(true);
 			} else if (is_melee()) {
-				if (s_swap_light_heavy)
+				if (s_swap_light_heavy && action_down)
 					s_charge = 0.0f, s_charge_stomp = false;
 				else
-					start_swing(b, false, true);
+					start_swing(b, false, action_down);
 			} else if (s_weapon == W_SPRAY) {
 				// 0x5569b0 grip 4: attack 8, or the empty can's pfft (10)
 				s_mode = M_SPRAY;
+				s_attack_seq = true;
 				s_spray_again = false;
 				memset(s_hit, 0, sizeof s_hit);
 				play(s_spray > 0.0f ? &S_SPRAY : &S_EMPTY);
 				if (s_spray > 0.0f)
 					sfx_play_at(11047, s_spray < 10.0f ? s_spray * 0.05f : 0.5f, s_body_pos);
 			} else if (is_gun()) {
+				// 0x5569b0 grips 1 and 9: a shot or reload locks again if the lock was lost
+				if (s_weapon == W_HANDGUN || s_weapon == W_COLT)
+					lock_on(b);
+				if (loaded() > 0 || spare() > 0)
+					s_attack_seq = true;
 				if (loaded() > 0) {
 					s_mode = M_SHOT;
 					s_fired = false;
@@ -1419,45 +1656,25 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 					s_mode = M_RELOAD;
 					s_reloaded = false;
 					play(&w->reload);
-				} else {
-					sfx_play(w->snd_empty, 1.0f, 0.0f);   // click (0x533ff0)
+				} else if (action_down) {
+					sfx_play(w->snd_empty, 1.0f, 0.0f);   // click (0x533ff0, on the press only)
 				}
 			}
 			break;
 		}
-		if (is_melee()) {
-			// James can step toward or away from the target with the weapon up (no running)
-			float fwd = cp->dy / 156.0f;
-			if (fabsf(fwd) < 0.15f) {
-				if (s_cur != &md()->ready[s_side])
-					play(&md()->ready[s_side]);
-				break;
-			}
-			float speed = fwd > 0.0f ? 500.0f * fwd : 350.0f * fwd;
-			float nx = *b->x + sinf(*b->yaw) * speed * dt, nz = *b->z + cosf(*b->yaw) * speed * dt, ny;
-			if (col) {
-				col_push(col, &nx, &nz, *b->y, 900.0f, 130.0f);
-				if (col_floor(col, nx, nz, *b->y, 160.0f, &ny))
-					*b->x = nx, *b->z = nz, *b->y = ny;
-			} else {
-				*b->x = nx, *b->z = nz;
-			}
-			if (s_cur != &J_WALK)
-				play(&J_WALK);
-			if (fwd < 0.0f)
-				s_frame -= 2.0f * dt * 30.0f * (J_WALK.speed / 2048.0f);
-			if (s_frame < J_WALK.start)
-				s_frame += J_WALK.end - J_WALK.start + 1;
-		} else if (is_bare()) {
-			free_moves(b, cp, 0, dt);
-		}
+		// the legs walk, back off, strafe and run under the weapon as its flags allow (move.c with
+		// combat_legs); the upper body keeps the ready pose
+		if (is_melee() && s_cur != &md()->ready[s_side])
+			play(&md()->ready[s_side]);
+		else if (is_bare() && s_cur != &J_STAND)
+			play(&J_STAND);
 		break;
 	case M_SHOT:
 		if (!s_fired && s_frame - w->shot.start >= w->atk.first) {
 			s_fired = true;
 			fire(b);
 		}
-		turn_to_target(b, cp, dt, w->atk.max_range);
+		aim_turn(b, dt);
 		if (s_end) {
 			s_mode = M_READY;
 			play(&w->aim);
@@ -1474,14 +1691,18 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			}
 			sfx_play(w->snd_reload, 1.0f, 0.0f);
 		}
+		aim_turn(b, dt);
 		if (s_end) {
 			s_mode = (held & KEY_R) ? M_READY : M_LOWER;
+			if (s_mode == M_LOWER)
+				s_target = NULL;
 			play(s_mode == M_READY ? &w->aim : &w->lower);
 		}
 		break;
 	case M_STOMP: {
 		const AttackInfo* a = s_stomp_atk;
 		float f = s_frame - s_cur->start;
+		face(b, s_stomp_e, dt);           // 0x558f40: the kick turns him to the one on the floor
 		if (f >= a->first && f <= a->last + 0.99f) {
 			Enemy* e = stomp_target(b);
 			if (e) {
@@ -1491,7 +1712,10 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 				if (i < ENEMY_MAX && !s_hit[i]) {
 					s_hit[i] = true;
 					sfx_play(11040, 1.0f, 0.0f);      // thud
-					enemy_damage(e, a->id, a->ap, a->sp, sinf(*b->yaw), cosf(*b->yaw));
+					if (enemy_corpse_stompable(e))
+						enemy_stomp_corpse(e, sinf(*b->yaw), cosf(*b->yaw));
+					else
+						enemy_damage(e, a->id, a->ap, a->sp, sinf(*b->yaw), cosf(*b->yaw));
 				}
 			}
 		}
@@ -1510,8 +1734,8 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	}
 	case M_SWING: {
 		const MeleeDef* m = md();
-		if (down & KEY_A)
-			s_combo_req = true;
+		if (action_down || action_again)
+			s_combo_req = true;       // 0x558bd0 asks 0x533ff0 again through the swing
 		swing_sound();
 		swing_hits(b);
 		if (s_hit_any && !s_atk_heavy && m->rebound[s_side].end && s_cur != &m->extra[s_side]) {
@@ -1551,7 +1775,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		break;
 	}
 	case M_REBOUND:
-		if (down & KEY_A)
+		if (action_down || action_again)
 			s_combo_req = true;
 		if (s_end) {
 			s_atk = NULL;
@@ -1564,7 +1788,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		}
 		break;
 	case M_RECOVER:
-		if (down & KEY_A)
+		if (action_down || action_again)
 			s_combo_req = true;
 		if (s_combo_req && (held & KEY_R)) {
 			s_side ^= 1;
@@ -1594,7 +1818,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 					s_hp -= dt;
 			}
 		}
-		turn_to_target(b, cp, dt, 1000.0f);
+		aim_turn(b, dt);
 		if (s_spray <= 0.0f && s_cur != &S_EMPTY) {
 			// the can is spent: the PC takes the item away (0x49e620)
 			sfx_stop(11047);
@@ -1610,6 +1834,8 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			} else {
 				sfx_stop(11047);
 				s_mode = (held & KEY_R) ? M_READY : M_LOWER;
+				if (s_mode == M_LOWER)
+					s_target = NULL;
 				play(s_mode == M_READY ? &w->aim : &w->lower);
 			}
 		}
@@ -1617,11 +1843,13 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	}
 	case M_LOWER:
 		if (held & KEY_R) {
+			lock_on(b);
 			s_mode = M_RAISE;
 			play(is_melee() ? &md()->raise[s_side] : &w->raise);
 			break;
 		}
-		if (s_end) { s_mode = M_FREE; play(&J_STAND); return false; }
+		// 0x5590e0: the weapon down, the attack side byte goes back to 0xff (0x534360)
+		if (s_end) { s_mode = M_FREE; s_attack_seq = false; play(&J_STAND); return false; }
 		break;
 	case M_HURT:
 		if (s_end) { s_mode = M_FREE; play(&J_STAND); return false; }
@@ -1666,7 +1894,11 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		s_combo_req = false;
 	else
 		s_charge = -1.0f;
-	*held_out = held & ~(KEY_A | KEY_B);
+	if (s_mode == M_SWING || s_mode == M_REBOUND || s_mode == M_RECOVER)
+		aim_turn(b, dt);                 // 0x558bd0: the upper attack keeps him on the lock
+	// the run key stays the legs' while they walk under the weapon (combat_legs)
+	CombatLegs lg;
+	*held_out = held & ~(combat_legs(&lg) ? KEY_A : (KEY_A | KEY_B));
 	return true;
 }
 
@@ -1680,15 +1912,13 @@ int combat_james_clip(float* blend)
 	return (int)(uintptr_t)s_cur;
 }
 
-bool combat_james_anim(const Anim** anim, float* frame)
+bool combat_james_anim(const Anim** anim, float* frame, int loop[2])
 {
 	if (!s_ok || !s_anim_ok)
 		return false;
 	*anim = &s_anim;
-	float f = s_frame;
-	if (s_cur && s_cur->loop && f > s_cur->end)
-		f = s_cur->start;
-	*frame = f;
+	*frame = s_frame;
+	cur_loop(loop);
 	return true;
 }
 
@@ -1734,11 +1964,82 @@ void combat_draw_weapon(int uBones)
 	draw_flash(uBones);
 }
 
+// PlayerCheckModelParts (0x52f6a0) picks one right hand (poses 3..13), one left hand (14..20) and
+// the flashlight on James' chest (21) for 0x50dfc0. Its left hand follows the upper-body state
+// (0x1fba8e4, the PS2 beta's _JAMES_UPPER_STATUS) in four groups, read here off the port's states:
+//   1  READY, READYOFF, the runs (RUN1..3, LSRUN, RSRUN), and RELAX with the great knife
+//   2  RELAX, WALL_F, FALL, DAMAGE, TO_STAND, EVENT unless the motion is 101 (standing)
+//   3  HOLD, RELEASE, ATTACK
+//   0  the rest (standing, walking, turning, KICK)
+// Port approximations: walking into a wall (WALL_F) counts as walking, being held by an enemy as
+// DAMAGE, a reload as ATTACK, and the plank's two-handed frames 8..21 count from the start of the
+// port's heavy swing clip. Born From a Wish Maria is 0x549050: left hand 6, right by grip, pose 7
+// only with bare hands.
+void combat_set_parts(int move_state)
+{
+	if (!s_ok || !s_james)
+		return;
+	int grip = WEAPONS[s_weapon].grip;
+	if (s_maria) {
+		chr_set_parts(s_james, 6, grip == 9 ? 4 : grip == 10 ? 5 : 3, grip ? 0 : 7);
+		return;
+	}
+	// gFlashLightAcquired & 0x40000; the PC also hides it with James' status bit 0x8000, which the
+	// port doesn't keep
+	int light = ev_have_item(18) ? 21 : 0;
+	int g = 0;
+	switch (s_mode) {
+	case M_FREE:
+		if (demo_active())
+			g = 2;
+		else if (move_state == MV_RELAX)
+			g = grip != 8 ? 2 : 1;
+		else if (move_state >= MV_RUN1 && move_state <= MV_RSRUN)
+			g = 1;
+		break;
+	case M_RAISE: case M_LOWER: g = 1; break;
+	case M_READY: case M_SWING: case M_REBOUND: case M_RECOVER: case M_SHOT: case M_RELOAD: case M_SPRAY:
+		g = 3;
+		break;
+	case M_HURT: case M_HELD: case M_DYING: case M_DEAD: g = 2; break;
+	default: break;
+	}
+	int r = 3, l = 14;
+	if (boat_active()) {                               // the boat (kind 0x10b) and status 0x20000
+		r = 5, l = 16;
+	} else {
+		switch (grip) {
+		case 0: case 1: case 4:
+			l = g == 1 ? 15 : 14;
+			r = grip == 1 ? 7 : grip == 4 ? 11 : g == 1 ? 4 : 3;
+			break;
+		case 2: case 3: l = g == 2 ? 14 : 17, r = 8; break;
+		case 5:
+			l = g <= 1 ? 19 : 14;
+			if (g == 3 && s_atk_heavy && s_cur) {         // request 4 (0x1fbad12): both hands on it
+				float f = s_frame - s_cur->start;
+				l = f >= 8.0f && f <= 21.0f ? 19 : 14;
+			}
+			r = 10;
+			break;
+		case 6: l = g <= 1 ? 19 : g == 3 ? 18 : 14, r = 9; break;
+		case 7: l = 14, r = 13; break;
+		case 8: l = g == 2 ? 14 : 20, r = 12; break;
+		}
+	}
+	// the weapon is in hand but not shown (0x53ac10 and the weapon's 0x10): both hands open
+	if (grip && (!s_wmodel_ok || demo_active()))
+		r = 3, l = 14;
+	chr_set_parts(s_james, l, r, light);
+}
+
 const char* combat_status(void)
 {
 	static const char* names[] = { "free", "raise", "ready", "swing", "rebound", "recover", "lower",
 	                               "shot", "reload", "stomp", "spray", "hurt", "held", "dying", "dead" };
-	snprintf(s_line, sizeof s_line, "HP%3.0f %s g%d", s_hp, names[s_mode], WEAPONS[s_weapon].grip);
+	// the candidates in sight, L when one is locked (the debug page shows the first 16 characters)
+	snprintf(s_line, sizeof s_line, "HP%3.0f %s %c%d g%d%s", s_hp, names[s_mode], s_target ? 'L' : 'c', s_ncand,
+	         WEAPONS[s_weapon].grip, s_attack_seq ? " seq" : "");
 	return s_line;
 }
 

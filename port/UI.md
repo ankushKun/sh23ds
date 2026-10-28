@@ -69,6 +69,12 @@ The PC's own front end, as on the website: no boxes.
   no prompt: tapping the map is the way to it. The zoom ring is drawn with the map's pictures so the
   map never covers it.
 
+## 3D
+
+The 3D row in Advanced Options (on by default) lets the slider give the top screen depth. The world sits
+behind the screen and only what is close to the camera comes out; text, menus and pictures stay on the
+screen plane. With the row off, or the slider down, the top screen is drawn as before.
+
 ## No game data
 
 Before anything else is set up, `nodata.c` checks `sdmc:/3ds/sh23ds/` for a few files every finished

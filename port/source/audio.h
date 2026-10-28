@@ -8,7 +8,8 @@
 bool audio_init(void);
 void audio_exit(void);
 
-// Starts a music stream (loops at the ADX loop points when present). Returns false if unreadable.
+// Starts a music stream (loops at the ADX loop points when present). Returns false only without
+// sound: the file is opened on the refill thread, tried again when that fails (audio_problem).
 // AIX layer 0 starts at full volume and the others silent.
 bool audio_play_music(const char* path, float volume);
 // The options' volumes, 0..1: music (channel 0) and the cutscene voices (channel 1).
@@ -31,6 +32,9 @@ float audio_voice_position(void);   // seconds heard, < 0 before it starts
 void audio_update(void);
 
 const char* audio_status(void);
+// What the player should hear and can't, worded for the touch screen (NULL: nothing wrong): no DSP
+// firmware, or a music file that stayed missing or unreadable after a few tries.
+const char* audio_problem(void);
 // Percent of one core the music decoding took since the last call (-1: nothing decoded).
 int audio_decode_load(void);
 // How many times a music or voice stream ran dry since start-up (heard as a stutter).

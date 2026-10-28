@@ -418,7 +418,8 @@ the title an "Options" row (the PC's title has OPTIONS too).
   either screen when off), Speaker Config. (the PC lists DirectSound's speaker setups; here Mono,
   Stereo and Surround, the three NDSP output modes, `audio_set_output`), BGM Volume and SE Volume
   (0 to 15, 12 by default; the PC passes volume << 3 to its mixer, here the gain is volume / 15).
-  The PC's Vibration and Language rows have nothing to set on the 3DS and are left out.
+  The PC's Language row (0x4630c0 case 5: English, French, German, Italian, Spanish, wrapping) is in;
+  Vibration has nothing to set on the 3DS and is left out.
 * Cheats (the port's own, `options.txt` `infstamina` / `infammo`): Infinite Stamina (on by
   default: the run count never builds up, so the third pace stays open and James never stops to
   pant, `move.c`) and Infinite Ammo (off: a shot leaves the round in the gun, `combat.c` `fire`).
@@ -977,7 +978,11 @@ Elevators (0x58d480 here, 0x588e60 in stage 26): flags 17, 18, 19 say which floo
 the buttons set 21, 22, 23 for 1F, 2F, 3F and the stage's auto door events do the ride. The PC
 maps its five buttons per floor (0x58c820, 0x5885f0); the panel lists the floors instead. The
 front elevator sets flag 176 when it goes to 1F; the otherworld one plays the ride with Maria
-once (flag 232, which the quiz needs).
+once (flag 232, which the quiz needs). That ride is the radio quiz show: step 0x30 of 0x588e60 stops
+the stream and starts voice 0xeacb (voice.afs 107, 5390 frames), runs SubtitlesManager's loop inline
+(times at 0x8d82e8, stage messages from 0x20) and waits 5175 frames (0x72ab54) before `quiz.dds`.
+The converter writes it as `demo/voice_588e60.voc` (`demos.py` INLINE_VOICES), and the program plays
+`!voice_588e60:5175 quiz`.
 
 ### Stage 22 Stg_hospital_1fw_b (0x8d9cd8)
 
@@ -1481,6 +1486,13 @@ and type, missing textures, free linear memory, heap in use and the load time. T
 `# done, next N`. With `first` greater than 0 the file is appended to, so a long run can be split
 into chunks.
 
+`autotest warps 0 570 stuck` scans each room once for places James can't walk out of (`stuck_scan`):
+from up to 160 floor points he runs 12 frames in 8 directions at the run's top speed on the slowest
+frame (160 units a frame), once in a single step a frame and once the way he moves now, and every end
+with no open way is logged with why each way out fails. 2026-10-27: the single step left 2937 such
+places in 185 of 232 rooms; the current movement leaves 8 in 6 (hp09 and the labyrinth), which the
+recovery handles.
+
 Run over all 570 destinations in Azahar (summary in `.progtest/autotest_summary.txt` of the test
 copy): no crash or hang, every room loaded with its textures, a camera road set and, except for one
 case, collision and a floor under James. What stood out:
@@ -1523,8 +1535,9 @@ case, collision and a floor under James. What stood out:
   one by action level (rows easy, nomal, gyogan, hard of the table 0x7f5260) and a counter of the
   game data mod 6 (0x1f5f300 + 0x36), and only writes it next to the save as SaveImage.pcv, the Xbox
   dashboard's icon; nothing reads it back. The port writes no such file. The results' fade in and out is not done. Messages on the top screen
-  all use the default place since the pack's message text has lost the PC's position words, and
-  the full-width and accented characters of other languages are not in the pack's text either.
+  all use the default place since the pack's message text has lost the PC's position words.
+  The text is decoded as 0x47f400 draws it (Windows-1252 accents, full-width codes), so the other
+  languages' characters are in the pack.
 * The quiz in the otherworld 3F (0x589820) reads its questions from the still; the buttons are
   mapped as on the PC (rows top to bottom, buttons left to right), which was not checked against
   the picture's layout. The same goes for the cube room's two rings and the panel lock's grid.
@@ -1542,9 +1555,14 @@ case, collision and a floor under James. What stood out:
 * PC 0x1dbec05 multiplies ammo boxes in ItemGet (the Extra Options "Bullet Adjust"). Pickups and
   `p_item_get_now` both go through `ev_item_get_amount()`, so programs that hand out ammo get the
   multiplier as well.
-* The scripted walk has no walking animation and goes straight, without the PC's path code.
-* `EvSubItemGet` also removes the pickup model and plays James' bending motion; the port has no
-  item models in rooms yet.
+* The scripted walk (0x53b010) drives James' own legs as the PC does: the walk within 3500 of the point
+  (1.5 m/s, eased at 2.5 / 5 m/s/s) and a run past it (up to 4 m/s), turned towards the point at 12 or 8
+  times 0.3235 of the difference a second, done within 87.5 (`move.c` autowalk, `host_walk_to`). Which
+  run clip the PC's run picks is not traced (the port takes the one the speed has reached), and a walk
+  the port's collision holds up gives in after 20 s.
+* `EvSubItemGet` also plays James' bending motion, which the port doesn't. The pickups lying in the
+  rooms (drinks, kits, ampoules, rounds) are drawn from the stage's pickup list as 0x490080 places
+  them (`stagemdl.c`); a key item's model is a stage model that its program's flag takes away.
 * Programs that only move characters, cameras or lights (enemy removal in 0x599c30, the stage's
   per-frame function) keep only their flags.
 * Where the PC lets the player skip a demo with the skip button (`ev_skip`), programs sometimes

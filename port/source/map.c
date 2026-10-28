@@ -2,6 +2,8 @@
 #include "bgm.h"
 #include "events.h"
 #include "prog.h"
+#include "sdio.h"
+#include "stream.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -354,15 +356,31 @@ static int nav(int dir)
 
 // ---------------------------------------------------------------- textures
 
+static void t3x_path(char* path, size_t n, const char* name)
+{
+	snprintf(path, n, PACK_DIR "/map/%s.t3x", name);
+}
+
 static bool load_t3x(C3D_Tex* tex, const char* name)
 {
 	char path[64];
-	snprintf(path, sizeof path, PACK_DIR "/map/%s.t3x", name);
-	FILE* f = fopen(path, "rb");
-	if (!f)
-		return false;
-	Tex3DS_Texture t = Tex3DS_TextureImportStdio(f, tex, NULL, false);
-	fclose(f);
+	t3x_path(path, sizeof path, name);
+	long n = 0;
+	u8* b = stream_take_file(path, &n);  // read ahead for the touch screen's small map (textures_ready)
+	if (!b) {
+		FILE* f = fopen(path, "rb");
+		if (!f)
+			return false;
+		fseek(f, 0, SEEK_END);
+		n = ftell(f);
+		fseek(f, 0, SEEK_SET);
+		b = n > 0 ? malloc(n) : NULL;
+		if (b && sd_fread(b, n, f) != (size_t)n)
+			free(b), b = NULL;
+		fclose(f);
+	}
+	Tex3DS_Texture t = b ? Tex3DS_TextureImport(b, n, tex, NULL, false) : NULL;
+	free(b);
 	if (!t)
 		return false;
 	Tex3DS_TextureFree(t);
@@ -385,6 +403,27 @@ static void textures_for(int m)
 		s_mark_ok = r->mark[0] && load_t3x(&s_mark, r->mark);
 		snprintf(s_mark_name, sizeof s_mark_name, "%s", r->mark);
 	}
+}
+
+// Whether map m's textures are in or can be read at once, asking the stream thread for those that
+// are not. A map and its marks are about 1.3 MB, which read on the main loop held the first frame
+// after a load for two to three seconds on a console; the small map waits for them instead.
+static bool textures_ready(int m)
+{
+	const MapRec* r = &s_maps[m];
+	const char* need[2] = { strcmp(s_tex_name, r->tex) ? r->tex : "", strcmp(s_mark_name, r->mark) ? r->mark : "" };
+	bool ready = true;
+	for (int i = 0; i < 2; i++) {
+		if (!need[i][0])
+			continue;
+		char path[64];
+		t3x_path(path, sizeof path, need[i]);
+		int st = stream_file_state(path);
+		if (st == -1)
+			stream_want_file(path);
+		ready &= st == 1 || st == -2;
+	}
+	return ready;
 }
 
 // 0x49af20: load the map and its marker sheet unless they are the ones in memory.
@@ -698,6 +737,8 @@ u32 map_mini_key(const MapPlayer* p, float zoom)
 	for (int t = 0; t < r->ntab; t++)
 		for (int i = 0; i < r->tab[t].count; i++)
 			marks = marks * 31 + F(r->tab[t].first + 1 + i);
+	if (!textures_ready(m))
+		marks ^= 0x9e3779b9u;           // drawn again once they are in
 	u32 px = (u32)(int)(X * zoom), py = (u32)(int)(Y * zoom), a = (u32)(int)(p->yaw * 4.0f);
 	return ((u32)m * 2654435761u) ^ (px * 40503u) ^ (py * 9973u) ^ (a * 131u) ^ marks ^ 1u;
 }
@@ -709,7 +750,9 @@ bool map_mini(const MapPlayer* p, MapDrawFn fn, float x0, float y0, float x1, fl
 	if (!m || !fn)
 		return false;
 	s_mini_used = true;
-	textures_for(m);
+	bool ready = textures_ready(m);
+	if (ready)
+		textures_for(m);
 	// map units to pixels: the PC's 4:3 shape (as the screen draws it), zoom times bigger
 	float kx = 0.625f * zoom, ky = 0.46875f * zoom;
 	float cx = (x0 + x1) * 0.5f, cy = (y0 + y1) * 0.5f;
@@ -720,7 +763,7 @@ bool map_mini(const MapPlayer* p, MapDrawFn fn, float x0, float y0, float x1, fl
 	MapVert v[6];
 #define PX(u) (cx + ((u) - X) * kx)
 #define PY(u) (cy + ((u) - Y) * ky)
-	if (s_tex_ok && cux1 > cux0 && cuy1 > cuy0) {
+	if (ready && s_tex_ok && cux1 > cux0 && cuy1 > cuy0) {
 		float a0 = PX(cux0), b0 = PY(cuy0), a1 = PX(cux1), b1 = PY(cuy1);
 		float u0 = (cux0 + 256.0f) / 512.0f, v0 = (cuy0 + 256.0f) / 512.0f;
 		float u1 = (cux1 + 256.0f) / 512.0f, v1 = (cuy1 + 256.0f) / 512.0f;
@@ -730,7 +773,7 @@ bool map_mini(const MapPlayer* p, MapDrawFn fn, float x0, float y0, float x1, fl
 	}
 	// the red markings whose flags are set (0x49afa0), at the screen's zoomed-out size times zoom
 	const MapRec* r = &s_maps[m];
-	for (int t = 0; t < r->ntab && s_mark_ok; t++)
+	for (int t = 0; t < r->ntab && ready && s_mark_ok; t++)
 		for (int i = 0; i < r->tab[t].count; i++) {
 			if (!F(r->tab[t].first + 1 + i))
 				continue;

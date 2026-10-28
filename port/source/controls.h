@@ -12,8 +12,9 @@
 // game while James is free goes through here. controls_game() turns the buttons into "game keys",
 // the KEY_* bits the game code already tested before there was remapping:
 //   KEY_A action, KEY_B run, KEY_R aim, KEY_L next weapon, KEY_X flashlight, KEY_Y items,
-//   GK_LOOK, GK_TURN180, GK_STRAFE_L, GK_STRAFE_R, GK_MAP. The D-Pad does nothing else in play
-//   (the brightness is on the Options' Advanced page).
+//   GK_LOOK, GK_TURN180, GK_STRAFE_L, GK_STRAFE_R, GK_MAP, GK_TARGET_L, GK_TARGET_R. The D-Pad bits
+//   of the game keys carry only the two target keys (the D-Pad itself walks James in main.c's
+//   dpad_walk, and the brightness is on the Options' Advanced page).
 
 #if __has_include("profile.h")
 #include "profile.h"
@@ -22,7 +23,7 @@
 typedef enum { CONTROLS_LAYOUT_OLD = 0, CONTROLS_LAYOUT_NEW = 1 } ControlsLayout;
 typedef enum {
 	ACT_RUN, ACT_ACTION, ACT_AIM, ACT_WEAPON_NEXT, ACT_FLASHLIGHT, ACT_ITEMS, ACT_LOOK, ACT_TURN180,
-	ACT_STRAFE_LEFT, ACT_STRAFE_RIGHT, ACT_MAP, ACT_PAUSE, ACT_CANCEL, ACT_COUNT
+	ACT_STRAFE_LEFT, ACT_STRAFE_RIGHT, ACT_MAP, ACT_TARGET_LEFT, ACT_TARGET_RIGHT, ACT_PAUSE, ACT_CANCEL, ACT_COUNT
 } ControlsAction;
 ControlsLayout controls_layout(void);
 #endif
@@ -32,11 +33,16 @@ ControlsLayout controls_layout(void);
 #define GK_STRAFE_L KEY_CSTICK_LEFT
 #define GK_STRAFE_R KEY_CSTICK_RIGHT
 #define GK_MAP      KEY_CSTICK_UP
+#define GK_TARGET_L KEY_DLEFT
+#define GK_TARGET_R KEY_DRIGHT
 
 // Reads <dir>/controls.txt (the player's own bindings, if any).
 void controls_init(const char* dir);
 // The default buttons of an action in a layout (several bits: any of them works).
 u32 controls_default(ControlsLayout layout, ControlsAction act);
+// The Options' Control Type: with Rotational Style the D-Pad walks James on the Old 3DS layout as
+// well, so its defaults leave up and down free.
+void controls_set_rotational(bool on);
 // The buttons bound now (the player's or the default) in the active layout.
 u32 controls_keys(ControlsAction act);
 const char* controls_name(ControlsAction act);

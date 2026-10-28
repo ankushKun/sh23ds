@@ -86,6 +86,10 @@ scu.s3a 467 KB and mkn.s3a 245 KB, jms_wpkaku.s3a 840 KB (heap), scu.s3c 86 KB, 
   the port (forward = sin, cos).
 * `status` goes to the SubCharacter (+0xec) and picks the start state in the init (see below).
 * `condition` (0x48f5b0): bit 0 = not on easy/beginner, bit 1 = not on normal, bit 2 = not on hard.
+  Among the codes in bits 6..15, 0x340 means "not while the dry cell is held" (item 55): the creeper
+  room in the labyrinth (stage 30) gets its creepers and nests from EvProgUseDryCell (0x586f40).
+* A blow that lands while James' damage motion still plays takes its health and nothing more
+  (0x5350d0); the motion is not started again, so a room of biting creepers can't hold him still.
   Bits 6..15 select a story test. The ones used in the apartments are ported (flag n means game flag n,
   bit n&31 of the word at 0x1f7d5e0 + 4*(n>>5)):
 
@@ -131,6 +135,13 @@ AI code that plays them and was checked with `chrpreview.py`:
 | 29 | 5004 | 63-76 | | drops from standing to crawling |
 | 30..32 | 5031/5035/5034 | 714-778 | | event poses (status 13..15) |
 
+Every change of anime crossfades from the pose shown over 8 frames, as 0x4a9920 sets it through the
+kind's setter (0x892740, the Lying Figure's 0x53de20) into 0x538920 mode 4 (`anim_set`, `enemy_draw`,
+chr.c's `chr_pose_blend`). It cuts in (mode 2) in an enemy's first 10 anime steps and for anime 0x1c,
+which the Lying Figure's crawl and the mannequin's drop set with the +0x10 bit 0x8000. The other kinds'
+0x8000 cases (the death entries of 0x4b5190, 0x4b9460, 0x4c00a0) are not ported and blend. Until
+2026-10-28 every change was a cut, so each flinch, fall and attack snapped into place.
+
 ## Lying Figure AI
 
 Control entry 0x4c7070 (`enSCUCtrlMain`) dispatches on the control mode (1 automatic, 2 sleep 0x4c3a00,
@@ -149,11 +160,17 @@ of twelve states, in the order of the PC table:
 | 7 Attack | 0x4c63f0 | yes | sprays acid (attack 42), turning slowly toward James; may repeat |
 | 8 Damage | 0x4c65d0 | yes | applies the hit: flinch, or a knock-down when endurance runs out |
 | 9 Confuse | 0x4c6840 | no | only for special hits; goes to Precaution |
-| 10 Down | 0x4c6900 | yes | lies, writhes, regains health, then crawls (80% when face down) or gets up |
+| 10 Down | 0x4c6900 | yes | lies, writhes, regains health, then crawls (80% when face down) or gets up; at 0 health with James locked on it and no kick or stomp, the throes (sub-state 4): it lies as it fell for 200 ticks, each further blow knocks it back less ((max - n) / (max + 1)) and waits again, up to 4 + rand(difficulty + 2) blows; otherwise it dies at once |
 | 11 Dying | 0x4a96c0 | yes | body stays; the Enemy_List id is marked killed |
 
 Senses (0x4a9aa0 with the EnSCU table at 0x8931b8): sight distance 5000 in lit places, 4000 in the dark
-with the flashlight on, 750 with it off; view half angle 70 degrees; feels James within
+with the flashlight on, 750 with it off. The row is DAT_01f7fa24, which 0x4a88e0 sets every frame: 0
+where the place is lit (0x47b1f0, gFlashlightAvailable 1), 3 in the dark with the flashlight off, and
+with it on 1 in stages 1..4 and 17 (0x494d80), else 2; 0x4a5a60 makes it 2 in stages 13 and 16 and in
+rooms 0x89, 0x8f, 0x90 and 0xa2 elsewhere (`light_index`, with `enemy_set_dark` from main.c). Until
+2026-10-28 the port never chose row 0, so in every lit place an enemy saw James only within 750, as
+if it were dark with the light off, and walked about blind in daylight; the paces, reaches and turn
+rates that read the row were off the same way; view half angle 70 degrees; feels James within
 {0, 750, 1000, 1500, 1500} by difficulty; spits when James is within the acid reach and 5 degrees of
 straight ahead. Being lit by the flashlight raises an alert value (0..3 s) that keeps it aware.
 
@@ -196,6 +213,17 @@ first/last frame, sound, effect):
 
 How the acid is placed is simplified: James is hit once per spit when he is in front within the acid
 reach + 150 and 380 to the side, with a clear line through the room walls.
+
+The acid itself (0x4c3c20, anime 3 past its frame 10 and short of 20): a puff each tick through
+0x4a4580 (effect 0x1e, the PS2 beta's enEfctSetPoisonFog), from 700 up the body along its facing,
+2500 long in stages 1..4 and 17 and 1250 elsewhere, tipped by half of James' height above it. Each
+puff flies, slows, sinks and fades over 22 ticks (0x4a3a30) as a soft disc with the poison texture
+(0x4a3d00), drawn by `mist.c` with the hyper spray's puffs (`mist_poison`). The PC's grey (0x80, 0x18
+in the dark with the light off) modulates the texture's own tan, a yellowish haze; the pack keeps
+only that texture's alpha, and the port tints the acid a bile green by the same grey (its choice). Before
+2026-10-29 the port drew none, so a spit hurt James with nothing between them; and a second spit
+in a row (the repeat chance) played no anime at all, since the attack anime had already played out
+and `anim_set` kept it: a played-out anime now starts again, as 0x4a9920 always does.
 
 ## Mannequin
 
@@ -334,6 +362,19 @@ always reads full pressure, so the PC as shipped only ever stomps. The port foll
 Edition's "EnableHoldToStomp" (on by default, `holdstomp` in options.txt): with bare hands or a gun,
 **R + tap A** kicks and **R + hold A** for 0.2 s stomps. The sound is 11040.
 
+How often: as often as there is a body to stomp. 0x542a10 offers the kick or stomp at the first
+camera slot whose enemy is down (+0x148 bit 4) and not dead (bit 2 clear) and at James' feet
+(0x542060). Each stomp is a whole attack, and James can stomp again as soon as it ends while the body
+lives (a figure lying with health left, or in its throes, see the Lying Figure's Down state). The
+killing stomp sends it to Dying, and enDyingExec 0x4a96c0 then sets bit 2 and clears bit 4, so on the
+PC a dead body is never offered again.
+
+The port goes further, by choice (3DS-only): a Lying Figure, mannequin or nurse James killed stays
+open to stomps for as long as he stays by it (`enemy_corpse_stompable`, `combat_scan` falls back to it
+when no live one is down). Each stomp on it thuds and bleeds and changes nothing else. Once James is
+more than 1000 units from the body (`CORPSE_LEAVE`, the stomp is offered within 600) it closes for
+good. Bodies placed dead in a stage never open.
+
 The plank keeps its own downward swing (attack 14, anims 375 / 379). That is its heavy attack: the PC
 asks for it on every first press (pressure again), and the port follows the EE's "SwapLightHeavyAttack"
 (`swapattack`): a tap is the light swing (12), holding A for 0.2 s the heavy downswing. A downed target
@@ -408,8 +449,9 @@ idle loop (5310), 3 a swing (5303), 4 the long great knife swing (5304, frames 9
 (5305), 6 the shove (5306), 7..9 lift, hold and let go (5307..5309), 10 the idle behind the bars (5311).
 He cannot be killed. The port puts him where the stage programs need him and nowhere else:
 
-* **Behind the bars** (stage 7, Enemy_List status 12, condition 0x180): event control, idle loop, can
-  not be hit.
+* **Behind the bars** (stage 7, Enemy_List status 12, condition 0x180: flag 68 and not 70): event
+  control, idle loop, can not be hit. He leaves when James first enters room 208 after the cry: stage
+  7's `sound_call_after_load` (0x59bc50) plays sound 16000 there and sets flag 70.
 * **The apartment stairwell** (stage 12). EvProgApartBoss (0x596220, program 5) plays the demo and then
   creates him with status 6 at (99846, -2203, -100532), facing -1.374 (0x8e1fe0). The port spawns him
   in `enemy_update` once flag 143 is set and flag 146 is not, so a save in that room brings him back.
@@ -1046,6 +1088,9 @@ In the emulator:
   and grabs do not reach James.
 * `enemy <kind hex> <x> <z> <yaw degrees> [status]`: an extra enemy, spawned in whichever room has a
   floor under (x, z), e.g. `enemy 200 -50000 -63000 0` puts a Lying Figure in the ap06 corridor.
+* `enemylog 1`: `enemylog.txt` on the SD card, a line per enemy per frame (kind, state.sub-state,
+  anime and frame, health, endurance, pending damage, distance, position) and one for James (his
+  combat status and the keys held, with those pressed this frame shifted up 16 bits).
 
 ## main.c hooks
 

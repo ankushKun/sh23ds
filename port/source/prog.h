@@ -173,6 +173,7 @@ void prog_new_game(int riddle, int action);
 // the game starts in stage 53 (th09) with Maria as the player. Call after ev_reset().
 void prog_new_game_wish(int riddle, int action);
 int prog_riddle_level(void);
+int prog_action_level(void);           // gActionDifficulty: 0 beginner .. 3 hard
 int prog_chapter(void);                // gChapterID: 0 James' game, 1 Born From a Wish
 
 // Clear data (PC system data 0x1dbeb82 levels cleared, 0x1dbeb84 endings seen, 0x1dbeb85 clears).
@@ -195,6 +196,9 @@ bool prog_player_locked(void);
 // game stays in event mode (the program has not finished).
 bool prog_update(u32 down, u32 held, float dt);
 void prog_abort(void);
+// DramaDemoNumber (0x1f7d3c4) as the running program set it this frame (p_demo_number), 0 for none;
+// EventMain (0x48ecb0) clears it every frame before the program runs. bgm.c reads it.
+int prog_demo_number(void);
 int prog_choice_waiting(void);         // a choice is up: how many answers (0 none), for playtest.c
 
 // Called by the program helpers; the engine hook decides what to show. True when finished.

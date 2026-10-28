@@ -1,4 +1,5 @@
 #include "noise.h"
+#include "stereo.h"
 #include <math.h>
 #include <string.h>
 
@@ -136,9 +137,11 @@ void noise_draw(void)
 {
 	if (!noise_on())
 		return;
-	s_cur ^= 1;
+	if (!stereo_eye()) {             // the second eye of a 3D frame shows the same grain (stereo.h)
+		s_cur ^= 1;
+		refill(&s_tex[s_cur]);
+	}
 	C3D_Tex* t = &s_tex[s_cur];
-	refill(t);
 	states(t);
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);

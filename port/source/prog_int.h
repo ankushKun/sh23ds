@@ -70,12 +70,15 @@ void p_lock(Prog* p, bool on);                      // JmsEventMode
 void p_picture_hide(void);                          // 0x4a24e0
 void p_fade(int type);
 void p_se(int id);
+void p_demo_number(int n);                          // DAT_01f7d3c4 = n, every frame the program wants it
+void p_bgm_page(int page);                          // FUN_005155e0
 void p_place(float x, float y, float z, float yaw); // CharaSetPos(jms, pos, yaw)
 void p_place_keep_yaw(float x, float y, float z);
 void p_player(float pos[3], float* yaw);
 void p_panel(const char* text);
 void p_save_menu(void);
 void p_flashlight(bool on);
+void p_enemy_list(void);   // the Enemy_List rows whose condition holds now and are not present
 void p_figure(int status, float x, float y, float z, float yaw, float delay);   // 0x48fcc0 Lying Figure; status < 0 removes it
 void p_game_end(int ending);
 void p_damage(float fraction);
@@ -88,7 +91,6 @@ static inline bool p_flag(int n) { return ev_flag(n); }
 static inline void p_set(int n) { ev_flag_set(n, true); }
 static inline void p_clear(int n) { ev_flag_set(n, false); }
 int p_riddle(void);                                 // gRiddleDifficulty
-int prog_action_level(void);                        // gActionDifficulty
 const char* p_stage_text(int msg);
 int p_rand(void);                                   // the PC's rand (0x448810)
 

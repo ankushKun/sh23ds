@@ -40,7 +40,12 @@ rm $SD/debug.txt
 The log ends with `# done, next N`. With `first` above 0 the file is appended to, so a run can go in
 pieces. PROGRAMS.md, "Autotest", explains each column.
 
-Last full pass: 2026-10-18, all 570 on both models.
+Add `stuck` instead of `perf` for the stuck scan (PROGRAMS.md, "Autotest").
+
+Last full pass: 2026-10-27 on the New 3DS model, all 570 load with textures and camera roads; two have
+no floor, as on the PC: the lake (499) and the Dog ending's room (493, qp05: the PC has no collision for
+qp, whose rooms only hold scenes; 0.2.2 sent that door to er01 instead). Before that, 2026-10-18, all
+570 on both models.
 
 ## Playthrough suite (story, program or combat changes)
 
@@ -59,35 +64,32 @@ them). The scripts and their runners are in `tests/playtest/`; logs and generate
 Each chapter loads the save the previous one made (`pt save` / `pt load`, kept on the SD card under
 `pt/`), so run a chain in order once before running single chapters. `SLOT=2` or `SLOT=3` uses
 `.lr3ds/save2` or `save3` as the SD card, which lets two runs go side by side; give each copy the pack
-(an APFS clone, `cp -c -R`, costs no space) and the saves its scripts load.
+(an APFS clone, `cp -c -R`, costs no space) and the saves its scripts load. The logs and
+`walk_summary.txt` are shared by every slot, so a run on another slot overwrites them.
+
+The walker steers James the 3D way, so play takes Rotational Style while it steers
+(`playtest_steering`), whatever the Options say. Puzzles are played with the chain's answers
+(`pt prog <puzzle> ...` and presses); the keypad, coins and music box, whose answers the riddle level
+fixes, give each level's steps with `pt riddle <levels> <command>`.
 
 A script passes when it reaches `# end of script` with no `FAIL` line; `pt.sh` prints
 `<name>: pass N fail N finished 1`.
 
-### Last results (2026-10-18)
+### Last results (2026-10-27)
 
-On 0.1.2 (rerun during the clean-up):
+New 3DS model, on the build with the player-report fixes and 3D unless a line says otherwise:
 
-- The teleport chain, all six endings and Born From a Wish pass, after `c03` was reordered to take
-  the flashlight first. 0.1.2 made needs-light events in dark rooms wait for the flashlight, as the PC
-  does (0x48e560: `0x47b1f0`, the room record's dark flag, then `gFlashLightAcquired`), and the old
-  script picked up the apartment map, the handgun and a 3F item before it.
-- The walk is broken: `w02` fails in the forest (stage 4, "no way on foot from ca12 to ca11") and
-  everything after it fails with it. `w03` has the same flashlight reorder as `c03` but has not run
-  since. The last full walk pass was on the build before 0.1.2's console fixes, which also flipped
-  the walker's turning (`playtest.c` `walk_update`), so look there first.
-- The runners now stop at the first failed chapter, since every later chapter loads its save.
-
-On the build before 0.1.2's console fixes:
-
-- Normal levels: the teleport chain, all six endings, Born From a Wish and the whole walk pass.
-- Beginner (riddle 0, action 0), hard (riddle 2, action 3) and the extra riddle level (riddle 2 with
-  clear data, action 2): everything passes except one step of `w10` on all three, `FAIL ev 2 (stage
-  43): no way on foot from ru13 to ru13`. Normal passes it. Not yet looked into.
-- Not run: the easy action level, and riddle and action combinations other than these four.
-- Bosses in god mode all end the PC's way. Without it the driver beat the first Lying Figure, the
-  Abstract Daddy, Eddie's first round and Mary, and lost the rest; a player wins those by running or
-  with more health items, which the driver does crudely.
+- The teleport chain, all six endings and Born From a Wish pass (17 scripts).
+- The whole walk passes, `w01` to `w11`. The forest step that broke after 0.1.2 was the walker's
+  turning: it now always steers the Rotational way (`playtest_steering`).
+- Beginner (riddle 0, action 0), hard (riddle 2, action 3) and the extra riddle level pass the walk and
+  the endings (17 scripts each); `w10`'s `ev 2` step in ru13 passes on all three, on the final build
+  of the day (the stuck fix, the voice clock, the Leave ending's light).
+- The smoke run passes on the Old 3DS model too.
+- The smoke run passes with the slider down and with it at the top (`--opt citra_factor_3d=100`, both
+  eyes drawn).
+- Not run: the easy action level, other riddle and action combinations, and the boss suite without
+  god mode since 0.1.2.
 
 Puzzle answers are set with debug keys before the scripts play them, and the ending scripts set the
 Maria escort and damage counters, which the teleport chapters do not build up as a player would.
@@ -130,6 +132,12 @@ part of the fog sprites' drawing taken away at a time; its name shows top left f
 The sprites' console flashes (opaque white rectangles, worst on the town roads) are suspected to
 be the sprites past the far plane or before the near plane, which the fog now cuts to both planes
 on the CPU (2026-10-19); console confirmation pending.
+
+SELECT held with L steps through the map test (`main.c` `s_map_test`, 7 modes: normal, nearest
+filtering, no texture, no flashlight stage, no fog, flat colour without fog, this room only). Its
+name stays top left while a mode other than normal is on, and `perf.txt` logs each change. It is
+for the light lines along the ground's triangle edges (V18), which show on a console and not in
+Azahar: the mode that takes them away names the part that draws them.
 
 Nothing has been measured on a console yet, and it is the biggest open question. Version 0.1.1 ran on
 one console once; 0.1.2 fixes what that showed (characters too dark, cutscene audio stutter, left and

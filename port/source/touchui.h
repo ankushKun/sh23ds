@@ -44,6 +44,11 @@ void touchui_map(bool open);                 // the map screen is up (map.c): it
 void touchui_map_readable(bool yes);         // the small map shows (false: too dark, as the map key)
 
 // The play page's quick slots: TQ_HEAL with the healing item (1 drink, 2 first aid kit,
-// 3 ampoule) that was tapped, once; main.c uses it as the item screen's Use would.
-enum { TQ_NONE, TQ_HEAL };
+// 3 ampoule) that was tapped, once; main.c uses it as the item screen's Use would. TQ_WEAPON: the
+// weapon was tapped while no button is bound to the next weapon.
+enum { TQ_NONE, TQ_HEAL, TQ_WEAPON };
 int touchui_quick(int* item);
+
+// A finger that came down where the screen shows nothing to tap: how far it moved since the last
+// call, in pixels (the behind camera turns with it). False when no such finger is down.
+bool touchui_free_drag(int* dx, int* dy);

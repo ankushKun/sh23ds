@@ -11,6 +11,7 @@
 // sink facing west.
 static int s02_prologue(Prog* p)
 {
+	p_demo_number(1);                   // DAT_01f7d3c4 = 1 every frame (the music's duck, bgm.c)
 	PROG_BEGIN(p)
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_FIRST_TOILET))
 		p_place(-19606.6f, 0.0f, 20429.55f, -1.5707964f);
@@ -79,7 +80,7 @@ static int s03_letter_from_mary(Prog* p)
 {
 	PROG_BEGIN(p)
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_TENBOU))
-		p_set(517);                     // FLAGW_512 |= 0x20 once the demo passes 1400 frames
+		p_set(517);                     // FLAGW_512 |= 0x20 once the demo passes 1400 frames (demo.c)
 		p_place(19350.25f, 0.0f, -507.74f, 0.0f);
 		p_set(1553);                    // FLAGW_1536 |= 0x20000
 		p_set(1504);                    // FLAGW_1504 |= 1
@@ -179,11 +180,15 @@ static int s04_first_save_well(Prog* p)
 // Angela talks: FUN_00448810() & 1 picks which reply the next talk gets (flag 37).
 static void angela_next_talk(void) { ev_flag_set(37, (svcGetSystemTick() >> 4) & 1); }
 
-// 0x5a0740 EvProgAngelaInGrave: movie hakaba.sfd and the graveyard demo.
+// 0x5a0740 EvProgAngelaInGrave: movie hakaba.sfd and the graveyard demo, over BGM page 2
+// (forest/bgm_022.adx); page 3 afterwards.
 static int s04_angela_in_grave(Prog* p)
 {
+	p_demo_number(3);                   // DAT_01f7d3c4 = 3 every frame: the stage's bgm_control page 4
 	PROG_BEGIN(p)
+		p_bgm_page(2);
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_HAKABA))
+		p_bgm_page(3);
 		p_place(330.845f, 2473.03f, -1332.315f, -2.3561945f);
 		if ((svcGetSystemTick() >> 4) & 1)
 			p_set(37);
@@ -478,8 +483,12 @@ static int s14_maria_standby(Prog* p)
 // 0x5928e0 EvProgMariaMeeting: movie deai.sfd; Maria follows James from here (flag 15).
 static int s14_maria_meeting(Prog* p)
 {
+	p_demo_number(0x15);                // DAT_01f7d3c4 = 0x15 every frame
 	PROG_BEGIN(p)
 		p_set(525);                     // FLAGW_512 |= 0x2000 while it plays
+		// BGM page 0xd: EvProgMariaMeetingStandby (0x592830) asks for it and holds it (0x1f837d0),
+		// this program lets it start; the hold is not ported, so the page is asked for here
+		p_bgm_page(0xd);
 	PROG_STEP(p, 0x17, p_demo(p, DEMO_MARIA_MEETING))
 		p_set(15);                      // gGameFlag |= 0x8000
 		p_place(4580.87f, 3000.0f, 103940.0f, -1.5707964f);
@@ -488,6 +497,7 @@ static int s14_maria_meeting(Prog* p)
 		p_set(1505);                    // FLAGW_1504 |= 2
 		p_clear(525);
 		p_clear(519);
+		p_bgm_page(0xb);
 		p_lock(p, false);
 	PROG_END(p)
 }

@@ -379,7 +379,11 @@ void sfx_set_gain(float g) { s_gain = g < 0.0f ? 0.0f : g > 1.0f ? 1.0f : g; }
 static void voice_mix(Voice* v, float gain, float pan)
 {
 	float mix[12] = { 0 };
-	gain *= s_gain;
+	// 3DS-only: 6 dB over the PC's curve up to full scale and a quarter of that past it (ndsp clips
+	// softly), so the quiet ones (steps, sounds far off) carry on the console's speakers and the
+	// full ones come up 2 dB
+	float lift = gain * 2.0f;
+	gain = (lift <= 1.0f ? lift : 1.0f + (lift - 1.0f) * 0.25f) * s_gain;
 	if (pan > 1.0f) pan = 1.0f;
 	if (pan < -1.0f) pan = -1.0f;
 	// soft balance: the far side keeps 30%, which suits the 3DS's close speakers

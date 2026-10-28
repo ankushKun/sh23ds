@@ -134,6 +134,17 @@ static void yaw_matrix(float m[4][4], float yaw, const float t[3])
 static bool s_on_boat;
 void gamecam_on_boat(bool on) { s_on_boat = on; }
 
+bool gamecam_scripted(void)
+{
+	const _VC_WORK* w = sh2cam_work();
+	if (!w)
+		return false;
+	if (w->flags & VC_USER_MODE_FLAGS)
+		return true;
+	const _VC_ROAD_DATA* r = w->cur_near_road.road_p;
+	return r && r->rd_type == VC_RD_TYPE_EVENT;
+}
+
 void gamecam_update(const GameCamPlayer* p, float dt, bool far_view, C3D_Mtx* view, float* fovy)
 {
 	if (!s_started)
@@ -149,7 +160,7 @@ void gamecam_update(const GameCamPlayer* p, float dt, bool far_view, C3D_Mtx* vi
 	in.far_view_button = far_view;
 	in.james_pos_x = p->pos[0];
 	in.james_rot_y = p->yaw;
-	in.james_anim_status = 0;               // JMS_ST_U_STAND: only matters in first person
+	in.james_anim_status = p->anim_status;  // 0x1fba8e8: the first-person mix reads it
 	in.james_status = s_on_boat ? 0x20000u : 0u;
 
 	float neck[3] = { p->pos[0], p->pos[1] - 830.0f, p->pos[2] };
@@ -174,7 +185,7 @@ void gamecam_update(const GameCamPlayer* p, float dt, bool far_view, C3D_Mtx* vi
 	in.chara_eye_ang_y = p->yaw;
 	in.chara_eye_ang_wy = 2.0943952f;
 	in.chara_watch_xz_r = 5500.0f;
-	in.chara_slots = s_slots;               // all empty until enemies and items are characters
+	in.chara_slots = p->chara ? p->chara : s_slots;   // empty when the caller has none
 
 	SH2CamOutput out;
 	sh2cam_exec(&in, &out);

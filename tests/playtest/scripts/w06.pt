@@ -23,9 +23,30 @@ pt ev 20
 pt expect stage 21
 pt ev 17
 pt expect stage 20
+# the keypad (0x58fae0): 7 3 3 5 on easy and normal riddles, 1 3 2 8 on hard and extra
 pt evgo 33
 pt until panel 20
-pt solve keypad
+pt riddle 0,1 press DOWN
+pt riddle 0,1 press DOWN
+pt riddle 0,1 press A
+pt riddle 0,1 press UP
+pt riddle 0,1 press UP
+pt riddle 0,1 press RIGHT
+pt riddle 0,1 press RIGHT
+pt riddle 0,1 press A
+pt riddle 0,1 press A
+pt riddle 0,1 press DOWN
+pt riddle 0,1 press LEFT
+pt riddle 0,1 press A
+pt riddle 2,3 press A
+pt riddle 2,3 press RIGHT
+pt riddle 2,3 press RIGHT
+pt riddle 2,3 press A
+pt riddle 2,3 press LEFT
+pt riddle 2,3 press A
+pt riddle 2,3 press DOWN
+pt riddle 2,3 press DOWN
+pt riddle 2,3 press A
 pt idle
 pt expect flag 181 1
 pt ev 35
@@ -58,9 +79,20 @@ pt ev 27
 pt ev 19
 pt ev 35
 pt ev 59
+pt prog box 1234 1111
 pt evgo 9
 pt until panel 30
-pt solve box
+pt press RIGHT
+pt press RIGHT
+pt press RIGHT
+pt press RIGHT
+pt press A
+pt press RIGHT
+pt press A
+pt press RIGHT
+pt press A
+pt press RIGHT
+pt press A
 pt idle
 pt expect flag 171 1
 pt expect item 53 1

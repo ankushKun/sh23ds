@@ -1,11 +1,21 @@
 #include "pausemenu.h"
+#include "events.h"
 #include "font.h"
 #include "sfx.h"
 #include "touchui.h"
 #include <stdio.h>
 
-// the PC's English strings (0x7abd84, by language in 0x407310)
-static const char* const ITEM[5] = { "Resume", "Save Game", "Load Game", "Options", "Quit" };
+// The PC's strings by language (0x407310 picks the table, English 0x7abd84): the title, the five
+// rows, the quit question, Yes and No, from the pack's pause.msg; English when the pack has none.
+static const char* const ENGLISH[9] = { "PAUSED", "Resume", "Save Game", "Load Game", "Options", "Quit",
+	"Exit to Main Menu?", "Yes", "No" };
+enum { S_TITLE, S_ROW, S_ASK = 6, S_YES, S_NO };
+
+static const char* str(int n)
+{
+	const char* m = ev_pause_message(n);
+	return m && *m ? m : ENGLISH[n];
+}
 
 static bool s_on, s_can_save, s_ask;
 static int s_sel, s_yes;          // 0x9352b4; gPauseMenuQuitIndex (0 Yes, 1 No)
@@ -26,14 +36,14 @@ static void touch(void)
 	static const TouiButton prompts[2] = { { "Select", KEY_A }, { "Back", KEY_B } };
 	touchui_box(NULL, NULL, 0);
 	if (s_ask) {
-		static const char* const yesno[2] = { "Yes", "No" };
+		const char* yesno[2] = { str(S_YES), str(S_NO) };
 		s_touch_yes = s_yes;
-		touchui_menu_ex(TOUI_PAUSE, "Exit to Main Menu?", yesno, 2, &s_touch_yes, prompts, 2, 0, TOUI_ONE_TAP);
+		touchui_menu_ex(TOUI_PAUSE, str(S_ASK), yesno, 2, &s_touch_yes, prompts, 2, 0, TOUI_ONE_TAP);
 		return;
 	}
-	const char* rows[7] = { ITEM[0], ITEM[1], ITEM[2], ITEM[3], ITEM[4], "Map", "Memos" };
+	const char* rows[7] = { str(S_ROW), str(S_ROW + 1), str(S_ROW + 2), str(S_ROW + 3), str(S_ROW + 4), "Map", "Memos" };
 	s_touch_sel = s_sel;
-	touchui_menu_ex(TOUI_PAUSE, "PAUSED", rows, 7, &s_touch_sel, prompts, 2, s_can_save ? 0 : 2, TOUI_ONE_TAP);
+	touchui_menu_ex(TOUI_PAUSE, str(S_TITLE), rows, 7, &s_touch_sel, prompts, 2, s_can_save ? 0 : 2, TOUI_ONE_TAP);
 }
 
 void pausemenu_open_at(bool can_save, int row)
@@ -143,10 +153,10 @@ void pausemenu_draw_top(void)
 	const u32 grey = 0xfefefe00u;
 	if (s_ask) {
 		// 0x407620 state 10: the question at (256, 232); the answers are on the touch screen
-		text(256, 232, "Exit to Main Menu?", FONT_CENTER, grey, 0xff);
+		text(256, 232, str(S_ASK), FONT_CENTER, grey, 0xff);
 		return;
 	}
-	text(256, 196, "PAUSED", FONT_CENTER, grey, 0xff);
+	text(256, 196, str(S_TITLE), FONT_CENTER, grey, 0xff);
 	// where James is and the play time, in the small font (the port's)
 	char t[24];
 	int s = (int)s_time;

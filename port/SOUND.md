@@ -21,6 +21,7 @@ It takes about 3 seconds and needs only `sh2pc.exe` and `data/`.
 | `floor/<map>.sfm` | every floor polygon of the room's `.cld` with its collision material (footstep surface) |
 | `steps.txt` | heel-strike frames of James' walk and run clips, found from the animation |
 | `bgm.bin` | the BGM file list, the 48 BGM pages, the per-stage sound areas and the room-id tables |
+| `adx/levels.txt`, `voice/levels.txt` | the loudness and peak of each music file and scene voice (`levels.py`, the music and demos steps; see "Levels") |
 
 Formats are documented at the top of `sound.py`. In short: `se.bnk` is a 32-byte header, a sample
 table `{offset, frames, rate, flags}`, a sorted `{game id, sample}` table, the door table (6 x u16 per
@@ -166,17 +167,53 @@ menus; the port leaves it at 1.
 per-layer gains, ramped across each 4096-sample buffer. Plain `audio_play_music` keeps the old
 behaviour (layer 0 only), `audio_play_layers` starts everything silent for `bgm.c`.
 
+### Stage pages, program pages and scenes (high)
+
+The situation page comes from the stage's `bgm_control` (Stage_Data + 0x30, called by 0x515690); all
+25 are in `bgm.c`, read from the disassembly since most are not functions in Ghidra. The area records
+keep their scene and story layers under pages 1, 4 and 5, so without them the toilet (track 0 only
+under page 4) and most scenes were silent. Pages 6 and up are fixed mixes (0x8a9eb8), taken in the
+sndGetSoundAryByCharaPos branch (0x5187e0). Programs set pages themselves through 0x5155e0 (the
+PS2's SeBgmCall by its signature): AngelaInGrave 2 then 3, LauraPlayPiano 0x21 then 0x23,
+LauraDeceive1st 0x12, MariaKilled 0x17, VideoReplay 0 then 0x25, MariaMeeting 0xd then 0xb, Orgel 0x22
+when solved or a layer per box. SeBgmChange runs only on a stage load or warp (0x401fc0, gEventIndex
+3), so a program's page holds until then. "Scene running" is 0x934d94 bit 0x40 with the demo number
+(0x49fe20); `demo.c` keeps a cue table for the flags programs set mid-scene.
+
 ### Not ported
 
-- Situation pages 2 and 3 (low health, enemy near) and the stage `bgm_control` programs that return
-  pages 6 and up (fixed mixes at 0x8A9EB8). Enemies exist now, but nothing calls `bgm_set_situation`
-  yet, so the page never changes.
-- Stage 15 waits for its stage program to start the music (`DAT_01F837D0`, flag 159 in the port);
-  nothing sets it, so the stage stays silent.
-- Ducking during events and menus. (The BGM and SE volume options, 0x401 / 0x402, are in: Game
+- Situation pages 2 and 3 (an enemy within 6000 units, James' health under 0.2), so a stage's
+  `bgm_control` page below 4 always stands.
+- Stage 15 waits for its stage program to start the music (`DAT_01F837D0`). The port waits for flag 159
+  instead, which the bowling alley door's program sets.
+- The 0.5 duck in the menus that stop the game (gEventIndex 5..9); scenes duck by DramaDemoNumber
+  (1.0 or 0.7, moving 0.5 a second, the tail of 0x516080). (The BGM and SE volume options, 0x401 / 0x402, are in: Game
   Options, `audio_set_gains` and `sfx_set_gain`; the cutscene voice follows the SE volume.)
 - Per-room footstep overrides (`sfx.c`, rooms 0x78, 0x2a, 0x46, 0x3e, 0xb8, 0x92..0xa3).
 - The `.dat` files per building (see above; the PC sound code doesn't read them either).
+
+## Levels (3DS-only)
+
+The PC plays its music, scene voices and movies at the levels the files were mastered at, with the
+volumes its code gives them, and leaves the rest to the computer's speakers. Measured in the pack
+(BS.1770, all layers of an AIX on, at full option volume) they lie far apart: the music from -30 to
+-15 LUFS after the PC's per-file masters, the voices from -42 to -9, the movies from -26 to -6. On the
+console's speakers the quiet ones were hard to hear next to the others.
+
+- `tools/sh2conv/levels.py` measures each file's loudness and peak when it is packed: the music in the
+  music step (from the game's files, `sound/adx/levels.txt`), the voices in the demos step
+  (`sound/voice/levels.txt`) and every audio track of the movies in the movies step (`movie/levels.txt`).
+- `levels.c` turns a measurement into the gain that brings the file to its kind's target (`levels.h`):
+  music -11 LUFS in place of the PC's per-file master (the duck under scenes and the area fades stay),
+  voices -10, movies -11. A file's peak may be lifted at most 3 dB (music), 6 dB (movies) or 9 dB
+  (speech, whose consonants stand far over the voice) over full scale: the software mix runs a peak
+  limiter (`levels_limiter`: 32-frame blocks turned down at once to 3/4 of full scale, back up over
+  80 ms) and then bends what is left towards full scale (`levels_limit`) instead of clipping it.
+- A pack made before `levels.py` keeps the PC's masters 2 dB up and the voices 2 dB up.
+- Effects keep the PC's curve, 6 dB higher up to full scale and a quarter of that past it, where ndsp
+  clips softly (`sfx.c`): the steps and the far-off sounds come up most, those at full level 2 dB.
+- Measured in Azahar at the default option volumes (12 of 15): the apartment's music with a door came
+  out at -11.3 LUFS (-16 with the PC's master), with under 0.1 % of the samples at full scale.
 
 ## Runtime on the 3DS
 

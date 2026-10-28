@@ -116,6 +116,9 @@ static void tex_halve(C3D_Tex* t)
 	*t = h;
 }
 
+static bool s_map_mips;
+void room_set_map_mipmaps(bool on) { s_map_mips = on; }
+
 static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const RoomTexBlob* tex, int ntex)
 {
 	if (strcmp(area, s_cache_area) != 0) {
@@ -164,7 +167,16 @@ static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const R
 	e->bytes = e->tex.size * 4 / 3;      // level 0 plus the mipmap chain
 	C3D_TexSetFilter(&e->tex, GPU_LINEAR, GPU_LINEAR);
 	C3D_TexSetFilterMipmap(&e->tex, GPU_LINEAR);
-	C3D_TexSetWrap(&e->tex, GPU_REPEAT, GPU_REPEAT);
+	// 0x459320 makes the map textures with one level (0x457460 passes the header's byte 0x15, 0 in
+	// every map), so the PC never samples a smaller one. The pack's mipmaps of these atlases blend
+	// each cell with its neighbours, which drew a line along every quad edge of the ground on a
+	// console; only level 0 is sampled, as on the PC (debug.txt "mapmips 1" puts the chain back)
+	if (!s_map_mips)
+		e->tex.maxLevel = 0;
+	// 0x5b4f10 sets D3DTSS_ADDRESSU and ADDRESSV to D3DTADDRESS_CLAMP on stage 0 for the whole map,
+	// and the material setup (0x5b2f90) never changes them: a quad on a cell at the atlas' border
+	// must not filter in the far side of the atlas, and the few UVs past 0..1 stop at the edge
+	C3D_TexSetWrap(&e->tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
 	e->ok = true;
 	return &e->tex;
 }
@@ -202,25 +214,94 @@ bool room_load(Room* room, const char* pack, const char* area, const char* name,
 }
 
 #define S3M_REBASED 0x80000000u    // version bit set by room_prepare (in memory only)
+#define S3M_BOXED 0x40000000u      // room_prepare appended the chunk boxes (in memory only)
 
-void room_prepare(u8* data, long size)
+// The chunks (room.h ROOM_CHUNK_TRIS) of all of an .s3m's batches.
+static u32 chunk_total(const S3MHeader* h, const RoomBatchFile* fb)
+{
+	u32 n = 0;
+	for (u32 i = 0; i < h->n_batches; i++)
+		n += (fb[i].index_count / 3 + ROOM_CHUNK_TRIS - 1) / ROOM_CHUNK_TRIS;
+	return n;
+}
+
+// The box around n boxes.
+static RoomBox box_merge(const RoomBox* b, u32 n)
+{
+	float lo[3] = { 1e30f, 1e30f, 1e30f }, hi[3] = { -1e30f, -1e30f, -1e30f };
+	for (u32 i = 0; i < n; i++)
+		if (b[i].e[0] >= 0.0f)
+			for (int k = 0; k < 3; k++) {
+				lo[k] = b[i].c[k] - b[i].e[k] < lo[k] ? b[i].c[k] - b[i].e[k] : lo[k];
+				hi[k] = b[i].c[k] + b[i].e[k] > hi[k] ? b[i].c[k] + b[i].e[k] : hi[k];
+			}
+	RoomBox x;
+	for (int k = 0; k < 3; k++)
+		x.c[k] = (lo[k] + hi[k]) * 0.5f, x.e[k] = (hi[k] - lo[k]) * 0.5f;
+	return x;                            // nothing: e[0] comes out negative
+}
+
+// The boxes of one batch's chunks (its indices rebased to the room's vertices), into out.
+static void chunk_boxes(const u8* vtx, u32 nv, const u16* idx, u32 count, RoomBox* out)
+{
+	u32 tris = count / 3;
+	for (u32 c = 0; c * ROOM_CHUNK_TRIS < tris; c++) {
+		float lo[3] = { 1e30f, 1e30f, 1e30f }, hi[3] = { -1e30f, -1e30f, -1e30f };
+		u32 i0 = c * ROOM_CHUNK_TRIS * 3, i1 = i0 + ROOM_CHUNK_TRIS * 3;
+		if (i1 > tris * 3)
+			i1 = tris * 3;
+		for (u32 n = i0; n < i1; n++) {
+			if (idx[n] >= nv)
+				continue;
+			float p[3];
+			memcpy(p, vtx + idx[n] * ROOM_VERTEX_SIZE, sizeof p);
+			for (int k = 0; k < 3; k++) {
+				lo[k] = p[k] < lo[k] ? p[k] : lo[k];
+				hi[k] = p[k] > hi[k] ? p[k] : hi[k];
+			}
+		}
+		for (int k = 0; k < 3; k++)
+			out[c].c[k] = (lo[k] + hi[k]) * 0.5f, out[c].e[k] = (hi[k] - lo[k]) * 0.5f;
+	}
+}
+
+u8* room_prepare(u8* data, long* size)
 {
 	S3MHeader* h = (S3MHeader*)data;
-	if (size < (long)sizeof *h || memcmp(h->magic, "S3M1", 4) != 0 || h->version != 2)
-		return;
-	if (h->ofs_batches + h->n_batches * sizeof(RoomBatchFile) > (u32)size ||
-	    h->ofs_indices + h->n_indices * sizeof(u16) > (u32)size)
-		return;
+	if (*size < (long)sizeof *h || memcmp(h->magic, "S3M1", 4) != 0 || h->version != 2)
+		return data;
+	if (h->ofs_batches + h->n_batches * sizeof(RoomBatchFile) > (u32)*size ||
+	    h->ofs_indices + h->n_indices * sizeof(u16) > (u32)*size ||
+	    h->ofs_vertices + h->n_vertices * ROOM_VERTEX_SIZE > (u32)*size)
+		return data;
 	const RoomBatchFile* fb = (const RoomBatchFile*)(data + h->ofs_batches);
 	u16* idx = (u16*)(data + h->ofs_indices);
 	for (u32 i = 0; i < h->n_batches; i++) {
 		if (fb[i].first_index + fb[i].index_count > h->n_indices)
-			return;                      // left to room_load_mem, which does the same
+			return data;                 // left to room_load_mem, which does the same
 	}
 	for (u32 i = 0; i < h->n_batches; i++)
 		for (u32 k = 0; k < fb[i].index_count; k++)
 			idx[fb[i].first_index + k] = (u16)(idx[fb[i].first_index + k] + fb[i].first_vertex);
 	h->version |= S3M_REBASED;
+	// the chunk boxes too, appended (4-byte aligned) for room_load_mem to take
+	u32 total = chunk_total(h, fb);
+	long at = (*size + 3) & ~3L;
+	u8* grown = realloc(data, at + total * sizeof(RoomBox));
+	if (!grown)
+		return data;
+	data = grown;
+	h = (S3MHeader*)data;
+	fb = (const RoomBatchFile*)(data + h->ofs_batches);
+	idx = (u16*)(data + h->ofs_indices);
+	RoomBox* box = (RoomBox*)(data + at);
+	for (u32 i = 0; i < h->n_batches; i++) {
+		chunk_boxes(data + h->ofs_vertices, h->n_vertices, idx + fb[i].first_index, fb[i].index_count, box);
+		box += (fb[i].index_count / 3 + ROOM_CHUNK_TRIS - 1) / ROOM_CHUNK_TRIS;
+	}
+	*size = at + total * sizeof(RoomBox);
+	h->version |= S3M_BOXED;
+	return data;
 }
 
 int room_texture_ids(const u8* data, long size, u32* out, int max)
@@ -380,7 +461,8 @@ bool room_load_mem(Room* room, const char* pack, const char* area, const char* n
 	memset(room, 0, sizeof *room);
 	S3MHeader* h = (S3MHeader*)data;
 	bool rebased = size >= (long)sizeof *h && (h->version & S3M_REBASED);
-	if (size < (long)sizeof *h || memcmp(h->magic, "S3M1", 4) != 0 || (h->version & ~S3M_REBASED) != 2) {
+	bool boxed = rebased && (h->version & S3M_BOXED);
+	if (size < (long)sizeof *h || memcmp(h->magic, "S3M1", 4) != 0 || (h->version & ~(S3M_REBASED | S3M_BOXED)) != 2) {
 		char path[256];
 		snprintf(path, sizeof path, "%s/bg/%s/%s.s3m", pack, area, name);
 		free(data);
@@ -452,6 +534,36 @@ bool room_load_mem(Room* room, const char* pack, const char* area, const char* n
 				b->indices[k] = (u16)(fidx[fb[i].first_index + k] + b->first_vertex);
 	}
 	memcpy(room->vertices, data + h->ofs_vertices, h->n_vertices * ROOM_VERTEX_SIZE);
+	// the culling boxes of each chunk of each batch (room.h), from room_prepare on the reader thread
+	// when it ran, else from the triangles here; then the group boxes and each batch's box
+	u32 total = chunk_total(h, fb), groups = 0;
+	for (u32 i = 0; i < h->n_batches; i++)
+		groups += ((fb[i].index_count / 3 + ROOM_CHUNK_TRIS - 1) / ROOM_CHUNK_TRIS + ROOM_GROUP_CHUNKS - 1) /
+		          ROOM_GROUP_CHUNKS;
+	room->chunk_mem = total ? malloc((total + groups) * sizeof(RoomBox)) : NULL;
+	if (room->chunk_mem) {
+		if (boxed)
+			memcpy(room->chunk_mem, data + size - total * sizeof(RoomBox), total * sizeof(RoomBox));
+		RoomBox* box = room->chunk_mem;
+		RoomBox* group = room->chunk_mem + total;
+		for (u32 i = 0; i < h->n_batches; i++) {
+			RoomBatch* b = &room->batches[i];
+			b->n_chunks = (b->index_count / 3 + ROOM_CHUNK_TRIS - 1) / ROOM_CHUNK_TRIS;
+			b->chunks = box;
+			b->groups = group;
+			if (!boxed)
+				chunk_boxes(room->vertices, h->n_vertices, b->indices, b->index_count, box);
+			for (u32 c = 0; c < b->n_chunks; c += ROOM_GROUP_CHUNKS)
+				*group++ = box_merge(box + c, b->n_chunks - c < ROOM_GROUP_CHUNKS ? b->n_chunks - c : ROOM_GROUP_CHUNKS);
+			box += b->n_chunks;
+		}
+	}
+	for (u32 i = 0; i < h->n_batches; i++) {
+		RoomBatch* b = &room->batches[i];
+		// without chunk boxes (out of memory): an empty box with a negative size, drawn whole
+		b->box = b->chunks ? box_merge(b->groups, (b->n_chunks + ROOM_GROUP_CHUNKS - 1) / ROOM_GROUP_CHUNKS)
+		                   : (RoomBox){ { 0, 0, 0 }, { -1.0f, 0, 0 } };
+	}
 	free(data);
 	parts_register(room, area, name);
 	return true;
@@ -465,6 +577,7 @@ void room_free(Room* room)
 		for (u32 i = 0; i < room->n_batches; i++)
 			if (room->batches[i].indices)
 				linearFree(room->batches[i].indices);
+	free(room->chunk_mem);
 	free(room->batches);
 	if (room->vertices)
 		linearFree(room->vertices);

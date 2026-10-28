@@ -471,13 +471,13 @@ static void load_s3l_append(const char* path)
 	if (!f)
 		return;
 	u32 h[4];
-	if (fread(h, sizeof h, 1, f) == 1 && !memcmp(h, "S3L1", 4)) {
+	if (fread(h, sizeof h, 1, f) == 1 && !memcmp(h, "S3L1", 4) && h[1] >= 1 && h[1] <= S3L_VERSION) {
 		FloorTri* nf = realloc(s_ac.floors, (s_ac.n_floors + h[2] + 1) * sizeof(FloorTri));
 		WallSeg* nw = realloc(s_ac.walls, (s_ac.n_walls + h[3] + 1) * sizeof(WallSeg));
 		if (nf) s_ac.floors = nf;
 		if (nw) s_ac.walls = nw;
 		if (nf && nw && fread(s_ac.floors + s_ac.n_floors, sizeof(FloorTri), h[2], f) == h[2] &&
-		    fread(s_ac.walls + s_ac.n_walls, sizeof(WallSeg), h[3], f) == h[3]) {
+		    col_read_walls(f, s_ac.walls + s_ac.n_walls, h[3], h[1])) {
 			s_ac.n_floors += h[2];
 			s_ac.n_walls += h[3];
 		}

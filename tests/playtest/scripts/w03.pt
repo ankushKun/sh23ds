@@ -33,7 +33,8 @@ pt expect stage 12
 # second floor: the cry, room 208, room 202 and the clock key
 pt ev 23
 pt expect stage 7
-# (the cry: an enter trigger on the way)
+# the cry: an enter trigger down the hall from the stairwell door (stage 7 ev 6)
+pt ev 6
 pt expect flag 69 1
 pt ev 7
 pt expect flag 71 1
@@ -46,9 +47,11 @@ pt ev 13
 pt expect flag 79 1
 pt expect item 28 1
 # the clock in 208, then through the hole to 209
+pt prog clock 545
 pt evgo 17
 pt until panel 30
-pt solve clock
+pt press RIGHT 11
+pt press B
 pt idle
 pt ev 22
 pt expect flag 82 1

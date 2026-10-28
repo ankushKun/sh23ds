@@ -58,7 +58,7 @@ static void read_job(StreamJob* j)
 	snprintf(path, sizeof path, "%s/bg/%s/%s.s3m", W.pack, j->area, j->name);
 	j->s3m = read_file(path, &j->s3m_size);
 	if (j->s3m)
-		room_prepare(j->s3m, j->s3m_size);   // the index rebase, off the main thread
+		j->s3m = room_prepare(j->s3m, &j->s3m_size);   // the index rebase and boxes, off the main thread
 	snprintf(path, sizeof path, "%s/bg/%s/%s.s3l", W.pack, j->area, j->name);
 	j->s3l = read_file(path, &j->s3l_size);
 	snprintf(path, sizeof path, "%s/sound/floor/%s.sfm", W.pack, j->name);

@@ -7,6 +7,7 @@
 #include <string.h>
 #include "movie_shbin.h"
 #include "sfx.h"
+#include "levels.h"
 #include "profile.h"
 
 // pl_mpeg is plain C without SIMD; -O3 lets GCC unroll its IDCT and motion compensation loops.
@@ -82,6 +83,8 @@ static u64 s_buf_start[NABUF];      // first sample of each queued buffer within
 static bool s_buf_used[NABUF];
 static u64 s_queued;                // samples handed to ndsp so far
 static u32 s_rate;
+static float s_again = 1.0f;      // the track's gain to the movies' loudness (levels.h)
+static LevelLimiter s_alim;
 static bool s_has_audio, s_audio_over, s_started;
 static volatile bool s_audio_eof;   // set by the audio thread
 static volatile u32 s_abufs;        // wave buffers queued so far
@@ -214,10 +217,12 @@ static void audio_feed(void)
 			}
 			const float* in = smp->interleaved;
 			s16* o = out + n * 2;
-			for (u32 k = 0; k < smp->count * 2; k++) {
-				float v = in[k] * 32767.0f;
-				o[k] = (s16)(v > 32767.0f ? 32767 : v < -32768.0f ? -32768 : (int)v);
-			}
+			static s32 lr[PLM_AUDIO_SAMPLES_PER_FRAME * 2];
+			for (u32 k = 0; k < smp->count * 2; k++)
+				lr[k] = (s32)(in[k] * 32767.0f * s_again);
+			levels_limiter(&s_alim, lr, (int)smp->count, s_rate);
+			for (u32 k = 0; k < smp->count * 2; k++)
+				o[k] = levels_limit(lr[k]);
 			n += smp->count;
 		}
 		if (!n)
@@ -348,6 +353,11 @@ bool movie_start(const char* name)
 		// keeps them out of another track (open_voc began with 108 ms of open_bgm).
 		plm_set_audio_stream(s_aplm, track < s_tracks ? track : 0);
 		plm_rewind(s_aplm);
+		// the track brought to the movies' loudness (levels.h); a pack with no measurement as it was
+		char mpg[32];
+		snprintf(mpg, sizeof mpg, "%s.mpg", file);
+		s_again = levels_gain(MOVIE_DIR, mpg, track < s_tracks ? track : 0, LEVEL_MOVIE, LEVEL_PEAK_MOVIE, 1.0f);
+		memset(&s_alim, 0, sizeof s_alim);
 		s_rate = plm_get_samplerate(s_aplm);
 		s_has_audio = s_rate > 0;
 	}

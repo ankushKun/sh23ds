@@ -41,6 +41,7 @@
 
 enum { B_NONE, B_DOCK, B_ROW };
 static int s_mode;
+static bool s_placed;                   // boat_embark_at: James goes to the boat, not the boat to him
 static bool s_loaded, s_failed, s_janim_ok;
 static Character s_chr;
 static Anim s_anim, s_janim;
@@ -202,6 +203,7 @@ void boat_embark_at(float x, float z, float yaw)
 	boat_embark();
 	place(x, 3592.5f, z, yaw);
 	s_pos[1] = 7.38f * UNIT;
+	s_placed = true;
 }
 
 void boat_embark(void)
@@ -210,6 +212,7 @@ void boat_embark(void)
 	place(-14970.1f, 3592.5f, -98254.0f, -1.5707964f);   // 0x8cf698
 	s_pos[1] = 7.38f * UNIT;                              // 0x53fe40 step 0: on the water
 	s_mode = B_ROW;
+	s_placed = false;
 	gamecam_on_boat(true);
 }
 
@@ -389,12 +392,14 @@ void boat_update(const BoatInput* in, const Collision* col, float dt, float pos[
 	if (s_mode != B_ROW)
 		return;
 	// James was put somewhere else (a warp, the playtest standing him at a trigger): the boat goes
-	// with him, as the PC's boat takes him along (0x540190)
-	if (fabsf(pos[0] - s_pos[0]) + fabsf(pos[2] - s_pos[2]) > 300.0f) {
+	// with him, as the PC's boat takes him along (0x540190). Not after debug.txt's "boat x z yaw",
+	// which is read before the spawn places James on the nearest floor (the town pier)
+	if (!s_placed && fabsf(pos[0] - s_pos[0]) + fabsf(pos[2] - s_pos[2]) > 300.0f) {
 		s_pos[0] = pos[0], s_pos[2] = pos[2];
 		s_rot[1] = *yaw;
 		s_speed = s_rotv = 0.0f;
 	}
+	s_placed = false;
 	float k = dt * 30.0f;
 	keys(in);
 	// 0x53ebf0
@@ -508,6 +513,8 @@ void boat_draw(const C3D_Mtx* view, int uModelView, int uBones)
 	Mtx_Multiply(&mv, view, &model);
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
 	s_bblend.look_head = s_bblend.look_neck = -1;
+	s_bblend.loop_start = (int)(s_cur * FRAMES);           // the rowing motions loop (s_frame wraps)
+	s_bblend.loop_end = (int)(s_cur * FRAMES + FRAMES) - 1;
 	if (s_mode == B_ROW)
 		chr_pose_blend(&s_chr, &s_anim, (float)s_cur * FRAMES + s_frame, &s_bblend, s_dt);
 	else
@@ -540,6 +547,8 @@ bool boat_james_pose(Character* james, float dt)
 		s_jstatus = st;
 	}
 	s_jblend.look_head = s_jblend.look_neck = -1;
+	s_jblend.loop_start = st * 75;
+	s_jblend.loop_end = st * 75 + 74;
 	chr_pose_blend(james, &s_janim, (float)st * 75.0f + s_frame * 0.5f, &s_jblend, dt);
 	return true;
 }

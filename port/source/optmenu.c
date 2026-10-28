@@ -28,7 +28,7 @@ typedef struct {
 	const char* const* texts;
 } Row;
 
-#define MAX_ROWS 12
+#define MAX_ROWS 13
 #define VISIBLE 10               // the PC's panel holds ten rows (y 100 to 343)
 
 static Options* s_live;
@@ -46,10 +46,12 @@ static const short NORMAL_SWITCH[2] = { 70, 47 };
 static const short ZOOM[2] = { 95, 96 };
 static const short WALK_RUN[3] = { 102, 104, 103 };   // Walk, Analog, Run
 static const short BLOOD[4] = { 70, 50, 51, 52 };     // Normal, Green, Violet, Black
+static const short LANGUAGE[5] = { 79, 81, 80, 82, 83 }; // English, French, German, Italian, Spanish (0x461600)
 static const char* const SCREENS[2] = { "Bottom Screen", "Top Screen" };
 static const char* const PC_PS2[2] = { "PC", "PS2" };
 static const char* const FRAMING[2] = { "Full Width", "4:3" };
 static const char* const RUN_BUTTON[2] = { "Hold", "Toggle" };
+static const char* const CAMERA[2] = { "Original", "Behind" };
 static const char* const TIMING[2] = { "PC", "Hold A" };
 static const char* const SWAP[2] = { "Normal", "Swapped" };
 static const char* const OFF_ON_TEXT[2] = { "Off", "On" };
@@ -79,23 +81,27 @@ void opt_defaults(Options* o)
 	o->ps2_flash = o->noise_ps2 = o->ps2_camera = o->cutscene_fov = 1;
 	o->hold_stomp = o->swap_attack = 1;
 	o->msg_top = 1;              // messages are the top screen's (port/UI.md)
+	o->stereo = 1;               // 3D follows the slider
 	o->control_type = 1;         // Directional Style: the stick points where James goes
 	o->inf_stamina = 1;
+	o->lang = (u8)ev_system_language();   // 0x4f6cc0 when there is no language.ini
 }
 
 typedef struct { const char* key; size_t off; u8 lo, hi; } Key;
 #define K(name, field, lo, hi) { name, offsetof(Options, field), lo, hi }
 static const Key s_keys[] = {
-	K("controls", control_type, 0, 1), K("subtitles", subtitles, 0, 1), K("speaker", speaker, 0, 2),
+	K("controls", control_type, 0, 1), K("language", lang, 1, 5), K("subtitles", subtitles, 0, 1),
+	K("speaker", speaker, 0, 2),
 	K("bgmvol", bgm, 0, 15), K("sevol", se, 0, 15), K("brightness", bright, 0, 7), K("noise", noise, 0, 1),
 	K("shadows", shadows, 0, 1), K("fog", fog, 0, 1), K("weaponcontrol", weapon, 0, 1),
 	K("mapzoom", map_zoom, 0, 1), K("walkrun", walk_run, 0, 2), K("viewcontrol", view, 0, 1),
 	K("bloodcolor", blood, 0, 3), K("bulletadjust", bullet, 1, 3), K("messagestop", msg_top, 0, 1),
+	K("stereo3d", stereo, 0, 1),
 	K("ps2flashlight", ps2_flash, 0, 1), K("ps2noise", noise_ps2, 0, 1), K("ps2camera", ps2_camera, 0, 1),
 	K("cutscenefov", cutscene_fov, 0, 1), K("togglerun", toggle_run, 0, 1), K("holdstomp", hold_stomp, 0, 1),
 	K("swapattack", swap_attack, 0, 1), K("hwprofile", hwprofile, 0, 2), K("quality", quality, 0, 2),
 	K("framerate", framerate, 0, 2), K("ctrllayout", ctrllayout, 0, 2), K("infstamina", inf_stamina, 0, 1),
-	K("infammo", inf_ammo, 0, 1),
+	K("infammo", inf_ammo, 0, 1), K("camera", camera, 0, 1),
 };
 
 // options.txt files written before these defaults (no "optver" line) take the new defaults of the
@@ -163,12 +169,14 @@ static void build(void)
 	s_n = 0;
 	switch (s_page) {
 	case PG_MAIN:
-		// 0x461600 page 2: three pages, then the settings (Vibration and Language left out)
+		// 0x461600 page 2: three pages, then the settings (Vibration left out)
 		add(K_PAGE, 189, NULL, 190, NULL, NULL, 0, 0, NULL, NULL, PG_GAME);
 		add(K_PAGE, 166, NULL, 191, NULL, NULL, 0, 0, NULL, NULL, PG_ADV);
 		add(K_PAGE, 6, NULL, 7, NULL, NULL, 0, 0, NULL, NULL, PG_CONTROL);
 		add(K_PAGE, -1, "Cheats", -1, "Infinite stamina, infinite ammo", NULL, 0, 0, NULL, NULL, PG_CHEATS);
 		LIST(84, 87, control_type, 2, CONTROL_TYPE);
+		// Language (76, help 77): English to Spanish and round again either way (0x4630c0 row 5)
+		add(K_LIST, 76, NULL, 77, NULL, &s_live->lang, 1, 5, LANGUAGE, NULL, 0);
 		LIST(74, 75, subtitles, 2, OFF_ON);
 		LIST(34, 35, speaker, 3, SPEAKER);
 		add(K_BAR, 40, NULL, 41, NULL, &s_live->bgm, 0, 15, NULL, NULL, 0);
@@ -192,6 +200,7 @@ static void build(void)
 		LIST(175, 203, shadows, 2, OFF_ON);
 		LIST(178, 204, fog, 2, FOG);
 		OWN("Messages", "Show messages and subtitles on the top screen", msg_top, SCREENS);
+		OWN("3D", "Depth on the top screen with the 3D slider", stereo, OFF_ON_TEXT);
 		OWN("Flashlight", "Enhanced Edition: the PS2's softer flashlight", ps2_flash, PC_PS2);
 		OWN("Noise Style", "Enhanced Edition: the PS2's darker grain", noise_ps2, PC_PS2);
 		OWN("Camera Speed", "Enhanced Edition: the PS2's camera speed", ps2_camera, PC_PS2);
@@ -213,6 +222,7 @@ static void build(void)
 		// the PC's key setup becomes the port's: the buttons of each action (controls.c), then the
 		// control settings
 		add(K_PAGE, -1, "Buttons", -1, "Choose the button for each action", NULL, 0, 0, NULL, NULL, PG_BUTTONS);
+		OWN("Camera", "Behind: a camera that follows James", camera, CAMERA);
 		OWN("Run Button", "Enhanced Edition: B starts and stops running", toggle_run, RUN_BUTTON);
 		OWN("Heavy Attack", "Enhanced Edition: hold A to stomp or swing heavy", hold_stomp, TIMING);
 		OWN("Light / Heavy", "Enhanced Edition: swap the light and heavy swings", swap_attack, SWAP);
@@ -263,7 +273,7 @@ static const char* page_title(int page)
 	case PG_BUTTONS: return "Buttons";
 	case PG_CHEATS: return "Cheats";
 	}
-	return "Options";
+	return ev_language() == 1 ? "Options" : msg(23, "Options");   // "Option" in English
 }
 
 static int s_touch_answer;          // the question's row on the touch screen: 0 Yes, 1 No
@@ -346,11 +356,17 @@ static void changed(void)
 
 static void step(Row* r, int dir)
 {
-	int v = *r->v + dir;
-	if (v > r->hi)
-		v = r->wrap ? r->lo : r->hi;
-	if (v < r->lo)
-		v = r->wrap ? r->hi : r->lo;
+	int v = *r->v;
+	for (int k = 0; k <= r->hi - r->lo; k++) {
+		v += dir;
+		if (v > r->hi)
+			v = r->wrap ? r->lo : r->hi;
+		if (v < r->lo)
+			v = r->wrap ? r->hi : r->lo;
+		// the Language row passes over the languages the pack lacks (the PC has them all)
+		if (r->v != &s_live->lang || ev_language_available(v))
+			break;
+	}
 	if (v != *r->v) {
 		*r->v = (u8)v;
 		changed();
@@ -544,16 +560,38 @@ static void arrow(float x, float y, int dir, u32 rgba)
 	s_draw(NULL, v, 3, rgba);
 }
 
+// A title from option.msg when the pack carries its full-width codes (packs from before the other
+// languages have '?' there), NULL otherwise.
+static const char* full_width_msg(int n)
+{
+	const char* m = ev_option_message(n);
+	return m && strchr(m, FONT_FULL_WIDTH) ? m : NULL;
+}
+
 static void title(void)
 {
-	// the full-width titles (option_msg_e.mes 72, 73, 167; 0xfc03 moves back 3, 0xfffe a space)
+	// the full-width titles: option_msg 72 OPTIONS, 73 GAME OPTIONS, 167 ADVANCED OPTIONS
+	// (0x461600 / 0x464eb0 at 0x100, 0x34)
+	bool control = s_page == PG_CONTROL || s_page == PG_BUTTONS;
+	const char* t = full_width_msg(s_page == PG_GAME ? 73 : s_page == PG_ADV ? 167 : 72);
+	if (control && ev_language() != 1) {
+		// the PC's Control Options screen (0x467440) is its own; the port's page is titled with
+		// the row's name in the other languages (a stand-in)
+		font_text(FONT_BIG, 256, 52, msg(6, "Control Options"), FONT_CENTER, 0x808080ff, 0x808080ff);
+		return;
+	}
+	if (t && !control) {
+		font_text(FONT_BIG, 256, 52, t, FONT_CENTER, 0x808080ff, 0x808080ff);
+		return;
+	}
+	// the English codes (option_msg_e.mes 72, 73, 167; 0xfc03 moves back 3, 0xfffe a space), with
+	// CONTROL in the same letters for the port's Control Options page
 	static const u16 opt[] = { 0x18a, 0x18b, 0x18f, 0xfc03, 0x184, 0xfc03, 0x18a, 0x189, 0x18e };
 	static const u16 game[] = { 0x182, 0x17c, 0x188, 0x180, 0xfffe };
 	static const u16 adv[] = { 0x17c, 0x17f, 0x191, 0x17c, 0x189, 0x17e, 0x180, 0x17f, 0xfffe };
 	static const u16 ctl[] = { 0x17e, 0x18a, 0x189, 0x18f, 0x18d, 0x18a, 0x187, 0xfffe };
 	u16 line[24];
 	int n = 0;
-	bool control = s_page == PG_CONTROL || s_page == PG_BUTTONS;
 	const u16* head = s_page == PG_GAME ? game : s_page == PG_ADV ? adv : control ? ctl : NULL;
 	int hn = s_page == PG_GAME ? 5 : s_page == PG_ADV ? 9 : control ? 8 : 0;
 	for (int i = 0; i < hn; i++)
@@ -588,10 +626,21 @@ static void brightness_screen(void)
 	}
 	bool ch = s_live->bright != s_old.bright;
 	font_text(FONT_BIG, 25, 100, msg(4, "Adjust until vertical lines appear faint."), FONT_LEFT, 0x7e7e7eff, 0x7e7e7eff);
-	u16 level[] = { 0x187, 0xfc02, 0x19a, 0xfc04, 0x1ab, 0xfc04, 0x19a, 0xfc06, 0x1a1, 0xfc04, 0xfffe,
-	                (u16)(0x172 + s_live->bright) };
 	u32 c = ch ? 0x7e7e3eff : 0x7e7e7eff;
-	font_codes(FONT_BIG, 316, 420, level, sizeof level / sizeof *level, FONT_RIGHT, c, c);
+	const char* m = full_width_msg(5);   // "Level \1" in full-width letters, the level 0x172 + n
+	if (m) {
+		char line[160];
+		int k = 0;
+		for (; *m && k < (int)sizeof line - 6; m++)
+			k += *m == 1 ? snprintf(line + k, sizeof line - k, "%c%04x", FONT_FULL_WIDTH, 0x172 + s_live->bright)
+			             : (line[k] = *m, 1);
+		line[k] = 0;
+		font_text(FONT_BIG, 316, 420, line, FONT_RIGHT, c, c);
+	} else {
+		u16 level[] = { 0x187, 0xfc02, 0x19a, 0xfc04, 0x1ab, 0xfc04, 0x19a, 0xfc06, 0x1a1, 0xfc04, 0xfffe,
+		                (u16)(0x172 + s_live->bright) };
+		font_codes(FONT_BIG, 316, 420, level, sizeof level / sizeof *level, FONT_RIGHT, c, c);
+	}
 	arrow(290, 436, -1, 0x7e7e7eff);         // either side of the number (0x460c60 / 0x4610e0)
 	arrow(322, 436, 1, 0x7e7e7eff);
 }

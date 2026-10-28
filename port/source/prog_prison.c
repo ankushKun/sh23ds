@@ -149,12 +149,15 @@ static int s30_use_spiral_key(Prog* p)
 // 0x586d40 EvProgHoleTo4thLayer (flag 274 = FLAGW_256 |= 0x40000)
 static int s30_hole_to_4th(Prog* p) { return jump_hole(p, 4, DEMO_JUMP2, 274); }
 
-// 0x586f40 EvProgUseDryCell: a new battery for the flashlight; the room's monsters wake up.
+// 0x586f40 EvProgUseDryCell: a new battery for the flashlight; the room's creepers and nests come
+// out. The PC creates them (0x48fcc0) before the item message, setting their 0x148 bit 0x400; here
+// the list spawns them once the dry cell is gone (enemy.c, condition 0x340).
 static int s30_use_dry_cell(Prog* p)
 {
 	PROG_BEGIN(p)
 		p_lock(p, true);
 	PROG_STEP(p, 0x10, p_item_use(p, 0x37, 7, 0))
+		p_enemy_list();
 		p_clear(272);                   // FLAGW_256 &= ~0x10000
 		p_lock(p, false);
 	PROG_END(p)

@@ -7,6 +7,8 @@
 #include "fog_shbin.h"
 #include "quality.h"
 #include "perf.h"
+#include "stereo.h"
+#include "gpucost.h"
 
 // The PC fog particle layer, ported from the Director's Cut exe (static analysis; the PS2 beta's
 // Fog/fog.c gives the names and the FOG_WORK layout, which the PC keeps at 0x1f63b20..0x1f7d2cc).
@@ -114,6 +116,7 @@ static struct {
 	int uProj, uMv;
 	u8* vbuf;                    // this frame's triangles (FOG_VERTS), one of vbufs
 	u8* vbufs[2];                // two, swapped every frame (fog_draw says why)
+	u8* vbufs_right[2];          // the same for the right eye of 3D frames (stereo.h), made when first needed
 
 	Part part[FOG_MAX];
 	int nsim;                    // particles simulated (<= FOG_MAX)
@@ -1229,7 +1232,9 @@ void fog_update(const FogFrame* f)
 
 // ---------------------------------------------------------------- drawing
 
-typedef struct { float x, y, z, u, v; u8 c[4]; } FogVtx;
+// mx, my: where the vertex lies on its sprite, -1..1 from the centre (0, 0) to the corners, for the
+// falloff that fog_draw makes on the GPU (see there); 0, 0 on the screen layer
+typedef struct { float x, y, z, u, v, mx, my; u8 c[4]; } FogVtx;
 
 // A sprite near the camera projects to thousands of pixels; the console's rasterizer only holds
 // screen positions within a limited range, and a triangle with corners far beyond it came out cut
@@ -1253,14 +1258,14 @@ void fog_set_clip(float near, float far)
 	s_clip_far = far * 0.98f;
 }
 
-typedef struct { float cx, cy, cw; float a[9]; } ClipV;   // a: x y z u v r g b a
+typedef struct { float cx, cy, cw; float a[11]; } ClipV;   // a: x y z u v mx my r g b a
 
 static ClipV clip_v(const C3D_Mtx* pv, const FogVtx* f)
 {
 	ClipV c;
 	C3D_FVec p = Mtx_MultiplyFVec4(pv, FVec4_New(f->x, f->y, f->z, 1.0f));
 	c.cx = p.x, c.cy = p.y, c.cw = p.w;
-	float v[9] = { f->x, f->y, f->z, f->u, f->v, f->c[0], f->c[1], f->c[2], f->c[3] };
+	float v[11] = { f->x, f->y, f->z, f->u, f->v, f->mx, f->my, f->c[0], f->c[1], f->c[2], f->c[3] };
 	memcpy(c.a, v, sizeof v);
 	return c;
 }
@@ -1287,7 +1292,7 @@ static int clip_poly(ClipV* in, int n, ClipV* out, int k)
 			float t = da / (da - db);
 			ClipV c;
 			c.cx = a->cx + (b->cx - a->cx) * t, c.cy = a->cy + (b->cy - a->cy) * t, c.cw = a->cw + (b->cw - a->cw) * t;
-			for (int j = 0; j < 9; j++)
+			for (int j = 0; j < 11; j++)
 				c.a[j] = a->a[j] + (b->a[j] - a->a[j]) * t;
 			out[m++] = c;
 		}
@@ -1297,9 +1302,9 @@ static int clip_poly(ClipV* in, int n, ClipV* out, int k)
 
 static FogVtx fog_v(const ClipV* c)
 {
-	FogVtx f = { c->a[0], c->a[1], c->a[2], c->a[3], c->a[4] };
+	FogVtx f = { c->a[0], c->a[1], c->a[2], c->a[3], c->a[4], c->a[5], c->a[6] };
 	for (int j = 0; j < 4; j++) {
-		float x = c->a[5 + j] + 0.5f;
+		float x = c->a[7 + j] + 0.5f;
 		f.c[j] = (u8)(x < 0.0f ? 0.0f : x > 255.0f ? 255.0f : x);
 	}
 	return f;
@@ -1352,8 +1357,183 @@ static int cmp_depth(const void* a, const void* b)
 	return da < db ? 1 : da > db ? -1 : 0;           // far first
 }
 
+// A sprite is a fan of four triangles around its centre. The PC (0x488a80) gives the centre the
+// sprite's alpha and the four corners alpha 0, so the sprite fades out linearly towards its edge.
+// On a console some sprites come out flat from time to time, their whole area at the centre's
+// alpha or above: hard-edged white blocks over the roads and the scenes (the maintainer's New 3DS
+// video of 0.2.2, 8:40 to 8:56; players on Old and New 3DS). The cloud texture inside them, from
+// texture coordinates interpolated over the same triangles, stays right, and Azahar never shows
+// it, so the alpha gradient in the vertex colour is the suspect. The fade no longer rides on the
+// vertex colour: every vertex of a sprite carries the same colour and alpha, and the
+// procedural texture unit (texture 3) gives the fade from a coordinate that runs from 0 at the
+// centre to 1 at the corners: 1 - max(|x|, |y|), which across each triangle of the fan is
+// exactly the weight of the centre vertex, so the result is the PC's.
+static const float MASK[4][2] = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
+static C3D_ProcTex s_fade;
+static C3D_ProcTexLut s_fade_map, s_fade_alpha;
+static C3D_ProcTexColorLut s_fade_col;
+
+static void fade_init(void)
+{
+	C3D_ProcTexInit(&s_fade, 0, 128);
+	C3D_ProcTexClamp(&s_fade, GPU_PT_CLAMP_TO_EDGE, GPU_PT_CLAMP_TO_EDGE);
+	C3D_ProcTexCombiner(&s_fade, true, GPU_PT_MAX, GPU_PT_MAX);   // separate alpha: max(|x|, |y|)
+	C3D_ProcTexFilter(&s_fade, GPU_PT_LINEAR);
+	float lin[129], fade[129];
+	for (int i = 0; i <= 128; i++)
+		lin[i] = i / 128.0f, fade[i] = 1.0f - i / 128.0f;
+	ProcTexLut_FromArray(&s_fade_map, lin);
+	ProcTexLut_FromArray(&s_fade_alpha, fade);
+	static u32 white[128];
+	for (int i = 0; i < 128; i++)
+		white[i] = 0xffffffffu;
+	ProcTexColorLut_Write(&s_fade_col, white, 0, 128);
+}
+
+// The sprites are built five vertices each (centre, four corners) into a staging array, then go
+// out in depth order as plain triangles drawn without indices. Indexed, on a console, the GPU's
+// post-transform vertex cache (keyed by index, kept across draws) handed some sprites vertices
+// of the last frame's sprites or of the characters drawn just before, all drawn with indices
+// from 0: the soft sprites came out as hard-edged, nearly opaque rectangles.
+static FogVtx vb[(FOG_MAX + BLOW_MAX) * 5];
+static void emit(u8* buf, const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho, int n,
+                 const float (*order)[2], const FogVtx* sq);
+
+// ---------------------------------------------------------------- 3D frames
+//
+// A 3D frame (stereo.h) draws the fog once per eye, and the sprites are most of what the fog costs:
+// the GPU blends every pixel of every sprite, and on the fogged roads they cover the screen 10 to 12
+// times over (debug.txt gpucost, gpucost.h). So a 3D frame holds their area to
+// quality()->fog_fill_3d screens per eye. Most of the area is in the few near sprites, each up to a
+// screen across and faded by its nearness, while the many far ones are small. Each sprite is drawn
+// with the chance min(1, K / area), K chosen so that the expected area is the budget, at its alpha
+// divided by that chance (up to STEREO_GAIN times), so the fog keeps its density on average but for
+// the nearest sprites: the far sprites are all drawn as before and the near ones are thinned. A
+// sprite's pick comes from a fixed number per particle (s_id) against its chance through a soft
+// band, so it fades in and out as the chance moves instead of popping, and both eyes draw the same
+// sprites. 3DS-only (the PC draws one view); with the slider
+// down the fog is drawn as in 2D. This replaces 3D's earlier thinning, every other particle at twice
+// the alpha, which halved the small far sprites as much as the near ones.
+#define STEREO_BAND 0.2f             // the soft band of the pick, in chance
+// at most this many times its alpha: a rarely drawn near sprite at many times its alpha would show
+// as a blot, so the nearest ones keep only part of their density
+#define STEREO_GAIN 2.0f
+
+static int s_id[FOG_MAX + BLOW_MAX];  // the particle (or FOG_MAX + puff) of each sprite in vb
+
+// The area of a sprite (its four corners in vb) on the screen with this projection, in screens. A
+// sprite faces the camera, so on the screen it is a rectangle: its corners' extent, cut to the screen.
+static float sprite_screens(const C3D_Mtx* pv, const FogVtx* s)
+{
+	float x0 = 1.0f, x1 = -1.0f, y0 = 1.0f, y1 = -1.0f;
+	for (int k = 1; k <= 4; k++) {
+		C3D_FVec q = Mtx_MultiplyFVec4(pv, FVec4_New(s[k].x, s[k].y, s[k].z, 1.0f));
+		if (q.w <= 1.0f)
+			return 1.0f;                 // reaching behind the eye (the near limit keeps them out)
+		float x = q.x / q.w, y = q.y / q.w;
+		x0 = x < x0 ? x : x0, x1 = x > x1 ? x : x1;
+		y0 = y < y0 ? y : y0, y1 = y > y1 ? y : y1;
+	}
+	x0 = x0 < -1.0f ? -1.0f : x0, x1 = x1 > 1.0f ? 1.0f : x1;
+	y0 = y0 < -1.0f ? -1.0f : y0, y1 = y1 > 1.0f ? 1.0f : y1;
+	return x1 > x0 && y1 > y0 ? (x1 - x0) * (y1 - y0) * 0.25f : 0.0f;
+}
+
+static int cmp_float(const void* a, const void* b)
+{
+	float x = *(const float*)a, y = *(const float*)b;
+	return x < y ? -1 : x > y;
+}
+
+// Thins the n sorted sprites of vb to the budget (see above); returns how many stay in order.
+static int stereo_thin(const C3D_Mtx* proj, const C3D_Mtx* view, int n, float (*order)[2])
+{
+	C3D_Mtx pv;
+	Mtx_Multiply(&pv, proj, view);
+	static float area[FOG_MAX + BLOW_MAX], sorted[FOG_MAX + BLOW_MAX];
+	float total = 0.0f;
+	for (int i = 0; i < n; i++) {
+		area[i] = sprite_screens(&pv, &vb[i * 5]);
+		sorted[i] = area[i];
+		total += area[i];
+	}
+	float fill = quality()->fog_fill_3d;
+	if (fill <= 0.0f || total <= fill)
+		return n;
+	// K: the sprites under it are drawn whole and the rest with the chance K / area, so that their
+	// area sums to the budget. A sprite is drawn when its fixed number h, spread over 0..1 - band,
+	// is under its chance, fully from a band above it: so the drawn area comes out at the budget over
+	// (1 - band), and the budget is cut by that much first.
+	const float b = STEREO_BAND, L = 1.0f - STEREO_BAND;
+	fill *= L;
+	qsort(sorted, n, sizeof sorted[0], cmp_float);
+	float below = 0.0f, K = 0.0f;
+	for (int i = 0; i < n; i++) {
+		float k = (fill - below) / (float)(n - i);
+		if (sorted[i] >= k) {
+			K = k;
+			break;
+		}
+		below += sorted[i];
+	}
+	int m = 0;
+	for (int i = 0; i < n; i++) {
+		int j = (int)order[i][1];
+		float a = area[j], u = a > K ? K / a : 1.0f;
+		if (u < 1.0f) {
+			// the particle's fixed number (the golden ratio's multiples spread evenly)
+			float h = (float)s_id[j] * 0.618034f;
+			h = (h - floorf(h)) * L;
+			float w = (u - h) / b;
+			if (w <= 0.0f)
+				continue;
+			// the weight's mean over every h, which the alpha is divided by to keep the density; it
+			// reaches 1 as the chance does, where the sprite is drawn as it is
+			float d = u - b;
+			float sum = u <= b ? u * u / (2.0f * b) : u <= L ? u - b * 0.5f
+			          : d + (u * L - L * L * 0.5f - u * d + d * d * 0.5f) / b;
+			float k = (w < 1.0f ? w : 1.0f) * L / sum;
+			k = k < STEREO_GAIN ? k : STEREO_GAIN;
+			FogVtx* v = &vb[j * 5];
+			float al = v[0].c[3] * k;
+			u8 alpha = al > 255.0f ? 255 : (u8)al;
+			if (!alpha)
+				continue;
+			for (int c = 0; c < 5; c++)
+				v[c].c[3] = alpha;
+		}
+		order[m][0] = order[i][0];
+		order[m][1] = order[i][1];
+		m++;
+	}
+	return m;
+}
+
 void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 {
+	// The second eye of a 3D frame (stereo.h) draws the first eye's sprites and screen layer, clipped
+	// with its own projection into buffers of its own: the simulation and the texture scroll below
+	// run once a frame.
+	static bool built;               // this frame's first eye got as far as the drawing
+	static int nsprites;             // sprites in vb, in the order of `order`
+	static float order[FOG_MAX + BLOW_MAX][2];
+	static bool screen;              // the screen layer is on, its quad in sq
+	static FogVtx sq[4];
+	bool again = stereo_eye() != 0;
+	if (again) {
+		if (!built)
+			return;
+		static int right;
+		u8** r = F.vbufs_right;
+		if (!r[0])
+			r[0] = linearAlloc(FOG_VERTS * sizeof(FogVtx)), r[1] = linearAlloc(FOG_VERTS * sizeof(FogVtx));
+		if (!r[0] || !r[1])
+			return;
+		right ^= 1;
+		emit(r[right], proj, view, ortho, nsprites, order, screen ? sq : NULL);
+		return;
+	}
+	built = false;
 	F.drawn = 0;
 	if (!F.ready || F.global == 0xff)
 		return;
@@ -1361,19 +1541,13 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		F.flag &= ~(u32)FL_SKIP;
 		return;
 	}
-	// The sprites are built five vertices each (centre, four corners) into a staging array, then go
-	// out in depth order as plain triangles drawn without indices. Indexed, on a console, the GPU's
-	// post-transform vertex cache (keyed by index, kept across draws) handed some sprites vertices
-	// of the last frame's sprites or of the characters drawn just before, all drawn with indices
-	// from 0: the soft sprites came out as hard-edged, nearly opaque rectangles.
-	static FogVtx vb[(FOG_MAX + BLOW_MAX) * 5];
 	// Two vertex buffers, a frame each: the CPU never writes the one the GPU drew from last frame.
 	// (On the New 3DS, with its L2 cache on, a single buffer rewritten every frame is the one GPU
 	// input of the fog that changes wholesale each frame; the console showed some sprites drawn
 	// opaque and white, as if their vertices were stale or half written.)
 	F.vbuf = F.vbufs[F.vbuf == F.vbufs[0] ? 1 : 0];
-	FogVtx* out = (FogVtx*)F.vbuf;
-	int nv = 0;
+	nsprites = 0;
+	screen = false;
 	u32 rgb = F.color & 0xffffff;     // r | g << 8 | b << 16
 	float right[3] = { view->r[0].x, view->r[0].y, view->r[0].z };
 	float down[3] = { -view->r[1].x, -view->r[1].y, -view->r[1].z };
@@ -1392,7 +1566,6 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		float abyte = EE_FOG ? 112.0f : (float)(F.color >> 24);
 		float share = F.nsim > 0 ? (float)F.npc / (float)F.nsim : 1.0f;
 		float P = F.partsize, w = EE_FOG ? 0.055f : 0.0488281f;
-		float order[FOG_MAX + BLOW_MAX][2];
 		int n = 0;
 		for (int i = 0; i < F.nsim; i++) {
 			Part* p = &F.part[i];
@@ -1438,15 +1611,16 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 			float cv[4] = { p->tdy - w, p->tdy - w, p->tdy + w * squash, p->tdy + w * squash };
 			FogVtx* v = &vb[n * 5];
 			u8 alpha = a > 255.0f ? 255 : (u8)a;
-			v[0] = (FogVtx){ p->pos[0], p->pos[1], p->pos[2], p->tdx, 1.0f - p->tdy,
+			v[0] = (FogVtx){ p->pos[0], p->pos[1], p->pos[2], p->tdx, 1.0f - p->tdy, 0.0f, 0.0f,
 			                 { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, alpha } };
 			for (int k = 0; k < 4; k++)
 				v[1 + k] = (FogVtx){ p->pos[0] + right[0] * cx[k] + down[0] * cy[k],
 				                     p->pos[1] + right[1] * cx[k] + down[1] * cy[k],
 				                     p->pos[2] + right[2] * cx[k] + down[2] * cy[k], cu[k], 1.0f - cv[k],
-				                     { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, 0 } };
+				                     MASK[k][0], MASK[k][1], { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, alpha } };
 			order[n][0] = z14;
 			order[n][1] = (float)n;
+			s_id[n] = i;
 			n++;
 		}
 		// 0x48a500: the blow puffs, drawn like the particles but each at its own size, with the
@@ -1500,40 +1674,22 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 			float cv[4] = { b->tdy - bw, b->tdy - bw, b->tdy + bw * squash, b->tdy + bw * squash };
 			FogVtx* v = &vb[n * 5];
 			u8 alpha = a > 255.0f ? 255 : (u8)a;
-			v[0] = (FogVtx){ b->pos[0], b->pos[1], b->pos[2], b->tdx, 1.0f - b->tdy,
+			v[0] = (FogVtx){ b->pos[0], b->pos[1], b->pos[2], b->tdx, 1.0f - b->tdy, 0.0f, 0.0f,
 			                 { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, alpha } };
 			for (int k = 0; k < 4; k++)
 				v[1 + k] = (FogVtx){ b->pos[0] + right[0] * cx[k] + down[0] * cy[k],
 				                     b->pos[1] + right[1] * cx[k] + down[1] * cy[k],
 				                     b->pos[2] + right[2] * cx[k] + down[2] * cy[k], cu[k], 1.0f - cv[k],
-				                     { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, 0 } };
+				                     MASK[k][0], MASK[k][1], { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, alpha } };
 			order[n][0] = z14;
 			order[n][1] = (float)n;
+			s_id[n] = FOG_MAX + i;
 			n++;
 		}
 		qsort(order, n, sizeof order[0], cmp_depth);
-		C3D_Mtx pv;
-		Mtx_Multiply(&pv, proj, view);
-		s_margin = s_test == 10 ? 0.999f : s_test == 11 ? 0.95f : CLIP_MARGIN;
-		static const u8 fan[12] = { 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1 };
-		for (int i = 0; i < n; i++) {
-			const FogVtx* s = &vb[(int)order[i][1] * 5];
-			// the corners first: a sprite wholly on the screen (nearly all) goes out as it is
-			ClipV c[5];
-			bool inside = true;
-			for (int k = 0; k < 5; k++) {
-				c[k] = clip_v(&pv, &s[k]);
-				inside = inside && clip_inside(&c[k]);
-			}
-			for (int k = 0; k < 12; k += 3) {
-				if (inside) {
-					if (nv + 3 <= FOG_VERTS - 6)
-						out[nv++] = s[fan[k]], out[nv++] = s[fan[k + 1]], out[nv++] = s[fan[k + 2]];
-				} else {
-					nv = clip_tri(&c[fan[k]], &c[fan[k + 1]], &c[fan[k + 2]], out, nv, FOG_VERTS - 6);
-				}
-			}
-		}
+		if (stereo_eyes() == 2)
+			n = stereo_thin(proj, view, n, order);
+		nsprites = n;
 		static int last_n = -1;
 		if (last_n >= 0 && (n - last_n > 40 || last_n - n > 40))
 			perf_event("fog", "sprites drawn %d -> %d", last_n, n);
@@ -1542,7 +1698,6 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 	}
 
 	// 0x4876c0: the screen layer scrolls with the camera's movement and the wind
-	int screen_v = -1, sprites_v = nv;
 	if ((F.global <= 5 || F.global == 0x6d) && s_test != 5) {
 		float k = F.projection > 1.0f ? 0.1f / F.projection : 0.0f, ws = F.speed * 0.005f;
 		float m[3] = { (F.camera[0] - F.old_camera[0]) * k + F.wind[0] * ws,
@@ -1565,27 +1720,68 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		const float xy[4][2] = { { 0, 0 }, { 400, 0 }, { 400, 240 }, { 0, 240 } };
 		const float uv[4][2] = { { -wx, wy }, { wx, wy }, { wx, -wy }, { -wx, -wy } };
 		for (int i = 0; i < 4; i++)
-			v[i] = (FogVtx){ xy[i][0], xy[i][1], 0.5f, F.sc_tdx + uv[i][0], 1.0f - (F.sc_tdy + uv[i][1]),
+			v[i] = (FogVtx){ xy[i][0], xy[i][1], 0.5f, F.sc_tdx + uv[i][0], 1.0f - (F.sc_tdy + uv[i][1]), 0.0f, 0.0f,
 			                 { rgb & 255, rgb >> 8 & 255, rgb >> 16 & 255, (u8)(a > 255 ? 255 : a) } };
+		memcpy(sq, v, sizeof sq);
+		screen = true;
+	}
+	memcpy(F.old_camera, F.camera, sizeof F.old_camera);
+	built = true;
+	emit(F.vbuf, proj, view, ortho, nsprites, order, screen ? sq : NULL);
+}
+
+// The sorted sprites (vb, order) clipped with this projection, and the screen layer's quad (NULL:
+// none), into buf as triangles, then drawn.
+static void emit(u8* buf, const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho, int n,
+                 const float (*order)[2], const FogVtx* sq)
+{
+	FogVtx* out = (FogVtx*)buf;
+	int nv = 0;
+	if (n > 0) {
+		C3D_Mtx pv;
+		Mtx_Multiply(&pv, proj, view);
+		s_margin = s_test == 10 ? 0.999f : s_test == 11 ? 0.95f : CLIP_MARGIN;
+		static const u8 fan[12] = { 0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1 };
+		for (int i = 0; i < n; i++) {
+			const FogVtx* s = &vb[(int)order[i][1] * 5];
+			// the corners first: a sprite wholly on the screen (nearly all) goes out as it is
+			ClipV c[5];
+			bool inside = true;
+			for (int k = 0; k < 5; k++) {
+				c[k] = clip_v(&pv, &s[k]);
+				inside = inside && clip_inside(&c[k]);
+			}
+			for (int k = 0; k < 12; k += 3) {
+				if (inside) {
+					if (nv + 3 <= FOG_VERTS - 6)
+						out[nv++] = s[fan[k]], out[nv++] = s[fan[k + 1]], out[nv++] = s[fan[k + 2]];
+				} else {
+					nv = clip_tri(&c[fan[k]], &c[fan[k + 1]], &c[fan[k + 2]], out, nv, FOG_VERTS - 6);
+				}
+			}
+		}
+	}
+	int screen_v = -1, sprites_v = nv;
+	if (sq) {
 		static const u8 quad[6] = { 0, 1, 2, 0, 2, 3 };
 		screen_v = nv;
 		for (int i = 0; i < 6; i++)
-			out[nv++] = v[quad[i]];
+			out[nv++] = sq[quad[i]];
 	}
-	memcpy(F.old_camera, F.camera, sizeof F.old_camera);
 	if (!nv)
 		return;
-	GSPGPU_FlushDataCache(F.vbuf, nv * sizeof(FogVtx));
+	GSPGPU_FlushDataCache(buf, nv * sizeof(FogVtx));
 
 	C3D_BindProgram(&F.prog);
 	C3D_AttrInfo* ai = C3D_GetAttrInfo();
 	AttrInfo_Init(ai);
 	AttrInfo_AddLoader(ai, 0, GPU_FLOAT, 3);
 	AttrInfo_AddLoader(ai, 1, GPU_FLOAT, 2);
-	AttrInfo_AddLoader(ai, 2, GPU_UNSIGNED_BYTE, 4);
+	AttrInfo_AddLoader(ai, 2, GPU_FLOAT, 2);
+	AttrInfo_AddLoader(ai, 3, GPU_UNSIGNED_BYTE, 4);
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
-	BufInfo_Add(bi, F.vbuf, sizeof(FogVtx), 3, 0x210);
+	BufInfo_Add(bi, buf, sizeof(FogVtx), 4, 0x3210);
 	C3D_TexSetFilter(&F.tex, s_test == 4 ? GPU_NEAREST : GPU_LINEAR, s_test == 4 ? GPU_NEAREST : GPU_LINEAR);
 	C3D_TexBind(0, &F.tex);
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
@@ -1602,13 +1798,28 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
 	}
 	C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);         // D3DTOP_MODULATE2X
-	C3D_TexEnvInit(C3D_GetTexEnv(1));
+	// the sprite's fade (see MASK): the alpha times the procedural texture's
+	C3D_TexEnv* fade = C3D_GetTexEnv(1);
+	C3D_TexEnvInit(fade);
+	C3D_TexEnvSrc(fade, C3D_Alpha, GPU_PREVIOUS, GPU_TEXTURE3, 0);
+	C3D_TexEnvFunc(fade, C3D_Alpha, GPU_MODULATE);
+	C3D_ProcTexBind(1, &s_fade);
+	C3D_ProcTexLutBind(GPU_LUT_RGBMAP, &s_fade_map);
+	C3D_ProcTexLutBind(GPU_LUT_ALPHAMAP, &s_fade_alpha);
+	C3D_ProcTexColorLutBind(&s_fade_col);
 	C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
 	C3D_CullFace(GPU_CULL_NONE);
 	C3D_AlphaTest(true, GPU_GREATER, 0);
 	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
 	               GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
 	if (sprites_v > 0) {
+		if (gpucost_on()) {                  // debug.txt gpucost (gpucost.h)
+			C3D_Mtx pv;
+			Mtx_Multiply(&pv, proj, view);
+			for (int i = 0; i + 2 < sprites_v; i += 3)
+				gpucost_tri(GC_FOG_SPRITE, &pv, &out[i].x, &out[i + 1].x, &out[i + 2].x, false);
+			gpucost_count(GC_FOG_SPRITE, (u32)n);
+		}
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, F.uProj, proj);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, F.uMv, view);
 		C3D_DepthTest(s_test != 2, GPU_GREATER, GPU_WRITE_COLOR);
@@ -1622,9 +1833,12 @@ void fog_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, F.uMv, &id);
 		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
 		C3D_DrawArrays(GPU_TRIANGLES, screen_v, 6);
+		gpucost_px(GC_FOG_SCREEN, 400.0f * 240.0f, 6);
 	}
 	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_ALL);
+	C3D_ProcTexBind(0, NULL);                // texture 3 off again for everything drawn after
+	C3D_TexEnvInit(C3D_GetTexEnv(1));
 }
 
 // ---------------------------------------------------------------- setup
@@ -1650,6 +1864,7 @@ bool fog_init(const char* pack_dir)
 	Tex3DS_TextureFree(t);
 	C3D_TexSetFilter(&F.tex, GPU_LINEAR, GPU_LINEAR);
 	C3D_TexSetWrap(&F.tex, GPU_REPEAT, GPU_REPEAT);
+	fade_init();
 	F.dvlb = DVLB_ParseFile((u32*)fog_shbin, fog_shbin_size);
 	shaderProgramInit(&F.prog);
 	shaderProgramSetVsh(&F.prog, &F.dvlb->DVLE[0]);
@@ -1674,6 +1889,9 @@ void fog_exit(void)
 	DVLB_Free(F.dvlb);
 	linearFree(F.vbufs[0]);
 	linearFree(F.vbufs[1]);
+	for (int i = 0; i < 2; i++)
+		if (F.vbufs_right[i])
+			linearFree(F.vbufs_right[i]);
 	free(F.fcl);
 	fcl_free_all();
 	F.ready = false;

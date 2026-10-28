@@ -50,6 +50,8 @@ typedef enum {
 	ACT_STRAFE_LEFT,
 	ACT_STRAFE_RIGHT,
 	ACT_MAP,
+	ACT_TARGET_LEFT,    // while aiming: the next enemy to the left / right (0x54f100)
+	ACT_TARGET_RIGHT,
 	ACT_PAUSE,
 	ACT_CANCEL,
 	ACT_COUNT

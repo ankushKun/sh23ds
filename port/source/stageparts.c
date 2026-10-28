@@ -1,7 +1,7 @@
 // The stage code's map part switches (room.h: room_parts_add / room_parts_apply), as the PC's
 // per-frame stage functions list them through 0x4a2a80 and apply them through 0x4a2ad0. Each
 // stage's switches are listed here by the room (0x495220) and the flags the PC tests; the walls the
-// same functions add are in prog_stagefn.c.
+// same functions add are in stagewalls.c (and prog_stagefn.c for those with their own logic).
 //
 // Enhanced Edition's MapMeshToggle (Patches/MapMeshToggle.cpp, zlib licence) adds switches the PC
 // leaves out: the motorhome hint (stage 2), Blue Creek 1F (10), the hospital garden (22), the

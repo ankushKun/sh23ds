@@ -185,7 +185,11 @@ The port streams `pack/sound/voice/<n>.adx` (the `voice.afs` file copied as is, 
 the subtitles on the bottom screen, and ends a scene when the script and the voice are both done.
 Like DramaDemoMain, the scene clock waits while the stream is starting (`audio_voice_position()`
 is below zero until the DSP has begun on it), and after that it follows the stream: when they drift
-more than two frames apart, the clock is set from the stream's position.
+more than two frames apart, the clock is set from the stream's position, forwards only (a stream
+behind the scene holds it). The stream's position counts the buffers the DSP has finished but the
+refill thread has not yet added up; without them it fell back a whole buffer (186 ms at 22 kHz) at
+every buffer change, which a console showed as the scene jumping back and forth (the first Angela
+scene).
 
 SubtitlesExec (0x49fe30) and SubtitlesManager (0x49fe70) play a voice with subtitles and no script
 (the Angela scream before `agl_himei`, Laura at the piano, the radio in room 312 and six more).

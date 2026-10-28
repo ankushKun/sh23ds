@@ -7,6 +7,7 @@
 #include "playtest.h"
 #include "prog_int.h"
 #include "stageparts.h"
+#include "stagewalls.h"
 #include "bgm.h"
 #include "combat.h"
 #include "collide.h"
@@ -66,9 +67,9 @@ static void labyrinth_room(int room)
 static void cube_room_collision(void)
 {
 	if (!p_flag(325))
-		col_extra_wall(19795.0f, -21950.0f, 20205.0f, -21950.0f, -1000.0f, 0.0f);
+		stagewalls_add(0x8d3a28);
 	if (!p_flag(326))
-		col_extra_wall(19795.0f, -18250.0f, 20205.0f, -18250.0f, -1000.0f, 0.0f);
+		stagewalls_add(0x8d3ac8);
 }
 
 // ---------------------------------------------------------------- stage inits (Stage_Data +0x18)
@@ -110,6 +111,7 @@ static float frand(void) { return (float)p_rand() * 4.656612873e-10f; }   // 0x4
 // PC's sounds that move or fade after they start are kept where they start.
 static float s_thr;                      // a room's threshold (picked by its room function)
 static bool s_armed;
+static int s_after_load_sfx;             // a room's looping sound, stopped when James leaves it
 
 static void frame_sounds(int stage, int room, const float* me)
 {
@@ -186,7 +188,24 @@ static void room_enter(int stage, int room)
 {
 	stagemdl_maria_bed(stage == 20 && room == 0x41);   // 0x58ef90 places her there (character 0x106)
 	s_armed = false;
+	if (s_after_load_sfx) {             // the PC's keep sounds belong to the room that started them
+		sfx_stop(s_after_load_sfx);
+		s_after_load_sfx = 0;
+	}
 	switch (stage) {
+	case 7:
+		// 0x59bc50, the stage's sound_call_after_load (Stage_Data +0x3c): room 208 (0x18) once
+		// "What was that!?" has played (69) starts sound 16000 at 0.3 by the clock (0x8e5a9c) and
+		// sets 70, which takes Pyramid Head from behind the bars (Enemy_List condition 0x180,
+		// 0x48f5b0) and lets the hallway's 0x1c0 enemies back in. 0x59bca0 then sets the sound's
+		// volume by where James stands in the room; the port leaves that to the distance curve.
+		if (room == 0x18 && p_flag(69)) {
+			static const float at[3] = { -58082.375f, -356.5f, 19011.39f };
+			s_after_load_sfx = 16000;
+			sfx_play_at(16000, 0.3f, at);
+			p_set(70);
+		}
+		break;
 	case 11:
 		if (room == 0x28)                // 0x5974a0
 			s_thr = 21200.0f - frand() * 1200.0f;
@@ -377,6 +396,58 @@ static void prison_bars_tick(float dt)
 	}
 }
 
+// The endings' last stairwell (stages 48..51; 0x440ad0 with 0x440470 for Leave, 0x441ac0 /
+// 0x4411f0, 0x43fc80 / 0x43f620 and 0x575450 / 0x574da0 for the others, each with its own copy of
+// the same data). The stairs are model 0x517 (lsi), put up by the room loader (stagemdl.txt). Once
+// James climbs above y -11200 (503) its lower flights fall away, and above -16000 outside the
+// landing at x 61400..62700, z 55000..56250 (504) the upper ones: each frame the falling bones'
+// places drop by t * t * 1000 more, t the seconds since (0x9355a8 / 0x9355a4; frames of the PC's
+// 30). The walls (0x5228e0) close the gaps the flights leave (0x7b3830 with 503, 0x7b3b50 with
+// 504) and the roof edge after Mary's fall (0x7b3bf0 with 507). Each is one-sided, its ends in the
+// order that puts its front where col_wall_side is >= 0 (n = (p2 - p1) x (p1 - p0) of the plane,
+// as for every wall: collide.h). The list at 0x7b3830 ends after one plane: the four planes stored
+// after it (0x7b38d0, 0x7b3970, 0x7b3a10, 0x7b3ab0) are referenced by nothing in the exe.
+typedef struct { float x0, z0, x1, z1, top, bottom; } EndWall;
+static const EndWall s_end_walls_503[1] = { { 60800.0f, 62250.0f, 60800.0f, 62850.0f, -10150.0f, -8750.0f } };
+static const EndWall s_end_walls_504[1] = { { 61700.0f, 55120.0f, 61701.0f, 56080.0f, -16502.6f, -16000.0f } };
+static const EndWall s_end_walls_507[3] = {
+	{ 57526.0f, 58449.5f, 56395.0f, 58450.0f, -16300.0f, -16000.0f },
+	{ 56395.0f, 57226.0f, 57591.0f, 57292.5f, -16300.0f, -16000.0f },
+	{ 57591.0f, 57292.5f, 57526.0f, 58449.5f, -16300.0f, -16000.0f },
+};
+static float s_fall_t[2], s_fall_y[2];
+
+static void end_walls(const EndWall* w, int n)
+{
+	for (int i = 0; i < n; i++)
+		col_extra_wall(w[i].x0, w[i].z0, w[i].x1, w[i].z1, w[i].top, w[i].bottom, true);
+}
+
+static void end_stairs_tick(const float* me, float dt)
+{
+	if (p_flag(507))
+		end_walls(s_end_walls_507, 3);
+	if (p_flag(503))
+		end_walls(s_end_walls_503, 1);
+	if (p_flag(504))
+		end_walls(s_end_walls_504, 1);
+	static const int bones[2][4] = { { 0x12, 0x13, 0x32, 0x33 }, { 0x1e, 0x1f, 0x3e, 0x3f } };
+	for (int g = 0; g < 2; g++) {
+		if (p_flag(503 + g)) {
+			s_fall_t[g] += dt;
+			s_fall_y[g] += s_fall_t[g] * s_fall_t[g] * 1000.0f * dt * 30.0f;   // _DAT_006388a8
+		}
+		for (int k = 0; k < 4; k++)
+			stagemdl_bone_move(0x517, bones[g][k], 0.0f, s_fall_y[g], 0.0f);
+	}
+	if (me[1] < -11200.0f)                                   // _DAT_006388a4
+		p_set(503);
+	if (me[1] < -16000.0f && (me[0] < 61400.0f || me[0] > 62700.0f || me[2] > 56250.0f || me[2] < 55000.0f))
+		p_set(504);
+	if (!p_flag(503))
+		s_fall_t[0] = s_fall_t[1] = s_fall_y[0] = s_fall_y[1] = 0.0f;
+}
+
 void prog_stagefn_tick(int stage, float dt)
 {
 	float pos[3], yaw;
@@ -393,6 +464,7 @@ void prog_stagefn_tick(int stage, float dt)
 		room_enter(stage, room);
 	}
 	col_extra_clear();
+	stagewalls_tick(stage, room, pos);  // the walls the PC adds with clAddDynamicWall (stagewalls.c)
 	if (dt <= 0.0f)
 		return;
 	frame_sounds(stage, room, pos);
@@ -407,8 +479,7 @@ void prog_stagefn_tick(int stage, float dt)
 		if (room == 0x78) {
 			// the lift's gate behind James while it moves (0x8d3938: two planes), and the ride
 			if (p_flag(312) && !p_flag(315)) {
-				col_extra_wall(-19125.0f, -99525.0f, -19125.0f, -100450.0f, -1200.0f, 0.0f);
-				col_extra_wall(-19000.0f, -100450.0f, -19000.0f, -99525.0f, -1200.0f, 0.0f);
+				stagewalls_add(0x8d3938);
 			}
 			lift_tick(dt);
 			// 0x5831aa: the lift's two gate leaves (model 0x530, bones 0 and 1) apart by the opening
@@ -418,13 +489,14 @@ void prog_stagefn_tick(int stage, float dt)
 			stagemdl_bone_move(0x530, 1, 0.0f, 0.0f, g);
 		} else if (room == 0x84 && !p_flag(330)) {
 			// the wire across the way until the cutter takes it (0x8d3de8)
-			col_extra_wall(63950.0f, 100026.5f, 63950.0f, 99572.5f, -1018.1f, 0.1f);
+			stagewalls_add(0x8d3de8);
 		} else if (room == 0x87) {
 			cube_room_collision();
 		}
 		break;
 	case 32: prison_bars_tick(dt); break;
 	case 44: hall_voice_tick(room, dt); break;
+	case 48: case 49: case 50: case 51: end_stairs_tick(pos, dt); break;
 	default: break;
 	}
 }

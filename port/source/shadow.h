@@ -16,6 +16,9 @@ void shadow_exit(void);
 // Before the characters are drawn: the light and how dark a shadowed pixel gets (0 = no shadows,
 // 1 = black). Off when strength <= 0.
 void shadow_begin(const float pos[3], const float dir[3], float cone, float strength);
+// Instead of shadow_begin, for a light from far away along dir (light kind 4, which 0x5aad70 uses in
+// hotel room 312): the volumes are cast along dir from every character, with no range or cone.
+void shadow_begin_parallel(const float dir[3], float strength);
 // Instead of shadow_begin, in the lit rooms (and dark ones whose record has no ShadowDarkNess):
 // the PC's drop shadows, every character's .kg1 flattened onto the floor under it (0x5a7c90).
 void shadow_begin_drop(int map_id, const float cam[3]);

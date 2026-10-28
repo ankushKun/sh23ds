@@ -2,8 +2,8 @@
 #include <3ds.h>
 
 // Stage events (doors, warps, messages, flags, item pickups) from the SD pack (S3E, see
-// tools/sh2conv/events_pack.py). The checks follow the PC game's EventCheck (0x48e520): events are
-// tested in list order and the first one whose flags, trigger and position test pass runs.
+// tools/sh2conv/events_pack.py). The checks follow the PC game's EventCheckLookLine (0x48e520): events
+// are tested in list order and the first one whose flags, trigger and position test pass runs.
 
 #define EV_MAX_FLAGS 16384      // 14-bit game flag numbers
 
@@ -40,6 +40,7 @@ void ev_reset(void);          // new game: all flags and items cleared
 bool ev_load_stage(int stage);
 int ev_stage(void);
 int ev_glb_crd(void);        // building / map group of the stage (Stage_Data.glb_crd)
+void ev_set_glb_crd(int glb);  // the endings' programs move the stage to another one (until the stage reloads)
 const char* ev_stage_name(void);
 int ev_stage_for_map(const char* map);     // from rooms.txt, 0 if unknown
 bool ev_map_of_stage(int stage, char out[8]);   // a map of that stage from rooms.txt
@@ -47,6 +48,8 @@ bool ev_map_of_stage(int stage, char out[8]);   // a map of that stage from room
 // Tests the current stage's events and item pickups. Non-button triggers fire once per entry
 // (rising edge), so standing in an area does not repeat a message every frame.
 bool ev_update(const EvPlayer* p, EvAction* out);
+// EventCheckLookLine (0x48e520): the event an Action press would meet here, or -1 (no side effects).
+int ev_look_line(const EvPlayer* p);
 // Autotest: the current stage's door destinations (no side effects).
 int ev_warp_count(void);
 bool ev_warp_get(int k, EvAction* out);
@@ -75,6 +78,10 @@ void ev_set_flag_lo(int index, u16 lo);
 int ev_item_count(int item);
 // Where the stage's items still lying about are (for James' head turning to them), up to max.
 int ev_items_lying(float (*out)[3], int max);
+// Pickup i of the stage, whose model the room loader places (0x490080): the item it gives, its place
+// and turn; and whether it lies there now (not taken, and EventItemConditionCheck's model test).
+bool ev_pickup_place(int i, int* item, float pos[3], float* rot_y);
+bool ev_pickup_shown(int i);
 // Item combinations (PC 0x891858 / 0x49e900): the result id for up to three items (0 unused), 0 if
 // they do not combine; whether James has a result's parts; ItemLose of an item or a result's parts.
 int ev_combine(int a, int b, int c);
@@ -97,6 +104,16 @@ const char* ev_memo_message(int n);     // memo list message n (titles, then tex
 const char* ev_result_message(int n);   // the results screen's labels
 const char* ev_mcard_message(int n);    // the save screen's texts
 const char* ev_option_message(int n);   // the options screens' texts
+const char* ev_pause_message(int n);    // the pause menu's strings (the PC's by language, 0x407310)
+// The language (PC 0x1dbec06): 1 English, 2 French, 3 German, 4 Italian, 5 Spanish. Setting it
+// reloads every message file from the pack's folder for it and returns the language in effect
+// (English when the pack lacks the one asked for).
+int ev_set_language(int lang);
+int ev_language(void);
+bool ev_language_available(int lang);
+int ev_system_language(void);           // the console's language when it is one of the five, else 1
+// PACK_DIR "/events/<name>" in the current language (the stage messages' read ahead uses it)
+void ev_msg_path(char* out, size_t size, const char* name);
 // Inserted values: bytes 1..4 in a message stand for the PC's ff e0..ff e3, byte 5 for its question
 // code ff f6. Set the values, then show the message through ev_msg_expand (main.c does).
 void ev_msg_set_insert(int slot, const char* value);

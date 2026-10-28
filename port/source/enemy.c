@@ -26,6 +26,7 @@
 #include "stream.h"
 #include "bgm.h"
 #include "perf.h"
+#include "mist.h"
 
 #define PI 3.14159265f
 #define MAX_LIST 512
@@ -35,6 +36,10 @@ typedef struct { s16 stage, kind, id; int x, y, z, rot, status, cond; } EnListEn
 static EnListEntry s_list[MAX_LIST];
 static int s_nlist;
 static EnListEntry s_debug[4];            // debug.txt "enemy" lines
+static FILE* s_log;
+// How far James goes from a body he killed before it stops taking stomps (3DS-only, the stomp is
+// offered within 600, so stepping round it to line one up keeps it)
+#define CORPSE_LEAVE 1000.0f                        // debug.txt "enemylog 1": enemylog.txt on the SD card
 static int s_ndebug;
 static Enemy s_en[ENEMY_MAX];
 static const Collision* s_col;
@@ -287,12 +292,26 @@ enum {
 #define SCU_WALK_STRIDE 13.4f
 #define MKN_WALK_STRIDE 19.2f      // skeleton pair 15/16 (0x892778), measured from mkn.anm
 
-// enAnimeSet 0x4a9920 (or a resume when the anime is already playing, 0x4a7b80).
+// enAnimeSet 0x4a9920 (or a resume when the anime is already playing, 0x4a7b80). It sets the anime
+// through the kind's setter (0x892740, the Lying Figure's 0x53de20) into 0x538920 with mode 4, an
+// 8-frame crossfade from the pose shown (as James' clips, move.c), or mode 2, a cut: while the
+// enemy is younger than 10 anime steps (+0xb), or with the +0x10 bit 0x8000 set, which the Lying
+// Figure's crawl (0x4c4620, enSCUCtrlCrawl) and the mannequin's drop (0x4c1cd0, 0x4c20f0) set round
+// anime 0x1c. The other kinds' 0x8000 cases (the death entries of 0x4b5190, 0x4b9460, 0x4c00a0)
+// are not ported: those clips blend too.
 static void anim_set(Enemy* e, int a)
 {
+	// 0x4a9920 always starts the anime over; the port keeps one that is playing (callers ask again
+	// each frame), but one that has played out starts again, as a second spit or swing does
+	const ScuAnim* ta = &anim_tab(e)[a];
+	if (e->anim == a && e->anim_end && !ta->loop && ta->end > ta->start)
+		e->anim = -1;
 	if (e->anim != a) {
 		e->anim = a;
 		e->frame = anim_tab(e)[a].start;
+		e->anim_new = true;
+		e->anim_cut = e->anim_age < 10.0f / 30.0f ||
+		              (a == 0x1c && (e->kind == EN_KIND_SCU || e->kind == EN_KIND_MKN));
 	}
 	e->rate = 1.0f;
 	e->loops = 0;
@@ -313,6 +332,8 @@ static void anim_random_loops(Enemy* e)
 // 0x4a77a0 (enAnimeExec) reduced to frame stepping; returns the animation frames advanced.
 static float anim_step(Enemy* e, float dt)
 {
+	if (e->anim_age < 1.0f)
+		e->anim_age += dt;               // the +0xb count, up to 10
 	const ScuAnim* t = &anim_tab(e)[e->anim];
 	float len = (float)(t->end - t->start + 1);
 	float adv = dt * 30.0f * (t->speed / 2048.0f) * e->rate;
@@ -444,7 +465,33 @@ static void recover_endurance(Enemy* e, float dt)
 
 // 0x4c3ea0: walk anime speed. Light condition index DAT_01f7fa24: 0 lit place, 1/2 dark with the
 // flashlight on, 3 dark with it off. The apartments are dark places.
-static int light_index(const EnPlayer* p) { return p->light ? 1 : 3; }
+// DAT_01f7fa24, the row of the sight tables, as 0x4a88e0 sets it each frame: 0 where the place is
+// lit (0x47b1f0: gFlashlightAvailable 1), 3 in the dark with the flashlight off, and with it on 1 in
+// stages 1..4 and 17 (0x494d80), else 2. 0x4a5a60 makes it 2 in stages 13 and 16, and in rooms 0x89,
+// 0x8f, 0x90 and 0xa2 outside stages 1..8, 14, 15 and 17.
+static bool s_dark;
+void enemy_set_dark(bool dark) { s_dark = dark; }
+
+static int light_index(const EnPlayer* p)
+{
+	int st = ev_stage();
+	switch (st) {
+	case 13: case 16:
+		return 2;
+	case 1: case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 14: case 15: case 17:
+		break;
+	default: {
+		int room = bgm_room_id(ev_glb_crd(), p->x, p->z);
+		if (room == 0x89 || room == 0x8f || room == 0x90 || room == 0xa2)
+			return 2;
+	}
+	}
+	if (!s_dark)
+		return 0;
+	if (!p->light)
+		return 3;
+	return (st >= 1 && st <= 4) || st == 17 ? 1 : 2;
+}
 
 static float walk_rate(const Enemy* e, const EnPlayer* p)
 {
@@ -724,8 +771,16 @@ static void stand_up(Enemy* e)
 	size_upright(e, false);
 }
 
+// A kill (bodies placed dead come in through their init): the body takes stomps until James walks
+// away from it (enemy_corpse_stompable).
+static void open_corpse(Enemy* e)
+{
+	e->corpse_open = e->kind == EN_KIND_SCU || e->kind == EN_KIND_MKN || e->kind == EN_KIND_NSE;
+}
+
 static void start_dying(Enemy* e)
 {
+	open_corpse(e);
 	go(e, SCU_DYING);
 }
 
@@ -1122,6 +1177,7 @@ static void scu_damage(Enemy* e, const EnPlayer* p, float dt)
 		ev_flag_set(41, true);
 		pose(e, A_LIE + e->lie);
 		e->hp = 0.0f;
+		open_corpse(e);
 		go(e, SCU_DYING);
 		return;
 	}
@@ -1130,9 +1186,23 @@ static void scu_damage(Enemy* e, const EnPlayer* p, float dt)
 
 static void death_throes(Enemy* e)          // 0x4c4310
 {
-	set_timer(e, 0);
+	set_timer(e, 200);
 	e->cnt = 0;
 	e->cnt_max = (u8)(4 + (int)(rnd() * (s_diff + 2)));
+}
+
+// 0x4c6a4c: a body at 0 health lies in its throes (sub-state 4) while James has it locked
+// (0x542dc0: 0x1fbacc4 is this one and 0x1fbad07 set) and the blow was no kick or stomp (0x4a5ea0:
+// attacks 31..40); otherwise it dies at once.
+static bool throes_or_die(Enemy* e)
+{
+	if (combat_target() == e && !(e->last_atk >= 31 && e->last_atk <= 40)) {
+		death_throes(e);
+		e->slv = 4;
+		return true;
+	}
+	start_dying(e);
+	return false;
 }
 
 static void hurt_on_floor(Enemy* e)
@@ -1156,15 +1226,13 @@ static void scu_down(Enemy* e, const EnPlayer* p, float dt)
 			e->slv = 1;
 			return;
 		}
-		death_throes(e);
-		e->slv = 4;
+		throes_or_die(e);
 		return;
 	case 1:
 		if (check_damage(e)) {
 			hurt_on_floor(e);
 			if (!is_dead(e)) { e->slv = 3; set_timer(e, 90); return; }
-			death_throes(e);
-			e->slv = 4;
+			throes_or_die(e);
 			return;
 		}
 		if (reduce_timer(e, ticks) > 0 || p->stomping) {
@@ -1203,7 +1271,7 @@ static void scu_down(Enemy* e, const EnPlayer* p, float dt)
 	case 3:
 		if (check_damage(e)) {
 			hurt_on_floor(e);
-			if (is_dead(e)) { death_throes(e); e->slv = 4; return; }
+			if (is_dead(e)) { throes_or_die(e); return; }
 			set_timer(e, 90);
 			return;
 		}
@@ -1217,18 +1285,29 @@ static void scu_down(Enemy* e, const EnPlayer* p, float dt)
 		e->slv = 2;
 		return;
 	case 4:
-		// death throes: a few twitches with the hit-back fading, then dead
-		if (check_damage(e))
-			reset_damage(e);
-		if (reduce_timer(e, ticks) > 0)
-			return;
-		if (e->cnt < e->cnt_max) {
-			e->cnt++;
-			pose(e, (e->cnt & 1) ? A_WRITHE + e->lie : A_LIE + e->lie);
-			set_timer(e, 40 + (int)(rnd() * 40.0f));
+		// 0x4c6900 sub-state 4, the throes: the body lies as it fell. Each blow on it (the spray's,
+		// attacks 8 and 9, ends it, 0x4a5e20) knocks it back the less the more it has taken
+		// ((max - n) / (max + 1) of the hit-back, 0x4a8e70) and waits 200 ticks again; it dies after
+		// max blows, a kick or stomp, or once the wait runs out
+		if (!check_damage(e)) {
+			if (reduce_timer(e, ticks) > 0)
+				return;
+			start_dying(e);
 			return;
 		}
-		pose(e, A_LIE + e->lie);
+		if (e->last_atk == 8 || e->last_atk == 9) {
+			reset_damage(e);
+			start_dying(e);
+			return;
+		}
+		reduce_hp(e);
+		set_hitback(e);
+		e->hb *= (float)(e->cnt_max - e->cnt) / (float)(e->cnt_max + 1);
+		e->cnt++;
+		if (e->cnt < e->cnt_max && !(e->last_atk >= 31 && e->last_atk <= 40)) {
+			set_timer(e, 200);
+			return;
+		}
 		start_dying(e);
 		return;
 	case 6:
@@ -1549,6 +1628,27 @@ static void sounds(Enemy* e, float f0, float dt)
 	e->sound_wait = 0.0f;
 }
 
+// 0x4c3c20: while the spit (anime 3) is past its frame 10 and short of 20, a puff of acid each tick
+// (0x4a4580, mist_poison) from 700 up the body along its facing, 2500 long in stages 1..4 and 17
+// (0x494d80) and 1250 elsewhere, tipped by half of James' height above it. Grey 0x80, or 0x18 in the
+// dark with the flashlight off (0x4a4580 makes it 0x30 there while 0x507e00 finds the light on the
+// enemy it follows, not ported).
+static void acid(Enemy* e, const EnPlayer* p, float dt)
+{
+	float f = e->frame - SCU_ANIM[A_ATTACK].start;
+	if (e->kind != EN_KIND_SCU || e->anim != A_ATTACK || f <= 10.0f || f >= 20.0f) {
+		e->acid_acc = 0.0f;
+		return;
+	}
+	int st = ev_stage();
+	float len = (st >= 1 && st <= 4) || st == 17 ? 2500.0f : 1250.0f;
+	float pos[3] = { e->x, e->y - 700.0f, e->z };
+	float vec[3] = { sinf(e->yaw) * len, (p->y - e->y) * 0.5f, cosf(e->yaw) * len };
+	u8 grey = light_index(p) == 3 ? 0x18 : 0x80;
+	for (e->acid_acc += dt * 60.0f; e->acid_acc >= 1.0f; e->acid_acc -= 1.0f)
+		mist_poison(pos, vec, grey);
+}
+
 static void scu_update(Enemy* e, const EnPlayer* p, float dt)
 {
 	e->p_dist = hypotf(p->x - e->x, p->z - e->z);
@@ -1579,6 +1679,7 @@ static void scu_update(Enemy* e, const EnPlayer* p, float dt)
 	float adv = anim_step(e, dt);
 	move_exec(e, adv, dt);
 	sounds(e, f0, dt);
+	acid(e, p, dt);
 }
 
 
@@ -5458,6 +5559,7 @@ static bool condition_ok(int cond)
 	case 0x280: return ev_flag(365);                     // (and James past an x the port ignores)
 	case 0x2c0: return !ev_flag(329) || ev_flag(330);
 	case 0x300: return ev_flag(154) && !ev_flag(251);
+	case 0x340: return !ev_have_item(55);                // not while the dry cell is held (0x1f7d3e4 bit 23)
 	case 0x400: return ev_flag(154) && (!ev_flag(156) || ev_flag(157)) && !ev_flag(162);
 	case 0x440: return ev_flag(154) && !ev_flag(162);
 	case 0x480: return !ev_flag(99) && !ev_flag(101);
@@ -5622,6 +5724,11 @@ void enemy_init(const char* pack)
 		while (fgets(line, sizeof line, d)) {
 			if (sscanf(line, "action %d", &v) == 1)
 				enemy_set_difficulty(v);
+			if (sscanf(line, "enemylog %d", &v) == 1 && v && !s_log) {
+				char lp[96];
+				snprintf(lp, sizeof lp, "%s/enemylog.txt", pack);
+				s_log = fopen(lp, "w");
+			}
 			// "enemy <kind hex> <x> <z> <yaw degrees> [status [y]]": an extra enemy in whatever room
 			// has a floor there (testing; y places a wall or ceiling creeper)
 			st = 0;
@@ -5831,6 +5938,15 @@ void enemy_room_enter(int stage, const Collision* col)
 	s_load_now = false;
 }
 
+// EvProgUseDryCell (0x586f40) creates the stage's creeper and nest rows that are not dead (0x48fcc0
+// for kinds 0x202, 0x20c and 0x20d); the list's condition 0x340 lets them in once the dry cell is
+// used, so the rows not yet present are spawned here.
+void enemy_spawn_list(void)
+{
+	if (s_col)
+		spawn_list(s_stage, s_col);
+}
+
 // Streamed open areas: the merged collision changed under the same pointer. Enemies whose floor
 // left it are dropped (they come back from the list when their tile returns, alive unless they
 // were killed); rows whose tile came in are spawned; the ones that stay keep going.
@@ -5888,9 +6004,29 @@ void enemy_update(const EnPlayer* p, float dt)
 	}
 	script_spawn();
 	maria_update(p, dt);
+	for (int i = 0; i < ENEMY_MAX; i++)          // walked away from a body: no more stomps on it
+		if (s_en[i].used && s_en[i].corpse_open && hypotf(s_en[i].x - p->x, s_en[i].z - p->z) > CORPSE_LEAVE)
+			s_en[i].corpse_open = false;
+	if (s_log) {                         // debug.txt "enemylog 1": every enemy, every frame
+		static u32 n;
+		n++;
+		fprintf(s_log, "%lu J %s keys %lx at %.0f %.0f yaw%.2f\n", n, combat_status(), (unsigned long)(hidKeysHeld() | hidKeysDown() << 16), p->x, p->z, p->yaw);
+		for (int i = 0; i < ENEMY_MAX; i++) {
+			const Enemy* e = &s_en[i];
+			if (e->used)
+				fprintf(s_log, "%lu e%d k%d s%d.%d c%d a%d f%.1f%s hp%.0f en%.0f dmg%.0f d%.0f yaw%.2f at %.0f %.0f\n", n, i,
+				        e->kind, e->mlv, e->slv, e->corpse_open, e->anim, e->frame, e->anim_end ? "e" : "", e->hp, e->endurance,
+				        e->damage, e->p_dist, e->yaw, e->x, e->z);
+		}
+		if (!(n & 63))
+			fflush(s_log);
+	}
 }
 
-void enemy_draw(const C3D_Mtx* view, int uModelView, int uBones)
+// Each slot's crossfade (anim_set): the pose shown last and the blend under way.
+static ChrBlend s_blend[ENEMY_MAX];
+
+void enemy_draw(const C3D_Mtx* view, int uModelView, int uBones, float dt)
 {
 	for (int i = 0; i < ENEMY_MAX; i++) {
 		Enemy* e = &s_en[i];
@@ -5921,16 +6057,26 @@ void enemy_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		Mtx_Multiply(&mv, view, &model);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
 		const ScuAnim* t = &anim_tab(e)[e->anim];
-		float f = e->frame;
-		if (t->loop && f > t->end)
-			f = t->start;               // no blend across the loop seam
 		if (e->kind == EN_KIND_NEST) {
 			for (int b = 0; b < c->n_bones && b < CHR_MAX_BONES; b++) {
 				memset(&c->skin[b], 0, sizeof c->skin[b]);
 				c->skin[b].m[0][0] = c->skin[b].m[1][1] = c->skin[b].m[2][2] = 1.0f;
 			}
 		} else {
-			chr_pose(c, &s_mdl[e->model].anim, f);
+			ChrBlend* bl = &s_blend[i];
+			if (!e->drawn) {
+				memset(bl, 0, sizeof *bl);
+				bl->upper_root = bl->look_head = bl->look_neck = -1;
+				e->drawn = true;
+				e->anim_new = false;
+			}
+			if (e->anim_new) {
+				chr_blend_start(bl, e->anim_cut ? 0.0f : 8.0f / 30.0f);
+				e->anim_new = false;
+			}
+			bl->loop_start = t->loop ? t->start : 0;
+			bl->loop_end = t->loop ? t->end : 0;
+			chr_pose_blend(c, &s_mdl[e->model].anim, e->frame, bl, dt);
 		}
 		float at[3] = { e->x, e->y, e->z };
 		chrlight_at(at, false);         // the PC's per-character light list (chrlight.c)
@@ -5958,7 +6104,11 @@ bool enemy_alive(const Enemy* e)
 		return e->used && e->ctrl == 1 && e->mlv != RED_LEAVE;   // can be hit, never dies
 	int dying = !e ? 0 : e->kind == EN_KIND_MKN ? MKN_DYING : e->kind == EN_KIND_NSE ? NSE_DYING
 	          : e->kind == EN_KIND_TYU ? TYU_DYING : SCU_DYING;
-	return e && e->used && e->mlv != dying && e->hp > 0.0f;
+	// a body in its throes (Down sub-state 4) is still one: enDyingExec 0x4a96c0 sets the dead bit
+	// (+0x148 bit 2) only once it dies, and until then 0x542a10 lets James stomp it and blows reach it
+	int down = !e ? 0 : e->kind == EN_KIND_MKN ? MKN_DOWN : e->kind == EN_KIND_NSE ? NSE_DOWN : SCU_DOWN;
+	bool throes = e && e->kind != EN_KIND_TYU && e->mlv == down && e->slv == 4;
+	return e && e->used && e->mlv != dying && (e->hp > 0.0f || throes);
 }
 
 bool enemy_is_down(const Enemy* e)
@@ -6040,6 +6190,22 @@ void enemy_damage(Enemy* e, int attack_id, float ap, float sp, float dir_x, floa
 		e->hbx = dir_x / n;
 		e->hbz = dir_z / n;
 	}
+}
+
+bool enemy_corpse_stompable(const Enemy* e)
+{
+	return e && e->used && e->dead_flag && e->corpse_open;
+}
+
+void enemy_stomp_corpse(Enemy* e, float dir_x, float dir_z)
+{
+	if (!enemy_corpse_stompable(e))
+		return;
+	e->last_atk = 36;                    // a stomp, for the blood's strength (0x4c7d40)
+	float n = sqrtf(dir_x * dir_x + dir_z * dir_z);
+	if (n > 1e-3f)
+		e->hbx = dir_x / n, e->hbz = dir_z / n;
+	e->corpse_hits++;
 }
 
 const char* enemy_status(void)

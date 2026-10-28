@@ -197,7 +197,5 @@ from; they were applied once and the project dump now carries their result.
 
 Open questions in the data, last checked 2026-10-19:
 
-- `port/source/events.h` calls 0x48e520 `EventCheck`; the PC asserts in it (event.c lines 917 and 929)
-  put it in `EventCheckLookLine`, so the comment probably cites the wrong address.
 - 6,559 of 7,287 functions still have Ghidra's own names. The module map places 22% of the code bytes;
   `module_gaps.tsv` lists the rest with hints.

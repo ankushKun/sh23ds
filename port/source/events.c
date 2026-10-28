@@ -21,7 +21,8 @@ typedef struct {
 
 typedef struct {
 	float pos[3], rot_y;
-	u16 flag, gives_item, system_message, pad;
+	u16 flag, gives_item, system_message;
+	u16 cond;                // bit 15 set, difficulty class bits 0..2, condition type 3..7 (0: older pack)
 	char map[8];
 } ItemRec;
 
@@ -30,6 +31,7 @@ typedef struct {
 	u32* offs;
 	char* data;
 	u32 size;
+	bool tried;                  // a file loaded when first asked for: asked for once
 } MsgFile;
 
 static const char* msg_get(const MsgFile* m, u32 i);
@@ -46,7 +48,9 @@ static u32 s_nev, s_nitems;
 static int s_stage;
 static char s_name[24];
 static int s_glb_crd;
-static MsgFile s_msg, s_common, s_itemtext, s_memotext, s_resulttext, s_mcardtext;
+static MsgFile s_msg, s_common, s_itemtext, s_memotext, s_resulttext, s_mcardtext, s_optiontext, s_pausetext;
+static MsgFile* const MSG_FILES[] = { &s_msg, &s_common, &s_itemtext, &s_memotext, &s_resulttext, &s_mcardtext,
+	&s_optiontext, &s_pausetext };
 static u32 s_flags[EV_MAX_FLAGS / 32];
 static u8 s_items_held[256];        // count per item number (ammo and health items stack)
 static int s_last_fired = -1;       // rising edge for non-button triggers
@@ -73,17 +77,79 @@ void ev_set_flag_lo(int index, u16 lo)
 }
 int ev_item_count(int item) { return item > 0 && item < 256 ? s_items_held[item] : 0; }
 
+// Packs from before the item records kept the condition type: the pickups that have one, by their
+// flag n (Item_List.st bits 24..20; every pickup's difficulty class is 0). Type 1: 21 in the town's
+// east and 14 in its west, type 2: four boxes of rounds in ap64, type 3: hp210's shells and ampoules.
+static const u16 OLD_COND1[] = { 901, 909, 911, 915, 933, 935, 943, 955, 961, 965, 973, 1209, 1211, 1221,
+	1223, 1237, 1247, 1249, 1253, 1263, 1271, 1283, 1285, 1287, 1295, 1301, 1303, 1305, 1335, 1337, 1339,
+	1341, 1343, 1367, 1393 };
+static const u16 OLD_COND2[] = { 747, 749, 751, 753 };
+static const u16 OLD_COND3[] = { 785, 787, 789, 791, 1079, 1081, 1083 };
+
+static int old_cond_type(int flag)
+{
+	for (u32 i = 0; i < sizeof OLD_COND1 / sizeof *OLD_COND1; i++)
+		if (OLD_COND1[i] == flag)
+			return 1;
+	for (u32 i = 0; i < sizeof OLD_COND2 / sizeof *OLD_COND2; i++)
+		if (OLD_COND2[i] == flag)
+			return 2;
+	for (u32 i = 0; i < sizeof OLD_COND3 / sizeof *OLD_COND3; i++)
+		if (OLD_COND3[i] == flag)
+			return 3;
+	return 0;
+}
+
+// EventItemConditionCheck (0x48cb20): whether a pickup is there. The room loader (0x490080) asks it
+// for the pickup's model (pickup false), EventCheckLookLine (0x48e520) for the pickup itself. The
+// action level leaves out classes 2, 3 and 6 on easy, 1, 3 and 5 on normal and 1, 2 and 4 on hard;
+// condition type 1 needs flag 251 (the town at night), type 2's pickup flag 108 clear, and type 3
+// flag 232 clear for its model and 240 for its pickup.
+static bool item_there(const ItemRec* it, bool pickup)
+{
+	int cls = it->cond & 0x8000 ? it->cond & 7 : 0;
+	int type = it->cond & 0x8000 ? it->cond >> 3 & 0x1f : old_cond_type(it->flag);
+	switch (prog_action_level()) {
+	case 1: if (cls == 2 || cls == 3 || cls == 6) return false; break;
+	case 2: if (cls == 1 || cls == 3 || cls == 5) return false; break;
+	case 3: if (cls == 1 || cls == 2 || cls == 4) return false; break;
+	}
+	switch (type) {
+	case 1: return ev_flag(251);
+	case 2: return !pickup || !ev_flag(108);
+	case 3: return !ev_flag(pickup ? 240 : 232);
+	default: return true;
+	}
+}
+
+// Not taken yet (flags n and n + 1 clear) and there (item_there).
+static bool item_lying(const ItemRec* it, bool pickup)
+{
+	return !ev_flag(it->flag) && !ev_flag(it->flag + 1) && item_there(it, pickup);
+}
+
 int ev_items_lying(float (*out)[3], int max)
 {
 	int n = 0;
 	for (u32 i = 0; i < s_nitems && n < max; i++) {
 		const ItemRec* it = &s_items[i];
-		if (ev_flag(it->flag) || ev_flag(it->flag + 1))
-			continue;              // not offered, or picked up (items_update)
-		memcpy(out[n++], it->pos, sizeof it->pos);
+		if (item_lying(it, false))
+			memcpy(out[n++], it->pos, sizeof it->pos);
 	}
 	return n;
 }
+
+bool ev_pickup_place(int i, int* item, float pos[3], float* rot_y)
+{
+	if (i < 0 || (u32)i >= s_nitems)
+		return false;
+	*item = s_items[i].gives_item;
+	memcpy(pos, s_items[i].pos, 3 * sizeof(float));
+	*rot_y = s_items[i].rot_y;
+	return true;
+}
+
+bool ev_pickup_shown(int i) { return i >= 0 && (u32)i < s_nitems && item_lying(&s_items[i], false); }
 
 void ev_give_item(int item, int n)
 {
@@ -192,6 +258,7 @@ void ev_reset(void)
 
 int ev_stage(void) { return s_stage; }
 int ev_glb_crd(void) { return s_glb_crd; }
+void ev_set_glb_crd(int glb) { s_glb_crd = glb; }
 const char* ev_stage_name(void) { return s_name; }
 int ev_count(void) { return (int)s_nev; }
 const char* ev_stage_message(int n) { return n >= 0 ? msg_get(&s_msg, (u32)n) : NULL; }
@@ -230,50 +297,131 @@ const char* ev_msg_expand(const char* text)
 	return s_expanded;
 }
 
-// The results screen's labels (result_msg_e.mes), loaded when it first shows.
-const char* ev_result_message(int n)
+// The language (PC 0x1dbec06, set by the options' Language row, 0x4630c0): 1 English, 2 French,
+// 3 German, 4 Italian, 5 Spanish. The PC loads each message file from a table indexed by it
+// (0x445980: 0x7b4f50 common_msg_?.mes, 0x7b4f68 item_x, 0x7b4f80 option, 0x7b4f98 memo_x,
+// 0x7b4fb0 m_card_x, 0x7b4fc8 result, 0x7b5028 the stages). The pack keeps English in events/ and
+// the others in events/f, events/g, events/i and events/s (tools/sh2conv/events_pack.py). 0,
+// Japanese, is only reachable through the PC's language.ini and is not packed.
+static int s_lang = 1;
+static const char LANG_DIR[6] = { 0, 0, 'f', 'g', 'i', 's' };
+static s8 s_lang_ok[6];              // whether the pack has the language: 0 not checked, 1 yes, -1 no
+
+void ev_msg_path(char* out, size_t size, const char* name)
 {
-	static bool tried;
-	if (!tried) {
-		tried = true;
-		msg_load(&s_resulttext, PACK_DIR "/events/result.msg");
-	}
-	return n >= 0 ? msg_get(&s_resulttext, (u32)n) : NULL;
+	if (s_lang >= 2 && s_lang <= 5)
+		snprintf(out, size, PACK_DIR "/events/%c/%s", LANG_DIR[s_lang], name);
+	else
+		snprintf(out, size, PACK_DIR "/events/%s", name);
 }
 
-// The save screen's texts (m_card_x_msg_e.mes), loaded when it first shows.
-const char* ev_mcard_message(int n)
+static bool load_named(MsgFile* m, const char* name)
 {
-	static bool tried;
-	if (!tried) {
-		tried = true;
-		msg_load(&s_mcardtext, PACK_DIR "/events/mcard.msg");
-	}
-	return n >= 0 ? msg_get(&s_mcardtext, (u32)n) : NULL;
+	char path[96];
+	ev_msg_path(path, sizeof path, name);
+	bool ok = msg_load(m, path);
+	m->tried = true;
+	return ok;
 }
 
-// The options screens' texts (option_msg_e.mes), loaded when they first show.
-const char* ev_option_message(int n)
+// A file loaded when first asked for (the results, the save screen, the options, the memos and
+// the pause menu are not needed in play).
+static const char* lazy(MsgFile* m, const char* name, int n)
 {
-	static MsgFile text;
-	static bool tried;
-	if (!tried) {
-		tried = true;
-		msg_load(&text, PACK_DIR "/events/option.msg");
-	}
-	return n >= 0 ? msg_get(&text, (u32)n) : NULL;
+	if (!m->tried)
+		load_named(m, name);
+	return n >= 0 ? msg_get(m, (u32)n) : NULL;
 }
 
-// The memo list's titles and texts (memo_x_msg_e.mes, written by tools/sh2conv/maps.py), loaded
-// the first time the list opens.
-const char* ev_memo_message(int n)
+// The results screen's labels (result_msg_?.mes).
+const char* ev_result_message(int n) { return lazy(&s_resulttext, "result.msg", n); }
+// The save screen's texts (m_card_x_msg_?.mes).
+const char* ev_mcard_message(int n) { return lazy(&s_mcardtext, "mcard.msg", n); }
+// The options screens' texts (option_msg_?.mes).
+const char* ev_option_message(int n) { return lazy(&s_optiontext, "option.msg", n); }
+// The memo list's titles and texts (memo_x_msg_?.mes, written by tools/sh2conv/maps.py).
+const char* ev_memo_message(int n) { return lazy(&s_memotext, "memo.msg", n); }
+// The pause menu's strings, which the PC keeps in the exe by language (0x407310 picks the table:
+// 0x7abd84 English, 0x7abda8 French, 0x7abdcc German, 0x7abe14 Italian, 0x7abdf0 Spanish; written
+// by tools/sh2conv/ui.py): the title, the five rows, the quit question, Yes and No.
+const char* ev_pause_message(int n) { return lazy(&s_pausetext, "pause.msg", n); }
+
+int ev_language(void) { return s_lang; }
+
+bool ev_language_available(int lang)
 {
-	static bool tried;
-	if (!tried) {
-		tried = true;
-		msg_load(&s_memotext, PACK_DIR "/events/memo.msg");
+	if (lang == 1)
+		return true;
+	if (lang < 2 || lang > 5)
+		return false;
+	if (!s_lang_ok[lang]) {
+		char path[96];
+		snprintf(path, sizeof path, PACK_DIR "/events/%c/common.msg", LANG_DIR[lang]);
+		FILE* f = fopen(path, "rb");
+		s_lang_ok[lang] = f ? 1 : -1;
+		if (f)
+			fclose(f);
 	}
-	return n >= 0 ? msg_get(&s_memotext, (u32)n) : NULL;
+	return s_lang_ok[lang] > 0;
+}
+
+// 0x4f6cc0 without a language.ini: the system's language (GetUserDefaultLangID there, the
+// console's here, whose numbers 1..5 are the same five), English for any other.
+int ev_system_language(void)
+{
+	u8 lang = CFG_LANGUAGE_EN;
+	if (R_SUCCEEDED(cfguInit())) {
+		if (R_FAILED(CFGU_GetSystemLanguage(&lang)))
+			lang = CFG_LANGUAGE_EN;
+		cfguExit();
+	}
+	return lang >= CFG_LANGUAGE_EN && lang <= CFG_LANGUAGE_ES ? lang : 1;
+}
+
+// Texts the game may still point at (a message on screen, an event's result) when the language
+// changes: freed at the next stage load, the oldest first when there are too many.
+static char* s_retired[24];
+static int s_nretired;
+
+static void free_retired(void)
+{
+	for (int i = 0; i < s_nretired; i++)
+		free(s_retired[i]);
+	s_nretired = 0;
+}
+
+int ev_set_language(int lang)
+{
+	if (!ev_language_available(lang))
+		lang = 1;
+	if (lang == s_lang)
+		return lang;
+	s_lang = lang;
+	// 0x4630c0 reloads the option texts at once (0x445980(2)); the others follow here too, so
+	// everything shown after the change is in the new language
+	bool stage = s_msg.data != NULL, common = s_common.data != NULL, items = s_itemtext.data != NULL;
+	for (size_t i = 0; i < sizeof MSG_FILES / sizeof *MSG_FILES; i++) {
+		MsgFile* m = MSG_FILES[i];
+		if (m->data) {
+			if (s_nretired == (int)(sizeof s_retired / sizeof *s_retired)) {
+				free(s_retired[0]);
+				memmove(s_retired, s_retired + 1, sizeof s_retired - sizeof *s_retired);
+				s_nretired--;
+			}
+			s_retired[s_nretired++] = m->data;
+		}
+		memset(m, 0, sizeof *m);
+	}
+	if (stage) {
+		char name[16];
+		snprintf(name, sizeof name, "s%02d.msg", s_stage);
+		load_named(&s_msg, name);
+	}
+	if (common)
+		load_named(&s_common, "common.msg");
+	if (items)
+		load_named(&s_itemtext, "item.msg");
+	return lang;
 }
 
 const char* ev_item_message(int n) { return n >= 0 ? msg_get(&s_itemtext, (u32)n) : NULL; }
@@ -366,12 +514,13 @@ bool ev_load_stage(int stage)
 	s_stage = stage;
 	s_last_fired = -1;
 	apply_ee_fixes();
-	snprintf(path, sizeof path, PACK_DIR "/events/s%02d.msg", stage);
-	msg_load(&s_msg, path);
+	free_retired();
+	snprintf(path, sizeof path, "s%02d.msg", stage);
+	load_named(&s_msg, path);
 	if (!s_common.data)
-		msg_load(&s_common, PACK_DIR "/events/common.msg");
+		load_named(&s_common, "common.msg");
 	if (!s_itemtext.data)
-		msg_load(&s_itemtext, PACK_DIR "/events/item.msg");
+		load_named(&s_itemtext, "item.msg");
 	return true;
 }
 
@@ -792,19 +941,25 @@ static bool exec(int i, const EvRec* e, EvAction* out)
 	return true;
 }
 
-// Item pickups (ItemCheckLookPoint 0x48b980): offered while flags n and n+1 are clear, picking up
-// sets n+1. Same 400 / 30 degree look test, height window py - 750 <= y <= py + 100.
+// Item pickups (EventCheckLookLine 0x48e520, ItemCheckLookPoint 0x48b980): offered while flags n
+// and n+1 are clear and item_there agrees, picking up sets n+1. Same 400 / 30 degree look test,
+// height window py - 750 <= y <= py + 100. In a dark room only with the flashlight lit (0x47b1f0,
+// 0x48c840: can_see), in stages 43..46, in Born From a Wish, or when 0x507e00 passes the item's
+// model: always while flag 625 is set, else when a light near it shows it, which the port doesn't
+// track, so those wait for the flashlight.
 static bool items_update(const EvPlayer* p, EvAction* out)
 {
 	if (!p->action)
 		return false;
 	for (u32 i = 0; i < s_nitems; i++) {
 		ItemRec* it = &s_items[i];
-		if (ev_flag(it->flag) || ev_flag(it->flag + 1))
+		if (!item_lying(it, true))
 			continue;
 		if (it->pos[1] < p->y - 750.0f || it->pos[1] > p->y + 100.0f)
 			continue;
 		if (!look_point(p->x, p->z, p->yaw, it->pos[0], it->pos[2], 400.0f))
+			continue;
+		if (!p->can_see && !(s_stage >= 43 && s_stage <= 46) && !prog_chapter() && !ev_flag(625))
 			continue;
 		ev_flag_set(it->flag + 1, true);
 		ev_give_item(it->gives_item, ev_item_get_amount(it->gives_item));
@@ -827,8 +982,32 @@ bool ev_pickup_info(int i, int* item, float pos[3], bool* available)
 	const ItemRec* it = &s_items[i];
 	*item = it->gives_item;
 	memcpy(pos, it->pos, 3 * sizeof(float));
-	*available = !ev_flag(it->flag) && !ev_flag(it->flag + 1);
+	*available = item_lying(it, true);
 	return true;
+}
+
+// EventCheckLookLine (0x48e520) as 0x52e110 asks it, (1, 0, 1): the first event whose flags pass and
+// whose trigger holds with Action pressed, the use-item kinds 5 and 6 left out and no item pickups.
+// Nothing is run.
+int ev_look_line(const EvPlayer* p)
+{
+	EvPlayer q = *p;
+	q.action = true;
+	q.use_item = 0;
+	for (u32 i = 0; i < s_nev; i++) {
+		const EvRec* e = &s_ev[i];
+		if (!e->cond && !e->rslt0)
+			break;
+		int kind = e->cond >> 28;
+		if (kind == 5 || kind == 6 || !flags_pass(e->flag))
+			continue;
+		if ((e->rslt0 >> 28) == RT_PROGRAM && !prog_exists(s_stage, (e->rslt1 >> 14) & 0x7f))
+			continue;
+		bool edge;
+		if (trigger_pass(e, &q, &edge))
+			return (int)i;
+	}
+	return -1;
 }
 
 bool ev_update(const EvPlayer* p, EvAction* out)

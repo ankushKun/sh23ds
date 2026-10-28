@@ -81,6 +81,7 @@ If sh23ds starts and can't find its data, it says so: whether the folder is miss
 - All 128 in-engine cutscenes, and the movies re-encoded for the console
 - The PC's music, sound effects and voices, mixed the same way
 - The [Enhanced Edition fixes](port/EE_FIXES.md), such as the PS2 flashlight and the corrected fog and lighting
+- Stereoscopic 3D on the top screen with the 3D slider
 - Made for the New 3DS's faster CPU and extra memory, with a lighter 30 fps profile for the original 3DS ([details](port/OLD3DS.md))
 
 ## Controls

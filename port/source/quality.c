@@ -6,6 +6,7 @@ static Quality Q = {
 	.drop_shadows = true,
 	.tile_distance = 7000.0f,
 	.frame_cap = 0,
+	.fog_fill_3d = 3.0f,
 };
 
 const Quality* quality(void) { return &Q; }

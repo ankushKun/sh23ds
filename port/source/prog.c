@@ -1,7 +1,9 @@
 #include "prog_int.h"
+#include "bgm.h"
 #include "stagemdl.h"
 #include "boat.h"
 #include "combat.h"
+#include "enemy.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -441,12 +443,15 @@ void prog_start(int stage, int prog_no, int flag)
 	s_p.flag_set = true;
 }
 
+static int s_demo_no;                // DAT_01f7d3c4 as the program set it this frame
+
 bool prog_running(void) { return s_running; }
 bool prog_player_locked(void) { return s_running && s_p.locked; }
 
 void prog_abort(void)
 {
 	s_running = false;
+	s_demo_no = 0;
 	p_panel(NULL);
 	p_picture_hide();
 }
@@ -454,9 +459,14 @@ void prog_abort(void)
 static int s_choice_n;               // answers of the choice waiting last frame (playtest.c)
 int prog_choice_waiting(void) { return s_running ? s_choice_n : 0; }
 
+int prog_demo_number(void) { return s_demo_no; }
+void p_demo_number(int n) { s_demo_no = n; }
+void p_bgm_page(int page) { bgm_set_page(page); }
+
 bool prog_update(u32 down, u32 held, float dt)
 {
 	s_choice_n = 0;
+	s_demo_no = 0;                   // EventMain 0x48ecb0, before the stage program runs
 	if (!s_running)
 		return false;
 	s_p.down = down;
@@ -470,6 +480,7 @@ bool prog_update(u32 down, u32 held, float dt)
 	if (s_p.flag_set && s_p.flag)
 		ev_flag_set(s_p.flag, true);
 	s_running = false;
+	s_demo_no = 0;                   // prog_update is not called again until the next program
 	p_panel(NULL);
 	p_picture_hide();
 	return false;
@@ -489,6 +500,7 @@ void p_picture_hide(void)
 }
 void p_save_menu(void) { if (s_host.save_menu) s_host.save_menu(); }
 void p_flashlight(bool on) { if (s_host.flashlight) s_host.flashlight(on); }
+void p_enemy_list(void) { enemy_spawn_list(); }
 void p_figure(int status, float x, float y, float z, float yaw, float delay) { if (s_host.figure) s_host.figure(status, x, y, z, yaw, delay); }
 // 0x48d7e0: an ending's clear bit goes into the clear data before the game ends; the levels and the
 // count only for James' endings (Born From a Wish passes 0x40).

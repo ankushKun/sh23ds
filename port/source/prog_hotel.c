@@ -1,4 +1,5 @@
 #include "prog_int.h"
+#include "bgm.h"
 #include "stagemdl.h"
 #include "boat.h"
 #include <stdio.h>
@@ -194,12 +195,18 @@ static int s40_orgel(Prog* p)
 		if (p->answer)
 			PROG_JUMP(p, 0xd);
 		p->work[3] = music_box_solved();
-		if (p->work[3])
+		if (p->work[3]) {
 			p_set(472);                 // FLAGW_448 |= 0x1000000
+			p_bgm_page(0x22);           // state 0x11: the whole tune, hotel/bgm_112.aix
+		} else {
+			bgm_set_music_box(true);    // 0x1d85fa4: the stage's bgm_control plays a layer per box
+		}
 		p->timer = 0.0f;
 		p->step = 0x18, p->sub = 0;
 		// fallthrough
 	case 0x18:                      // the PC loads org_b for the right order, org_a otherwise
+		if (p->work[3] && bgm_page_pending())
+			return 0;                   // state 0x10: the box opens once the tune has started
 		if (p->work[3]) {
 			p->timer += p->dt;          // 0x57b5c0(1, 15.0): the box opens and the tune turns it
 			stagemdl_music_box(p->timer);
@@ -217,6 +224,7 @@ static int s40_orgel(Prog* p)
 		// fallthrough
 	case 0xd:
 	default:
+		bgm_set_music_box(false);
 		p_clear(448);                   // FLAGW_448 &= ~7
 		p_clear(449);
 		p_clear(450);
@@ -254,11 +262,15 @@ static int s40_get_fish_key(Prog* p) { return p_item_get(p, 0x2f, 0x17); }
 
 // 0x57beb0 EvProgLauraPlayPiano: Laura in the lounge (the voice, piano_lau_b), her letter on screen
 // with message 0x2e, then the rest of the scene (piano_lau_e) and the letter (item 22).
+// The music: BGM page 0x21 (hotel/bgm_017.adx), whose track the stage's bgm_control (0x57c400)
+// keeps silent (page 0xe) until flag 528, 243 frames into piano_lau_b (demo.c); page 0x23 afterwards.
 static int s40_laura_piano(Prog* p)
 {
+	p_demo_number(0x4e);                // DAT_01f7d3c4 = 0x4e every frame
 	PROG_BEGIN(p)
 		p_set(636);                     // FLAGW_608 |= 0x10000000
 		p_lock(p, true);
+		p_bgm_page(0x21);
 	PROG_STEP(p, 0x17, p_demo(p, DEMO_LAURA_PIANO))
 		p_set(528);                     // FLAGW_512 |= 0x10000 during the demo
 	PROG_STEP(p, 2, p_picture(p, "htl_p_laura_letter"))
@@ -267,6 +279,7 @@ static int s40_laura_piano(Prog* p)
 		p_set(383);                     // FLAGW_352 |= 0x80000000
 	PROG_STEP(p, 0x18, p_demo(p, DEMO_LAURA_PIANO_END))
 		p_item_get_now(0x16);
+		p_bgm_page(0x23);
 		p_place(-59930.5f, 0.0f, 61014.5f, 0.0f);
 		p_lock(p, false);
 	PROG_END(p)
@@ -729,7 +742,9 @@ static int s42_use_312_key(Prog* p) { return p_item_use(p, 0x2b, 4, 0x4a3b); }
 static int s42_video_replay(Prog* p)
 {
 	PROG_BEGIN(p)
+		p_bgm_page(0);                  // silence; page 0x25 before tomatta (state 6, demo.c)
 	PROG_STEP(p, 0x17, p_demo(p, DEMO_VIDEO))
+		p_bgm_page(0x25);               // state 0xd when the tape was skipped
 		p_set(475);                     // FLAGW_448 |= 0x8000000
 		p_set(625);                     // FLAGW_608 |= 0x20000
 		p_set(527);                     // FLAGW_512 |= 0x8000
@@ -1083,14 +1098,19 @@ static int end_mary_fall(Prog* p)
 	PROG_END(p)
 }
 
-// EvProgChangeMaryRoom (0x440210, 0x43eeb0): the end stage swaps the room (0x4ed6f0).
-static int end_change_room(Prog* p) { (void)p; return 1; }
+// EvProgChangeMaryRoom: the stage's glb_crd (Stage_Data +0x24) becomes the room Mary lies in, so
+// the auto door after it (event 9) lands in qt01 for Leave (0x440210: 0xf) and qp01 for In Water
+// (0x43eeb0: 0xe, after a fade, FUN_004ee620(1, 0)); 0x4ed6f0 then frees the stage's effect task
+// (0x4ee470), which the port does not have. The stage init (0x440320, 0x43f4d0) puts 0xd back.
+static int s48_change_room(Prog* p) { (void)p; ev_set_glb_crd(0xf); return 1; }
+static int s50_change_room(Prog* p) { (void)p; ev_set_glb_crd(0xe); return 1; }
 
 // EvProgMaryAfterBattle, Leave (0x440230): the scene with Mary; the ending runs on in the forest.
 static int s48_after_battle(Prog* p)
 {
 	PROG_BEGIN(p)
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_END_LEAVE_ROOM))
+		ev_set_glb_crd(0xd);            // _DAT_007b3da4 = 0xd
 		p_lock(p, false);
 	PROG_END(p)
 }
@@ -1101,14 +1121,15 @@ static int s50_after_battle(Prog* p)
 {
 	PROG_BEGIN(p)
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_END_WATER))
+		ev_set_glb_crd(0xd);            // _DAT_007b307c = 0xd
 		p_lock(p, false);
 		p_game_end(4);
 	PROG_END(p)
 }
 
-static const ProgFn s_stage48[5] = { NULL, end_before_battle, end_mary_fall, end_change_room, s48_after_battle };
+static const ProgFn s_stage48[5] = { NULL, end_before_battle, end_mary_fall, s48_change_room, s48_after_battle };
 static const ProgFn s_stage49[3] = { NULL, end_before_battle_maria, end_mary_fall };
-static const ProgFn s_stage50[5] = { NULL, end_before_battle, end_mary_fall, end_change_room, s50_after_battle };
+static const ProgFn s_stage50[5] = { NULL, end_before_battle, end_mary_fall, s50_change_room, s50_after_battle };
 static const ProgFn s_stage51[3] = { NULL, end_before_battle, end_mary_fall };
 
 // ================================================================ stage 52 Stg_end_dog (0x8c8c0c)

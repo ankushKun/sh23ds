@@ -1,4 +1,6 @@
 #include "touchui.h"
+#include "audio.h"
+#include "bgm.h"
 #include "combat.h"
 #include "controls.h"
 #include "events.h"
@@ -28,7 +30,7 @@
 typedef struct {
 	bool on;
 	char title[48];
-	char rows[MAX_ROWS][48];
+	char rows[MAX_ROWS][72];     // the other languages' rows run longer than the English ones
 	int n, shown_sel;
 	int* sel;
 	char blabel[MAX_BUTTONS][16];
@@ -53,6 +55,7 @@ static bool s_debug, s_movie, s_dirty = true;
 static int s_cond = -1;              // 0 Fine, 1 Caution, 2 Danger (the help screen's thresholds)
 static char s_weapon[40];
 static int s_heal[3];                // the healing items' counts (the quick slots)
+static char s_sound[64];             // a sound problem the player should know of (audio_problem)
 static bool s_have_light;
 static int s_quick, s_quick_item;    // a quick slot tapped, for touchui_quick
 
@@ -63,6 +66,8 @@ static float s_press[4];             // the prompt last tapped lights for a mome
 static u64 s_press_tick;
 static bool s_drag;                  // a finger moving the zoomed map, and where it was
 static int s_drag_x, s_drag_y;
+static bool s_free;                  // a finger that came down on nothing: it turns the behind camera
+static int s_free_x, s_free_y, s_free_dx, s_free_dy;
 
 static C3D_RenderTarget* s_target;
 static DVLB_s* s_dvlb;
@@ -427,14 +432,26 @@ static void text_lit(int font, float x, float y, const char* s, int align, u32 c
 	text(font, x, y, s, align, c, c);
 }
 
+// One character of s into one (a full-width code is FONT_FULL_WIDTH and four hex digits), the
+// next one returned.
+static const char* one_char(const char* s, char one[6])
+{
+	int n = *s == FONT_FULL_WIDTH ? 5 : 1;
+	int k = 0;
+	for (; k < n && s[k]; k++)
+		one[k] = s[k];
+	one[k] = 0;
+	return s + k;
+}
+
 // A title, spread a little and centred on x.
 static float spaced_width(int font, const char* s, float gap)
 {
 	float w = 0.0f;
-	char one[2] = { 0, 0 };
-	for (const char* c = s; *c; c++) {
-		one[0] = *c;
-		w += font_width_px(font, one) + (c[1] ? gap : 0.0f);
+	char one[6];
+	for (const char* c = s; *c;) {
+		c = one_char(c, one);
+		w += font_width_px(font, one) + (*c ? gap : 0.0f);
 	}
 	return w;
 }
@@ -442,9 +459,9 @@ static float spaced_width(int font, const char* s, float gap)
 static void text_spaced(int font, float cx, float y, const char* s, float gap, u32 c)
 {
 	float x = cx - spaced_width(font, s, gap) * 0.5f;
-	char one[2] = { 0, 0 };
-	for (const char* p = s; *p; p++) {
-		one[0] = *p;
+	char one[6];
+	for (const char* p = s; *p;) {
+		p = one_char(p, one);
 		text_lit(font, x, y, one, FONT_LEFT, c);
 		x += font_width_px(font, one) + gap;
 	}
@@ -616,17 +633,21 @@ static void draw_menu(int id)
 		// "Label    value" rows: the value goes to the right edge, a "< value >" one with the
 		// PC's arrows either side while it is chosen
 		const char* gap = strstr(m->rows[i], "  ");
-		char lab[48];
-		snprintf(lab, sizeof lab, "%.*s", gap ? (int)(gap - m->rows[i]) : 47, m->rows[i]);
+		char lab[72];
+		snprintf(lab, sizeof lab, "%.*s", gap ? (int)(gap - m->rows[i]) : 71, m->rows[i]);
+		// a label too long for the row (some languages' scenario names) in the small font
+		float room = (gap ? right - 18 - font_width_px(FONT_BIG, gap) : right - 4) - 22;
+		int lf = font_width_px(FONT_BIG, lab) > room ? FONT_SMALL : FONT_BIG;
+		float ly = lf == FONT_BIG ? ty : y + (rh - font_line_px(FONT_SMALL)) * 0.5f;
 		if (on && !off)
-			text_lit(FONT_BIG, 22, ty, lab, FONT_LEFT, s_white);
+			text_lit(lf, 22, ly, lab, FONT_LEFT, s_white);
 		else
-			text(FONT_BIG, 22, ty, lab, FONT_LEFT, ct, cb);
+			text(lf, 22, ly, lab, FONT_LEFT, ct, cb);
 		bool lr = false;
 		if (gap) {
 			while (*gap == ' ')
 				gap++;
-			char val[48];
+			char val[72];
 			snprintf(val, sizeof val, "%s", gap);
 			size_t k = strlen(val);
 			if (val[0] == '<' && k > 2 && val[k - 1] == '>') {
@@ -818,6 +839,15 @@ static void draw_play(bool waiting)
 			bar_img(198, 181, 199, 188, RING);
 		hit(182, 168, 214, 200, HIT_ZOOM, 0, 0, 0);
 	}
+	if (s_sound[0]) {
+		char line[64];
+		snprintf(line, sizeof line, "%s", s_sound);
+		char* colon = strchr(line, ':');
+		if (colon && font_width_px(FONT_SMALL, line) > 204.0f)
+			*colon = '\0';              // the file's name only where it fits
+		bar_img(7, 7, 213, 10 + sl, 0x000000d0);   // over the map, under the text
+		text(FONT_SMALL, 110, 8, line, FONT_CENTER, 0xe03020ff, 0xe03020ff);
+	}
 
 	// condition
 	static const char* const word[3] = { "Fine", "Caution", "Danger" };
@@ -853,6 +883,8 @@ static void draw_play(bool waiting)
 		u32 k = bound(ACT_WEAPON_NEXT);
 		if (k)
 			hit(220, 76, 318, 124, HIT_KEY, 0, 0, k);
+		else
+			hit(220, 76, 318, 124, HIT_QUICK, 0, 0, 0);    // unbound: the tap is the next weapon itself
 	} else {
 		text(FONT_SMALL, 224, 96, "None", FONT_LEFT, DIM, DIM);
 	}
@@ -959,6 +991,14 @@ static void status_check(void)
 	}
 	int heal[3] = { ev_item_count(1), ev_item_count(2), ev_item_count(3) };
 	bool light = ev_have_item(18);
+	// music that should play and can't: said on the play page, not only on the debug page
+	const char* sound = audio_problem();
+	if (!sound && !bgm_ready())
+		sound = "Music missing: sound/bgm.bin";
+	if (strcmp(sound ? sound : "", s_sound)) {
+		snprintf(s_sound, sizeof s_sound, "%s", sound ? sound : "");
+		s_dirty = true;
+	}
 	if (cond != s_cond || strcmp(weapon, s_weapon) || memcmp(heal, s_heal, sizeof heal) || light != s_have_light) {
 		s_cond = cond;
 		memcpy(s_weapon, weapon, sizeof s_weapon);
@@ -1093,7 +1133,13 @@ void touchui_input(u32* down, u32* held)
 		return;
 	touchPosition t;
 	if (!(*held & KEY_TOUCH))
-		s_drag = false;
+		s_drag = s_free = false;
+	if (!(*down & KEY_TOUCH) && s_free && (*held & KEY_TOUCH)) {
+		hidTouchRead(&t);
+		s_free_dx += t.px - s_free_x, s_free_dy += t.py - s_free_y;
+		s_free_x = t.px, s_free_y = t.py;
+		return;
+	}
 	if (!(*down & KEY_TOUCH)) {
 		if (s_drag && s_map_on && (*held & KEY_TOUCH)) {
 			hidTouchRead(&t);
@@ -1128,7 +1174,7 @@ void touchui_input(u32* down, u32* held)
 			s_drag = true;
 			s_drag_x = t.px, s_drag_y = t.py;
 		} else if (h->kind == HIT_QUICK) {
-			s_quick = TQ_HEAL, s_quick_item = (int)h->key;
+			s_quick = h->key ? TQ_HEAL : TQ_WEAPON, s_quick_item = (int)h->key;
 			pressed(h);
 		} else if (h->kind == HIT_KEY) {
 			*down |= h->key;
@@ -1150,4 +1196,13 @@ void touchui_input(u32* down, u32* held)
 		}
 		return;
 	}
+	s_free = true;
+	s_free_x = t.px, s_free_y = t.py;
+}
+
+bool touchui_free_drag(int* dx, int* dy)
+{
+	*dx = s_free_dx, *dy = s_free_dy;
+	s_free_dx = s_free_dy = 0;
+	return s_free;
 }

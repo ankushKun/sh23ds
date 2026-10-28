@@ -55,9 +55,11 @@ pt until panel 20
 pt press A
 pt idle
 pt expect flag 412 1
+pt prog trunk 0
+pt prog drums 5 4 1 4
 pt evgo 5
 pt until panel 20
-pt solve trunk
+pt press UP
 pt idle
 pt expect flag 413 1
 pt ev 6
@@ -130,10 +132,13 @@ pt expect item 67 1
 pt expect item 4 1
 pt ev 37
 pt expect stage 40
-pt solve orgel
-pt ev 11+1*$0
-pt ev 17+1*$1
-pt ev 23+1*$2
+# the music box (0x57c470): any box on each seat on easy riddles; the Little Mermaid, Snow White,
+# Cinderella on normal; Snow White, the Little Mermaid, Cinderella on hard and extra
+pt riddle 0,1 ev 12
+pt riddle 0,1 ev 17
+pt riddle 2,3 ev 11
+pt riddle 2,3 ev 18
+pt ev 25
 pt expect flag 472 1
 pt ev 9
 pt expect item 48 1

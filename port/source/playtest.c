@@ -10,6 +10,7 @@
 #include "events.h"
 #include "prog.h"
 #include "playnav.h"
+#include "stagewalls.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -215,7 +216,7 @@ static int walk_update(const PtState* st, float dt)
 		if (fabsf(diff) < 0.03f || ++W.turn_t > 150)
 			return 1;                    // (a look test's 400-unit ray misses a short line at 0.1)
 		float turn = fabsf(diff) > 0.4f ? 1.0f : fabsf(diff) > 0.1f ? 0.5f : 0.15f;
-		s_wpad[0] = diff > 0 ? -turn : turn;
+		s_wpad[0] = diff > 0 ? turn : -turn;     // positive x turns right, raising the yaw
 		return 0;
 	}
 	if (s_walkdebug && (int)(s_t * 2.0f) != (int)((s_t - dt) * 2.0f))
@@ -869,6 +870,22 @@ static void step(const PtState* st)
 	const char* arg = c + strlen(op);
 	while (*arg == ' ')
 		arg++;
+	// "riddle <levels> <command>": the command only on those riddle levels (0..3, comma separated),
+	// for the puzzles whose answer the level decides (the keypad pin, the coins, the music box)
+	if (!strcmp(op, "riddle")) {
+		char levels[16] = "";
+		int n = 0;
+		if (sscanf(arg, "%15s %n", levels, &n) != 1 || !strchr(levels, '0' + prog_riddle_level())) {
+			next();
+			return;
+		}
+		c = arg + n;
+		op[0] = '\0';
+		sscanf(c, "%23s", op);
+		arg = c + strlen(op);
+		while (*arg == ' ')
+			arg++;
+	}
 	int a = 0, b = 0;
 	float f[5] = { 0 };
 	char word[32] = "";
@@ -878,10 +895,20 @@ static void step(const PtState* st)
 
 	// commands that do not wait for the game
 	if (!strcmp(op, "log")) { next(); return; }
+	if (!strcmp(op, "where")) {   // logs where James stands (scans that walk him and look where he got)
+		playtest_log("  at %.0f %.0f %.0f in %s", st->pos[0], st->pos[1], st->pos[2], st->map ? st->map : "-");
+		next();
+		return;
+	}
 	if (!strcmp(op, "flag") && sscanf(arg, "%d %d", &a, &b) == 2) { ev_flag_set(a, b); next(); return; }
 	if (!strcmp(op, "item") && sscanf(arg, "%d %d", &a, &b) == 2) { ev_give_item(a, b - ev_item_count(a)); next(); return; }
 	if (!strcmp(op, "hp") && sscanf(arg, "%d", &a) == 1) { combat_set_hp((float)a); next(); return; }
-	if (!strcmp(op, "walkmode")) { s_walkmode = atoi(arg) != 0; next(); return; }
+	if (!strcmp(op, "walkmode")) {
+		s_walkmode = atoi(arg) != 0;
+		stagewalls_all_tiles(s_walkmode);   // the planner sees the town's walls before James is near them
+		next();
+		return;
+	}
 	if (!strcmp(op, "walkdebug")) { s_walkdebug = atoi(arg) != 0; next(); return; }
 	if (!strcmp(op, "fast")) { s_fast = atoi(arg) != 0; next(); return; }
 	if (!strcmp(op, "god")) { s_god = atoi(arg) != 0; combat_test_god(s_god); next(); return; }
@@ -1195,8 +1222,10 @@ static void step(const PtState* st)
 				s_wheld = KEY_R;               // ready: the game turns James to the nearest enemy
 				if (gun && nd < keep * 0.8f)
 					back_t = 0.0f;              // (the next frame runs again)
-				if (!gun && nd > 180.0f)
-					s_wpad[1] = 0.7f;           // the plank up: step in (it reaches about 200)
+				// the plank up: step in (it reaches about 200); the weapon comes up only once the
+				// legs have stopped (0x557100), so the stick waits for the ready stance
+				if (!gun && nd > 180.0f && strstr(combat_status(), "ready"))
+					s_wpad[1] = 0.7f;
 				if (++a_gap >= (gun ? 10 : 24) && !s_npress) {
 					a_gap = 0;
 					press(KEY_R | KEY_A, 2, 0);
@@ -1800,6 +1829,8 @@ void playtest_frame(const PtState* st, u32* down, u32* held, float dt)
 	if (s_pad_t > 0.0f)
 		s_pad_t -= dt;
 }
+
+bool playtest_steering(void) { return s_active && s_wpad_on; }
 
 void playtest_pad(circlePosition* cp)
 {

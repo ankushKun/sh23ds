@@ -6,6 +6,7 @@
 #include "prog_int.h"
 #include "playtest.h"
 #include "perf.h"
+#include "stereo.h"
 #include "stream.h"
 #include <math.h>
 #include <stdio.h>
@@ -21,7 +22,10 @@
 // that comes into range later is read by the stream thread from SM_RANGE + SM_AHEAD on and set up
 // once its files are in, one a frame, so no frame of play waits for the SD card. The whole list is
 // read once, at the first stage, so a stage change does not read it again.
-#define SM_MAX_PLACES 128
+// The stage's pickups (drinks, kits, ampoules, rounds) are places too, as the room loader 0x490080
+// puts their models down from the pickup list: the item's model from pack/events/itemmdl.txt, shown
+// while the pickup lies there (ev_pickup_shown).
+#define SM_MAX_PLACES 192
 #define SM_MAX_MODELS 64
 #define SM_LOADED 20
 #define SM_RANGE 14000.0f
@@ -38,6 +42,7 @@ typedef struct {
 typedef struct {
 	u16 kind, flag_off, flag_on;
 	u8 model;
+	s16 pickup;              // the stage's pickup index, -1 for a placed model
 	float pos[3], rot[3];
 } Place;
 
@@ -76,13 +81,14 @@ static void bed_free(void)
 
 void stagemdl_maria_bed(bool on) { s_bed.on = on; }
 
-// Bones the stage code moves (the labyrinth lift's gates, 0x5831aa): added to the bone's place.
-static struct { int kind, bone; float d[3]; } s_bone[8];
+// Bones the stage code moves (the labyrinth lift's gates, 0x5831aa; the endings' falling stairs,
+// 0x440470): added to the bone's place.
+static struct { int kind, bone; float d[3]; } s_bone[12];
 
 void stagemdl_bone_move(int kind, int bone, float dx, float dy, float dz)
 {
 	int k = 0;
-	while (k < 7 && s_bone[k].kind && !(s_bone[k].kind == kind && s_bone[k].bone == bone))
+	while (k < 11 && s_bone[k].kind && !(s_bone[k].kind == kind && s_bone[k].bone == bone))
 		k++;
 	s_bone[k].kind = kind, s_bone[k].bone = bone;
 	s_bone[k].d[0] = dx, s_bone[k].d[1] = dy, s_bone[k].d[2] = dz;
@@ -131,6 +137,47 @@ static void read_list(void)
 	fclose(f);
 }
 
+// Item -> its model (itemmdl.txt "item kind folder model"), read once.
+static struct { u16 item, kind; char folder[8], name[24]; } s_itemmdl[96];
+static int s_nitemmdl = -1;
+
+static int item_model(int item)
+{
+	if (s_nitemmdl < 0) {
+		s_nitemmdl = 0;
+		FILE* f = fopen(PACK_DIR "/events/itemmdl.txt", "r");
+		char line[96];
+		while (f && fgets(line, sizeof line, f) && s_nitemmdl < 96) {
+			int it;
+			unsigned kind;
+			if (sscanf(line, "%d %x %7s %23s", &it, &kind, s_itemmdl[s_nitemmdl].folder,
+			           s_itemmdl[s_nitemmdl].name) == 4)
+				s_itemmdl[s_nitemmdl].item = (u16)it, s_itemmdl[s_nitemmdl++].kind = (u16)kind;
+		}
+		if (f)
+			fclose(f);
+	}
+	for (int i = 0; i < s_nitemmdl; i++)
+		if (s_itemmdl[i].item == item)
+			return i;
+	return -1;
+}
+
+static int model_slot(const char* folder, const char* name)
+{
+	int m = 0;
+	while (m < s_nmodels && (strcmp(s_models[m].folder, folder) || strcmp(s_models[m].name, name)))
+		m++;
+	if (m == s_nmodels) {
+		if (s_nmodels == SM_MAX_MODELS)
+			return -1;
+		snprintf(s_models[m].folder, sizeof s_models[m].folder, "%s", folder);
+		snprintf(s_models[m].name, sizeof s_models[m].name, "%s", name);
+		s_nmodels++;
+	}
+	return m;
+}
+
 static void model_path(const char* folder, const char* name, char* path, size_t len)
 {
 	snprintf(path, len, PACK_DIR "/chr/%s/%s.s3c", folder, name);
@@ -148,20 +195,24 @@ void stagemdl_update(int stage)
 		const Line* l = &s_all[i];
 		if (l->stage != stage)
 			continue;
-		int m = 0;
-		while (m < s_nmodels && (strcmp(s_models[m].folder, l->folder) || strcmp(s_models[m].name, l->name)))
-			m++;
-		if (m == s_nmodels) {
-			if (s_nmodels == SM_MAX_MODELS)
-				continue;
-			snprintf(s_models[m].folder, sizeof s_models[m].folder, "%s", l->folder);
-			snprintf(s_models[m].name, sizeof s_models[m].name, "%s", l->name);
-			s_nmodels++;
-		}
+		int m = model_slot(l->folder, l->name);
+		if (m < 0)
+			continue;
 		Place p;
 		memcpy(p.pos, l->pos, sizeof p.pos);
 		memcpy(p.rot, l->rot, sizeof p.rot);
-		p.kind = l->kind, p.flag_off = l->flag_off, p.flag_on = l->flag_on, p.model = (u8)m;
+		p.kind = l->kind, p.flag_off = l->flag_off, p.flag_on = l->flag_on, p.model = (u8)m, p.pickup = -1;
+		s_places[s_nplaces++] = p;
+	}
+	if (stage != ev_stage())
+		return;
+	for (int i = 0; i < ev_pickup_count() && s_nplaces < SM_MAX_PLACES; i++) {
+		Place p = { .pickup = (s16)i };
+		int item, k, m;
+		if (!ev_pickup_place(i, &item, p.pos, &p.rot[1]) || (k = item_model(item)) < 0 ||
+		    (m = model_slot(s_itemmdl[k].folder, s_itemmdl[k].name)) < 0)
+			continue;
+		p.kind = s_itemmdl[k].kind, p.model = (u8)m;
 		s_places[s_nplaces++] = p;
 	}
 }
@@ -302,7 +353,7 @@ static void pose(Character* c, int kind, float t)
 			L.m[0][3] = -135.0f * sinf(th - (float)M_PI / 4.0f) - 103.0f;
 			L.m[1][3] = 135.0f * cosf(th - (float)M_PI / 4.0f) - 103.0f;
 		}
-		for (int k = 0; k < 8; k++)
+		for (int k = 0; k < 12; k++)
 			if (s_bone[k].kind == kind && s_bone[k].bone == (int)b)
 				L.m[0][3] += s_bone[k].d[0], L.m[1][3] += s_bone[k].d[1], L.m[2][3] += s_bone[k].d[2];
 		if (c->parents[b] == 255)
@@ -334,7 +385,8 @@ static void bed_draw(const C3D_Mtx* view, int uModelView, int uBones)
 			playtest_log("S3: Maria in the bed (%lu frames)", (unsigned long)s_bed.anim.frames);
 	}
 	static const float pos[3] = { 99742.5625f, 203.282562f, 58623.1211f };   // 0x8db2cc
-	s_bed.t += 1.0f / 30.0f;
+	if (!stereo_eye())               // once a frame, not once an eye (stereo.h)
+		s_bed.t += 1.0f / 30.0f;
 	float frame = fmodf(s_bed.t * 30.0f, (float)(s_bed.anim.frames ? s_bed.anim.frames : 1));
 	C3D_Mtx model, mv;
 	Mtx_Identity(&model);
@@ -342,7 +394,7 @@ static void bed_draw(const C3D_Mtx* view, int uModelView, int uBones)
 	Mtx_RotateY(&model, 3.1415927f, true);
 	Mtx_Multiply(&mv, view, &model);
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
-	chr_pose(&s_bed.chr, &s_bed.anim, frame);
+	chr_pose_loop(&s_bed.chr, &s_bed.anim, frame, 0, (int)s_bed.anim.frames - 1);
 	chrlight_at(pos, false);
 	chr_draw(&s_bed.chr, uBones);
 }
@@ -350,6 +402,13 @@ static void bed_draw(const C3D_Mtx* view, int uModelView, int uBones)
 // Whether a place shows a model now (its flags, the cutscene), and its squared distance from x, z.
 static bool shown(const Place* p, float x, float z, float* d2)
 {
+	if (p->pickup >= 0) {
+		if (!ev_pickup_shown(p->pickup))
+			return false;
+		float dx = p->pos[0] - x, dz = p->pos[2] - z;
+		*d2 = dx * dx + dz * dz;
+		return true;
+	}
 	// The PC checks flag_off when it loads a room's models, so the figure boxes that flag 472
 	// (the right order) takes away stay for the tune they are part of.
 	bool tune = s_play >= 0.0f && p->kind >= 0x718 && p->kind <= 0x71a;
@@ -379,17 +438,21 @@ void stagemdl_preload(int stage, float x, float z)
 
 void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 {
-	stagemdl_update(ev_stage());
+	// the second eye of a 3D frame draws what the first one did and loads nothing (stereo.h)
+	bool second = stereo_eye() != 0;
+	if (!second)
+		stagemdl_update(ev_stage());
 	bed_draw(view, uModelView, uBones);
 	if (!s_nplaces)
 		return;
-	s_frame++;
+	if (!second)
+		s_frame++;
 	float me[3], yaw;
 	p_player(me, &yaw);
-	bool loaded_one = false;
+	bool loaded_one = second;
 	const float ahead = (SM_RANGE + SM_AHEAD) * (SM_RANGE + SM_AHEAD);
 	// first the loaded models in range or about to be: none of them is the one a load drops
-	for (int i = 0; i < s_nplaces; i++) {
+	for (int i = 0; i < s_nplaces && !second; i++) {
 		float d2;
 		if (s_models[s_places[i].model].chr && shown(&s_places[i], me[0], me[2], &d2) && d2 <= ahead)
 			s_models[s_places[i].model].used = s_frame;

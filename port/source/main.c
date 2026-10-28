@@ -36,17 +36,22 @@
 #include "blood.h"
 #include "boat.h"
 #include "mist.h"
+#include "roomfx.h"
+#include "water.h"
 #include "gameover.h"
 #include "itemview.h"
 #include "titlemenu.h"
 #include "pausemenu.h"
 #include "optmenu.h"
 #include "stagemdl.h"
+#include "stagewalls.h"
 #include "touchui.h"
 #include "controls.h"
 #include "move.h"
 #include "chrlight.h"
 #include "shadow.h"
+#include "stereo.h"
+#include "gpucost.h"
 #include "quality.h"
 #include "sdsim.h"
 #include "areaidx.h"
@@ -54,6 +59,7 @@
 #include "perf.h"
 #include "profile.h"
 #include "gamecam.h"
+#include "tpcam.h"
 #include "game/view/sh2cam.h"
 #include "map.h"
 #include "movie.h"
@@ -104,7 +110,15 @@ static int s_debug_results;           // debug.txt "results 1": the results scre
 static bool s_msg_top;                // options.txt "messagestop": messages and subtitles on the top screen
 static Options s_opt;                 // options.txt, edited by the options screens (optmenu.c)
 static char s_status[160];
-static int s_render_mode;   // 0 textured, 1 flat color per group, 2 vertex color only, 3 texture test
+static int s_render_mode;
+// The console test of the map's drawing (SELECT + L in play): each mode takes one part away, so a
+// console shows which one draws the lines along the ground's triangle edges (Azahar shows none)
+#define MAP_TESTS 7
+static int s_map_test;
+static const char* const MAP_TEST_NAME[MAP_TESTS] = {
+	"normal", "nearest filtering", "no texture", "no flashlight stage", "no fog", "flat colour, no fog",
+	"this room only",
+};   // 0 textured, 1 flat color per group, 2 vertex color only, 3 texture test
 static int s_only_batch = -1;   // debug: draw just this batch
 static bool s_opaque_only;      // debug (X in orbit mode)
 static float s_orbit_speed = 0.01f;
@@ -223,13 +237,35 @@ static void list_rooms(void)
 
 #define MAX_NB 4
 // how near a touching tile has to be to load, and how many stay resident: profile.c (quality level)
-// The town's list also has two rooms at the world origin that are not blocks of its grid: cb90 (a
-// 500 unit quad) and cb99 (a dark sphere 5000 across, 308 vertices). Their boxes touch the four
-// blocks round the origin, so they streamed in as neighbours: cb99 drew a black wedge over the
-// street by cb03 and both took places from the real blocks (cb12 was left out there). A room no
-// wider than SMALL_TILE either way and centred on the origin is not a block (small real blocks such
-// as cb66 lie far from it) and is never streamed as one.
-#define SMALL_TILE 6000.0f
+
+// The blocks of the open areas' grids. 0x494ef0 finds the block of a cell in one table per area
+// (0x88e568 ca, 0x88e5c8 cb, 0x88e6a8 cc, 0x88e7d8 and 0x88e7f0 cd) and the PC loads only those
+// (0x514070, 0x513700). The folders also hold maps that no cell names, and those are never
+// streamed or stood in: ca02 (a grove whose roots are at height 0, 3000 above the cemetery lake's
+// shore in ca13, so its trunks hung in the air over James), cb90 (a 500 unit quad) and cb99 (a dark
+// sphere 5000 across) at the origin, where cb99 drew a black wedge over the street by cb03, and the
+// empty cc58, cc59 and cd10.
+static const struct { char area[3]; u8 n; u8 r[10][2]; } k_grid[] = {
+	{ "ca", 2, { { 3, 4 }, { 8, 28 } } },
+	{ "cb", 10, { { 2, 5 }, { 7, 7 }, { 10, 14 }, { 18, 22 }, { 25, 31 }, { 33, 39 }, { 41, 42 }, { 44, 47 },
+	              { 49, 55 }, { 57, 69 } } },
+	{ "cc", 3, { { 1, 57 }, { 60, 77 }, { 99, 99 } } },
+	{ "cd", 3, { { 1, 2 }, { 4, 6 }, { 11, 11 } } },
+};
+
+static bool block_in_grid(const char* area, const char* room)
+{
+	for (size_t i = 0; i < sizeof k_grid / sizeof k_grid[0]; i++) {
+		if (strcmp(area, k_grid[i].area))
+			continue;
+		int b = atoi(room + 2);
+		for (int k = 0; k < k_grid[i].n; k++)
+			if (b >= k_grid[i].r[k][0] && b <= k_grid[i].r[k][1])
+				return true;
+		return false;
+	}
+	return true;   // not an open area
+}
 
 static Room s_nb[MAX_NB];
 static Collision s_nb_col[MAX_NB];
@@ -258,12 +294,7 @@ static void room_bounds_load(void)
 
 static bool room_has_bounds(int i) { return s_room_bb[i][3] > s_room_bb[i][0] && s_room_bb[i][5] > s_room_bb[i][2]; }
 
-static bool room_is_block(int j)
-{
-	const float* bb = s_room_bb[j];
-	float cx = 0.5f * (bb[0] + bb[3]), cz = 0.5f * (bb[2] + bb[5]);
-	return !(bb[3] - bb[0] <= SMALL_TILE && bb[5] - bb[2] <= SMALL_TILE && fabsf(cx) < 100.0f && fabsf(cz) < 100.0f);
-}
+static bool room_is_block(int j) { return block_in_grid(s_areas[s_area], s_rooms[j]); }
 
 static bool rooms_touch(int i, int j)
 {
@@ -433,7 +464,7 @@ static bool stream_update_ex(bool sync)
 		if (j == s_room || !rooms_touch(s_room, j))
 			continue;
 		if (!room_is_block(j))
-			continue;                    // not a block of the grid (cb90, cb99)
+			continue;                    // not a block of the grid (ca02, cb90, cb99)
 		float d = room_dist(j, s_px, s_pz);
 		if (d > quality()->tile_distance)   // quality.h (profile.c sets it)
 			continue;
@@ -644,6 +675,8 @@ static void load_current(void)
 		enemy_room_enter(ev_stage(), s_have_col ? &s_col : NULL);
 		blood_clear();
 		mist_clear();
+		roomfx_room_loaded();     // 0x401480 -> 0x4c71b0: the room's effects start again
+		water_reset();            // and the room's water (water.c)
 		perf_part("ld_enemy", t0);
 		t0 = svcGetSystemTick();
 		gamecam_load_area(PACK_DIR, s_areas[s_area], (const char (*)[16])s_rooms, s_nrooms);
@@ -764,7 +797,9 @@ static void warp_prefetch(const char* map, int stage, const float* pos)
 		char path[96];
 		snprintf(path, sizeof path, PACK_DIR "/events/s%02d.s3e", stage);
 		stream_want_file(path);
-		snprintf(path, sizeof path, PACK_DIR "/events/s%02d.msg", stage);
+		char name[16];
+		snprintf(name, sizeof name, "s%02d.msg", stage);
+		ev_msg_path(path, sizeof path, name);     // in the chosen language, as ev_load_stage reads it
 		stream_want_file(path);
 	}
 	enemy_prefetch_stage(stage, stream_want_file);
@@ -791,12 +826,17 @@ static bool warp_ready(float dt)
 // point. The pack's door records name the tile its converter found there in any folder (Blue Creek's
 // way out to town west says cb02, town east's flat copy of the square walled at x 20000, where the
 // PC has cc11's street): the tile of the stage's own folder under the point.
+// The same for the rooms the endings move their stage to (EvProgChangeMaryRoom, glb 0xe qp and 0xf
+// qt): the converter read the door after it in the stage's own ru, where the PC finds qp01 / qt01.
 static void warp_area_tile(void)
 {
 	int glb = ev_glb_crd();
-	const char* f = glb == 1 ? "ca" : glb == 2 ? "cb" : glb == 3 ? "cc" : glb == 4 || glb == 17 ? "cd" : NULL;
+	const char* f = glb == 1 ? "ca" : glb == 2 ? "cb" : glb == 3 ? "cc" : glb == 4 || glb == 17 ? "cd" :
+	                glb == 14 ? "qp" : glb == 15 ? "qt" : NULL;
 	const char* m = s_warp.map;
-	if (!f || m[0] != 'c' || m[1] < 'a' || m[1] > 'd' || !strncmp(m, f, 2) || (s_warp.pos[0] == 0.0f && s_warp.pos[2] == 0.0f))
+	bool tiles = glb <= 4 || glb == 17;
+	if (!f || (tiles && (m[0] != 'c' || m[1] < 'a' || m[1] > 'd')) || !strncmp(m, f, 2) ||
+	    (s_warp.pos[0] == 0.0f && s_warp.pos[2] == 0.0f))
 		return;
 	char path[96], line[32];
 	snprintf(path, sizeof path, PACK_DIR "/bg/%s/rooms.txt", f);
@@ -805,6 +845,8 @@ static void warp_area_tile(void)
 		return;
 	while (fgets(line, sizeof line, rf)) {
 		line[strcspn(line, "\r\n")] = 0;
+		if (!block_in_grid(f, line))
+			continue;
 		snprintf(path, sizeof path, PACK_DIR "/bg/%s/%.15s.s3m", f, line);
 		FILE* mf = fopen(path, "rb");
 		float bb[6];
@@ -860,6 +902,7 @@ static void apply_warp(void)
 	stagemdl_preload(ev_stage(), s_px, s_pz);   // the placed models in range, behind the fade
 	perf_part("ld_stagemdl", ts);
 	stream_drop_files();                 // read ahead for enemies that did not come after all
+	bgm_warped();                        // SeBgmChange runs while the PC loads (0x401fc0)
 }
 
 // debug.txt "memtest N": warps through ten rooms of different areas N times, one every 150 frames
@@ -921,6 +964,25 @@ static int inv_list(int* items, int max)
 	return n;
 }
 
+// Healing items work anywhere (0x49e7e0): the health drink adds a quarter of the maximum, the
+// first-aid kit half and the ampoule all of it, at once; what goes over the maximum counts for the
+// ending. The ampoule also starts a 600 second timer (0x1f7d40c) during which the PC keeps James
+// from tiring (his tired motions, which the port does not have). The item screen (0x471590 case 2)
+// calls it the moment the item is chosen, not through the event check, and does nothing at full
+// health.
+static void heal_item(int item)
+{
+	const float heal[4] = { 0.0f, JAMES_HP_MAX * 0.25f, JAMES_HP_MAX * 0.5f, JAMES_HP_MAX };
+	if (item < 1 || item > 3 || ev_item_count(item) <= 0 || combat_hp() >= JAMES_HP_MAX)
+		return;
+	ev_give_item(item, -1);
+	if (combat_hp() + heal[item] > JAMES_HP_MAX)
+		prog_score_overheal((combat_hp() + heal[item] - JAMES_HP_MAX) / JAMES_HP_MAX);
+	float hp = combat_hp() + heal[item];
+	combat_set_hp(hp > JAMES_HP_MAX ? JAMES_HP_MAX : hp);
+	sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+}
+
 // Y opens and closes the item list; D-pad picks, A examines (the game's own description).
 // The item list's "Use" (the touch menu calls it too): item alone, or with up to two marked items
 // (0 = none) as the PC's "Combine" (0x46a790 / 0x49ea00): the combination's result id is used like
@@ -937,6 +999,8 @@ static void inventory_use(int item, int mark0, int mark1)
 			s_use_item = combo;
 		else
 			show_message(ev_item_message(17));
+	} else if (item >= 1 && item <= 3) {
+		heal_item(item);
 	} else {
 		s_use_item = item;
 	}
@@ -1097,20 +1161,12 @@ static void events_update(u32 down)
 	int used = s_use_item;
 	s_use_item = 0;
 	if (!ev_update(&p, &a)) {
-		// Healing items work anywhere (0x49e7e0): the health drink adds a quarter of the maximum, the
-		// first-aid kit half and the ampoule all of it, at once; what goes over the maximum counts
-		// for the ending. The ampoule also starts a 600 second timer (0x1f7d40c) during which the PC
-		// keeps James from tiring (his tired motions, which the port does not have).
-		const float heal[4] = { 0.0f, JAMES_HP_MAX * 0.25f, JAMES_HP_MAX * 0.5f, JAMES_HP_MAX };
 		if (used && combat_equip_item(used)) {
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
-		} else if (used >= 1 && used <= 3 && ev_item_count(used) > 0) {
-			ev_give_item(used, -1);
-			if (combat_hp() + heal[used] > JAMES_HP_MAX)
-				prog_score_overheal((combat_hp() + heal[used] - JAMES_HP_MAX) / JAMES_HP_MAX);
-			float hp = combat_hp() + heal[used];
-			combat_set_hp(hp > JAMES_HP_MAX ? JAMES_HP_MAX : hp);
-			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+		} else if (used >= 1 && used <= 3) {
+			// a healing item never reaches the event check (inventory_use applies it at once), but
+			// a playtest "use" can: it heals the same way and is never "can't use"
+			heal_item(used);
 		} else if (used) {
 			show_message(ev_item_message(16));     // "It looks like I can't use that here."
 		}
@@ -1403,9 +1459,27 @@ static C3D_Light s_flash;
 static C3D_LightLut s_spot_lut;
 static C3D_LightLutDA s_flash_da;
 static C3D_FogLut s_fog_lut;
+static u32 s_fog_color;            // the colour lighting_frame bound with it
 static bool s_flash_on = true;
 static float s_ambient = -1.0f;      // debug.txt "ambient" (percent): overrides the record Ambient
 static int s_controls;              // move.h MOVE_*: 0 Rotational (3D, tank, PC default), 1 Directional (2D)
+static int s_place;                 // 0x1fba8d8: 0 out of doors, 1 indoors, 2 a room 0x8bcce0 marks (james_place)
+static bool s_tp_live;              // the port's behind camera is the one shown (tpcam.c, options "camera")
+static bool behind_camera(void) { return s_tp_live; }
+static bool s_dpad_walking;         // dpad_walk stood in for the circle pad this frame
+static float s_orbit[2];            // the behind camera's turn this frame, -1..1 (C-Stick or D-Pad)
+static const float* view_eye(void) { return s_tp_live ? tpcam_eye() : gamecam_eye(); }
+
+// 0x556490: 2 in the rooms whose byte in 0x8bcce0 (by the PC room id, 0x524db0) is 0, else 0 on the
+// open-air stages (glb_crd 1..3 and 5) and 1 indoors. Rooms 0..213, one bit each.
+static int james_place(void)
+{
+	static const u32 ROOM0[7] = { 0xfffe0ca2, 0xc582f9ec, 0xd868200f, 0x002bbfd2, 0x71baa200, 0xf8c0ca74, 0x0020004a };
+	int glb = ev_glb_crd(), room = bgm_room_id(glb, s_px, s_pz);
+	if (room >= 0 && room < 214 && (ROOM0[room >> 5] >> (room & 31) & 1))
+		return 2;
+	return glb < 1 || (glb > 3 && glb != 5) ? 1 : 0;
+}
 static bool s_toggle_run;           // B toggles running (Enhanced Edition option)
 static bool s_ps2_flash = true;     // Enhanced Edition PS2 flashlight brightness (pause menu)
 static bool s_run_pressed;          // B went down this frame (for the toggle)
@@ -1451,8 +1525,25 @@ static void env_room_changed(void)
 {
 	if (!s_nrooms)
 		return;
-	env_load(PACK_DIR, s_rooms[s_room], env_variant(s_areas[s_area]), &s_env);
-	chrlight_load(PACK_DIR, s_rooms[s_room], env_variant(s_areas[s_area]));
+	// FUN_0047c780 takes the record from the stage's area list, by the map 0x494ef0 finds at James'
+	// feet. In the open areas a tile of another area's grid has no cell in the stage's own table, so it
+	// is that area's default ("@<glb>" in lighting.txt): the Leave ending's road (cb03) in the forest
+	// stage is lit as the forest, not as the town at night.
+	static const char* const open[4] = { "ca", "cb", "cc", "cd" };
+	const char* map = s_rooms[s_room];
+	const char* area = s_areas[s_area];
+	int glb = ev_glb_crd(), own = 0;
+	for (int i = 0; i < 4; i++)
+		if (!strcmp(area, open[i]))
+			own = i + 1;
+	char def[8];
+	if (own && glb >= 1 && glb <= 4 && glb != own) {
+		snprintf(def, sizeof def, "@%d", glb);
+		map = def;
+		area = open[glb - 1];
+	}
+	env_load(PACK_DIR, map, env_variant(area), &s_env);
+	chrlight_load(PACK_DIR, map, env_variant(area));
 	if (s_ambient >= 0.0f)
 		s_env.amb[0] = s_env.amb[1] = s_env.amb[2] = s_ambient;
 	s_env_dirty = true;
@@ -1612,6 +1703,7 @@ static void lighting_frame(const C3D_Mtx* view, bool player)
 		// horizon of the Maria ending's letter scene (demo 0x5d) fades into blue grey, not the record's fog
 		if (dn == 0x5d)
 			fog = 150u << 16 | 135u << 8 | 125u;
+		s_fog_color = fog;
 		C3D_FogColor(fog);
 		C3D_FogLutBind(&s_fog_lut);
 	} else {
@@ -1634,6 +1726,11 @@ static int s_fog_stage = -1;
 
 static void fog_frame(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho, float dt)
 {
+	if (stereo_eye()) {                     // the second eye: the first one's sprites, its projection
+		if (fog_debug_mode() < 7 || fog_debug_mode() > 8)
+			fog_draw(proj, view, ortho);
+		return;
+	}
 	if (ev_stage() != s_fog_stage) {        // 0x489af0 runs on every stage connect
 		s_fog_stage = ev_stage();
 		fog_reset();
@@ -1755,18 +1852,23 @@ static u32 move_keys(u32 held, u32 down, const circlePosition* cp)
 	} else {
 		ready = false;
 	}
-	if (s_opt.walk_run == 2)
+	if (s_opt.walk_run == 2) {
 		held ^= KEY_B;
-	else if (s_opt.walk_run == 1)
-		held = hypotf(cp->dx, cp->dy) > 0.9f * 156.0f ? held | KEY_B : held & ~KEY_B;
+	} else if (s_opt.walk_run == 1 && !s_dpad_walking && (cp->dx || cp->dy)) {
+		// Analog: with the stick in use (no direction keys), a tilt past 110 of 127 runs
+		float m = hypotf(cp->dx, cp->dy) / 156.0f * 127.0f;
+		held = m > 110.0f ? held | KEY_B : held & ~KEY_B;
+	}
 	return held;
 }
 
-// The D-Pad walks James like the circle pad at full tilt, in each direction no game action is bound
-// to (the New 3DS layout binds none; the Old 3DS keeps the next weapon and the quick turn on up and
-// down). The circle pad wins when it is pushed.
+// The D-Pad walks James in each direction no game action is bound to (the New 3DS layout binds none;
+// the Old 3DS keeps the next weapon and the quick turn on up and down), as the PC's direction keys
+// do: move.c takes it as the keys (0x52e110 0x1fbac6a 0), full turns and the movers' speed ramps.
+// The circle pad wins when it is pushed.
 static void dpad_walk(circlePosition* cp, u32 held)
 {
+	s_dpad_walking = false;
 	if (abs(cp->dx) > 20 || abs(cp->dy) > 20)
 		return;
 	u32 bound = 0;
@@ -1779,6 +1881,18 @@ static void dpad_walk(circlePosition* cp, u32 held)
 	float k = x && y ? 156.0f * 0.70710678f : 156.0f;
 	cp->dx = (s16)(x * k);
 	cp->dy = (s16)(y * k);
+	s_dpad_walking = true;
+}
+
+// The behind camera on the Old 3DS layout: the D-Pad's directions no action is bound to turn it.
+static void dpad_orbit(u32 held)
+{
+	u32 bound = 0;
+	for (int a = 0; a < ACT_COUNT; a++)
+		bound |= controls_keys((ControlsAction)a);
+	u32 d = held & ~bound;
+	s_orbit[0] = (d & KEY_DRIGHT ? 1.0f : 0.0f) - (d & KEY_DLEFT ? 1.0f : 0.0f);
+	s_orbit[1] = (d & KEY_DUP ? 1.0f : 0.0f) - (d & KEY_DDOWN ? 1.0f : 0.0f);
 }
 
 // View Control (0x5342b0): Normal shows the search view while the look button is held (0x1fbab13),
@@ -1796,6 +1910,31 @@ static bool search_view(u32 held, u32 down)
 	return on && !(prog_running() && prog_player_locked());
 }
 
+// The outdoor water (water.c): the PC's Effect2 water classes run while the frame is drawn
+// (HH_Effect_Object_Manager), with the PC room id, James' place and the flags they test. The PC
+// draws them with D3D fog off and fades them itself; water_draw binds its own fog table.
+static void water_frame(const C3D_Mtx* proj, const C3D_Mtx* view, float dt)
+{
+	u64 t0 = svcGetSystemTick();
+	// the flashlight colour 0x9456b0 is the record's SpotCol0, 7 in every record (s_env.fl_col has
+	// the shader's scale and the Enhanced Edition's on it)
+	WaterInput in = { bgm_room_id(ev_glb_crd(), s_px, s_pz), { s_px, s_py, s_pz }, demo_number() >= 0,
+	                  ev_flag(379), ev_flag(618), ev_flag(621), { 7.0f, 7.0f, 7.0f },
+	                  profile_quality() == QUALITY_LOW };
+	if (!stereo_eye())
+		water_update(&in, dt);
+	perf_part("water", t0);
+	if (!water_active())
+		return;
+	t0 = svcGetSystemTick();
+	float near, far;
+	env_clip(&near, &far);
+	water_draw(proj, view, s_env.fog_start, s_env.fog_end, near, far);
+	C3D_FogColor(s_fog_color);           // the room's fog again (lighting_frame)
+	C3D_FogLutBind(&s_fog_lut);
+	perf_part("r_water", t0);
+}
+
 // The blood a fight leaves (blood.c). The PC posts the splash from the hit (0x5431b1 calls
 // 0x4c7d40 with the enemy and the attack); here a hit shows as the enemy's health going down once
 // enemy.c has applied what combat.c handed it, with its last attack id and hit-back direction. A
@@ -1809,7 +1948,7 @@ static void blood_frame(float dt)
 		if ((t -= dt) <= 0.0f) {
 			t = 2.0f;
 			// 700 to one side of James as the camera sees him, the other side the next time
-			const float* eye = gamecam_eye();
+			const float* eye = view_eye();
 			float dx = s_px - eye[0], dz = s_pz - eye[2], d = sqrtf(dx * dx + dz * dz);
 			d = d > 1.0f ? 1.0f / d : 0.0f;
 			dx *= d, dz *= d;
@@ -1824,6 +1963,7 @@ static void blood_frame(float dt)
 	static float last_hp[ENEMY_MAX];
 	static bool seen[ENEMY_MAX], dead[ENEMY_MAX];
 	static const float* owner[ENEMY_MAX];
+	static u8 corpse_hits[ENEMY_MAX];
 	for (int i = 0; i < ENEMY_MAX; i++) {
 		Enemy* e = enemy_get(i);
 		if (!e) {
@@ -1844,6 +1984,12 @@ static void blood_frame(float dt)
 		}
 		if (seen[i] && d && !dead[i] && e->kind != EN_KIND_EDI)
 			blood_pool(&e->x, bgm_room_id(ev_glb_crd(), e->x, e->z));
+		if (seen[i] && e->corpse_hits != corpse_hits[i]) {   // a stomp on a body (enemy_stomp_corpse)
+			float pos[3] = { e->x, e->y - 100.0f, e->z };
+			float dir[3] = { e->hbx, 0.0f, e->hbz };
+			blood_hit(pos, dir, e->last_atk, &e->x, e->y);
+		}
+		corpse_hits[i] = e->corpse_hits;
 		last_hp[i] = e->hp;
 		dead[i] = d;
 		seen[i] = true;
@@ -1855,6 +2001,140 @@ static void blood_frame(float dt)
 
 // James' legs (move.c, the PC's lower-body states): the circle pad walks and turns, the game keys
 // (controls.c) run, strafe and turn round. held is the game keys still free (combat.c took its own).
+// One step of James against the room: pushed out of the walls (0.13 m round him), then onto the
+// highest floor within a step up or down of his feet. False, leaving him where he was, when there is
+// no floor there or the step would cross a wall.
+static bool walk_step(float* x, float* y, float* z, float dx, float dz)
+{
+	float nx = *x + dx, nz = *z + dz, ny;
+	col_push(&s_col, &nx, &nz, *y, 900.0f, 130.0f);
+	// Never through a wall. In a gap narrower than James two walls push against each other and can
+	// carry him across one: the step goes as asked then, unpushed, if that crosses nothing and takes
+	// him no closer to a wall or column (unpushed, he could otherwise squeeze on through any opening
+	// narrower than him, or through a pole, that lies ahead in the gap).
+	if (col_crosses(&s_col, *x, *z, nx, nz, *y, 900.0f)) {
+		nx = *x + dx, nz = *z + dz;
+		if (col_crosses(&s_col, *x, *z, nx, nz, *y, 900.0f) ||
+		    col_clearance(&s_col, nx, nz, *y, 900.0f, 130.0f) < col_clearance(&s_col, *x, *z, *y, 900.0f, 130.0f) - 0.5f)
+			return false;
+	}
+	if (col_floor_climb(&s_col, nx, nz, *y, 160.0f, 160.0f, &ny)) {
+		*x = nx, *z = nz, *y = ny;
+		return true;
+	}
+	if (nx == *x && nz == *z)
+		return false;
+	// The open areas' tiles leave gaps of up to about 60 units between their floors (cb05 and cb52
+	// meet at x 19950 / 20000), which James walks over on the PC: with floor a little further on at
+	// the same height he goes on at his height.
+	float mx = nx - *x, mz = nz - *z, ml = sqrtf(mx * mx + mz * mz);
+	if (!col_floor(&s_col, *x + mx / ml * 100.0f, *z + mz / ml * 100.0f, *y, 40.0f, &ny))
+		return false;
+	*x = nx, *z = nz;
+	return true;
+}
+
+// One frame's move: in steps of at most 60 units, under half his width. A run on a slow frame (up to
+// 160 units at the 1/15 s the frame time is held to) took him through a thin wall in one step, and
+// the push then held him on its far side, often with no floor to go on to. split false: the move in
+// one step, as before (the autotest's stuck scan compares the two).
+static void walk_move(float* x, float* y, float* z, float dx, float dz, bool split)
+{
+	float len = sqrtf(dx * dx + dz * dz);
+	int n = split && len > 60.0f ? (int)ceilf(len / 60.0f) : 1;
+	for (int i = 0; i < n; i++)
+		if (!walk_step(x, y, z, dx / (float)n, dz / (float)n))
+			break;
+}
+
+// Ways James can walk on from a place: of eight directions, those where two steps take him more
+// than 40 units.
+static int open_ways(float x, float y, float z)
+{
+	int n = 0;
+	for (int k = 0; k < 8; k++) {
+		float a = (float)k * (float)M_PI / 4.0f, dx = sinf(a) * 60.0f, dz = cosf(a) * 60.0f;
+		float px = x, py = y, pz = z;
+		if (walk_step(&px, &py, &pz, dx, dz) && walk_step(&px, &py, &pz, dx, dz) &&
+		    hypotf(px - x, pz - z) > 40.0f)
+			n++;
+	}
+	return n;
+}
+
+// Getting James out of a place he cannot leave (the port's own, no PC counterpart). Every half
+// second he spends in an open place is remembered, up to eight of them; when the stick has been
+// held for a second without taking him anywhere and no way out is open, he goes back to the
+// latest remembered place that is open, as if he had never gone further.
+#define CRUMBS 8
+static struct {
+	float p[CRUMBS][3];
+	int n, stage;
+	float t, held, moved;
+} s_crumbs;
+
+static void unstick_update(bool want, float moved, float dt)
+{
+	if (s_crumbs.stage != ev_stage()) {
+		memset(&s_crumbs, 0, sizeof s_crumbs);
+		s_crumbs.stage = ev_stage();
+	}
+	if ((s_crumbs.t += dt) >= 0.5f) {
+		s_crumbs.t = 0.0f;
+		const float* last = s_crumbs.n ? s_crumbs.p[s_crumbs.n - 1] : NULL;
+		if ((!last || hypotf(s_px - last[0], s_pz - last[2]) > 150.0f) && open_ways(s_px, s_py, s_pz) >= 3) {
+			if (s_crumbs.n == CRUMBS)
+				memmove(s_crumbs.p[0], s_crumbs.p[1], sizeof s_crumbs.p[0] * (CRUMBS - 1)), s_crumbs.n--;
+			s_crumbs.p[s_crumbs.n][0] = s_px, s_crumbs.p[s_crumbs.n][1] = s_py, s_crumbs.p[s_crumbs.n][2] = s_pz;
+			s_crumbs.n++;
+		}
+	}
+	if (!want) {
+		s_crumbs.held = s_crumbs.moved = 0.0f;
+		return;
+	}
+	s_crumbs.held += dt;
+	s_crumbs.moved += moved;
+	if (s_crumbs.held < 1.0f)
+		return;
+	bool trapped = s_crumbs.moved < 30.0f && open_ways(s_px, s_py, s_pz) == 0;
+	s_crumbs.held = s_crumbs.moved = 0.0f;
+	if (!trapped)
+		return;
+	for (int i = s_crumbs.n - 1; i >= 0; i--) {
+		const float* c = s_crumbs.p[i];
+		float ny;
+		if (hypotf(c[0] - s_px, c[2] - s_pz) < 100.0f || !col_floor(&s_col, c[0], c[2], c[1], 200.0f, &ny) ||
+		    open_ways(c[0], ny, c[2]) < 3)
+			continue;
+		perf_event("unstick", "trapped at %.0f %.0f %.0f, back to %.0f %.0f %.0f", s_px, s_py, s_pz, c[0], ny, c[2]);
+		playtest_log("unstick: trapped at %.0f %.0f %.0f, back to %.0f %.0f %.0f", s_px, s_py, s_pz, c[0], ny, c[2]);
+		s_px = c[0], s_py = ny, s_pz = c[2];
+		s_crumbs.n = i + 1;          // the later places led here
+		s_vel[0] = s_vel[1] = 0.0f;
+		s_gamecam_reset = true;
+		return;
+	}
+	// nothing remembered (a save made there): the nearest open place on rings round him that no wall
+	// stands between
+	for (float r = 150.0f; r <= 1500.0f; r += 150.0f)
+		for (int k = 0; k < 16; k++) {
+			float a = (float)k * (float)M_PI / 8.0f, x = s_px + sinf(a) * r, z = s_pz + cosf(a) * r, y;
+			if (!col_floor(&s_col, x, z, s_py, 300.0f, &y) || col_crosses(&s_col, s_px, s_pz, x, z, s_py, 900.0f) ||
+			    open_ways(x, y, z) < 3)
+				continue;
+			perf_event("unstick", "trapped at %.0f %.0f %.0f, to %.0f %.0f %.0f", s_px, s_py, s_pz, x, y, z);
+			playtest_log("unstick: trapped at %.0f %.0f %.0f, to %.0f %.0f %.0f", s_px, s_py, s_pz, x, y, z);
+			s_px = x, s_py = y, s_pz = z;
+			s_vel[0] = s_vel[1] = 0.0f;
+			s_gamecam_reset = true;
+			return;
+		}
+}
+
+// A stage program walking James to a point (host_walk_to)
+static struct { bool asked, walking; float x, z, t; } s_auto;
+
 static void player_update(const circlePosition* cp, u32 held, float dt)
 {
 	if (boat_active()) {
@@ -1888,10 +2168,14 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	}
 	MoveInput in;
 	memset(&in, 0, sizeof in);
-	// the circle pad reads about +-156 at the rim; a small dead zone keeps James from creeping
+	// The circle pad reads about +-156 at the rim, which move.c takes as the PC's 127 (0x52e110 then
+	// applies the PC's own dead zones). The PC's DirectInput dead zone sits in the encrypted 0x56e3b0;
+	// in its place the pad's rest noise, under 12 % of the rim, reads as centred (3DS-only).
 	float x = cp->dx / 156.0f, y = cp->dy / 156.0f;
-	in.x = fabsf(x) < 0.12f ? 0.0f : x;
-	in.y = fabsf(y) < 0.12f ? 0.0f : y;
+	if (x * x + y * y < 0.12f * 0.12f)
+		x = y = 0.0f;
+	in.x = x > 1.0f ? 1.0f : x < -1.0f ? -1.0f : x;
+	in.y = y > 1.0f ? 1.0f : y < -1.0f ? -1.0f : y;
 	// Enhanced Edition "EnableToggleSprint": B toggles running, which stops when James stops
 	static bool s_run_latched;
 	if (s_toggle_run) {
@@ -1909,8 +2193,39 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	in.strafe_r_down = in.strafe_r && !(s_prev_held & GK_STRAFE_R);
 	in.turn180 = (held & GK_TURN180) && !(s_prev_held & GK_TURN180);
 	s_prev_held = held;
-	in.control = s_controls;
+	in.control = playtest_steering() ? MOVE_TANK : s_controls;
 	in.camera_yaw = gamecam_yaw();
+	if (behind_camera() && !playtest_steering()) {
+		// the port's behind camera (tpcam.c): the stick is camera-relative, read every frame
+		in.control = MOVE_2D;
+		in.camera_yaw = tpcam_yaw();
+		in.cam_live = true;
+	}
+	in.place = s_place;
+	// under the weapon (combat_legs): the hold stance and the weapon's walking and running flags
+	CombatLegs lg;
+	if (combat_legs(&lg) && lg.aim) {
+		in.aim = true;
+		in.locked = lg.locked;
+		in.attack_seq = lg.attack_seq;
+		in.aim_walk = lg.walk;
+		in.aim_run = lg.run;
+		in.keep_gait = lg.attacking;
+		in.stick_strafe = behind_camera();
+	}
+	in.digital = s_dpad_walking;
+	// a program's walk (host_walk_to), asked for again each frame it goes on
+	s_auto.walking = s_auto.asked;
+	s_auto.asked = false;
+	if (s_auto.walking) {
+		float dx = s_auto.x - s_px, dz = s_auto.z - s_pz, d = hypotf(dx, dz);
+		in.autowalk = true;
+		in.auto_gait = d > 3500.0f ? 2 : d > 87.5f ? 1 : 0;
+		in.auto_yaw = atan2f(dx, dz);
+		s_auto.t += dt;
+	} else {
+		s_auto.t = 0.0f;
+	}
 	in.hp_frac = combat_hp() / JAMES_HP_MAX;
 	in.maria = combat_own_footsteps();
 	in.drag = combat_grip() == 8;
@@ -1929,27 +2244,12 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 	move_update(&in, &s_yaw, dt, &mo);
 	s_turn_speed = mo.turn_speed;
 	float ox = s_px, oz = s_pz;
-	float nx = s_px + mo.dx, nz = s_pz + mo.dz;
 	if (s_have_col) {
-		float ny;
-		col_push(&s_col, &nx, &nz, s_py, 900.0f, 130.0f);
-		if (col_floor_climb(&s_col, nx, nz, s_py, 160.0f, 160.0f, &ny)) {
-			s_px = nx;
-			s_pz = nz;
-			s_py = ny;
-		} else if (nx != s_px || nz != s_pz) {
-			// The open areas' tiles leave gaps of up to about 60 units between their floors (cb05 and
-			// cb52 meet at x 19950 / 20000), which James walks over on the PC: with floor a little
-			// further on at the same height he goes on at his height.
-			float mx = nx - s_px, mz = nz - s_pz, ml = sqrtf(mx * mx + mz * mz);
-			if (col_floor(&s_col, s_px + mx / ml * 100.0f, s_pz + mz / ml * 100.0f, s_py, 40.0f, &ny)) {
-				s_px = nx;
-				s_pz = nz;
-			}
-		}
+		walk_move(&s_px, &s_py, &s_pz, mo.dx, mo.dz, true);
+		unstick_update(in.x != 0.0f || in.y != 0.0f, hypotf(s_px - ox, s_pz - oz), dt);
 	} else {
-		s_px = nx;
-		s_pz = nz;
+		s_px += mo.dx;
+		s_pz += mo.dz;
 	}
 	s_vel[0] = dt > 0.0f ? (s_px - ox) / dt : 0.0f;
 	s_vel[1] = dt > 0.0f ? (s_pz - oz) / dt : 0.0f;
@@ -2023,20 +2323,42 @@ static void shadow_frame(bool paused)
 			shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, 0.0f);
 			return;
 		}
-		const float* eye = gamecam_eye();
+		const float* eye = view_eye();
 		shadow_begin_drop(s_env.map_id, eye);
 		return;
 	}
-	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && s_chrflash.on && s_env.shadow != 0 &&
-	    quality()->stencil_shadows) {
+	// 0x5aad70 lights two rooms' shadows its own way (by the map at James' feet, 0x5abf70): hotel room
+	// 312 (rr91) from far above, light kind 4; apartment ap42 with the flashlight off from its lamp,
+	// a spot at (-58350, -700, 19275). The PC casts there without the flashlight (0x5a8370 only asks
+	// for a dark room with ShadowDarkNess). The Enhanced Edition never fades room 312's shadows and
+	// fades the others back in at 1 % every other frame after the flashlight goes off
+	// (IDirect3DDevice8.cpp SetShadowFading, zlib licence).
+	bool play = s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && s_env.shadow != 0 &&
+	            quality()->stencil_shadows;
+	bool room312 = s_env.map_id == 0xc005b, lamp = s_env.map_id == 0x9002a && !s_chrflash.on;
+	static bool lamp_was;
+	if (play && (s_chrflash.on || room312 || lamp)) {
 		int room = bgm_room_id(ev_glb_crd(), s_px, s_pz);
-		if (!paused)
-			fade = fade + 0.03f > 1.0f ? 1.0f : fade + 0.03f;
+		if (lamp && !lamp_was)
+			fade = 0.0f;
+		if (room312)
+			fade = 1.0f;
+		else if (!paused)
+			fade = fminf(1.0f, fade + (lamp ? 0.5f / 100.0f : 0.03f));
 		k = shadow_ee_opacity(room, prog_chapter() == 1) / 255.0f * fade;
 	} else {
 		fade = 0.0f;
 	}
-	shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, k);
+	lamp_was = play && lamp;
+	if (play && room312) {
+		static const float down[3] = { 0.0731137f, 0.683614f, 0.726173f };   // 0x3d95bca0 0x3f2f0154 0x3f39e673
+		shadow_begin_parallel(down, k);
+	} else if (play && lamp) {
+		static const float at[3] = { -58350.0f, -700.0f, 19275.0f }, dir[3] = { -0.362000f, 0.769000f, 0.326000f };
+		shadow_begin(at, dir, s_chrflash.cone, k);
+	} else {
+		shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, k);
+	}
 }
 
 static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
@@ -2060,21 +2382,26 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	const MoveOut* mo = move_last();
 	const Anim* anim = &s_james_anim;
 	float frame = mo->frame, blend = mo->blend;
-	bool armed = combat_james_anim(&anim, &frame);   // armed: the weapon's animation set
-	bool legs = !armed || combat_james_free();
+	int cloop[2] = { 0, 0 };
+	bool armed = combat_james_anim(&anim, &frame, cloop);   // armed: the weapon's animation set
+	float upper_frame = frame;
+	// Under the weapon the legs can walk, back off, strafe or run (combat_legs): they play move.c's
+	// clip and the upper body combat's, as the PC plays the two parts on their own anime (0x539140).
+	// Standing in the hold stance the whole body takes combat's clip (its lower part is the stance).
+	CombatLegs lg;
+	bool split = armed && !combat_james_free() && combat_legs(&lg) && mo->state != MV_HOLD && mo->state != MV_STAND;
+	bool legs = !armed || combat_james_free() || split;
 	int clip = mo->clip.start;
 	if (legs)
 		frame = mo->frame;
 	else
 		clip = combat_james_clip(&blend);
-	if (legs && frame >= mo->clip.end + 1.0f)
-		frame = mo->clip.start;                  // the loop seam
 	static ChrBlend s_jblend;
 	static int s_jclip = -1;
-	static bool s_jlegs;
+	static bool s_jlegs, s_jsplit;
 	static const Anim* s_janim;
-	if (clip != s_jclip || legs != s_jlegs || anim != s_janim) {
-		if (legs != s_jlegs || anim != s_janim)
+	if (clip != s_jclip || legs != s_jlegs || anim != s_janim || split != s_jsplit) {
+		if (legs != s_jlegs || anim != s_janim || split != s_jsplit)
 			chr_blend_start(&s_jblend, 8.0f / 30.0f);    // from combat's clip to the legs' or back
 		else if (legs && mo->sync)
 			chr_blend_start_sync(&s_jblend, anim, mo->from_start, mo->clip.start,
@@ -2083,8 +2410,19 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 			chr_blend_start(&s_jblend, blend);
 		s_jclip = clip;
 		s_jlegs = legs;
+		s_jsplit = split;
 		s_janim = anim;
 	}
+	// James' and Maria's skeletons have two roots, the upper body under bone 0 and the legs under 1
+	s_jblend.upper_root = split ? 0 : -1;
+	s_jblend.upper_anim = split ? anim : NULL;
+	s_jblend.upper_frame = upper_frame;
+	// a looping clip's last frame blends back to its first (chr_pose_loop), as on the PC
+	bool lloop = legs && mo->clip.loop;
+	s_jblend.loop_start = lloop ? mo->clip.start : legs ? 0 : cloop[0];
+	s_jblend.loop_end = lloop ? mo->clip.end : legs ? 0 : cloop[1];
+	s_jblend.upper_loop_start = cloop[0];
+	s_jblend.upper_loop_end = cloop[1];
 	// the head and neck bones: James' hll_jms 15 and 8, Maria's lxx_mar 9 and 6
 	bool jms = s_james.n_bones == 41, mar = s_james.n_bones == 36;
 	s_jblend.look_head = jms ? 15 : mar ? 9 : -1;
@@ -2092,7 +2430,7 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	s_jblend.neck_share = 0.2f;
 	s_jblend.look_yaw = demo_active() ? 0.0f : s_look_yaw;
 	s_jblend.look_pitch = demo_active() ? 0.0f : s_look_pitch;
-	if (!boat_james_pose(&s_james, s_anim_dt))
+	if (!stereo_eye() && !boat_james_pose(&s_james, s_anim_dt))   // the second eye keeps the pose
 		chr_pose_blend(&s_james, anim, frame, &s_jblend, s_anim_dt);
 	// Characters are lit like the PC's (chrlight.c: the room's character lights, the strongest
 	// point and spot lights near each character, ambient 2.1 x Ambient + 0.3 x level). Full bright
@@ -2111,10 +2449,11 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 	shadow_mark_begin();                  // characters take no shadow (shadow.c)
 	float jat[3] = { s_px, s_py, s_pz };
 	shadow_cast(&s_james, jat, s_yaw);    // the PC's hll_jms.kg1 is empty, so nothing yet
+	combat_set_parts(move_last()->state);
 	chr_draw(&s_james, s_uBones);
 	combat_draw_weapon(s_uBones);
 	if (s_state == ST_GAME) {
-		enemy_draw(view, s_uSkinModelView, s_uBones);
+		enemy_draw(view, s_uSkinModelView, s_uBones, stereo_eye() ? 0.0f : s_anim_dt);
 		stagemdl_draw(view, s_uSkinModelView, s_uBones);   // the stage's own models (stagemdl.c)
 		boat_draw(view, s_uSkinModelView, s_uBones);       // the boat on the lake (boat.c)
 	}
@@ -2162,6 +2501,10 @@ static void draw_demo(const C3D_Mtx* proj, const C3D_Mtx* view)
 		C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
 	if (!demo_has_james())
 		draw_james(proj, view);
+	else if (s_state == ST_GAME)
+		// the PC draws the stage's placed models through scenes too: the burnt painting (0x534,
+		// xag.mdl) over the hole in the burning stairs' wall shows all through fire_agl
+		stagemdl_draw(view, s_uSkinModelView, s_uBones);
 	s_chr_begun = false;
 	chrlight_end();
 	C3D_LightEnvAmbient(&s_lenv, 0.0f, 0.0f, 0.0f);
@@ -2172,16 +2515,18 @@ static void texenv(bool textured, int group)
 	static const u32 group_color[3] = { 0xFFD0A060, 0xFF40C0FF, 0xFF4040FF };   // ABGR
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	if (s_render_mode == 1) {
+	if (s_render_mode == 1 || s_map_test == 5) {
 		C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
 		C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-		C3D_TexEnvColor(env, group_color[group]);
+		C3D_TexEnvColor(env, s_map_test == 5 ? 0xFF808080 : group_color[group]);
 	} else if (textured) {
 		// PC map pixel shader: texture * vertex light, plus texture * flashlight (fragment light)
 		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
 		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
 		C3D_TexEnv* e1 = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(e1);
+		if (s_map_test == 3)
+			return;
 		C3D_TexEnvSrc(e1, C3D_RGB, GPU_TEXTURE0, GPU_FRAGMENT_SECONDARY_COLOR, GPU_PREVIOUS);
 		C3D_TexEnvSrc(e1, C3D_Alpha, GPU_PREVIOUS, 0, 0);
 		C3D_TexEnvFunc(e1, C3D_RGB, GPU_MULTIPLY_ADD);
@@ -2193,6 +2538,23 @@ static void texenv(bool textured, int group)
 		C3D_TexEnvFunc(env, C3D_RGB, GPU_ADD);
 		C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
 	}
+	C3D_TexEnvInit(C3D_GetTexEnv(1));
+}
+
+// A .map material with no texture (texture id 0): 0x5b0130 sets each draw record's texture on
+// stage 0 whatever it is, and the map pixel shader (PS1, LIGHTING.md section 3) multiplies
+// everything, the flashlight too, by that stage, which D3D samples as (0, 0, 0, 1) when no
+// texture is set. So these surfaces come out opaque black on the PC, and only the fog colours
+// them: the door openings of rooms 104, 209 and 301 in Wood Side (ap14, ap46, ap54), patches on
+// town roofs (cb21, cb28, cc32, cc53) and a few more. Drawn with the vertex light they were white.
+// (The loader's handling of id 0 is not traced; a null texture is assumed.)
+static void texenv_black(void)
+{
+	C3D_TexEnv* env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
+	C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+	C3D_TexEnvColor(env, 0xFF000000);
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 }
 
@@ -2265,6 +2627,7 @@ static void draw_fade(const C3D_Mtx* ortho, float alpha)
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, s_fadequad, ROOM_VERTEX_SIZE, 4, 0x3210);
 	C3D_DrawArrays(GPU_TRIANGLES, 0, 6);
+	gpucost_px(GC_FULL, 400.0f * 240.0f, 6);
 }
 
 // One group of one room's batches (the vertex buffer is bound per room: indices are room-local).
@@ -2318,6 +2681,66 @@ static void draw_low_health(const C3D_Mtx* ortho, float alpha)
 	C3D_DrawArrays(GPU_TRIANGLES, 0, 18);
 }
 
+// The map's batches and their chunks (room.h) are culled per eye: a box wholly outside one side of
+// this eye's view volume, or wholly beyond its far plane, cannot show, so what lies in it is not
+// sent. The GPU would clip all of it away, so the picture is the same; what is saved is vertex work.
+// In the town and the forest the resident tiles surround James and only 2 to 8 % of their triangles
+// reach the screen, so each eye sent 80,000 to 200,000 vertices of which most were thrown away
+// (debug.txt gpucost, port/PERFORMANCE.md "3D"). 3DS-only: the PC draws every map part.
+static bool s_map_cull = true;          // debug.txt "mapcull 0" sends every map triangle, as before
+static float s_clip_far = 100000.0f;    // the camera's far plane (clip w), set with the projection
+static float s_frustum[5][4];           // this eye's half-spaces in world space: inside where >= 0
+static C3D_Mtx s_frustum_clip;          // the projection * view they came from (for gpucost)
+
+// From projection * view: w - x, w + x, w - y, w + y (together they hold w >= 0, in front of the
+// eye) and far - w.
+static void frustum_set(const C3D_Mtx* clip, float far)
+{
+	s_frustum_clip = *clip;
+	const C3D_FVec* r = clip->r;
+	for (int k = 0; k < 5; k++) {
+		float* p = s_frustum[k];
+		float sx = k == 0 ? -1.0f : k == 1 ? 1.0f : 0.0f, sy = k == 2 ? -1.0f : k == 3 ? 1.0f : 0.0f;
+		float sw = k == 4 ? -1.0f : 1.0f;
+		p[0] = sw * r[3].x + sx * r[0].x + sy * r[1].x;
+		p[1] = sw * r[3].y + sx * r[0].y + sy * r[1].y;
+		p[2] = sw * r[3].z + sx * r[0].z + sy * r[1].z;
+		p[3] = sw * r[3].w + sx * r[0].w + sy * r[1].w + (k == 4 ? far * 1.01f : 0.0f);   // a margin for rounding
+	}
+}
+
+// 0: the box cannot show; 1: it may; 2: it lies wholly inside, and so does all it holds.
+static int box_test(const RoomBox* b)
+{
+	if (b->e[0] < 0.0f)
+		return 1;                  // no vertices to bound (not expected): drawn as before
+	int inside = 2;
+	for (int k = 0; k < 5; k++) {
+		const float* p = s_frustum[k];
+		float d = p[0] * b->c[0] + p[1] * b->c[1] + p[2] * b->c[2] + p[3];
+		float r = fabsf(p[0]) * b->e[0] + fabsf(p[1]) * b->e[1] + fabsf(p[2]) * b->e[2];
+		if (d + r < 0.0f)
+			return 0;
+		if (d - r < 0.0f)
+			inside = 1;
+	}
+	return inside;
+}
+
+#define RUN_GAP 1                       // hidden chunks a run of visible ones goes on over
+
+// Which of a batch's chunks this eye can see, into vis (n_chunks of them): by the group boxes, and
+// the chunks' own where a group is cut by the view's edge.
+static void chunks_visible(const RoomBatch* b, u8* vis)
+{
+	for (u32 g = 0; g * ROOM_GROUP_CHUNKS < b->n_chunks; g++) {
+		u32 c0 = g * ROOM_GROUP_CHUNKS, c1 = c0 + ROOM_GROUP_CHUNKS < b->n_chunks ? c0 + ROOM_GROUP_CHUNKS : b->n_chunks;
+		int t = box_test(&b->groups[g]);
+		for (u32 c = c0; c < c1; c++)
+			vis[c] = t == 1 ? box_test(&b->chunks[c]) != 0 : t != 0;
+	}
+}
+
 static u32 draw_room_group(const Room* r, int group)
 {
 	u32 calls = 0;
@@ -2334,26 +2757,73 @@ static u32 draw_room_group(const Room* r, int group)
 		RoomBatch* b = &r->batches[i];
 		if ((int)b->group != group || b->hidden || (s_only_batch >= 0 && (int)i != s_only_batch))
 			continue;
+		// the batch's chunks this eye can see (room.h), drawn as runs of consecutive ones
+		int in = s_map_cull ? box_test(&b->box) : 2;
+		if (!in)
+			continue;
+		static u8 vis[4096];
+		u32 nc = b->chunks && in == 1 && b->n_chunks <= sizeof vis ? b->n_chunks : 1, c = 0;
+		if (nc > 1)
+			chunks_visible(b, vis);
+		while (nc > 1 && c < nc && !vis[c])
+			c++;
+		if (c == nc)
+			continue;
 		RoomMaterial* m = &r->materials[b->material < r->n_materials ? b->material : 0];
-		bool textured = m->tex != NULL && s_render_mode == 0;
-		if ((int)textured != env_mode) {
-			texenv(textured, group);
-			env_mode = (int)textured;
+		bool textured = m->tex != NULL && s_render_mode == 0 && s_map_test != 2 && s_map_test != 5;
+		int mode = m->texture_id == 0 && s_render_mode == 0 ? 2 : (int)textured;
+		if (mode != env_mode) {
+			if (mode == 2)
+				texenv_black();
+			else
+				texenv(textured, group);
+			env_mode = mode;
 		}
 		if (!last_m || m->mode != last_m->mode || m->color != last_m->color)
 			material_uniforms(m, lit);
 		last_m = m;
 		if (textured && m->tex != last_tex) {
+			GPU_TEXTURE_FILTER_PARAM f = s_map_test == 1 ? GPU_NEAREST : GPU_LINEAR;
+			C3D_TexSetFilter(m->tex, f, f);
 			C3D_TexBind(0, m->tex);
 			last_tex = m->tex;
 		}
-		int a = textured && (m->flags & 1);
+		// 0x5b4f10's D3DRS_ALPHATESTENABLE 1, ALPHAFUNC GREATER, ALPHAREF 0 for every part of both
+		// passes, so only the texels it leaves out keep no depth (see draw_room). Only alpha 0 is cut:
+		// the PC samples one level of its map textures, while the pack's mipmaps soften an atlas
+		// region's alpha at its edge, and a higher reference cut those edges out on a console (light
+		// lines along the ground's seams, where the fog showed through)
+		int a = group == GROUP_TRANSPARENT || (textured && (m->flags & 1));
 		if (a != alpha) {
-			C3D_AlphaTest(a, GPU_GREATER, 0x40);
+			C3D_AlphaTest(a != 0, GPU_GREATER, 0);
 			alpha = a;
 		}
-		C3D_DrawElements(GPU_TRIANGLES, b->index_count, C3D_UNSIGNED_SHORT, b->indices);
-		calls++;
+		while (c < nc) {
+			u32 end = c + 1;
+			// a run goes on over a gap of a few hidden chunks: sending their triangles costs less
+			// than another draw
+			for (u32 k = end; nc > 1 && k < nc && k <= end + RUN_GAP; k++)
+				if (vis[k])
+					end = k + 1;
+			u32 i0 = nc > 1 ? c * ROOM_CHUNK_TRIS * 3 : 0;
+			u32 i1 = nc > 1 && end < nc ? end * ROOM_CHUNK_TRIS * 3 : b->index_count;
+			C3D_DrawElements(GPU_TRIANGLES, i1 - i0, C3D_UNSIGNED_SHORT, b->indices + i0);
+			calls++;
+			if (gpucost_sampled()) {     // debug.txt gpucost (gpucost.h): the run's area on screen
+				const u8* vb = r->vertices;
+				bool shown = false;
+				for (u32 k = i0; k + 2 < i1; k += 3)
+					shown |= gpucost_tri(group == GROUP_OPAQUE ? GC_MAP : GC_MAP_BLEND, &s_frustum_clip,
+					                     (const float*)(vb + b->indices[k] * ROOM_VERTEX_SIZE),
+					                     (const float*)(vb + b->indices[k + 1] * ROOM_VERTEX_SIZE),
+					                     (const float*)(vb + b->indices[k + 2] * ROOM_VERTEX_SIZE), true);
+				if (!shown && group == GROUP_OPAQUE)
+					gpucost_idle_batch((i1 - i0) / 3);
+			}
+			c = end + 1;
+			while (nc > 1 && c < nc && !vis[c])
+				c++;
+		}
 	}
 	return calls;
 }
@@ -2383,37 +2853,73 @@ static bool room_visible(const Room* r, const C3D_Mtx* clip)
 
 static C3D_Mtx s_clip_mtx;     // projection * view of the frame, for room_visible
 
-// The primary room and the resident neighbours: every room's opaque pass first, then decals and
-// transparent parts, so blending sees the whole scene behind it.
-static u32 draw_room(void)
+// The primary room and the resident neighbours, one group of every room at a time.
+// 0x5b4f10 draws the map straight away (0x47d7f0, before the frame's ordering table with the
+// characters is flushed) in two passes, the opaque parts with D3DRS_ALPHABLENDENABLE 0 and then the
+// transparent ones with it on (SRCALPHA, INVSRCALPHA). D3DRS_ZWRITEENABLE stays 1 for both, with the
+// alpha test GREATER 0: a grille writes its depth where its wires are, and the characters drawn
+// after the map stay behind it. The decals come later (draw_room_decals).
+static u32 draw_room_pass(int group)
 {
 	u32 calls = 0;
-	if (!s_loaded)
-		return 0;
 	bool vis[MAX_NB];
 	for (int k = 0; k < s_nnb; k++)
 		vis[k] = room_visible(&s_nb[k], &s_clip_mtx);
-	for (int pass = GROUP_OPAQUE; pass <= GROUP_DECAL; pass++) {
-		int group = pass == 1 ? GROUP_DECAL : pass == 2 ? GROUP_TRANSPARENT : GROUP_OPAQUE;
-		if (s_opaque_only && group != GROUP_OPAQUE)
-			continue;
-		GPU_TESTFUNC test = s_depth_variant == 0 ? GPU_GREATER : s_depth_variant == 1 ? GPU_LESS : GPU_ALWAYS;
-		GPU_TESTFUNC test_eq = s_depth_variant == 0 ? GPU_GEQUAL : s_depth_variant == 1 ? GPU_LEQUAL : GPU_ALWAYS;
-		if (group == GROUP_OPAQUE) {
-			C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
-			C3D_DepthTest(true, test, GPU_WRITE_ALL);
-			C3D_DepthMap(true, -1.0f, 0.0f);
-		} else {
-			C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-			               GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-			C3D_DepthTest(true, test_eq, GPU_WRITE_COLOR);
-			C3D_DepthMap(true, -1.0f, group == GROUP_DECAL ? 0.0002f : 0.0f);
-		}
-		calls += draw_room_group(&s_cur, group);
-		for (int k = 0; k < s_nnb; k++)
-			if (vis[k])
-				calls += draw_room_group(&s_nb[k], group);
+	// The PC draws with D3DRS_CULLMODE D3DCULL_CW: 0x406ef0 turns culling off for its screen quad
+	// and puts CW back after it, and nothing else in the exe changes it. Many camera roads stand
+	// outside a room and look in through a wall that only faces inwards (the closet of hotel room
+	// 0x9c, rr79; the last stairwell, ru73), so the map's back faces must not be drawn.
+	C3D_CullFace(GPU_CULL_BACK_CCW);
+	GPU_TESTFUNC test = s_depth_variant == 0 ? GPU_GREATER : s_depth_variant == 1 ? GPU_LESS : GPU_ALWAYS;
+	GPU_TESTFUNC test_eq = s_depth_variant == 0 ? GPU_GEQUAL : s_depth_variant == 1 ? GPU_LEQUAL : GPU_ALWAYS;
+	if (group == GROUP_OPAQUE) {
+		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+		C3D_DepthTest(true, test, GPU_WRITE_ALL);
+		C3D_DepthMap(true, -1.0f, 0.0f);
+	} else {
+		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+		               GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+		C3D_DepthTest(true, test_eq, group == GROUP_TRANSPARENT ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+		C3D_DepthMap(true, -1.0f, group == GROUP_DECAL ? 0.0002f : 0.0f);
 	}
+	if (s_map_test == 4 || s_map_test == 5)
+		C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
+	calls += draw_room_group(&s_cur, group);
+	for (int k = 0; k < s_nnb && s_map_test != 6; k++)
+		if (vis[k])
+			calls += draw_room_group(&s_nb[k], group);
+	if ((s_map_test == 4 || s_map_test == 5) && s_cam.mode == CAM_PLAYER)
+		C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
+	C3D_CullFace(GPU_CULL_NONE);
+	return calls;
+}
+
+static u32 draw_room(void)
+{
+	if (!s_loaded)
+		return 0;
+	u32 calls = draw_room_pass(GROUP_OPAQUE);
+	if (!s_opaque_only)
+		calls += draw_room_pass(GROUP_TRANSPARENT);
+	return calls;
+}
+
+// The map's decals do not go out with it: 0x47d8b0 -> 0x5b58d0 -> 0x5b5670 posts each into the
+// frame's ordering table at its depth (0x5af7f0), with the characters. One nearer than a character
+// covers it, such as the chain-link fence the first Lying Figure's scene (saisho) is shot through.
+// Drawn after the characters against their depth, a decal shows wherever nothing is nearer. The
+// skinning program has used the uniform registers since, so the world program's are set again.
+static u32 draw_room_decals(const C3D_Mtx* proj, const C3D_Mtx* mv)
+{
+	if (!s_loaded || s_opaque_only)
+		return 0;
+	use_world_program();
+	C3D_LightEnvBind(&s_lenv);
+	lighting_frame(mv, s_cam.mode == CAM_PLAYER);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, proj);
+	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, mv);
+	u32 calls = draw_room_pass(GROUP_DECAL);
+	C3D_LightEnvBind(NULL);
 	return calls;
 }
 
@@ -2498,18 +3004,19 @@ static void draw_picture(const C3D_Mtx* ortho)
 // 0xRRGGBBAA colour. The vertices go to a linear buffer filled anew every frame; the GPU reads
 // them after C3D_FrameEnd, so nothing in it is reused within a frame.
 #define UI_MAX_VERTS 8192      // the map screen and up to 1024 glyphs of PC text (font.c)
-static void* s_ui_verts;
+static void* s_ui_vbuf[2];     // the second for the right eye of a 3D frame (stereo.h)
 static int s_ui_used;
 static const C3D_Mtx* s_ui_ortho;
 
 static void ui_draw(C3D_Tex* tex, const MapVert* v, int n, u32 rgba)
 {
 	typedef struct { float x, y, z, u, v; u8 c[4]; s8 n[4]; } V;
-	if (!s_ui_verts)
-		s_ui_verts = linearAlloc(UI_MAX_VERTS * sizeof(V));
-	if (!s_ui_verts || !s_ui_ortho || s_ui_used + n > UI_MAX_VERTS)
+	void** buf = &s_ui_vbuf[stereo_eye()];
+	if (!*buf)
+		*buf = linearAlloc(UI_MAX_VERTS * sizeof(V));
+	if (!*buf || !s_ui_ortho || s_ui_used + n > UI_MAX_VERTS)
 		return;
-	V* out = (V*)s_ui_verts + s_ui_used;
+	V* out = (V*)*buf + s_ui_used;
 	for (int i = 0; i < n; i++)
 		out[i] = (V){ v[i].x, 240.0f - v[i].y, 0.5f, v[i].u, v[i].v, { 255, 255, 255, 255 }, { 0, 0, 127, 0 } };
 	C3D_Mtx id;
@@ -2577,11 +3084,12 @@ static void ui_program_flat(const C3D_Mtx* proj, const C3D_Mtx* view)
 static void ui_draw_font(C3D_Tex* tex, const FontVert* v, int n)
 {
 	typedef struct { float x, y, z, u, v; u8 c[4]; s8 n[4]; } V;
-	if (!s_ui_verts)
-		s_ui_verts = linearAlloc(UI_MAX_VERTS * sizeof(V));
-	if (!s_ui_verts || !s_ui_ortho || s_ui_used + n > UI_MAX_VERTS)
+	void** buf = &s_ui_vbuf[stereo_eye()];
+	if (!*buf)
+		*buf = linearAlloc(UI_MAX_VERTS * sizeof(V));
+	if (!*buf || !s_ui_ortho || s_ui_used + n > UI_MAX_VERTS)
 		return;
-	V* out = (V*)s_ui_verts + s_ui_used;
+	V* out = (V*)*buf + s_ui_used;
 	for (int i = 0; i < n; i++) {
 		u32 c = v[i].rgba;
 		out[i] = (V){ v[i].x, 240.0f - v[i].y, 0.5f, v[i].u, v[i].v,
@@ -2911,10 +3419,11 @@ static void results_print(void)
 	s_results_dirty = false;
 }
 
-// The results in the PC's layout on the top screen (0x447650, English positions): the title in the
-// big font, the labels right-aligned at 240 in the small font fading from white to grey, the
-// values from 256, a value yellow (colour 4) when it earns its category's full points (outside
-// Born From a Wish), and the rank as stars, a big one per ten and a small one per point.
+// The results in the PC's layout on the top screen (0x447650): the title (message 0) in the big
+// font, the labels right-aligned at 240 in the small font fading from white to grey, the values
+// from 256 (both 32 further right in German, Italian and Spanish), a value yellow (colour 4) when
+// it earns its category's full points (outside Born From a Wish), and the rank as stars, a big one
+// per ten and a small one per point.
 static void results_draw_top(void)
 {
 	if (s_clear_saving) {
@@ -2932,16 +3441,23 @@ static void results_draw_top(void)
 	font_pc_color(10, &label_top, &label_bottom);
 	font_pc_color(4, &yellow, &dummy);
 	dim = 0x606060ff;      // colour 0x11 is past the end of the PC's table: shown dim here
-	static const u16 title[] = { 0x182, 0x17c, 0x188, 0x180, 0, 0x18d, 0x180, 0x18e, 0x190, 0x187, 0x18f };
-	font_codes(FONT_BIG, 256, 40, title, sizeof title / sizeof *title, FONT_CENTER, white, white);  // GAME RESULT
+	const char* head = m(0);
+	if (head && strchr(head, FONT_FULL_WIDTH)) {
+		font_text(FONT_BIG, 256, 40, head, FONT_CENTER, white, white);
+	} else {
+		// packs from before the other languages: GAME RESULT in the English codes
+		static const u16 title[] = { 0x182, 0x17c, 0x188, 0x180, 0, 0x18d, 0x180, 0x18e, 0x190, 0x187, 0x18f };
+		font_codes(FONT_BIG, 256, 40, title, sizeof title / sizeof *title, FONT_CENTER, white, white);
+	}
+	float vx = ev_language() < 3 ? 256.0f : 288.0f;      // 0x120 less 0x20 when 0x1dbec06 < 3
 	static const u8 labels[15] = { 1, 2, 6, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 };   // 0x7b566c
 	for (int i = 0; i < 15; i++) {
 		bool off = wish && (i == 1 || i == 2 || i == 3 || i == 11 || i == 12 || i == 14);
-		font_text(FONT_SMALL, 240, 80 + 24 * i + (i == 14 ? 4 : 0), m(labels[i]), FONT_RIGHT,
+		font_text(FONT_SMALL, vx - 16.0f, 80 + 24 * i + (i == 14 ? 4 : 0), m(labels[i]), FONT_RIGHT,
 		          off ? dim : label_top, off ? dim : label_bottom);
 	}
 #define VALUE(row, full, ...) do { char b_[48]; snprintf(b_, sizeof b_, __VA_ARGS__); \
-		u32 c_ = (full) && !wish ? yellow : white; font_text(FONT_SMALL, 256, 80 + 24 * (row), b_, FONT_LEFT, c_, c_); } while (0)
+		u32 c_ = (full) && !wish ? yellow : white; font_text(FONT_SMALL, vx, 80 + 24 * (row), b_, FONT_LEFT, c_, c_); } while (0)
 	static const int action_msg[4] = { 25, 3, 4, 5 }, riddle_msg[4] = { 3, 4, 5, 24 };   // 0x7b567c, 0x7b5680
 	const char* s = m(action_msg[r.action & 3]);
 	VALUE(0, r.pts_action >= 5, "%s", s ? s : "");
@@ -2975,8 +3491,8 @@ static void results_draw_top(void)
 		snprintf(n8, sizeof n8, "%d", r.items);
 		snprintf(p8, sizeof p8, "(+%d)", r.secret);
 		u32 c8 = r.pts_items >= 15 && !wish ? yellow : white, c9 = r.secret >= 8 ? yellow : white;
-		font_text(FONT_SMALL, 256, 80 + 24 * 8, n8, FONT_LEFT, c8, c8);
-		font_text(FONT_SMALL, 256 + font_width(FONT_SMALL, n8) + 2, 80 + 24 * 8, p8, FONT_LEFT, c9, c9);
+		font_text(FONT_SMALL, vx, 80 + 24 * 8, n8, FONT_LEFT, c8, c8);
+		font_text(FONT_SMALL, vx + font_width(FONT_SMALL, n8) + 2, 80 + 24 * 8, p8, FONT_LEFT, c9, c9);
 	} else {
 		VALUE(8, r.pts_items >= 15, "%d", r.items);
 	}
@@ -3001,16 +3517,19 @@ static void results_draw_top(void)
 		for (int i = 0; i < 20; i++)
 			stars[i] = 0x138;
 		if (big)
-			font_codes(FONT_BIG, 256, 416, stars, big, FONT_LEFT, c, c);
+			font_codes(FONT_BIG, vx, 416, stars, big, FONT_LEFT, c, c);
 		if (small)
-			font_codes(FONT_SMALL, 256, big ? 442 : 416, stars, small > 20 ? 20 : small, FONT_LEFT, c, c);
+			font_codes(FONT_SMALL, vx, big ? 442 : 416, stars, small > 20 ? 20 : small, FONT_LEFT, c, c);
 	}
-	// "Press Return to continue." (message 0x1c at 35, 460), with the 3DS button
+	// "Press Return to continue." (message 0x1c at 35, 460), with the 3DS button in place of the
+	// key's name in each language's text
+	static const char* const key[6] = { "", "Return", "Retour", "Enter", "Invio", "retroceso" };
 	s = m(28);
-	char foot[64];
-	const char* ret = s ? strstr(s, "Return") : NULL;
+	char foot[96];
+	const char* word = key[ev_language() >= 1 && ev_language() <= 5 ? ev_language() : 1];
+	const char* ret = s ? strstr(s, word) : NULL;
 	if (ret)
-		snprintf(foot, sizeof foot, "%.*sA%s", (int)(ret - s), s, ret + 6);
+		snprintf(foot, sizeof foot, "%.*sA%s", (int)(ret - s), s, ret + strlen(word));
 	else
 		snprintf(foot, sizeof foot, "%s", s ? s : "");
 	font_text(FONT_SMALL, 35, 460, foot, FONT_LEFT, white, white);
@@ -3070,6 +3589,8 @@ static void host_player_get(float pos[3], float* yaw)
 static int room_at(float x, float z)
 {
 	for (int i = 0; i < s_nrooms; i++) {
+		if (!room_is_block(i))
+			continue;
 		char path[192];
 		snprintf(path, sizeof path, PACK_DIR "/bg/%.7s/%.15s.s3m", s_areas[s_area], s_rooms[i]);
 		FILE* f = fopen(path, "rb");
@@ -3106,27 +3627,20 @@ static void host_player_set(const float pos[3], float yaw)
 	s_gamecam_reset = true;
 }
 
-// Scripted walk (PC 0x53b010): straight at walking speed, gives up after four seconds.
-static int s_walk_frames;
+// Scripted walk (0x53b010, done by 0x53b320): each frame the program asks, James' own legs take him
+// at the point (player_update, move.c autowalk), running past 3500 away, walking past 87.5 and done
+// within it. 3DS-only: a walk the port's collision holds up gives in after 20 s instead of keeping
+// the program waiting (the PC has no limit).
 static bool host_walk_to(float x, float z)
 {
-	float dx = x - s_px, dz = z - s_pz, d = sqrtf(dx * dx + dz * dz);
-	if (d < 40.0f || ++s_walk_frames > 240) {
-		s_walk_frames = 0;
-		s_vel[0] = s_vel[1] = 0.0f;
+	float d = hypotf(x - s_px, z - s_pz);
+	if (d <= 87.5f || s_auto.t > 20.0f) {
+		s_auto.asked = s_auto.walking = false;
+		s_auto.t = 0.0f;
 		return true;
 	}
-	s_yaw = atan2f(dx, dz);
-	float step = 975.0f / 60.0f < d ? 975.0f / 60.0f : d;
-	float nx = s_px + dx / d * step, nz = s_pz + dz / d * step, ny;
-	if (s_have_col) {
-		col_push(&s_col, &nx, &nz, s_py, 900.0f, 130.0f);
-		if (col_floor_climb(&s_col, nx, nz, s_py, 160.0f, 160.0f, &ny))
-			s_px = nx, s_pz = nz, s_py = ny;
-	} else {
-		s_px = nx, s_pz = nz;
-	}
-	s_vel[0] = dx / d * 975.0f, s_vel[1] = dz / d * 975.0f;
+	s_auto.asked = true;
+	s_auto.x = x, s_auto.z = z;
 	return false;
 }
 
@@ -3417,11 +3931,13 @@ static void options_apply(void)
 {
 	s_bright = s_opt.bright;
 	s_controls = s_opt.control_type;
+	controls_set_rotational(s_controls == MOVE_TANK);
 	s_toggle_run = s_opt.toggle_run;
 	s_ps2_flash = s_opt.ps2_flash;
 	s_hold_stomp = s_opt.hold_stomp, s_swap_attack = s_opt.swap_attack;
 	s_ps2_camera = s_opt.ps2_camera, s_cutscene_fov = s_opt.cutscene_fov;
 	s_msg_top = s_opt.msg_top;
+	s_opt.lang = (u8)ev_set_language(s_opt.lang);   // English when the pack lacks the language
 	ev_set_bullet_adjust(s_opt.bullet);
 	combat_set_options(s_hold_stomp, s_swap_attack);
 	combat_set_infinite_ammo(s_opt.inf_ammo);
@@ -3784,6 +4300,12 @@ static float s_test_shown;      // seconds left of the console test's name (SELE
 
 static void draw_test_name(float dt)
 {
+	if (s_map_test && font_ready()) {       // stays up, so a screenshot says which mode it shows
+		char t[64];
+		snprintf(t, sizeof t, "Map test %d: %s", s_map_test, MAP_TEST_NAME[s_map_test]);
+		font_text(FONT_SMALL, 41, 21, t, FONT_LEFT, 0x000000ff, 0x000000ff);
+		font_text(FONT_SMALL, 40, 20, t, FONT_LEFT, 0xffff60ff, 0xffff60ff);
+	}
 	if (s_test_shown <= 0.0f || !font_ready())
 		return;
 	s_test_shown -= dt;
@@ -3831,10 +4353,10 @@ static void grab_frame(C3D_RenderTarget* top, u8* buf)
 // rotate it back). Written with one FS call per part, straight from the buffer: stdio's sdmc writes
 // go through a small bounce buffer chunk by chunk, which on the console took long enough for a
 // capture to look like a freeze.
-static void write_frame(const u8* buf, u32 n)
+static void write_frame(const u8* buf, u32 n, const char* suffix)
 {
 	char path[96];
-	snprintf(path, sizeof path, "/3ds/sh23ds/frame_%lu.bmp", (unsigned long)n);
+	snprintf(path, sizeof path, "/3ds/sh23ds/frame_%lu%s.bmp", (unsigned long)n, suffix);
 	u32 size = 54 + 240 * 400 * 3;
 	u8 h[54] = { 'B', 'M' };
 	memcpy(h + 2, &size, 4);
@@ -3862,7 +4384,11 @@ static void dump_frame(C3D_RenderTarget* top, u32 n)
 	if (!buf)
 		return;
 	grab_frame(top, buf);
-	write_frame(buf, n);
+	write_frame(buf, n, "");
+	if (stereo_eyes() == 2) {        // a 3D frame: the right eye as frame_<n>_right.bmp (stereo.h)
+		grab_frame(stereo_target(1, top), buf);
+		write_frame(buf, n, "_right");
+	}
 	linearFree(buf);
 	dump_info(n);
 }
@@ -3894,11 +4420,69 @@ static void dump_info(u32 n)
 // eight frames, so a crash leaves the destination it died on as the last, unfinished line.
 static int s_at_first, s_at_count = 100000, s_at_i, s_at_n, s_at_frame = -1;
 static bool s_at_perf;               // "autotest warps first count perf": 1.5 s of frame times per room
+static bool s_at_stuck;              // "... stuck": the stuck scan per room (stuck_scan)
 static char s_at_seen[512][8];       // rooms measured already (perf mode)
 static int s_at_nseen;
 static u16 s_at_list[1024];          // stage << 10 | door index in the stage
 static FILE* s_at_log;
 static float s_at_ms;
+
+// Places James cannot walk out of, and how he gets there: from up to 160 floor points of the room
+// (spread over its triangles) he runs 12 frames in each of 8 directions at the run's top speed on the
+// slowest frame (160 units a frame), once moving in one step a frame and once in walk_move's steps;
+// an end with no open way (open_ways) is a trap. Traps closer than 300 units count once.
+static void stuck_scan(const char* room)
+{
+	if (!s_have_col || !s_col.n_floors)
+		return;
+	enum { MAXT = 64 };
+	float traps[2][MAXT][3];
+	int nt[2] = { 0, 0 }, starts = 0;
+	u32 every = s_col.n_floors / 160 + 1;
+	for (u32 t = 0; t < s_col.n_floors; t += every) {
+		const float* v = s_col.floors[t].v;
+		float sx = (v[0] + v[3] + v[6]) / 3.0f, sz = (v[2] + v[5] + v[8]) / 3.0f, sy;
+		if (!col_floor_climb(&s_col, sx, sz, (v[1] + v[4] + v[7]) / 3.0f, 10.0f, 10.0f, &sy) || open_ways(sx, sy, sz) < 3)
+			continue;
+		starts++;
+		for (int k = 0; k < 8; k++) {
+			float a = (float)k * (float)M_PI / 4.0f + 0.2f, dx = sinf(a) * 160.0f, dz = cosf(a) * 160.0f;
+			for (int split = 0; split < 2; split++) {
+				float x = sx, y = sy, z = sz;
+				for (int f = 0; f < 12; f++)
+					walk_move(&x, &y, &z, dx, dz, split);
+				if (open_ways(x, y, z))
+					continue;
+				bool dup = false;
+				for (int i = 0; i < nt[split] && !dup; i++)
+					dup = hypotf(traps[split][i][0] - x, traps[split][i][2] - z) < 300.0f;
+				if (!dup && nt[split] < MAXT)
+					traps[split][nt[split]][0] = x, traps[split][nt[split]][1] = y, traps[split][nt[split]][2] = z, nt[split]++;
+			}
+		}
+	}
+	fprintf(s_at_log, "  stuck %s starts %d one-step %d split %d", room, starts, nt[0], nt[1]);
+	for (int i = 0; i < nt[1] && i < 8; i++)
+		fprintf(s_at_log, " (%.0f %.0f %.0f)", traps[1][i][0], traps[1][i][1], traps[1][i][2]);
+	fprintf(s_at_log, "\n");
+	for (int i = 0; i < nt[1] && i < 8; i++) {      // why each way out fails
+		const float* t = traps[1][i];
+		fprintf(s_at_log, "    at %.0f %.0f %.0f:", t[0], t[1], t[2]);
+		for (int k = 0; k < 8; k++) {
+			float a = (float)k * (float)M_PI / 4.0f, nx = t[0] + sinf(a) * 60.0f, nz = t[2] + cosf(a) * 60.0f, ny;
+			col_push(&s_col, &nx, &nz, t[1], 900.0f, 130.0f);
+			bool cross = col_crosses(&s_col, t[0], t[2], nx, nz, t[1], 900.0f);
+			bool fl = col_floor_climb(&s_col, nx, nz, t[1], 160.0f, 160.0f, &ny);
+			float any = 0.0f;
+			bool near = col_floor(&s_col, nx, nz, t[1], 3000.0f, &any);
+			fprintf(s_at_log, " [%d to %.0f %.0f%s %s%s]", k, nx - t[0], nz - t[2], cross ? " cross" : "",
+			        fl ? "floor" : "nofloor", !fl && near ? "" : "");
+			if (!fl && near)
+				fprintf(s_at_log, "(%.0f)", any - t[1]);
+		}
+		fprintf(s_at_log, "\n");
+	}
+}
 
 static void autotest_begin(void)
 {
@@ -3956,7 +4540,7 @@ static void autotest_frame(u32* down, u32* held)
 			s_at_i++;
 			return;
 		}
-		if (s_at_perf) {
+		if (s_at_perf || s_at_stuck) {
 			// perf mode measures each room once: the doors into a room it has seen are skipped,
 			// across runs too (autoperf_seen.txt on the SD)
 			bool dup = false;
@@ -3995,6 +4579,8 @@ static void autotest_frame(u32* down, u32* held)
 	        hypotf(s_px - s_warp.pos[0], s_pz - s_warp.pos[2]), gamecam_road_count(), gamecam_mv_type(),
 	        (unsigned long)s_cur.missing_textures, (unsigned long)(linearSpaceFree() / 1024),
 	        (unsigned long)(mi.uordblks / 1024), s_at_ms);
+	if (s_at_stuck)
+		stuck_scan(room);
 	if (s_at_perf) {
 		PerfWindow w;
 		perf_window_get(&w);
@@ -4062,6 +4648,108 @@ static void pt_frame(u32* down, u32* held, float dt)
 	playtest_frame(&st, down, held, dt);
 }
 
+// The top screen of a frame of play into target, with the camera's projection (one eye's in a 3D
+// frame, stereo.h); dt is 0 for the second eye, so nothing advances twice. Returns the room's draws.
+static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx* mv, const C3D_Mtx* ortho, u32 clear,
+                    float dt)
+{
+	u32 calls = 0;
+	C3D_RenderTargetClear(target, C3D_CLEAR_ALL, s_render_mode == 3 ? 0x808080FF : clear,
+	                      (s_depth_variant == 1 ? 0xFFFFFF : 0) | SHADOW_STENCIL_CLEAR);
+	C3D_FrameDrawOn(target);
+	if (s_render_mode == 3) {
+		draw_texture_test(ortho);
+		calls = 1;
+	} else if (playtest_fast() && !s_pt_shot) {
+		calls = 0;               // playtest "fast 1": nothing drawn, the emulator's GPU idles
+	} else {
+		use_world_program();
+		C3D_LightEnvBind(&s_lenv);
+		lighting_frame(mv, s_cam.mode == CAM_PLAYER);
+		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, proj);
+		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, mv);
+		Mtx_Multiply(&s_clip_mtx, proj, mv);
+		frustum_set(&s_clip_mtx, s_clip_far);
+		if (!stereo_eye())
+			shadow_frame(s_paused);      // the second eye draws the first one's volumes
+		u64 tr = svcGetSystemTick();
+		calls = draw_room();
+		gpucost_count(GC_MAP, calls);
+		perf_part("r_map", tr);
+		tr = svcGetSystemTick();
+		if (demo_active())
+			draw_demo(proj, mv);
+		else
+			draw_james(proj, mv);     // same light environment as the room
+		C3D_LightEnvBind(NULL);
+		perf_part("r_chr", tr);
+		tr = svcGetSystemTick();
+		u32 dc = draw_room_decals(proj, mv);
+		calls += dc;
+		gpucost_count(GC_MAP, dc);
+		perf_part("r_map", tr);
+		tr = svcGetSystemTick();
+		shadow_draw(proj, mv, ortho);
+		if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME)
+			water_frame(proj, mv, s_paused ? 0.0f : dt);   // the lake surfaces (water.c)
+		{
+			float near, far;
+			env_clip(&near, &far);
+			blood_draw(proj, mv, s_env.fog_start, s_env.fog_end, near, far);   // pools, stains, spray (blood.c)
+			C3D_FogColor(s_fog_color);   // the room's fog again (blood.c fogs to black)
+			C3D_FogLutBind(&s_fog_lut);
+		}
+		mist_draw(proj, mv);       // the hyper spray's puffs (mist.c)
+		if (s_cam.mode == CAM_PLAYER)
+			roomfx_draw(proj, mv);     // the burning stairs' flames and smoke (roomfx.c)
+		perf_part("r_shadow", tr);
+		tr = svcGetSystemTick();
+		if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && s_opt.fog)
+			fog_frame(proj, mv, ortho, s_paused ? 0.0f : dt);
+		if (s_cam.mode == CAM_PLAYER)
+			roomfx_draw_flare(proj, mv);   // the lake's light, in front of the fog (roomfx.c)
+		perf_part("r_fog", tr);
+		tr = svcGetSystemTick();
+		static float black;              // the second eye keeps the first one's
+		if (!stereo_eye()) {
+			black = s_fade > demo_fade() ? s_fade : demo_fade();
+			if (svcGetSystemTick() - s_scene_fade_tick > SYSCLOCK_ARM11 / 4)
+				s_scene_fade = 0.0f;         // nothing waits on a scene any more: no black left behind
+			black = black > s_scene_fade ? black : s_scene_fade;
+		}
+		// Enhanced Edition "DisableRedCrossInCutScenes" (Patches/DisableRedCrossDuringCutscenes.cpp,
+		// zlib licence): no cross in scenes, still pictures, the item screen or while a stage
+		// program holds James for a scripted shot; the pause menu hides it too
+		float cross = combat_low_health_alpha(s_paused ? 0.0f : dt);
+		if (cross > 0.0f && s_state == ST_GAME && s_cam.mode == CAM_PLAYER && !demo_active() && !s_pic_shown &&
+		    !s_inv_open && !s_paused && !(prog_running() && prog_player_locked()))
+			draw_low_health(ortho, cross * (1.0f - black));
+		float dim = (s_paused && !optmenu_brightness()) || s_inv_open ? (s_inv_open ? 0.6f : 0.5f) : 0.0f;
+		dim = dim > black ? dim : black;
+		if (dim > 0.0f)
+			draw_fade(ortho, dim);
+		if (noise_on() && !s_pic_shown) {
+			ui_program_2d(ortho);
+			noise_draw();
+		}
+		if (s_pic_shown)
+			draw_picture(ortho);
+		draw_sprites();
+		map_draw();
+		inventory_draw_top();
+		memos_draw_top();
+		optmenu_draw_top(ui_draw);
+		if (s_paused && !optmenu_active() && !savescreen_active())
+			pausemenu_draw_top();
+		draw_top_text();
+		draw_test_name(dt);
+		savescreen_draw_top();       // a save point's files over the room
+		font_flush();
+		perf_part("r_ui", tr);
+	}
+	return calls;
+}
+
 int main(void)
 {
 	profile_init(PACK_DIR "/options.txt");   // Old / New 3DS profile, clock, core 1 (profile.c)
@@ -4080,6 +4768,7 @@ int main(void)
 	bgm_init();
 	C3D_RenderTarget* top = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
 	C3D_RenderTargetSetOutput(top, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
+	stereo_init(DISPLAY_TRANSFER_FLAGS);
 	setup_pipeline();
 	movie_init(top);
 	touchui_init();                  // the touch screen is drawn from here on (touchui.c)
@@ -4094,6 +4783,8 @@ int main(void)
 	noise_init();
 	blood_init(PACK_DIR, ui_program_flat, blood_floor);
 	mist_init(PACK_DIR, ui_program_flat);
+	roomfx_init(PACK_DIR, ui_program_flat);
+	water_init(ui_program_flat);
 	gameover_init(PACK_DIR);
 	titlemenu_init(PACK_DIR);
 	titlemenu_reset(any_save());
@@ -4131,6 +4822,7 @@ int main(void)
 				sscanf(line, "%*s %15s %d %d %15s", what, &s_at_first, &s_at_count, mode);
 				s_autotest = !strcmp(what, "warps");
 				s_at_perf = !strcmp(mode, "perf");
+				s_at_stuck = !strcmp(mode, "stuck");
 				continue;
 			}
 			if (!strcmp(key, "movie")) {
@@ -4141,6 +4833,9 @@ int main(void)
 				continue;
 			if (!strcmp(key, "rendermode")) s_render_mode = val;
 			if (!strcmp(key, "perflog")) s_perflog = val != 0;
+			if (!strcmp(key, "gpucost")) gpucost_enable(val != 0);   // the GPU cost model (gpucost.h)
+			if (!strcmp(key, "mapcull")) s_map_cull = val != 0;
+			if (!strcmp(key, "mapmips")) room_set_map_mipmaps(val != 0);   // the map's mipmaps (room.c)     // the map culled per eye (box_test)
 			if (!strcmp(key, "memlog")) s_memlog = val != 0;
 			if (!strcmp(key, "memtest")) s_memtest = val;
 			if (!strcmp(key, "streamsync")) s_stream_sync = val != 0;
@@ -4153,12 +4848,13 @@ int main(void)
 			if (!strcmp(key, "shadowdebug")) shadow_debug(val);
 			if (!strcmp(key, "fogdebug")) fog_debug(val);
 			if (!strcmp(key, "fogsprites") || !strcmp(key, "shadows") || !strcmp(key, "framecap") ||
-			    !strcmp(key, "tiledist")) {
+			    !strcmp(key, "tiledist") || !strcmp(key, "fogfill")) {
 				Quality q = *quality(); // quality.h knobs, normally the hardware profile's
 				if (!strcmp(key, "fogsprites")) q.fog_sprites = val;
 				if (!strcmp(key, "shadows")) q.stencil_shadows = q.drop_shadows = val != 0;
 				if (!strcmp(key, "framecap")) q.frame_cap = val;
 				if (!strcmp(key, "tiledist")) q.tile_distance = (float)val;
+				if (!strcmp(key, "fogfill")) q.fog_fill_3d = val / 10.0f;   // tenths of a screen
 				quality_set(&q);
 			}
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
@@ -4175,7 +4871,7 @@ int main(void)
 			if (!strcmp(key, "brightness")) s_bright = val < 1 ? 1 : val > 7 ? 7 : val;
 			if (!strcmp(key, "dumpframe") && s_ndump < 8) s_dump_frames[s_ndump++] = (u32)val;
 			if (!strcmp(key, "newgame")) s_debug_newgame = val != 0;
-			if (!strcmp(key, "controls")) s_controls = val == 1;
+			if (!strcmp(key, "controls")) s_controls = val == 1, controls_set_rotational(val != 1);
 			if (!strcmp(key, "riddle")) s_riddle = val;
 			if (!strcmp(key, "action")) s_action = val;
 			if (!strcmp(key, "stage")) s_spawn_stage = val;
@@ -4290,8 +4986,17 @@ int main(void)
 			down &= ~(KEY_R | KEY_SELECT);
 			held &= ~KEY_R;
 		}
+		// and SELECT held with L steps the map test (s_map_test)
+		if ((held & KEY_SELECT) && (down & KEY_L)) {
+			s_map_test = (s_map_test + 1) % MAP_TESTS;
+			perf_event("maptest", "mode %d: %s", s_map_test, MAP_TEST_NAME[s_map_test]);
+			down &= ~(KEY_L | KEY_SELECT);
+			held &= ~KEY_L;
+		}
 		u32 gdown, gheld;                    // the game keys (controls.c): actions, not buttons
 		controls_game(down, held, &gdown, &gheld);
+		if (quick == TQ_WEAPON)
+			gdown |= KEY_L;                  // the game key of the next weapon (controls.h)
 		s_gdown = gdown;
 		s_anim_dt = dt;
 		touchui_debug(s_state == ST_VIEWER || s_debug_hud);
@@ -4300,6 +5005,7 @@ int main(void)
 			touchui_menu_close(TOUI_LEVELS);
 		}
 		if (s_results && results_update(down)) {
+			stereo_frame(s_opt.stereo, false);
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
@@ -4324,6 +5030,7 @@ int main(void)
 				else if (bright > 1.0f - s_title_go_t / TITLE_GO_SECONDS)
 					bright = 1.0f - s_title_go_t / TITLE_GO_SECONDS;
 			}
+			stereo_frame(s_opt.stereo, false);
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
@@ -4342,6 +5049,7 @@ int main(void)
 				enter_title();
 				continue;
 			}
+			stereo_frame(s_opt.stereo, false);
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
@@ -4403,6 +5111,7 @@ int main(void)
 		hidCircleRead(&cp);
 		hidCstickRead(&cs);
 		playtest_pad(&cp);
+		s_orbit[0] = s_orbit[1] = 0.0f;
 		if (s_autotest)
 			cp.dx = cp.dy = cs.dx = cs.dy = 0;
 		fade_update(dt);
@@ -4416,7 +5125,19 @@ int main(void)
 		} else if (s_cam.mode == CAM_PLAYER && screens_update(down, held, &cp, dt)) {
 			// the map screen or the memo list has the buttons; the game waits
 		} else if (s_cam.mode == CAM_PLAYER) {
-			dpad_walk(&cp, held);
+			// the behind camera turns with the C-Stick on the New 3DS layout, with the D-Pad's free
+			// directions on the Old one (which then do not walk James)
+			s_orbit[0] = s_orbit[1] = 0.0f;
+			if (s_tp_live && controls_layout() == CONTROLS_LAYOUT_OLD) {
+				dpad_orbit(held);
+			} else {
+				dpad_walk(&cp, held);
+				if (s_tp_live) {
+					s_orbit[0] = cs.dx / 150.0f, s_orbit[1] = cs.dy / 150.0f;
+					s_orbit[0] = s_orbit[0] > 1.0f ? 1.0f : s_orbit[0] < -1.0f ? -1.0f : s_orbit[0];
+					s_orbit[1] = s_orbit[1] > 1.0f ? 1.0f : s_orbit[1] < -1.0f ? -1.0f : s_orbit[1];
+				}
+			}
 			if (!save_prompt_update(down) && !message_update(down) && !s_warp_pending) {
 				prog_stage_tick(ev_stage(), dt);
 				boat_tick(ev_stage(), dt);
@@ -4429,6 +5150,15 @@ int main(void)
 					lx = s_px, lz = s_pz;
 					if (dt > 0.0f)
 						prog_stat_move(d, d / dt > 1260.0f);
+				}
+				{
+					// 0x535f50 each frame: where James is (0x556490) and what he sees (0x533c10), for
+					// the lock, the legs and the camera's character slots
+					s_place = james_place();
+					combat_set_place(s_place);
+					combat_set_sight(s_env.dark, flash_lit());
+					CombatBody sb = { &s_px, &s_py, &s_pz, &s_yaw };
+					combat_scan(&sb);
 				}
 				if (prog_running()) {
 					// a stage program runs instead of the event check; James stands still while
@@ -4451,18 +5181,32 @@ int main(void)
 						inventory_use(quick_item, 0, 0);
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held = move_keys(gheld, gdown, &cp);
-					combat_set_sight(s_env.dark, flash_lit());
+					{
+						// 0x52e110 on beginner and easy: Action held readies the weapon at an enemy
+						// ahead, unless the press meets an event (EventCheckLookLine 0x48e520)
+						bool ahead = false;
+						if ((gdown & KEY_A) && enemy_difficulty() < 2) {
+							EvPlayer ep = { s_px, s_py, s_pz, s_yaw, true, 0, james_can_see() };
+							ahead = ev_look_line(&ep) >= 0;
+						}
+						if (combat_auto_ready(&body, free_held, gdown, ahead))
+							free_held |= KEY_R;
+					}
 					if (s_debug_weapon && combat_equip_item(s_debug_weapon))
 						s_debug_weapon = 0;
-					if (boat_active() || !combat_update(&body, &cp, gdown, free_held, dt, s_have_col ? &s_col : NULL,
-					                                    &free_held)) {
+					bool busy = !boat_active() && combat_update(&body, &cp, gdown, free_held, dt,
+					                                            s_have_col ? &s_col : NULL, &free_held);
+					// the legs go on under the weapon as far as it lets them (combat_legs)
+					CombatLegs lg;
+					if (!busy || combat_legs(&lg))
 						player_update(&cp, free_held, dt);
+					if (!busy)
 						events_update(gdown);
-					}
 				}
 				if (!prog_running() || !prog_player_locked()) {
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					EnPlayer ep = combat_enplayer(&body, flash_lit());
+					enemy_set_dark(s_env.dark);
 					enemy_update(&ep, dt);
 					head_update(&cp, gheld, dt, !prog_running() || !prog_player_locked());
 				} else {
@@ -4492,6 +5236,9 @@ int main(void)
 
 		perf_part("game", t_part);
 		t_part = svcGetSystemTick();
+		// the room's effects (roomfx.c) run in scenes too: the burning stairs' flames come with fire_agl
+		if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME)
+			roomfx_update(s_paused ? 0.0f : dt, bgm_room_id(ev_glb_crd(), s_px, s_pz));
 		if (s_arrival && (s_tiles_missing == 0 || s_arrival_t >= ARRIVAL_MAX)) {
 			s_arrival = false;
 			perf_event("arrival", "%s: %s after %.2f s more of black", s_rooms[s_room],
@@ -4508,9 +5255,12 @@ int main(void)
 		perf_part("stream", t_part);
 
 		C3D_Mtx mv;
+		// the camera's projection, kept for the eyes of a 3D frame (stereo.h); focus: the distance to
+		// what the camera looks at
+		float cam_fovy = C3D_AngleFromDegrees(60.0f), cam_near = 20.0f, cam_far = 100000.0f, cam_focus = 3000.0f;
 		if (s_cam.mode == CAM_PLAYER && demo_scene_shown()) {
 			float fovy, eye[3], feet[3] = { s_px, s_py, s_pz };
-			demo_camera(&mv, &fovy, eye);
+			demo_camera(&mv, &fovy, eye, &cam_focus);
 			s_chr_nofog = ee_final_boss_nofog(eye[1]);
 			memcpy(s_fogf.eye, eye, sizeof s_fogf.eye);
 			memcpy(s_fogf.watch, feet, sizeof s_fogf.watch);
@@ -4522,34 +5272,93 @@ int main(void)
 			float near, far;
 			env_clip(&near, &far);
 			Mtx_PerspTilt(&proj, fovy, C3D_AspectRatioTop, near, far, false);
+			cam_fovy = fovy, cam_near = near, cam_far = far;
 		} else if (s_cam.mode == CAM_PLAYER) {
+			// the camera's character slots (0x1f991a0): James' candidates, nearest first (combat_scan)
+			static SH2CamChara slots[SH2CAM_CHARA_SLOTS];
+			memset(slots, 0, sizeof slots);
+			{
+				Enemy* cand[SH2CAM_CHARA_SLOTS];
+				int n = combat_candidates(cand, SH2CAM_CHARA_SLOTS);
+				const Enemy* tgt = combat_target();
+				for (int i = 0; i < n; i++) {
+					float cx, cz, r, top, bottom;
+					enemy_hit_cylinder(cand[i], &cx, &cz, &r, &top, &bottom);
+					slots[i].kind = 0x200;
+					slots[i].pos[0] = cand[i]->x, slots[i].pos[1] = cand[i]->y, slots[i].pos[2] = cand[i]->z;
+					slots[i].eye_y = top;
+					slots[i].battle_status = 0x400u | (enemy_is_down(cand[i]) ? 4u : 0u);
+					slots[i].is_lock_target = cand[i] == tgt && combat_attack_seq();
+				}
+			}
 			GameCamPlayer gp = { { s_px, s_py, s_pz }, s_yaw, { s_vel[0], s_vel[1] }, s_turn_speed,
-			                     ev_stage(), ev_glb_crd(), s_controls };
+			                     ev_stage(), ev_glb_crd(), s_controls, move_pc_status(move_last()->state), slots };
 			if (s_gamecam_reset) {
 				gamecam_reset(&gp);
 				s_gamecam_reset = false;
+				s_tp_live = false;
 			}
 			float fovy;
 			u64 tb = svcGetSystemTick();
-			gamecam_update(&gp, dt, search_view(gheld, gdown), &mv, &fovy);
+			bool tp = s_opt.camera && s_state == ST_GAME && !boat_active();
+			gamecam_update(&gp, dt, !tp && search_view(gheld, gdown), &mv, &fovy);
+			tp = tp && !gamecam_scripted();
+			if (tp) {
+				// the port's behind camera (tpcam.c, 3DS-only); the PC camera above still runs
+				// every frame so its roads are current when a scripted shot takes over
+				if (!s_tp_live)
+					tpcam_reset(gp.pos, s_yaw);
+				TpCamInput ti;
+				memset(&ti, 0, sizeof ti);
+				memcpy(ti.pos, gp.pos, sizeof ti.pos);
+				ti.yaw = s_yaw;
+				ti.speed = hypotf(s_vel[0], s_vel[1]);
+				ti.orbit_x = s_orbit[0], ti.orbit_y = s_orbit[1];
+				int dx, dy;
+				if (touchui_free_drag(&dx, &dy) && !s_paused)
+					ti.drag_x = (float)dx, ti.drag_y = (float)dy;
+				ti.recentre = (gdown & GK_LOOK) != 0;
+				CombatLegs lg;
+				ti.aim = combat_legs(&lg) && lg.aim;
+				const Enemy* tgt = combat_target();
+				if (ti.aim && tgt) {
+					float cx, cz, r, top, bottom;
+					enemy_hit_cylinder(tgt, &cx, &cz, &r, &top, &bottom);
+					ti.target_on = true;
+					ti.target[0] = cx, ti.target[1] = top + 0.3f * (bottom - top), ti.target[2] = cz;
+				}
+				ti.stick_on = abs(cp.dx) > 31 || abs(cp.dy) > 31;
+				ti.stick_dir = atan2f(cp.dx, cp.dy);
+				ti.col = s_have_col ? &s_col : NULL;
+				tpcam_update(&ti, s_paused ? 0.0f : dt, &mv, &fovy);
+			}
+			s_tp_live = tp;
 			perf_part("cam", tb);
-			s_chr_nofog = ee_final_boss_nofog(gamecam_eye()[1]);
-			memcpy(s_fogf.eye, gamecam_eye(), sizeof s_fogf.eye);
-			memcpy(s_fogf.watch, gamecam_watch(), sizeof s_fogf.watch);
-			s_fogf.scr_z = gamecam_scr_z();
-			sfx_listener(gp.pos, gamecam_eye());
+			s_chr_nofog = ee_final_boss_nofog(view_eye()[1]);
+			memcpy(s_fogf.eye, view_eye(), sizeof s_fogf.eye);
+			memcpy(s_fogf.watch, tp ? tpcam_watch() : gamecam_watch(), sizeof s_fogf.watch);
+			s_fogf.scr_z = tp ? 224.0f / tanf(fovy * 0.5f) : gamecam_scr_z();
+			sfx_listener(gp.pos, view_eye());
 			tb = svcGetSystemTick();
 			bgm_update(gp.stage, gp.glb_crd, gp.pos, dt);
 			perf_part("bgm", tb);
 			float near, far;
 			env_clip(&near, &far);
 			Mtx_PerspTilt(&proj, fovy, C3D_AspectRatioTop, near, far, false);
+			const float* e = view_eye();
+			const float* w = tp ? tpcam_watch() : gamecam_watch();
+			cam_fovy = fovy, cam_near = near, cam_far = far;
+			cam_focus = sqrtf((w[0] - e[0]) * (w[0] - e[0]) + (w[1] - e[1]) * (w[1] - e[1]) + (w[2] - e[2]) * (w[2] - e[2]));
 		} else {
 			view_matrix(&mv);
 			s_chr_nofog = false;
 			Mtx_PerspTilt(&proj, C3D_AngleFromDegrees(60.0f), C3D_AspectRatioTop, 20.0f, 100000.0f, false);
 		}
 
+		// a 3D frame draws the top screen once per eye (stereo.h); the item model and its texture once
+		gpucost_far(cam_far);
+		s_clip_far = cam_far;
+		int eyes = stereo_frame(s_opt.stereo, s_render_mode != 3 && !(playtest_fast() && !s_pt_shot));
 		perf_mark_render();
 		u64 tw = svcGetSystemTick();
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
@@ -4561,75 +5370,19 @@ int main(void)
 		            NULL;
 		u32 clear = s_cam.mode == CAM_PLAYER ? ((u32)s_env.clear_rgb[0] << 24 | (u32)s_env.clear_rgb[1] << 16 |
 		                                       (u32)s_env.clear_rgb[2] << 8 | 0xFF) : CLEAR_COLOR;
-		C3D_RenderTargetClear(top, C3D_CLEAR_ALL, s_render_mode == 3 ? 0x808080FF : clear,
-		                      (s_depth_variant == 1 ? 0xFFFFFF : 0) | SHADOW_STENCIL_CLEAR);
-		C3D_FrameDrawOn(top);
-		if (s_render_mode == 3) {
-			draw_texture_test(&ortho);
-			calls = 1;
-		} else if (playtest_fast() && !s_pt_shot) {
-			calls = 0;               // playtest "fast 1": nothing drawn, the emulator's GPU idles
+		if (eyes == 1) {
+			calls = draw_top(top, &proj, &mv, &ortho, clear, dt);
 		} else {
-			use_world_program();
-			C3D_LightEnvBind(&s_lenv);
-			lighting_frame(&mv, s_cam.mode == CAM_PLAYER);
-			C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProjection, &proj);
-			C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uModelView, &mv);
-			Mtx_Multiply(&s_clip_mtx, &proj, &mv);
-			shadow_frame(s_paused);
-			u64 tr = svcGetSystemTick();
-			calls = draw_room();
-			perf_part("r_map", tr);
-			tr = svcGetSystemTick();
-			if (demo_active())
-				draw_demo(&proj, &mv);
-			else
-				draw_james(&proj, &mv);     // same light environment as the room
-			C3D_LightEnvBind(NULL);
-			perf_part("r_chr", tr);
-			tr = svcGetSystemTick();
-			shadow_draw(&proj, &mv, &ortho);
-			blood_draw(&proj, &mv);      // the floor's pools and stains, the spray (blood.c)
-			mist_draw(&proj, &mv);       // the hyper spray's puffs (mist.c)
-			perf_part("r_shadow", tr);
-			tr = svcGetSystemTick();
-			if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && s_opt.fog)
-				fog_frame(&proj, &mv, &ortho, s_paused ? 0.0f : dt);
-			perf_part("r_fog", tr);
-			tr = svcGetSystemTick();
-			float black = s_fade > demo_fade() ? s_fade : demo_fade();
-			if (svcGetSystemTick() - s_scene_fade_tick > SYSCLOCK_ARM11 / 4)
-				s_scene_fade = 0.0f;         // nothing waits on a scene any more: no black left behind
-			black = black > s_scene_fade ? black : s_scene_fade;
-			// Enhanced Edition "DisableRedCrossInCutScenes" (Patches/DisableRedCrossDuringCutscenes.cpp,
-			// zlib licence): no cross in scenes, still pictures, the item screen or while a stage
-			// program holds James for a scripted shot; the pause menu hides it too
-			float cross = combat_low_health_alpha(s_paused ? 0.0f : dt);
-			if (cross > 0.0f && s_state == ST_GAME && s_cam.mode == CAM_PLAYER && !demo_active() && !s_pic_shown &&
-			    !s_inv_open && !s_paused && !(prog_running() && prog_player_locked()))
-				draw_low_health(&ortho, cross * (1.0f - black));
-			float dim = (s_paused && !optmenu_brightness()) || s_inv_open ? (s_inv_open ? 0.6f : 0.5f) : 0.0f;
-			dim = dim > black ? dim : black;
-			if (dim > 0.0f)
-				draw_fade(&ortho, dim);
-			if (noise_on() && !s_pic_shown) {
-				ui_program_2d(&ortho);
-				noise_draw();
+			for (int eye = 0; eye < 2; eye++) {
+				C3D_Mtx eye_proj;
+				stereo_projection(&eye_proj, eye, cam_fovy, cam_near, cam_far, cam_focus);
+				stereo_set_eye(eye);
+				s_ui_used = 0;           // each eye has its own 2D vertices (ui_draw)
+				u32 n = draw_top(stereo_target(eye, top), &eye_proj, &mv, &ortho, clear, eye ? 0.0f : dt);
+				if (!eye)
+					calls = n;
 			}
-			if (s_pic_shown)
-				draw_picture(&ortho);
-			draw_sprites();
-			map_draw();
-			inventory_draw_top();
-			memos_draw_top();
-			optmenu_draw_top(ui_draw);
-			if (s_paused && !optmenu_active() && !savescreen_active())
-				pausemenu_draw_top();
-			draw_top_text();
-			draw_test_name(dt);
-			savescreen_draw_top();       // a save point's files over the room
-			font_flush();
-			perf_part("r_ui", tr);
+			stereo_set_eye(0);
 		}
 		u64 tt = svcGetSystemTick();
 		touchui_frame();
@@ -4639,7 +5392,11 @@ int main(void)
 		C3D_FrameEnd(0);
 		perf_part("r_end", tt);
 		perf_frame_end(s_nrooms ? s_rooms[s_room] : "-");
-		perf_pace(quality()->frame_cap);   // 60 while it fits, an even 30 when it does not
+		gpucost_frame(eyes, s_nrooms ? s_rooms[s_room] : "-");
+		// 60 while it fits, an even 30 when it does not, with both eyes drawn (stereo.h) too: perf_pace
+		// goes by the GPU's own time, which a console measures. Both eyes of a lit room take about
+		// twice one eye's 6 to 9 ms, inside a 60 fps frame; the fogged roads drop to 30 as in 2D
+		perf_pace(quality()->frame_cap);
 		for (int i = 0; i < s_ndump; i++)
 			if (s_dump_frames[i] == frame)
 				dump_frame(top, frame);
@@ -4658,8 +5415,12 @@ int main(void)
 			printf("verts  %-6lu tris %-6lu      \n", (unsigned long)s_cur.n_vertices, (unsigned long)(s_cur.n_indices / 3));
 			printf("draws  %-4lu textures %-4lu miss %lu  \n", (unsigned long)calls, (unsigned long)texcache_count(),
 			       (unsigned long)s_cur.missing_textures);
-			printf("col    %s floors %lu walls %lu      \n", s_have_col ? "yes" : "no ",
-			       (unsigned long)s_col.n_floors, (unsigned long)s_col.n_walls);
+			// walls: the room's, then the stage code's this frame ("?": the pack has no stagewalls.bin)
+			char swn[12] = "?";
+			if (!stagewalls_missing())
+				snprintf(swn, sizeof swn, "%lu", (unsigned long)(col_wall_count(&s_col) - s_col.n_walls));
+			printf("col    %s floors %lu walls %lu+%s      \n", s_have_col ? "yes" : "no ",
+			       (unsigned long)s_col.n_floors, (unsigned long)s_col.n_walls, swn);
 			printf("%-38s\n", mem_log(NULL));
 			if (s_have_james)
 				printf("%-26.26s%5.2f %5.2f \n", boat_active() ? boat_status() : move_status(), s_yaw,
@@ -4684,6 +5445,9 @@ int main(void)
 				printf("%-38.38s\n", line);
 			}
 			printf("%-38.38s\n", sfx_status());
+			printf("%-38.38s\n", roomfx_status());
+			printf("%-38.38s\n", water_status());
+			printf("%-38.38s\n", stereo_status());
 		}
 		pause_draw();
 		inventory_draw();

@@ -8,13 +8,15 @@
 // 320x240 in the middle of the top screen, like the stills. The atlas holds the glyphs already
 // shrunk to that size, so they go on whole pixels one texel per pixel.
 //
-// Text is the pack's message text (a byte c is the PC code c - 0x20, '\n' starts a line); the
-// full-width codes (0xe0 and up) go through font_codes. Glyphs are collected during the frame and
-// drawn with one call to the draw function at font_flush.
+// Text is the pack's message text (a byte c is the PC code c - 0x20, the Windows-1252 character c,
+// '\n' starts a line, FONT_FULL_WIDTH and four hex digits are a full-width code (0xe0 and up) or the
+// titles' kerning, tools/sh2conv/sh2mes.py); font_codes takes the codes themselves. Glyphs are
+// collected during the frame and drawn with one call to the draw function at font_flush.
 
 typedef struct { float x, y, u, v; u32 rgba; } FontVert;    // top-screen pixels (y down), 0xRRGGBBAA
 typedef void (*FontDrawFn)(C3D_Tex* tex, const FontVert* v, int n);
 
+#define FONT_FULL_WIDTH '\x06'
 enum { FONT_BIG = 0, FONT_SMALL = 1 };                     // 20x30 and 16x24 cells
 enum { FONT_LEFT = 0, FONT_CENTER = 1, FONT_RIGHT = 3 };   // the PC's alignment modes
 

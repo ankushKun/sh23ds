@@ -16,6 +16,9 @@ void mist_set_color(int tier);           // the spray's colour tier (0x1dbeb89):
 // spawns a puff every 60 Hz tick, so a longer frame spawns more.
 void mist_spray(const float pos[3], const float vel[3], float dt);
 
+// One puff of a Lying Figure's acid (0x4a4580) from pos along vec, in the colour grey.
+void mist_poison(const float pos[3], const float vec[3], u8 grey);
+
 void mist_update(float dt);
 void mist_draw(const C3D_Mtx* proj, const C3D_Mtx* view);
 int mist_count(void);                    // puffs alive (debug HUD)

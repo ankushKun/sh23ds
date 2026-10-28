@@ -1,4 +1,5 @@
 #include "audio.h"
+#include "levels.h"
 #include "sdsim.h"
 #include "profile.h"
 #include <math.h>
@@ -41,6 +42,7 @@ typedef struct {
 	Layer layer[MAX_LAYERS];
 	u32 aix_next_chunk;         // file offset of the next AIXP chunk
 	u32 aix_loop_offset;        // re-start offset for looping (first data chunk)
+	LevelLimiter lim;           // the peaks the levels lift over full scale (levels.h)
 } Stream;
 
 // One ndsp channel streaming one ADX / AIX file: music on channel 0, cutscene voices on 1.
@@ -51,8 +53,11 @@ typedef struct {
 	bool primed;                // its buffers have been queued once (an empty queue after is a gap)
 	float volume;
 	u64 played;                 // samples of the buffers the DSP has finished
+	u32 seq;                    // odd while the refill thread moves a finished buffer into played
 	ndspWaveBuf wbuf[NBUF];
 	s16* pcm;                   // NBUF buffers, linear memory
+	char path[128];             // the stream's file and its first layer's gain, to open it again
+	float layer0;
 } Chan;
 
 static Chan s_music = { .ch = MUSIC_CH }, s_voice = { .ch = VOICE_CH };
@@ -84,9 +89,75 @@ typedef struct {
 } Req;
 static Req s_req[2];                 // music, voice
 
+// A stream that can't be opened or read is tried again a few times before it counts as missing: on a
+// console a file open or read can fail while other threads hold the SD card (a room or a scene
+// loading), which used to leave the music silent for the rest of the stage without a word. Azahar
+// never fails them. The refill thread's own; pending_play() counts a retry as still starting.
+#define RETRIES 4
+#define RETRY_TICKS (SYSCLOCK_ARM11 / 4)
+typedef struct {
+	Req req;
+	int fails;                       // failed tries of req since it last played
+	bool waiting;                    // another try is due at tick "at"
+	u64 at;
+} Retry;
+static Retry s_retry[2];
+// A play request the refill thread has taken and is still opening: without it the stream looked
+// stopped for as long as the file took to open (tens of ms on a console's SD card, none in Azahar),
+// and demo.c ended a voice track that has no subtitles (Laura at the piano) before it began.
+static volatile bool s_starting[2];
+static char s_problem[64];           // audio_problem(): what the player should hear and does not
+
 static void chan_update(Chan* c);
 static void chan_stop(Chan* c);
 static bool play_unlocked(Chan* c, const char* path, float volume, float layer0);
+
+static void retry_after_failure(int i, const Req* r)
+{
+	Retry* t = &s_retry[i];
+	if (strcmp(t->req.path, r->path))
+		t->fails = 0;
+	t->req = *r;
+	t->req.op = REQ_PLAY;
+	t->waiting = ++t->fails < RETRIES;
+	t->at = svcGetSystemTick() + RETRY_TICKS;
+	if (!t->waiting && i == 0) {     // the music: tell the player (touchui.c)
+		const char* name = strrchr(r->path, '/');
+		snprintf(s_problem, sizeof s_problem, "Music missing: %.48s", name ? name + 1 : r->path);
+	}
+}
+
+// The requests, the retries and the refills: on the refill thread, or on the main loop without one.
+static void service(void)
+{
+	for (int i = 0; i < 2; i++) {
+		Req r;
+		LightLock_Lock(&s_req_lock);
+		r = s_req[i];
+		if (r.op != REQ_NONE)
+			s_retry[i].waiting = false;  // a new request replaces the one being retried
+		else if (s_retry[i].waiting && svcGetSystemTick() >= s_retry[i].at)
+			r = s_retry[i].req;
+		s_starting[i] = r.op == REQ_PLAY;
+		__dmb();                         // seen before the request goes (pending_play reads both unlocked)
+		s_req[i].op = REQ_NONE;
+		LightLock_Unlock(&s_req_lock);
+		Chan* c = i ? &s_voice : &s_music;
+		if (r.op == REQ_STOP) {
+			chan_stop(c);
+		} else if (r.op == REQ_PLAY) {
+			if (play_unlocked(c, r.path, r.volume, r.layer0)) {
+				s_retry[i].waiting = false;
+			} else {
+				chan_stop(c);
+				retry_after_failure(i, &r);
+			}
+			s_starting[i] = false;
+		}
+	}
+	chan_update(&s_music);
+	chan_update(&s_voice);
+}
 
 static void refill_thread(void* arg)
 {
@@ -99,20 +170,7 @@ static void refill_thread(void* arg)
 		if (s_quit)
 			break;
 		LightLock_Lock(&s_lock);
-		for (int i = 0; i < 2; i++) {
-			Req r;
-			LightLock_Lock(&s_req_lock);
-			r = s_req[i];
-			s_req[i].op = REQ_NONE;
-			LightLock_Unlock(&s_req_lock);
-			Chan* c = i ? &s_voice : &s_music;
-			if (r.op == REQ_STOP)
-				chan_stop(c);
-			else if (r.op == REQ_PLAY && !play_unlocked(c, r.path, r.volume, r.layer0))
-				chan_stop(c);
-		}
-		chan_update(&s_music);
-		chan_update(&s_voice);
+		service();
 		LightLock_Unlock(&s_lock);
 	}
 }
@@ -127,10 +185,15 @@ static void request(Chan* c, int op, const char* path, float volume, float layer
 	r->volume = volume;
 	r->layer0 = layer0;
 	LightLock_Unlock(&s_req_lock);
-	LightEvent_Signal(&s_wake);
+	if (s_thread)
+		LightEvent_Signal(&s_wake);
 }
 
-static bool pending_play(const Chan* c) { return s_req[c == &s_voice].op == REQ_PLAY; }
+static bool pending_play(const Chan* c)
+{
+	int i = c == &s_voice;
+	return s_req[i].op == REQ_PLAY || s_starting[i] || s_retry[i].waiting;
+}
 
 static void thread_start(void)
 {
@@ -178,6 +241,7 @@ bool audio_init(void)
 {
 	if (R_FAILED(ndspInit())) {
 		snprintf(s_status, sizeof s_status, "ndsp init failed (dspfirm.cdc?)");
+		snprintf(s_problem, sizeof s_problem, "No sound: dspfirm.cdc missing");
 		return false;
 	}
 	ndspSetOutputMode(s_output);
@@ -186,7 +250,10 @@ bool audio_init(void)
 	if (!s_music.pcm || !s_voice.pcm) {
 		linearFree(s_music.pcm);
 		linearFree(s_voice.pcm);
+		s_music.pcm = s_voice.pcm = NULL;
 		ndspExit();
+		snprintf(s_status, sizeof s_status, "no linear memory for audio");
+		snprintf(s_problem, sizeof s_problem, "No music: out of memory");
 		return false;
 	}
 	s_ok = true;
@@ -200,8 +267,8 @@ static void chan_stop(Chan* c);
 void audio_exit(void)
 {
 	thread_stop();
-	audio_stop_music();
-	audio_stop_voice();
+	chan_stop(&s_music);
+	chan_stop(&s_voice);
 	for (int i = 0; i < MAX_LAYERS; i++) {
 		free(s_music.s.layer[i].buf);
 		s_music.s.layer[i].buf = NULL;
@@ -482,11 +549,10 @@ static u32 decode(Stream* s, s16* out, u32 n, float volume)
 			}
 			decode_layer(l, fr[i], acc, gain);
 		}
+		levels_limiter(&s->lim, &acc[0][0], 32, s->rate);
 		for (int i = 0; i < 32; i++)
-			for (int c = 0; c < MAX_CH; c++) {
-				s32 v = acc[i][c];
-				out[(done + i) * MAX_CH + c] = (s16)(v > 32767 ? 32767 : v < -32768 ? -32768 : v);
-			}
+			for (int c = 0; c < MAX_CH; c++)
+				out[(done + i) * MAX_CH + c] = levels_limit(acc[i][c]);
 		s->sample_pos += 32;
 		done += 32;
 	}
@@ -506,7 +572,9 @@ static void chan_stop(Chan* c)
 	u8* rb = c->s.rb;                                 // so is the read-ahead
 	memset(&c->s, 0, sizeof c->s);
 	c->s.rb = rb;
+	__atomic_fetch_add(&c->seq, 1, __ATOMIC_SEQ_CST);
 	c->played = 0;
+	__atomic_fetch_add(&c->seq, 1, __ATOMIC_SEQ_CST);
 	c->primed = false;
 	for (int i = 0; i < MAX_LAYERS; i++) {          // chunk buffers are reused by the next stream
 		c->s.layer[i].buf = keep[i].buf;
@@ -517,7 +585,7 @@ static void chan_stop(Chan* c)
 
 static void chan_stop_locked(Chan* c)
 {
-	if (s_thread)
+	if (s_ok)
 		request(c, REQ_STOP, NULL, 0.0f, 0.0f);
 	else
 		chan_stop(c);
@@ -544,7 +612,7 @@ static bool play_unlocked(Chan* c, const char* path, float volume, float layer0)
 	sdsim_open();
 	s->f = fopen(path, "rb");
 	if (!s->f) {
-		snprintf(s_status, sizeof s_status, "missing %s", path);
+		snprintf(s_status, sizeof s_status, "missing %.55s", path);
 		return false;
 	}
 	u8 head[0x40];
@@ -586,23 +654,23 @@ static bool play_unlocked(Chan* c, const char* path, float volume, float layer0)
 	c->playing = true;
 	if (c == &s_music) {
 		const char* name = strrchr(path, '/');
-		snprintf(s_status, sizeof s_status, "%s %luHz %dch%s %d", name ? name + 1 : path, (unsigned long)s->rate,
+		snprintf(s_status, sizeof s_status, "%.24s %luHz %dch%s %d", name ? name + 1 : path, (unsigned long)s->rate,
 		         s->layer[0].channels, s->aix ? " aix" : "", s->nlayers);
 	}
-	if (!s_thread)
-		chan_update(c);                  // with the refill thread, it decodes the first buffers
+	snprintf(c->path, sizeof c->path, "%s", path);
+	c->layer0 = layer0;
 	return true;
 }
 
-// With the refill thread this only asks for the stream and answers true; a file that turns out to
-// be missing or unreadable then simply stays silent (audio_voice_playing turns false).
+// This only asks for the stream (service() opens it, on the refill thread when there is one) and
+// answers true; a file that turns out to be missing or unreadable is tried a few more times, then
+// stays silent (audio_voice_playing turns false; audio_problem names a music file).
 static bool play(Chan* c, const char* path, float volume, float layer0)
 {
-	if (s_thread) {
-		request(c, REQ_PLAY, path, volume, layer0);
-		return true;
-	}
-	return play_unlocked(c, path, volume, layer0);
+	if (!s_ok)
+		return false;
+	request(c, REQ_PLAY, path, volume, layer0);
+	return true;
 }
 
 // Layer 0 plays alone until the caller mixes in others.
@@ -611,8 +679,16 @@ bool audio_play_music(const char* path, float volume) { return play(&s_music, pa
 // Every layer starts silent (the first buffers are decoded before the caller can set volumes).
 bool audio_play_layers(const char* path, float volume) { return play(&s_music, path, volume, 0.0f); }
 
-// Cutscene voices: no loop (the voice ADX files have no loop points), one at a time.
-bool audio_play_voice(const char* path, float volume) { return play(&s_voice, path, volume, 1.0f); }
+// Cutscene voices: no loop (the voice ADX files have no loop points), one at a time. Each file is
+// brought to the dialogue's loudness (levels.h); a pack with no measurement plays it 2 dB up.
+bool audio_play_voice(const char* path, float volume)
+{
+	char dir[96];
+	const char* slash = strrchr(path, '/');
+	snprintf(dir, sizeof dir, "%.*s", slash ? (int)(slash - path) : 0, path);
+	float g = levels_gain(dir, slash ? slash + 1 : path, -1, LEVEL_VOICE, LEVEL_PEAK_VOICE, 1.26f);
+	return play(&s_voice, path, volume * g, 1.0f);
+}
 
 // Seconds of the voice heard so far, < 0 before the DSP has started on it (demo.c holds the scene
 // clock until then, as DramaDemoMain waits for the stream).
@@ -623,12 +699,28 @@ float audio_voice_position(void)
 		return -1.0f;                    // the refill thread has not started it yet
 	if (!c->s.rate)
 		return -1.0f;
-	u32 pos = 0;
-	if (ndspChnIsPlaying(c->ch))
-		pos = ndspChnGetSamplePos(c->ch);
-	else if (!c->played)
-		return -1.0f;
-	return (float)(c->played + pos) / (float)c->s.rate;
+	// The DSP's sample position counts from the start of the buffer it plays, and played grows only
+	// when the refill thread next runs (up to 20 ms later), so a buffer the DSP has just finished is
+	// counted here until then. Without it the clock fell back a whole buffer at every buffer change
+	// (4096 samples, 186 ms of a 22 kHz voice) and the scenes that follow it jumped back and forth.
+	// seq makes the read consistent with the refill thread's update on the other core.
+	for (int tries = 0; tries < 16; tries++) {
+		u32 seq = __atomic_load_n(&c->seq, __ATOMIC_SEQ_CST);
+		if (seq & 1)
+			continue;
+		u64 done = c->played;
+		for (int i = 0; i < NBUF; i++)
+			if (c->wbuf[i].status == NDSP_WBUF_DONE)
+				done += c->wbuf[i].nsamples;
+		bool playing = ndspChnIsPlaying(c->ch);
+		u32 pos = playing ? ndspChnGetSamplePos(c->ch) : 0;
+		if (__atomic_load_n(&c->seq, __ATOMIC_SEQ_CST) != seq)
+			continue;
+		if (!playing && !done)
+			return -1.0f;
+		return (float)(done + pos) / (float)c->s.rate;
+	}
+	return -1.0f;
 }
 
 // Still sounding: decoding, or buffers the DSP has not finished yet.
@@ -666,8 +758,10 @@ static void chan_update(Chan* c)
 		ndspWaveBuf* w = &c->wbuf[i];
 		if (w->status != NDSP_WBUF_DONE && w->status != NDSP_WBUF_FREE)
 			continue;
+		__atomic_fetch_add(&c->seq, 1, __ATOMIC_SEQ_CST);
 		c->played += w->nsamples;   // finished (0 for a buffer that never played)
 		w->nsamples = 0;
+		__atomic_fetch_add(&c->seq, 1, __ATOMIC_SEQ_CST);
 		s16* pcm = (s16*)w->data_vaddr;
 		u64 t0 = svcGetSystemTick();
 		u32 n = decode(&c->s, pcm, BUF_SAMPLES, c->volume);
@@ -678,7 +772,19 @@ static void chan_update(Chan* c)
 		}
 		if (!n) {
 			c->playing = false;
+			// A looping stream only runs dry when its file stops reading: open it again (from its
+			// start) rather than leave the music off until the next page.
+			if (c == &s_music && (c->s.loop || c->s.aix)) {
+				Req r = { REQ_PLAY, "", c->volume, c->layer0 };
+				memcpy(r.path, c->path, sizeof r.path);
+				snprintf(s_status, sizeof s_status, "read error, again");
+				retry_after_failure(0, &r);
+			}
 			return;
+		}
+		if (c == &s_music && s_retry[0].fails) {
+			s_retry[0].fails = 0;            // it plays: earlier failures are forgotten
+			s_problem[0] = '\0';
 		}
 		w->nsamples = n;
 		DSP_FlushDataCache(pcm, n * MAX_CH * sizeof(s16));
@@ -692,11 +798,12 @@ void audio_update(void)
 		LightEvent_Signal(&s_wake);     // the refill thread does it
 		return;
 	}
-	chan_update(&s_music);
-	chan_update(&s_voice);
+	if (s_ok)
+		service();
 }
 
 const char* audio_status(void) { return s_status; }
+const char* audio_problem(void) { return s_problem[0] ? s_problem : NULL; }
 u32 audio_underruns(void) { return s_underruns; }
 
 int audio_decode_load(void)

@@ -30,7 +30,9 @@ Switches in `debug.txt` on the SD card (`sdmc:/3ds/sh23ds/debug.txt`):
 | `sfxsync 1` | reads a sound effect's sample on the main loop at its first play, as before |
 | `shadowdebug N` | character shadows: 1 shows the volumes in red, 2 darkens every changed stencil count, 6 turns them off |
 | `autotest warps F N perf` | the warp autotest over destinations F to F+N-1, measuring each room once: 90 frames from the 10th after the load, logged to `autotest.txt` as a `perf` line (frames, slowest frame, frames over 17 and 33 ms, average update and citro3d time, most work in one frame). Rooms listed in `autoperf_seen.txt` on the SD card are skipped, and each measured one is added, so a long sweep can run in short pieces |
-| `fogsprites N`, `shadows 0/1`, `framecap 0/30/60`, `tiledist N` | override one `quality.h` knob (see Frame rate) for a test |
+| `fogsprites N`, `shadows 0/1`, `framecap 0/30/60`, `tiledist N`, `fogfill N` | override one `quality.h` knob (see Frame rate) for a test; `fogfill` in tenths of a screen, 0 for no limit |
+| `gpucost 1` | the GPU cost model (`source/gpucost.c`): a `gpucost` line every 60 frames with each pass's pixels and vertices per eye (see 3D) |
+| `mapcull 0` | sends every map triangle, as before the map was culled per eye (see 3D), for comparing GPU times |
 
 The log lines are kept in memory and written once a second, after the frame's timing has been
 taken, because an SD card write costs tens of milliseconds and would otherwise show up as the very
@@ -197,8 +199,8 @@ Two rooms of the town's list are not blocks of its grid: cb90 (a quad 500 units 
 (a dark sphere 5000 across), both centred on the world origin. Their boxes touch the four blocks
 round the origin, so they used to stream in as neighbours: at cb03 cb99 drew a black wedge over the
 street, and the two took places from real blocks (cb12 was left out there). `room_is_block` now
-leaves out any room no wider than 6000 units that is centred on the origin; small real blocks such
-as cb66 lie far from it. The neighbour culling (`room_visible`) also no longer tests a box with
+takes only the blocks the PC's grid tables name (0x494ef0), which leaves out cb90, cb99 and the
+forest's ca02 (GitHub #4). The neighbour culling (`room_visible`) also no longer tests a box with
 corners behind the eye against the side planes, where their x and y flip sign.
 
 ## Memory
@@ -236,6 +238,9 @@ during the first round and kept. That fits a cache filling up (the sound effect 
 in linear memory) rather than anything tied to rooms. The extra 59 KB in ap06 is the same effect in
 the first room visited. VRAM stays at 5394 KB free throughout; malloc stays between 2.7 and 2.8 MB
 in use, with a peak arena of 3.7 MB.
+
+3D (`stereo.c`) takes nothing until the slider first goes up. Then the right eye's render target takes
+750 KB of VRAM, and its fog and 2D vertex buffers 0.7 to 0.9 MB of linear memory.
 
 ## Frame rate
 
@@ -337,6 +342,114 @@ start-up and a mode change only copies one; the walk from cb03 then has no slow 
    going back to 60 after two seconds in which every frame would fit with room to spare (11 ms).
    That avoids the judder of frames alternating between one and two vertical blanks. The New 3DS
    profile's Auto frame rate uses it; the Old 3DS profile's 30 fps cap and an explicit 60 are fixed.
+6. **The touch screen's map off the main loop.** The first frame after loading a save took 2.2 to 3.1
+   s on a console (and 1.3 s on entering ob01), all of it in `r_touch`: the small map read its
+   map and marks textures (about 1.3 MB) through Tex3DS's stdio reader while the tiles were being
+   read. `map.c` now asks the reader thread for them (`textures_ready`) and draws the map once they
+   are in; the map screen itself reads a map whole with `sd_fread` and waits for one already asked
+   for.
+
+### 3D
+
+Drawing both eyes, in Azahar with `perflog 1`, slider at 0 then 100 (ms; update and citro3d CPU are
+medians, the parts averages). Azahar does not time the GPU, so these are CPU figures only.
+
+| Scene | Model | Update | citro3d CPU | r_map / r_chr / r_fog | Slowest frame |
+| --- | --- | --- | --- | --- | --- |
+| Town cb03 | New | 1.38 → 1.55 | 6.79 → 8.19 | 0.86 / 0.71 / 5.02 → 1.70 / 1.16 / 5.02 | 17.3 → 34.1 |
+| hp198 | New | 0.93 → 1.11 | 3.21 → 4.89 | r_chr 2.68 → 3.89 | 17.2 → 34.1 |
+| hp202 | New | 0.98 → 1.15 | 4.12 → 6.12 | r_chr 3.52 → 4.98 | 17.8 → 34.1 |
+| Cutscene first_toilet | New | 0.14 → 0.26 | 1.32 → 2.40 | | 16.9 → 33.7 |
+| Forest cutscene haka_agl | New | 0.15 → 0.27 | 5.01 → 7.67 | | 16.9 → 33.7 |
+| Town cb03 | Old | 1.31 → 1.47 | 4.11 → 7.35 | r_fog 2.63 → 4.72 | 33.5 → 33.7 |
+| Forest cutscene haka_agl | Old | 0.12 → 0.28 | 3.84 → 6.63 | | 33.5 → 33.5 |
+
+The CPU work peaks near 10 ms of the 33 ms a 30 fps frame has. The GPU is what a console showed
+to be short: with the slider up, every second in the fogged forest (ca13 to ca27) and the town ran
+at 30 fps with the GPU at a median of 30 to 31 ms a frame and peaks of 34 to 38, so any busier
+moment fell to 20 fps; at the lake shore (ca13) nine frames in a row took over 50 ms of GPU.
+
+#### The GPU cost model
+
+Azahar does not time the PICA, so `gpucost 1` in debug.txt (`source/gpucost.c`) counts what each pass
+hands it: the screen area of every triangle, clipped to the screen and to the far plane, after back
+face culling where the pass culls, and the vertices (the map is counted on one frame in eight, as
+it has tens of thousands of triangles). Every 60 frames perf.txt gets a line like
+
+    ca12  frame 120: gpucost eyes 2.0 per eye: screens (k verts)  map 3.07 (35.3) shown 22% ...  fog 2.89 (0.4) n43  fogscr 1.00 (0.0)  total 7.41
+
+with each pass's area in screens (400 x 240 pixels) and thousands of vertices, per eye. In 3D, before
+and after the changes below (per eye; the 2D fog for comparison):
+
+| Pass | Forest ca12 | Lake shore ca13 | Town cb03 | Town cb41 (no fog) | What the GPU does |
+| --- | --- | --- | --- | --- | --- |
+| Map vertices (k) | 120..151 → 35..40 | 90..205 → 28..38 | 79..170 → 23..36 | 96..207 → 27..31 | a 55-instruction vertex shader each |
+| Map triangles reaching the screen | 6..7 % → 22 % | 5..8 % → 23..27 % | 3..8 % → 17..23 % | 2..3 % → 12 % | |
+| Map area (screens) | 3.1..3.5 | 2.9 | 1.2..1.4 | 2.1..2.4 | textured, flashlight lit per pixel, opaque |
+| Fog sprites (screens) | 4.5..7.0 → 2.9..3.2 (2D 9.6..11.7) | 4.1 → 2.4..2.7 (2D 9.7) | 4.2..4.4 → 2.8..3.0 | | blended, textured, faded by the procedural texture |
+| Fog screen layer (screens) | 1 | 1 | 1 | | blended, textured |
+| Characters (k vertices) | 21 | 21 | 23 | 21 | an 88-instruction skinning shader |
+| Water | | 0.23 screens, 10k vertices | | | untextured |
+
+Ranked by cost per eye: the fog sprites (blended over the screen 4 to 7 times), the map's vertices
+(80,000 to 200,000, of which 2 to 8 % reach the screen: the resident tiles surround James), the map's
+area, the fog's screen layer, the characters, the water. These scenes have no flashlight shadows;
+indoors the stencil volumes add their area and one blended full-screen quad per eye. The console's
+numbers fit about 1 ms per eye for each screen of fog sprites (one eye took 15 to 27 ms on the roads
+with 10 to 12 screens of them, both eyes 30 ms with half that each), but the split between the
+passes is an estimate until the console's A/B runs below.
+
+What changed, 3D only unless said:
+
+- **The map is culled per eye** (`main.c` `box_test`, `room.h` `ROOM_CHUNK_TRIS`): each batch is cut
+  into chunks of 32 triangles in its own order, the reader thread boxes them (`room_prepare`), and a
+  run of chunks wholly outside one side of the eye's view, or beyond its far plane, is not sent. A
+  run of visible chunks stays one draw, over gaps of one hidden chunk. Nothing the GPU would have
+  drawn is left out, so this applies in 2D too: 2D frames stay byte-identical to the build before
+  (er01, ca12, ca13, cb03 and cb41 compared with `dumpframe`, and `mapcull 0` against `mapcull 1` with
+  the behind camera), and 2D gets the same saving.
+- **The fog's sprites are held to 3 screens per eye** (`fog.c` `stereo_thin`, `quality.h`
+  `fog_fill_3d`, `fogfill N` in tenths to try others): the far sprites are all drawn and the large near
+  ones each with a chance that keeps the total, at their alpha over that chance (at most twice: at
+  three times the rarely drawn near ones showed as dark blots at the lake shore). This replaces
+  drawing every other particle at twice the alpha.
+- **Auto picks 60 or 30 in 3D as in 2D** (`perf_pace` by the GPU's own time), instead of holding 30:
+  the lit rooms take about 6.5 ms of GPU for one eye, so both eyes fit in a 60 fps frame.
+
+#### CPU with both eyes
+
+In Azahar with `perflog 1`, slider at 100, before and after (ms, medians of the per-second lines and
+the parts' averages):
+
+| Scene | citro3d CPU | r_map | r_fog | Slowest frame |
+| --- | --- | --- | --- | --- |
+| Forest ca12 | 6.0 → 5.7 | 0.50 → 2.18 | 3.96 → 2.49 | 34.0 → 17.3 |
+| Town cb03 | 8.6 → 9.7 | 1.79 → 1.80 | 5.26 → 6.38 | 34.1 → 18.6 |
+| er01 | 1.9 → 2.6 | 0.51 → 1.28 | | 34.0 → 17.2 |
+
+Azahar charges the GPU nothing, so after the change Auto runs all three at 60 there; a console's GPU
+time puts the fogged roads back at 30. The culling costs CPU time per eye (a box test per group of 8
+chunks, and per chunk where a group crosses the view's edge), and in the town the fog sizes and
+sorts all its sprites where it used to drop half before drawing. The work stays under 12 ms in
+Azahar, which counts about an Old 3DS's speed; a New 3DS does it in about a third of that.
+
+#### Console test plan
+
+Only a console times the GPU. With `perflog 1`, the slider up, the same walk as before (the forest
+from ca13 to ca27, the town from cb64 to cb13, the lake shore at ca13):
+
+1. The per-second lines' `gpu` (and `max`): it was 30 to 31 ms with peaks of 34 in the forest and the
+   town and over 50 at the lake shore. The aim is under 24 ms with peaks under 30, so the forest and
+   the town hold 30 fps with no slow frame lines.
+2. Where it falls short, the same place with `mapcull 0`, then with `fogfill 0` (all sprites, as in
+   2D) and `fogfill 20`, one at a time: the difference in `gpu` is what each change is worth, and
+   which knob has room.
+3. Indoor rooms (er01, the apartments, the hospital) in 3D: `render` near 16 ms and `gpu` under about
+   15 means they run at 60; the slow frame lines show where it falls back to 30.
+4. The slider down: `gpu` should be lower than before in the town and the forest (the culling) and the
+   picture the same.
+5. By eye, toggling the slider on the fogged roads: the fog's density in 3D against 2D, near sprites
+   popping in or out, or a near sprite showing as a blot.
 
 ### Quality knobs
 
@@ -351,6 +464,7 @@ debug.txt can override one knob for a test, and the subsystems read only `qualit
 | `drop_shadows` | on | off | `main.c` `shadow_frame` |
 | `tile_distance` | 7000 | 5000 | `main.c` `stream_update_ex` |
 | `frame_cap` | 0 (60, an even 30 when it does not fit) | 30 | `perf_pace` |
+| `fog_fill_3d` | 3 screens per eye | 3 | `fog.c` `stereo_thin` |
 
 The fog sprites and the stencil shadows are the two likeliest to matter on a console's GPU: 144
 alpha-blended sprites can cover most of the top screen several times over, and each shadow volume

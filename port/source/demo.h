@@ -29,8 +29,9 @@ bool demo_update(u32 down, float dt);
 // Frees the models, motions and the voice stream.
 void demo_end(void);
 
-// Camera of the current frame (world space, Y down) and vertical field of view in radians.
-bool demo_camera(C3D_Mtx* view, float* fovy, float eye[3]);
+// Camera of the current frame (world space, Y down) and vertical field of view in radians. focus (may
+// be NULL): the distance from the eye to the point the camera looks at (stereo.h).
+bool demo_camera(C3D_Mtx* view, float* fovy, float eye[3], float* focus);
 // Enhanced Edition "ReduceCutsceneFOV" (default on): keep the 4:3 horizontal framing on the 5:3 screen.
 void demo_set_reduce_fov(bool on);
 

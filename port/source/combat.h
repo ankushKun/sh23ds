@@ -43,13 +43,37 @@ void combat_reset(void);                 // new game / continue: full health, pl
 void combat_set_options(bool hold_to_stomp, bool swap_light_heavy);
 
 // Per frame before player_update. Returns true while James is busy (readied, swinging, hurt or
-// dead): the caller then skips normal movement and the A button check. held_out gets the buttons
-// that are still free for the normal controls.
+// dead): the caller then skips the A button check, and moves the legs only when combat_legs says
+// so. held_out gets the buttons that are still free for the normal controls.
 bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, float dt,
                    const Collision* col, u32* held_out);
 
-// When armed, James is animated from the plank animation set: returns the pose to use.
-bool combat_james_anim(const Anim** anim, float* frame);
+// Beginner and easy (0x52e110): Action held readies the weapon at an enemy ahead; the caller adds
+// the Aim key when this is true. event_ahead: the Action press has an event in front of James.
+bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead);
+
+// Once per game frame, before combat_update and the camera (0x533c10): the candidates in James'
+// sight, nearest first, and whether the lock still holds.
+void combat_scan(const CombatBody* b);
+// 0x1fba8d8 (main.c from 0x556490): 0 out of doors, 1 indoors, 2 a room whose 0x8bcce0 byte is 0.
+void combat_set_place(int place);
+// The candidates of the last scan (the camera's character slots, 0x1f991a0), the locked target
+// (0x1fbacc4) and whether an attack was made since the weapon came up (0x1fbad16 != 0xff).
+int combat_candidates(Enemy** out, int max);
+const Enemy* combat_target(void);
+bool combat_attack_seq(void);
+
+// What the legs may do this frame. free: move.c runs them (combat's clip, when it has one, plays
+// on the upper body). aim: the weapon is up (upper status 0x1a, or 0x1c while attacking), with
+// the hold stance and the weapon's flags (0x6cf7cc) for walking and running; locked: combat
+// turns James to the target; attacking: an attack the legs go on through (a shot, a reload, the
+// spray, a light swing begun on the move), during which they keep their state. Returns free.
+typedef struct { bool free, aim, locked, attack_seq, attacking, walk, run; } CombatLegs;
+bool combat_legs(CombatLegs* out);
+
+// When armed, James is animated from the plank animation set: returns the pose to use, and the
+// clip's range in loop[] when it loops (else 0, 0), for chr_pose_loop.
+bool combat_james_anim(const Anim** anim, float* frame, int loop[2]);
 // gWeaponHandGrip of the weapon in hand: 0 none, 1 handgun, 2 shotgun, 3 rifle, 4 hyper spray, 5 plank,
 // 6 steel pipe, 7 chainsaw, 8 great knife (9, 10 Maria's).
 int combat_grip(void);
@@ -60,6 +84,9 @@ bool combat_james_free(void);
 int combat_james_clip(float* blend);
 // After chr_draw(james): the plank on his right hand (same model view and skinning program).
 void combat_draw_weapon(int uBones);
+// Before chr_draw(james): which of the player model's hands and the flashlight on his chest show,
+// from the weapon and what James is doing (move_state is move.c's MV_* when he is free).
+void combat_set_parts(int move_state);
 
 // Per frame from main.c: the room is dark, the flashlight is on (how far James sees enemies to lock
 // on to them, 0x52f2c0).

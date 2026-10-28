@@ -18,6 +18,7 @@ it to play normally.
 | `action <0..3>` / `riddle <0..3>` | action and riddle difficulty |
 | `enemy <kind> <x> <z> <yaw> [status] [height]` | place an extra enemy, kind in hex (`enemy 202 ...` is a creeper) |
 | `wish` | Born From a Wish flags (with `stage 53` for its spawn) |
+| `boat [x z yaw]` | start rowing on the lake (stage 38) at this place, e.g. `spawn cd01 -14970 3592 -98254 -90 2` with `boat -12338 -70000 0`; yaw in radians, default the PC's embark place (0x8cf698) |
 | `demo <name> <seconds>` | play a cutscene from this point |
 | `movie <name>` | play a movie |
 | `newgame 1` | run New Game without pressing anything |
@@ -26,17 +27,21 @@ it to play normally.
 | `viewer 1` | add the room viewer to the title's touch list |
 | `logos 0` | skip the start-up screens |
 | `sdthrottle <KB/s> [open ms]` | simulate a console's slower SD card |
-| `dumpframe <n>` | save frame *n* as `frame_<n>.bmp` and its stats as text |
+| `dumpframe <n>` | save frame *n* as `frame_<n>.bmp` and its stats as text; a 3D frame also as `frame_<n>_right.bmp` |
 | `perflog 1` / `memlog 1` / `memtest <n>` | frame time breakdown, memory use, a memory stress test |
+| `gpucost 1` / `mapcull 0` / `fogfill <tenths>` | the GPU cost model in perf.txt, the map sent whole, the fog's area per eye in 3D (PERFORMANCE.md, "3D") |
+| `mapmips 1` | sample the map textures' mipmaps (off by default: the PC makes its map textures with one level, and the mipmaps of its atlases drew lines along the ground's quad edges) |
 | `streamsync 1` | load streamed tiles on the main thread, to compare with the worker |
 | `autotest warps <first> <count>` | load every door and warp destination in turn and log the result |
 | `pt <command>` | a playtest script line, logged to `ptlog.txt`; the commands are listed in [`playtest.c`](source/playtest.c) |
 | `rendermode <n>` / `batch <n>` / `freeze 1` / `ambient <percent>` | renderer experiments |
 
 The playtest commands include `ev <n>`, `use <item>`, `combine <a> <b>`, `press <buttons>`,
-`answer <k>`, `kill`, `attack`, `expect flag <n> <0|1>`, `save` / `load <name>` and `fast 1`. With
+`answer <k>`, `kill`, `attack`, `expect flag <n> <0|1>`, `save` / `load <name>` and `fast 1`;
+`riddle <levels> <command>` runs the command only on those riddle levels (`riddle 2,3 press A`). With
 `walkmode 1`, `ev <n> [@stage]` walks James there through the doors, and `walkto <x y z>`,
 `blocked <x y z>`, `collect`, `fight [s] [radius] [flag n]` and `cube <outer> <inner>` work on foot.
+`where` logs James' position.
 
 ## In an emulator
 
@@ -48,6 +53,10 @@ firmware. Then open `port/sh23ds.3dsx` or install the CIA.
 If the top screen stays black in the desktop app, switch the graphics API between Vulkan and OpenGL,
 or clear Azahar's shader cache for title `0000000000000000`. A `dumpframe` line in `debug.txt` tells you
 whether the game drew anything.
+
+For 3D, `--opt citra_factor_3d=100` on a headless run sets the slider the game reads, but Azahar's
+software renderer shows only the left eye, so use `dumpframe` for the right one. With both eyes drawn
+the game often runs at 30 fps, so a frame number can be reached about half as early in emulator frames.
 
 ## Headless runs (macOS)
 

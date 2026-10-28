@@ -9,6 +9,7 @@ plays them back with pl_mpeg, the Y2R colour converter and ndsp.
 | Where | What |
 | --- | --- |
 | `tools/sh2conv/movies.py` | ffmpeg wrapper: Bink to MPEG-1 program stream (`<pack>/movie/<name>.mpg`) plus `movies.txt` |
+| `tools/sh2conv/levels.py` | the loudness of each movie's audio tracks (`<pack>/movie/levels.txt`), which `movie.c` brings to one level (`SOUND.md`, "Levels") |
 | `source/movie.c`, `movie.h` | player: decoder threads, Y2R, ndsp, frame pacing, the blocking `movie_play()` |
 | `source/movie.v.pica` | the quad shader (position and texcoord only) |
 | `source/third_party/pl_mpeg.h` | PL_MPEG by Dominic Szablewski (MIT, `pl_mpeg.LICENSE`), with three marked speed patches |

@@ -234,10 +234,11 @@ static int s18_hospital_exit(Prog* p)
 	PROG_END(p)
 }
 
-// 0x590c20 EvProgLauraDeceive1st
+// 0x590c20 EvProgLauraDeceive1st: the scene over BGM page 0x12 (hospital/bgm_123.aix)
 static int s18_laura_deceive_1(Prog* p)
 {
 	PROG_BEGIN(p)
+		p_bgm_page(0x12);
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_LAURA_DECEIVE_1))
 		p_lock(p, false);
 	PROG_END(p)
@@ -1060,6 +1061,7 @@ static int s27_maria_killed(Prog* p)
 {
 	PROG_BEGIN(p)
 	PROG_STEP(p, 0x17, p_demo(p, DEMO_MARIA_KILLED))
+		p_bgm_page(0x17);               // state 6, before mar_dead_b (demo.c sets it there too)
 		p_set(522);                     // FLAGW_512 |= 0x400
 		p_clear(15);
 		p_lock(p, false);

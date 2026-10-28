@@ -1,4 +1,5 @@
 #include "chr.h"
+#include "gpucost.h"
 #include "sdio.h"
 #include <math.h>
 #include <stdio.h>
@@ -54,6 +55,56 @@ static void* read_file(const char* path, long* size)
 	}
 	fclose(f);
 	return d;
+}
+
+// Packs converted before the draw flags kept the pose index have none. The models whose parts the PC
+// swaps are the same files in every copy of the game, and their draws follow the .mdl's primitives
+// one for one, so the parts can be told apart without a repack. Per model: the draws that are parts,
+// the pose each one is and the first bone of its palette, which checks the layout. James (lll, hll):
+// 11 right hands (poses 3..13, bones 34 and 35), 7 left hands (14..20, bones 33 and 40) and the
+// flashlight's two draws (21, on bone 3); hhl James has the right hands and the flashlight, hhh James
+// only the flashlight; Born From a Wish Maria (lxx_mar) her hands and what they hold (3..7).
+typedef struct { u8 draw, pose, bone; } LayoutPart;
+typedef struct {
+	const char* name;
+	u16 draws, bones;
+	LayoutPart part[24];
+} PartsLayout;
+
+#define HANDS(d) \
+	{ d, 3, 34 }, { d + 1, 4, 34 }, { d + 2, 5, 34 }, { d + 3, 6, 34 }, { d + 4, 7, 34 }, { d + 5, 8, 34 }, \
+	{ d + 6, 9, 34 }, { d + 7, 10, 34 }, { d + 8, 11, 34 }, { d + 9, 12, 34 }, { d + 10, 13, 34 }
+#define LEFT_HANDS(d) \
+	{ d, 14, 33 }, { d + 1, 15, 33 }, { d + 2, 16, 33 }, { d + 3, 17, 33 }, { d + 4, 18, 33 }, \
+	{ d + 5, 19, 33 }, { d + 6, 20, 33 }
+static const PartsLayout LAYOUTS[] = {
+	{ "hll_jms", 31, 41, { HANDS(6), LEFT_HANDS(17), { 25, 21, 3 }, { 26, 21, 3 } } },
+	{ "lll_jms", 31, 41, { HANDS(5), LEFT_HANDS(16), { 25, 21, 3 }, { 26, 21, 3 } } },
+	{ "hhl_jms", 25, 56, { HANDS(7), { 19, 21, 3 }, { 20, 21, 3 } } },
+	{ "hhh_jms", 15, 71, { { 9, 21, 3 }, { 10, 21, 3 } } },
+	{ "lxx_mar", 31, 36, { { 9, 3, 32 }, { 10, 4, 32 }, { 11, 5, 32 }, { 12, 6, 30 }, { 16, 4, 32 }, { 17, 5, 32 },
+	                       { 18, 7, 30 } } },
+};
+#undef HANDS
+#undef LEFT_HANDS
+
+static void parts_from_layout(Character* c, const char* name)
+{
+	const PartsLayout* l = NULL;
+	for (u32 i = 0; i < sizeof LAYOUTS / sizeof LAYOUTS[0]; i++)
+		if (!strcmp(name, LAYOUTS[i].name))
+			l = &LAYOUTS[i];
+	if (!l || c->n_draws != l->draws || c->n_bones != l->bones)
+		return;
+	for (u32 i = 0; i < c->n_draws; i++)
+		if (c->draws[i].flags >> 8)
+			return;                      // the pack has them
+	const LayoutPart* p;
+	for (p = l->part; p < l->part + 24 && p->pose; p++)
+		if (!c->draws[p->draw].palette_count || c->draws[p->draw].palette[0] != p->bone)
+			return;
+	for (p = l->part; p < l->part + 24 && p->pose; p++)
+		c->draws[p->draw].flags |= (u32)p->pose << 8;
 }
 
 bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t errlen)
@@ -141,7 +192,18 @@ bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t
 		for (int r = 0; r < 3; r++)
 			for (int k = 0; k < 4; k++)
 				c->skin[b].m[r][k] = (r == k) ? 1.0f : 0.0f;
+	memset(c->parts, 0xff, sizeof c->parts);
+	parts_from_layout(c, name);
 	return true;
+}
+
+void chr_set_parts(Character* c, int a, int b, int d)
+{
+	memset(c->parts, 0, sizeof c->parts);
+	c->parts[0] = 1;
+	c->parts[a >> 5] |= 1u << (a & 31);
+	c->parts[b >> 5] |= 1u << (b & 31);
+	c->parts[d >> 5] |= 1u << (d & 31);
 }
 
 void chr_free(Character* c)
@@ -247,8 +309,10 @@ static void local_of(Mtx34* L, const Character* c, const AnmKey* k, u32 b)
 }
 
 // The local (parent-relative) transforms of every bone at a fractional frame; frames are blended
-// linearly. False when the animation does not fit the model (the bind pose is used then).
-static bool pose_locals(const Character* c, const Anim* a, float frame, Mtx34* out)
+// linearly. A looping clip (lo..hi, hi > lo) blends its last frame back to its first, as the PC's
+// anime step does (0x551820 mode 1: the next key after the end is the clip's start), never on into
+// the clip stored after it. False when the animation does not fit the model (the bind pose is used then).
+static bool pose_locals(const Character* c, const Anim* a, float frame, int lo, int hi, Mtx34* out)
 {
 	if (!a || !a->keys || a->bones != c->n_bones) {
 		for (u32 b = 0; b < c->n_bones; b++)
@@ -259,6 +323,8 @@ static bool pose_locals(const Character* c, const Anim* a, float frame, Mtx34* o
 	u32 f0 = (u32)frame;
 	if (f0 >= a->frames) f0 = a->frames - 1;
 	u32 f1 = f0 + 1 < a->frames ? f0 + 1 : f0;
+	if (hi > lo && lo >= 0 && f0 == (u32)hi && (u32)hi < a->frames)
+		f1 = (u32)lo;
 	float t = frame - (float)f0;
 	for (u32 b = 0; b < c->n_bones; b++) {
 		Mtx34 L0, L1, L;
@@ -319,12 +385,14 @@ static void pose_finish_look(Character* c, const Mtx34* local, const ChrBlend* l
 
 static void pose_finish(Character* c, const Mtx34* local) { pose_finish_look(c, local, NULL); }
 
-void chr_pose(Character* c, const Anim* a, float frame)
+void chr_pose_loop(Character* c, const Anim* a, float frame, int start, int end)
 {
 	static Mtx34 local[CHR_MAX_BONES];
-	pose_locals(c, a, frame, local);
+	pose_locals(c, a, frame, start, end, local);
 	pose_finish(c, local);
 }
+
+void chr_pose(Character* c, const Anim* a, float frame) { chr_pose_loop(c, a, frame, 0, 0); }
 
 // a + (b - a) * w for a rotation and translation, then Gram-Schmidt so the result stays a rotation
 // even when the two are far apart (lerping matrices alone would shear and shrink the bone).
@@ -382,8 +450,18 @@ void chr_blend_start_sync(ChrBlend* b, const Anim* a, float from_start, float to
 
 void chr_pose_blend(Character* c, const Anim* a, float frame, ChrBlend* b, float dt)
 {
-	static Mtx34 local[CHR_MAX_BONES];
-	pose_locals(c, a, frame, local);
+	static Mtx34 local[CHR_MAX_BONES], upper[CHR_MAX_BONES];
+	pose_locals(c, a, frame, b->loop_start, b->loop_end, local);
+	if (b->upper_root >= 0 && b->upper_root < (int)c->n_bones && b->upper_anim &&
+	    pose_locals(c, b->upper_anim, b->upper_frame, b->upper_loop_start, b->upper_loop_end, upper)) {
+		for (u32 i = 0; i < c->n_bones; i++) {
+			u32 r = i;
+			for (int k = 0; k < CHR_MAX_BONES && c->parents[r] != 255; k++)
+				r = c->parents[r];
+			if ((int)r == b->upper_root)
+				local[i] = upper[i];
+		}
+	}
 	if (b->t < b->dur) {
 		b->t += dt;
 		float w = b->t >= b->dur ? 1.0f : b->t / b->dur;
@@ -391,7 +469,8 @@ void chr_pose_blend(Character* c, const Anim* a, float frame, ChrBlend* b, float
 			float rel = fmodf(frame - b->sync_to, b->sync_len);
 			if (rel < 0.0f)
 				rel += b->sync_len;
-			pose_locals(c, b->sync, b->sync_from + rel, b->from);
+			pose_locals(c, b->sync, b->sync_from + rel, (int)b->sync_from,
+			            (int)(b->sync_from + b->sync_len) - 1, b->from);
 		}
 		for (u32 i = 0; i < c->n_bones; i++)
 			mix34(&local[i], &b->from[i], &local[i], w);
@@ -410,8 +489,26 @@ void chr_draw(Character* c, int uBones)
 	// (each palette slot is three uniform vectors, and citro3d re-sends whatever is written).
 	const ChrDraw* prev = NULL;
 	int env_mode = -1, tex_slot = -1, alpha = 1;
-	for (u32 i = 0; i < c->n_draws; i++) {
+	// The transparent parts (flags bit 1: hair, eyelashes, Angela's bangs) come after the opaque ones,
+	// as 0x504be0 queues them after 0x501be0: blended by their texture's alpha, alpha test above 0,
+	// depth tested and written (0x503450). The PC sorts their triangles far to near across the model
+	// (0x503e10 into 0x1000 depth buckets, drawn by 0x503f60); the port draws them in file order.
+	bool blended = false;
+	for (u32 n = 0; n < 2 * c->n_draws; n++) {
+		u32 i = n < c->n_draws ? n : n - c->n_draws;
 		ChrDraw* d = &c->draws[i];
+		if (!(d->flags & 2) != (n < c->n_draws))
+			continue;
+		u32 pose = d->flags >> 8 & 0xff;
+		if (!(c->parts[pose >> 5] >> (pose & 31) & 1))
+			continue;
+		if ((d->flags & 2) && !blended) {
+			C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+			               GPU_ZERO, GPU_ONE);
+			C3D_AlphaTest(true, GPU_GREATER, 0);
+			blended = true;
+			alpha = 1;
+		}
 		bool same_palette = prev && prev->palette_count >= d->palette_count &&
 		                    !memcmp(prev->palette, d->palette, d->palette_count);
 		if (!same_palette) {
@@ -451,11 +548,19 @@ void chr_draw(Character* c, int uBones)
 		// gloss and specular masks (the Lying Figure's sheath is 65 % under 0x60, James' hands 5 %),
 		// so the test the port used to make from "the texture has alpha" (flags bit 0) cut holes in
 		// them and all but erased some stage models.
-		if (alpha) {
+		if (alpha && !blended) {
 			C3D_AlphaTest(false, GPU_ALWAYS, 0);
 			alpha = 0;
 		}
+		// the primitive's back face culling flag (flags bit 2), under the PC's CW cull mode (main.c)
+		C3D_CullFace(d->flags & 4 ? GPU_CULL_BACK_CCW : GPU_CULL_NONE);
 		C3D_DrawElements(GPU_TRIANGLES, d->index_count, C3D_UNSIGNED_SHORT, d->indices);
+		gpucost_px(GC_CHR, 0.0f, d->index_count);
+	}
+	C3D_CullFace(GPU_CULL_NONE);
+	if (blended) {
+		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+		C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	}
 	if (env_mode >= 0) {     // leave the combiner as the old one-stage setup did: stage 1 passes through
 		C3D_TexEnvScale(C3D_GetTexEnv(0), C3D_RGB, GPU_TEVSCALE_1);

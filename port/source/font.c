@@ -136,6 +136,42 @@ static int advance(int font, int code)
 	return g ? g->adv : code < 0xe0 ? 7 : s_font[font].cell_w + 2;
 }
 
+// The code at *s in the pack's text, moving *s past it: a byte c >= 0x20 is the code c - 0x20,
+// FONT_FULL_WIDTH and four hex digits a full-width code or a kerning step; -1 for the other bytes
+// below 0x20 (inserts and page marks are not drawn). Stops at the end of the string or a line.
+static int next_code(const char** s)
+{
+	const char* p = *s;
+	u8 c = (u8)*p++;
+	int code = c >= 0x20 ? c - 0x20 : -1;
+	if (c == FONT_FULL_WIDTH) {
+		code = 0;
+		for (int k = 0; k < 4; k++, p++) {
+			char h = (char)(*p | 0x20);      // either case
+			int d = *p >= '0' && *p <= '9' ? *p - '0' : h >= 'a' && h <= 'f' ? h - 'a' + 10 : -1;
+			if (d < 0) {
+				code = -1;
+				break;
+			}
+			code = code << 4 | d;
+		}
+	}
+	*s = p;
+	return code;
+}
+
+// One line of the pack's text as codes (up to max), *s left at its '\n' or the end.
+static int line_codes(const char** s, u16* out, int max)
+{
+	int n = 0;
+	while (**s && **s != '\n') {
+		int code = next_code(s);
+		if (code >= 0 && n < max)
+			out[n++] = (u16)code;
+	}
+	return n;
+}
+
 static float line_width(int font, const u16* codes, int n)
 {
 	int w = 0;
@@ -187,12 +223,7 @@ void font_text(int font, float x, float y, const char* s, int align, u32 top, u3
 	font &= 1;
 	u16 line[128];
 	while (*s) {
-		int n = 0;
-		for (; *s && *s != '\n'; s++) {
-			u8 c = (u8)*s;
-			if (c >= 0x20 && n < (int)(sizeof line / sizeof *line))
-				line[n++] = (u16)(c - 0x20);
-		}
+		int n = line_codes(&s, line, sizeof line / sizeof *line);
 		font_codes(font, x, y, line, n, align, top, bottom);
 		if (*s == '\n')
 			s++;
@@ -206,17 +237,12 @@ float font_width(int font, const char* s)
 		return 0.0f;
 	font &= 1;
 	float best = 0.0f;
-	int w = 0;
-	for (;; s++) {
-		if (!*s || *s == '\n') {
-			float lw = w > 2 ? (float)(w - 2) : 0.0f;
-			best = lw > best ? lw : best;
-			w = 0;
-			if (!*s)
-				break;
-		} else if ((u8)*s >= 0x20) {
-			w += advance(font, (u8)*s - 0x20);
-		}
+	u16 line[128];
+	while (*s) {
+		float lw = line_width(font, line, line_codes(&s, line, sizeof line / sizeof *line));
+		best = lw > best ? lw : best;
+		if (*s == '\n')
+			s++;
 	}
 	return best;
 }
@@ -231,17 +257,16 @@ bool font_ink_px(int font, const char* s, float* x0, float* y0, float* x1, float
 		return false;
 	font &= 1;
 	float pen = 0.0f, bx0 = 1e9f, by0 = 1e9f, bx1 = -1e9f, by1 = -1e9f;
-	for (; *s && *s != '\n'; s++) {
-		u8 c = (u8)*s;
-		if (c < 0x20)
-			continue;
-		const Glyph* g = glyph(font, c - 0x20);
+	u16 line[128];
+	int n = line_codes(&s, line, sizeof line / sizeof *line);
+	for (int i = 0; i < n; i++) {
+		const Glyph* g = glyph(font, line[i]);
 		if (g && g->ix1) {
 			float gx = floorf(pen + 0.625f + 0.5f);     // as font_layout_px places it
 			bx0 = fminf(bx0, gx + g->ix0), bx1 = fmaxf(bx1, gx + g->ix1);
 			by0 = fminf(by0, (float)g->iy0), by1 = fmaxf(by1, (float)g->iy1);
 		}
-		pen += advance(font, c - 0x20) * 0.625f;
+		pen += advance(font, line[i]) * 0.625f;
 	}
 	if (bx1 < bx0)
 		return false;
@@ -257,12 +282,7 @@ int font_layout_px(int font, float x, float y, const char* s, int align, u32 top
 	int n = 0;
 	u16 line[128];
 	while (*s) {
-		int k = 0;
-		for (; *s && *s != '\n'; s++) {
-			u8 c = (u8)*s;
-			if (c >= 0x20 && k < (int)(sizeof line / sizeof *line))
-				line[k++] = (u16)(c - 0x20);
-		}
+		int k = line_codes(&s, line, sizeof line / sizeof *line);
 		float pen = x;
 		if (align == FONT_CENTER)
 			pen -= line_width(font, line, k) * 0.625f * 0.5f;

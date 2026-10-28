@@ -44,5 +44,7 @@ bool playtest_fast(void);                 // "pt fast 1": the game draws nothing
 void playtest_frame(const PtState* st, u32* down, u32* held, float dt);
 // The circle pad, read later in the frame.
 void playtest_pad(circlePosition* cp);
+// The walker is steering James: it turns him tank fashion, so play takes Rotational Style meanwhile.
+bool playtest_steering(void);
 void playtest_message(const char* text);  // a message went up (logged)
 void playtest_log(const char* fmt, ...);
