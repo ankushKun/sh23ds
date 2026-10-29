@@ -51,6 +51,7 @@
 #include "chrlight.h"
 #include "shadow.h"
 #include "stereo.h"
+#include "supersample.h"
 #include "gpucost.h"
 #include "quality.h"
 #include "sdsim.h"
@@ -4341,12 +4342,12 @@ static u32 s_dump_frames[8];
 static int s_ndump;
 
 // The top target's last frame into buf (240x400 BGR, as the GPU stores it).
-static void grab_frame(C3D_RenderTarget* top, u8* buf)
+static void grab_frame(C3D_RenderTarget* top, u32 transfer, u8* buf)
 {
 	gpu_sync();
 	GSPGPU_FlushDataCache(buf, 240 * 400 * 3);
-	C3D_SyncDisplayTransfer((u32*)top->frameBuf.colorBuf, GX_BUFFER_DIM(240, 400), (u32*)buf,
-	                        GX_BUFFER_DIM(240, 400), DISPLAY_TRANSFER_FLAGS);
+	C3D_SyncDisplayTransfer((u32*)top->frameBuf.colorBuf, GX_BUFFER_DIM(top->frameBuf.width, top->frameBuf.height),
+	                        (u32*)buf, GX_BUFFER_DIM(240, 400), transfer);
 	GSPGPU_InvalidateDataCache(buf, 240 * 400 * 3);
 }
 
@@ -4384,10 +4385,11 @@ static void dump_frame(C3D_RenderTarget* top, u32 n)
 	u8* buf = linearAlloc(240 * 400 * 3);
 	if (!buf)
 		return;
-	grab_frame(top, buf);
+	u32 transfer;
+	grab_frame(supersample_shown(&transfer), transfer, buf);   // the target shown, doubled or not
 	write_frame(buf, n, "");
 	if (stereo_eyes() == 2) {        // a 3D frame: the right eye as frame_<n>_right.bmp (stereo.h)
-		grab_frame(stereo_target(1, top), buf);
+		grab_frame(stereo_target(1, top), DISPLAY_TRANSFER_FLAGS, buf);
 		write_frame(buf, n, "_right");
 	}
 	linearFree(buf);
@@ -4770,6 +4772,7 @@ int main(void)
 	C3D_RenderTarget* top = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
 	C3D_RenderTargetSetOutput(top, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 	stereo_init(DISPLAY_TRANSFER_FLAGS);
+	supersample_init(top, DISPLAY_TRANSFER_FLAGS);
 	setup_pipeline();
 	movie_init(top);
 	touchui_init();                  // the touch screen is drawn from here on (touchui.c)
@@ -4849,13 +4852,14 @@ int main(void)
 			if (!strcmp(key, "shadowdebug")) shadow_debug(val);
 			if (!strcmp(key, "fogdebug")) fog_debug(val);
 			if (!strcmp(key, "fogsprites") || !strcmp(key, "shadows") || !strcmp(key, "framecap") ||
-			    !strcmp(key, "tiledist") || !strcmp(key, "fogfill")) {
+			    !strcmp(key, "tiledist") || !strcmp(key, "fogfill") || !strcmp(key, "supersample")) {
 				Quality q = *quality(); // quality.h knobs, normally the hardware profile's
 				if (!strcmp(key, "fogsprites")) q.fog_sprites = val;
 				if (!strcmp(key, "shadows")) q.stencil_shadows = q.drop_shadows = val != 0;
 				if (!strcmp(key, "framecap")) q.frame_cap = val;
 				if (!strcmp(key, "tiledist")) q.tile_distance = (float)val;
 				if (!strcmp(key, "fogfill")) q.fog_fill_3d = val / 10.0f;   // tenths of a screen
+				if (!strcmp(key, "supersample")) q.supersample = val;
 				quality_set(&q);
 			}
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
@@ -5008,6 +5012,7 @@ int main(void)
 		if (s_results && results_update(down)) {
 			stereo_frame(s_opt.stereo, false);
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
 			results_draw_top();
@@ -5033,6 +5038,7 @@ int main(void)
 			}
 			stereo_frame(s_opt.stereo, false);
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
 			if (s_state == ST_TITLE && !optmenu_active() && !savescreen_active() &&
@@ -5052,6 +5058,7 @@ int main(void)
 			}
 			stereo_frame(s_opt.stereo, false);
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
 			gameover_draw_top(ui_draw);
@@ -5382,8 +5389,9 @@ int main(void)
 		u32 clear = s_cam.mode == CAM_PLAYER ? ((u32)s_env.clear_rgb[0] << 24 | (u32)s_env.clear_rgb[1] << 16 |
 		                                       (u32)s_env.clear_rgb[2] << 8 | 0xFF) : CLEAR_COLOR;
 		if (eyes == 1) {
-			calls = draw_top(top, &proj, &mv, &ortho, clear, dt);
+			calls = draw_top(supersample_target(true), &proj, &mv, &ortho, clear, dt);   // twice the rows when the GPU has the time
 		} else {
+			supersample_target(false);
 			for (int eye = 0; eye < 2; eye++) {
 				C3D_Mtx eye_proj;
 				stereo_projection(&eye_proj, eye, cam_fovy, cam_near, cam_far, cam_focus);
@@ -5407,7 +5415,7 @@ int main(void)
 		// 60 while it fits, an even 30 when it does not, with both eyes drawn (stereo.h) too: perf_pace
 		// goes by the GPU's own time, which a console measures. Both eyes of a lit room take about
 		// twice one eye's 6 to 9 ms, inside a 60 fps frame; the fogged roads drop to 30 as in 2D
-		perf_pace(quality()->frame_cap);
+		supersample_frame_end(perf_pace(quality()->frame_cap));
 		for (int i = 0; i < s_ndump; i++)
 			if (s_dump_frames[i] == frame)
 				dump_frame(top, frame);
@@ -5458,7 +5466,7 @@ int main(void)
 			printf("%-38.38s\n", sfx_status());
 			printf("%-38.38s\n", roomfx_status());
 			printf("%-38.38s\n", water_status());
-			printf("%-38.38s\n", stereo_status());
+			printf("%-22.22s %-15.15s\n", stereo_status(), supersample_status());
 		}
 		pause_draw();
 		inventory_draw();

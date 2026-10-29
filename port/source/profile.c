@@ -200,6 +200,7 @@ void profile_apply_quality(void)
 	q.stencil_shadows = q.drop_shadows = profile_shadows();
 	q.tile_distance = profile_stream_dist();
 	q.frame_cap = P.fps == CHOICE_HIGH_NEW ? 60 : profile_frame_rate() == 30 ? 30 : 0;
+	q.supersample = low() ? 0 : 1;
 	quality_set(&q);
 #endif
 }
