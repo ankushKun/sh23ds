@@ -399,6 +399,31 @@ static void bed_draw(const C3D_Mtx* view, int uModelView, int uBones)
 	chr_draw(&s_bed.chr, uBones);
 }
 
+// The PC sets placed models up as "stay objects" (0x537cf0 picks the handler by kind): the 0x3xx and
+// 0x5xx kinds (0x555120), the 0x4xx ones but for 0x421 and the mirrored copies 0x443, 0x444 and 0x460
+// (0x53b780), and the items, 0x7xx (0x554840), go through 0x554710, which multiplies every bone's bind
+// matrix by a turn of (0, pi, 0) (0x5546b0, 0x40490fdb) before the model's own place and turn, and
+// scales the items by kind (0x554840: the keys and the like 2, the coins and some keys 1.5, ... into
+// +0x29c, 0x538ac0). The 0x6xx kinds (0x554630) do neither.
+static bool stay_turned(int kind)
+{
+	int k = kind >> 8;
+	return k == 3 || k == 5 || k == 7 || (k == 4 && kind != 0x421 && kind != 0x443 && kind != 0x444 && kind != 0x460);
+}
+
+static float stay_scale(int kind)
+{
+	switch (kind) {
+	case 0x706: case 0x707: case 0x709: case 0x70a: case 0x728: case 0x73f: case 0x74b: return 2.0f;
+	case 0x712: case 0x717: return 1.3f;
+	case 0x714: case 0x71c: case 0x72c: case 0x730: case 0x732: case 0x736: case 0x73d: case 0x747: return 1.5f;
+	case 0x72f: return 2.25f;
+	case 0x735: return 2.5f;
+	case 0x73e: return 3.0f;
+	}
+	return 1.0f;
+}
+
 // Whether a place shows a model now (its flags, the cutscene), and its squared distance from x, z.
 static bool shown(const Place* p, float x, float z, float* d2)
 {
@@ -495,6 +520,11 @@ void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		Mtx_RotateZ(&model, r[2], true);
 		Mtx_RotateY(&model, r[1], true);
 		Mtx_RotateX(&model, r[0], true);
+		float k = stay_scale(p->kind);
+		if (k != 1.0f)
+			Mtx_Scale(&model, k, k, k);
+		if (stay_turned(p->kind))
+			Mtx_RotateY(&model, 3.1415927f, true);
 		Mtx_Multiply(&mv, view, &model);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
 		pose(m->chr, p->kind, s_play);
