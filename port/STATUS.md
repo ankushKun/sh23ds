@@ -339,6 +339,11 @@ Ordered by weight. Each line names where the work starts.
   (0x507e00 keeps a list of lit objects); the port waits for the flashlight. A stack of an item holds
   255 in the port (a byte per item in the save), where ItemGet caps it at 999, which only Bullet Adjust
   x3 reaches.
+- James' death (`combat.c` `die_range`): the PC's choice of damage motion for the killing blow is in
+  the encrypted 0x56e456 (after 0x534700); the port plays the knockdown (anime 112, which ends
+  standing again) from the set's fall to its last frame on the floor and holds it there, as the PC
+  holds the damage motion once 0x1fbad17 is set (0x559100). Blows that hurt always play anime 121,
+  where the PC also has 123 (lower state 0x15).
 - Model parts (`combat_set_parts`, `demo.c`): James' left hand reads the port's states for the PC's
   upper-body ones, so walking into a wall counts as walking, being held as DAMAGE, a reload as ATTACK,
   every scene as EVENT with a non-standing motion, and the plank's two-handed frames 8..21 count from the

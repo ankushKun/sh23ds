@@ -23,6 +23,8 @@ bool noise_on(void);
 // Draws the grain over the top screen. The caller has bound the 2D program (vertices in
 // top-screen pixels, y up, as main.c's ui_draw) and turned the depth test off.
 void noise_draw(void);
+// The same whether the option is on or not (the game over's grain, gameover.c).
+void noise_draw_always(void);
 // Over a movie (movie.c's program: float x, y and float u, v, an ortho projection, y up), on the
 // picture only (x0, y0)-(x1, y1) as the Enhanced Edition keeps it off the black bars.
 void noise_draw_movie(float x0, float y0, float x1, float y1);

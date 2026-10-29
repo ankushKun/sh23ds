@@ -111,7 +111,11 @@ void combat_hold_damage(float ap, float dt);
 // A Flesh Lip lifting James' body (its hold killed him): he hangs at (x, y, z) and the game over
 // waits until the lift ends (on false).
 void combat_carry_james(bool on, float x, float y, float z);
-bool combat_dying(void);                 // the death animation, or dead
+bool combat_dying(void);                       // the death animation, or dead
+// Seconds since the killing blow while dying or dead, else 0 (main.c draws the screen bleeding to red).
+float combat_dying_time(void);
+// Seconds since the last blow that took health (main.c flashes the screen red), large when none.
+float combat_hit_time(void);
 
 float combat_hp(void);
 float combat_low_health_alpha(float dt);   // per frame: the PC red cross's alpha, 0 when hidden

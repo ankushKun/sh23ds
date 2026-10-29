@@ -53,7 +53,16 @@ static const JAnim J_STAND = { 1, 10, 1, 256 };       // 101
 static const JAnim J_WALK = { 51, 74, 1, 1408 };      // 104
 static const JAnim J_RUN = { 147, 170, 1, 2048 };     // 108
 static const JAnim J_HURT = { 453, 470, 0, 1024 };    // 121
-static const JAnim J_FALL = { 256, 280, 0, 1024 };    // 112
+// The fall James (or Maria) dies in. The base table's 111 and 112 (0x6ceac4: 221-245, 256-280) are
+// the knockdown that lower state 0x18 plays (0x531a00 / 0x52fae0, which of the two by 0x52eb40's
+// direction), and both end on their feet again: 112 lies flat from about frame 260 and is standing by
+// 276. When the player is dead the PC never leaves the damage motion: 0x559100 sets 0x1fbad17 to 2 at
+// its end instead of going back to standing, and EventMain starts the game over then (0x53ad20). Which
+// motion the PC's damage code picks for the killing blow is behind the encryption (0x534700 ends in
+// 0x56e456), so the port plays the knockdown from where the set falls from standing to its last frame
+// on the floor (die_range), and holds it there. The sets differ by a few frames (James' falls start at
+// 247..254 and rise at 264..271 by weapon, Maria's lie at 255..263), so each is measured when it loads.
+static JAnim J_DIE = { 256, 268, 0, 1024 };
 // Lower-body state 0x1d (0x531a00) plays 132 for a kick (request 6) and 133 for a stomp (request 7).
 // Both start and end on the standing pose: in 132 the right foot swings up and forward at knee
 // height, in 133 it comes down on the floor in front of James.
@@ -294,6 +303,8 @@ static const AttackInfo* s_stomp_atk;   // ATK_KICK or ATK_STOMP while M_STOMP
 static float s_hold;                    // grab meter (DAT_01fbacd4): frame times of struggling left
 static int s_stick_dir;                 // last circle pad direction (0 centre, 1..4), for flicks
 static float s_invuln, s_dead_t, s_flash;
+static float s_die_t;                    // since the killing blow (combat_dying_time)
+static float s_hit_t = 99.0f;            // since the last blow that hurt (combat_hit_time)
 static float s_tip[3], s_root[3];       // plank or knife segment in James' bind space
 static float s_muzzle[3];               // gun muzzle in James' bind space
 static void* s_flash_vbo;               // linear memory, muzzle flash quads (S3C vertex layout)
@@ -467,6 +478,40 @@ static void unload_weapon(void)
 	s_wmodel_ok = s_anim_ok = false;
 }
 
+// J_DIE for a set: the legs root (bone 1) on the floor is within 150 units of it, standing about 550
+// above; the fall starts where it was last coming down from standing, the hold is the last frame on
+// the floor before it rises. Looked for round the base table's knockdown (frames 240..285).
+static void die_range(const Anim* a)
+{
+	J_DIE.start = 256, J_DIE.end = 268;
+	if (a->bones < 2 || a->frames <= 285)
+		return;
+	float y[286];
+	float cur = -550.0f;
+	for (u32 f = 0; f < 286; f++) {
+		const AnmKey* k = &a->keys[f * a->bones + 1];
+		if (k->flags & 2)
+			cur = k->trans[1];
+		y[f] = cur;
+	}
+	int lo = -1, hi = -1;
+	for (int f = 240; f < 286; f++) {
+		if (y[f] > -150.0f) {
+			if (lo < 0)
+				lo = f;
+			hi = f;
+		} else if (lo >= 0) {
+			break;
+		}
+	}
+	if (lo < 0)
+		return;
+	int s = lo;
+	while (s > 240 && y[s - 1] < y[s] - 5.0f)
+		s--;
+	J_DIE.start = (u16)s, J_DIE.end = (u16)hi;
+}
+
 static bool load_weapon(int w)
 {
 	s_target = NULL;                 // 0x534610 with every change of weapon
@@ -478,6 +523,7 @@ static bool load_weapon(int w)
 	s_anim_ok = anim_load(&s_anim, path) && s_anim.bones == s_james->n_bones;
 	if (!s_anim_ok)
 		return false;
+	die_range(&s_anim);
 	if (d->mdl) {
 		snprintf(dir, sizeof dir, "%s/chr/%s", s_pack, pdef()->wdir);
 		s_wmodel_ok = chr_load(&s_wmodel, dir, d->mdl, err, sizeof err);
@@ -727,6 +773,8 @@ void combat_carry_james(bool on, float x, float y, float z)
 }
 
 bool combat_dying(void) { return s_mode == M_DYING || s_mode == M_DEAD; }
+float combat_dying_time(void) { return combat_dying() ? s_die_t : 0.0f; }
+float combat_hit_time(void) { return s_hit_t; }
 
 bool combat_has_ammo(void)
 {
@@ -758,7 +806,8 @@ void combat_hold_damage(float ap, float dt)
 		s_hp = 0.0f;
 		sfx_play(pdef()->snd_die, 1.0f, 0.0f);
 		s_mode = M_DYING;
-		play(&J_FALL);
+		s_die_t = 0.0f;
+		play(&J_DIE);
 	}
 }
 
@@ -772,11 +821,13 @@ void combat_damage_james(int attack_id, float ap, float from_x, float from_z)
 	if (s_mode >= M_DYING || s_mode == M_HELD || s_invuln > 0.0f)
 		return;
 	s_hp -= s_test_god ? 0.0f : ap;
+	s_hit_t = 0.0f;
 	if (s_hp <= 0.0f) {
 		s_hp = 0.0f;
 		sfx_play(pdef()->snd_die, 1.0f, 0.0f);   // dying scream
 		s_mode = M_DYING;
-		play(&J_FALL);
+		s_die_t = 0.0f;
+		play(&J_DIE);
 		return;
 	}
 	if (attack_id == 42 && s_mode >= M_RAISE && s_mode <= M_RELOAD) {
@@ -1890,6 +1941,9 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		s_dead_t += dt;
 		break;
 	}
+	if (s_mode == M_DYING || s_mode == M_DEAD)
+		s_die_t += dt;
+	s_hit_t += dt;
 	if (s_mode == M_READY)
 		s_combo_req = false;
 	else

@@ -4399,6 +4399,8 @@ static void draw_top_text(void)
 // It works under emulators' hardware renderers (the CPU read makes them flush the GPU surface) and
 // on a console, so a black screen can be told apart from missing data.
 static bool s_debug_newgame;
+static u32 s_debug_die;              // debug.txt "die N" / "hurt N P": a blow at frame N (tests)
+static int s_debug_die_pct = 300;    // of his health
 static int s_debug_weapon;           // debug.txt "weapon <item>": equipped on the first free frame
 static u32 s_dump_frames[8];
 static int s_ndump;
@@ -4713,6 +4715,33 @@ static void pt_frame(u32* down, u32* held, float dt)
 	playtest_frame(&st, down, held, dt);
 }
 
+// The screen as James dies: a red veil deepening over two and a half seconds and the edges darkening
+// (font.h quads, flat with a colour per corner). 3DS-only; the PC cuts to the game over's black.
+static void draw_dying(float t)
+{
+	float k = t / 2.5f;
+	k = k > 1.0f ? 1.0f : k;
+	k = k * k * (3.0f - 2.0f * k);
+	u32 veil = 0x5a0a0800u | (u32)(150.0f * k);
+	const u32 all[4] = { veil, veil, veil, veil };
+	font_quad_px(NULL, 0.0f, 0.0f, 400.0f, 240.0f, 0, 0, 0, 0, all);
+	u32 e = (u32)(200.0f * k), o = 0;
+	const u32 l[4] = { e, o, e, o }, r[4] = { o, e, o, e }, tp[4] = { e, e, o, o }, b[4] = { o, o, e, e };
+	font_quad_px(NULL, 0.0f, 0.0f, 140.0f, 240.0f, 0, 0, 0, 0, l);
+	font_quad_px(NULL, 260.0f, 0.0f, 400.0f, 240.0f, 0, 0, 0, 0, r);
+	font_quad_px(NULL, 0.0f, 0.0f, 400.0f, 80.0f, 0, 0, 0, 0, tp);
+	font_quad_px(NULL, 0.0f, 160.0f, 400.0f, 240.0f, 0, 0, 0, 0, b);
+}
+
+// A blow that takes James' health: the same red as the dying veil, gone in a third of a second (3DS-only).
+static void draw_hit(float t)
+{
+	float k = 1.0f - t / 0.35f;
+	u32 c = 0x6e0a0800u | (u32)(110.0f * k * k);
+	const u32 all[4] = { c, c, c, c };
+	font_quad_px(NULL, 0.0f, 0.0f, 400.0f, 240.0f, 0, 0, 0, 0, all);
+}
+
 // The top screen of a frame of play into target, with the camera's projection (one eye's in a 3D
 // frame, stereo.h); dt is 0 for the second eye, so nothing advances twice. Returns the room's draws.
 static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx* mv, const C3D_Mtx* ortho, u32 clear,
@@ -4787,8 +4816,15 @@ static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx
 		// program holds James for a scripted shot; the pause menu hides it too
 		float cross = combat_low_health_alpha(s_paused ? 0.0f : dt);
 		if (cross > 0.0f && s_state == ST_GAME && s_cam.mode == CAM_PLAYER && !demo_active() && !s_pic_shown &&
-		    !s_inv_open && !s_paused && !(prog_running() && prog_player_locked()))
+		    !s_inv_open && !s_paused && !(prog_running() && prog_player_locked()) && !combat_dying())
 			draw_low_health(ortho, cross * (1.0f - black));
+		// 3DS-only: from the killing blow the picture bleeds to dark red and the edges close in, the
+		// way into the game over's still (gameover.c)
+		float dying = combat_dying_time();
+		if (dying > 0.0f && s_state == ST_GAME && s_cam.mode == CAM_PLAYER && !demo_active())
+			draw_dying(dying);
+		else if (combat_hit_time() < 0.35f && s_state == ST_GAME && s_cam.mode == CAM_PLAYER && !demo_active())
+			draw_hit(combat_hit_time());
 		float dim = (s_paused && !optmenu_brightness()) || s_inv_open ? (s_inv_open ? 0.6f : 0.5f) : 0.0f;
 		dim = dim > black ? dim : black;
 		if (dim > 0.0f)
@@ -4925,6 +4961,9 @@ int main(void)
 				quality_set(&q);
 			}
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
+			if (!strcmp(key, "die")) s_debug_die = (u32)val;      // a killing blow at that frame (tests)
+			if (!strcmp(key, "hurt") && sscanf(line, "%*s %lu %d", &s_debug_die, &s_debug_die_pct) != 2)
+				s_debug_die = 0;
 			if (!strcmp(key, "batch")) s_only_batch = val;
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
 			if (!strcmp(key, "debughud")) s_debug_hud = val != 0;
@@ -5048,6 +5087,8 @@ int main(void)
 		if (s_pt_quit)
 			break;
 		down = menu_keys(down, held, dt, menu_frame());
+		if (s_debug_die && frame == s_debug_die && s_state == ST_GAME)
+			combat_damage_james(0x3e, JAMES_HP_MAX * (float)s_debug_die_pct / 100.0f, s_px, s_pz);
 		// console test: SELECT held with R steps the fog test (fog.c); the R press goes no further
 		if ((held & KEY_SELECT) && (down & KEY_R)) {
 			s_test_shown = fog_debug_cycle() >= 0 ? 3.0f : 0.0f;
@@ -5124,6 +5165,9 @@ int main(void)
 			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
+			gameover_draw_back();            // the last frame of play, bleeding (gameover.h)
+			ui_program_2d(&ortho);
+			noise_draw_always();
 			gameover_draw_top(ui_draw);
 			touchui_frame();
 			C3D_FrameEnd(0);
@@ -5286,6 +5330,10 @@ int main(void)
 				blood_frame(dt);
 				if (combat_dead()) {     // game over: the PC's screen, then the title (0x401fc0)
 					gameover_start();
+					u32 transfer;
+					C3D_RenderTarget* shown = supersample_shown(&transfer);
+					gpu_sync();          // the last frame of play is drawn
+					gameover_capture(shown->frameBuf.colorBuf, shown->frameBuf.width, shown->frameBuf.height);
 					continue;
 				}
 			}

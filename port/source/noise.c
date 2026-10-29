@@ -135,8 +135,12 @@ static void states(C3D_Tex* t)
 
 void noise_draw(void)
 {
-	if (!noise_on())
-		return;
+	if (noise_on())
+		noise_draw_always();
+}
+
+void noise_draw_always(void)
+{
 	if (!stereo_eye()) {             // the second eye of a 3D frame shows the same grain (stereo.h)
 		s_cur ^= 1;
 		refill(&s_tex[s_cur]);

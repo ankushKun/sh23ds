@@ -34,6 +34,9 @@ void font_image(C3D_Tex* tex, float x0, float y0, float x1, float y1, u32 rgba);
 // (top left, top right, bottom left, bottom right), drawn at once; tex NULL: flat, for shading.
 void font_quad_px(C3D_Tex* tex, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1,
                   const u32 rgba[4]);
+// The same with a texture coordinate per corner (uv: top left, top right, bottom left, bottom right
+// as u, v pairs), for a picture that is turned in its texture (gameover.c's still of the screen).
+void font_quad_uv_px(C3D_Tex* tex, float x0, float y0, float x1, float y1, const float uv[8], const u32 rgba[4]);
 // The same glyphs laid out in plain screen pixels for a screen of the caller's own (touchui.c):
 // (x, y) is the top left of the first line, glyphs at their atlas size, the PC's advances times
 // 0.625 and the lines 0.46875 of the cell height apart. Writes up to max vertices (6 a glyph) and

@@ -281,7 +281,7 @@ with the plank in hand, 722.. the weapon moves).
 | 101 | 1-10 | 256, loop | stand |
 | 104 / 108 | 51-74 / 147-170 | 1408 / 2048, loop | walk / run |
 | 121 | 453-470 | 1024 | hurt |
-| 112 | 256-280 | 1024 | falls (death) |
+| 111 / 112 | 221-245 / 256-280 | 1024 | knockdown and getting up (lower state 0x18, 0x52eb40 picks one); the port's death plays the set's fall to its last frame on the floor (`combat.c` `die_range`) |
 | 351 / 353 | 722-733 / 734-745 | 2048 | ready, plank over the right / left shoulder (352/354 reversed: put away) |
 | 359 / 360 | 746-755 / 756-765 | 320, loop | hold ready, right / left |
 | 361 / 362 | 766-775 | +-1536 | change shoulder |
@@ -305,7 +305,8 @@ attack's frame window.
 Controls: hold **R** to ready (James turns to the nearest enemy within 4000 and 100 degrees, or with
 the circle pad, and can step forward or back at 500 / 350 units/s), **A** swings, A again during the follow-through chains the next swing, releasing R puts
 the plank away. A target on the floor gets the downward swing. James has 100 health; a hit makes him
-flinch (anime 121) and gives one second of immunity; at 0 he falls and the game returns to the title.
+flinch (anime 121) and gives one second of immunity; at 0 he falls and stays down (the PC holds the
+damage motion's end, 0x559100 setting 0x1fbad17 to 2), and the game over follows.
 The acid spray (attack 42, kind 4) takes health without making James drop his guard while the plank is
 up; the PC handles fog attacks in their own routine (`shBattleAttackByEnemyFog`), which was not
 decompiled, so this is a gameplay choice: with a flinch on every spray the fight could not be won.

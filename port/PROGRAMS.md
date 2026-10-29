@@ -591,9 +591,18 @@ The PC's game over is event 0xd (0x498780, after James' death animation): the so
 gameover1.tex's "GAME OVER" (160x48, centred): a second of nothing, up by 2 a tick to 0x60, two
 seconds, down by 4 a tick, with three copies (the picture's rows 0, 48 and 96) moving up and down by
 rand() % 30 - 15 lines every frame round a steady one; then the screen fades and 0x401fc0 goes to
-the title. `gameover.c` does the same between `combat_dead()` and `enter_title()`. `ui.py` writes
-the picture's top left quarter as `pack/ui/gameover.t3x` and copies voice 143 (demos.py's
-`copy_voice`).
+the title. `gameover.c` keeps that timing, sound and text between `combat_dead()` and
+`enter_title()`. `ui.py` writes the picture's top left quarter as `pack/ui/gameover.t3x` and copies
+voice 143 (demos.py's `copy_voice`).
+
+The port presents it its own way (3DS-only). From the killing blow the picture bleeds into dark red
+and the edges close in over two and a half seconds (`main.c` `draw_dying`; a blow that only hurts
+flashes the same red for a third of a second, `draw_hit`). When the game over starts, the last frame
+of play is copied into a texture with the transfer engine (`gameover_capture`) and stays under the
+screen where the PC has black: it sinks darker with a slow beat and pushes in by 7 % over six
+seconds, the grain runs over it whatever the Noise Effect option, and it goes to black with the text.
+"GAME OVER" is drawn at twice the PC's scale (160 pixels across), the steady copy pale as the PC draws
+it and the three jumping copies in blood red behind it.
 
 ## Screens audit
 

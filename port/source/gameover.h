@@ -7,9 +7,18 @@
 // second it comes up over 0.8 s, stays two seconds and goes in 0.4 s, three copies of it jumping
 // up and down by up to 15 lines round a steady one; then back to the title (0x401fc0).
 
+// The port's presentation round it (3DS-only): the last frame of play stays under the screen, a still
+// that bleeds into dark red and closes in, with the grain over it, and the text at twice the size with
+// its jumping copies in red. The PC's timing, sound and text are kept.
+
 bool gameover_init(const char* pack_dir);
 void gameover_start(void);
+// The last frame of play from the shown target's colour buffer (w x h as the GPU stores it: 240 or
+// 480 by 400), after the GPU is done with it.
+void gameover_capture(const void* color, int w, int h);
 bool gameover_active(void);
 // Once a frame: false when it is over (the caller goes to the title).
 bool gameover_update(float dt);
+// The still and its shade; then the caller draws the grain (noise_draw_always), then the text.
+void gameover_draw_back(void);
 void gameover_draw_top(MapDrawFn draw);
