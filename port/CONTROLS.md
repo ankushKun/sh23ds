@@ -190,8 +190,10 @@ not in the PC game. It sits behind and above James and follows the way he walks 
 left it alone a moment (not when he walks towards it or sideways, so the stick never chases it). The
 C-Stick turns it on the New 3DS layout; on the Old one the D-Pad's free directions do (they then do
 not walk James), and a drag on an empty part of the touch screen does on both. The Look key swings it
-back behind him. It keeps 150 from walls, testing a ray either side of the centre one so a wall at
-the edge of the picture counts too (the near plane, 100 deep, would otherwise cut into it), stays above
+back behind him. It keeps 150 from walls, testing rays fanned from James to either side of where it
+will be, at the height it will be (under the ceiling), so a wall at the edge of the picture counts too
+(the near plane, 100 deep, would otherwise cut into it) and a low partition it would sink to does as
+well; it stays above
 the floor and under the ceiling (the highest top of the walls that stand on James' floor near him,
 which indoors reach the ceiling), and is never nearer than 450 unless a wall is. Squeezed against a
 wall it turns, a little at a time, to the most open side near behind him, and in a room too small for

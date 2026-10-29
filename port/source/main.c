@@ -4497,6 +4497,8 @@ static void dump_info(u32 n)
 		fprintf(f, "linear free %lu KB, verts %lu\n", (unsigned long)(linearSpaceFree() / 1024),
 		        (unsigned long)s_cur.n_vertices);
 		fprintf(f, "fog test %d (%s), %s, demo %s\n", fog_debug_mode(), fog_debug_name(), chrlight_status(), demo_status());
+		fprintf(f, "camera %s%s, %s\n", s_tp_live ? "behind" : "pc", gamecam_scripted() ? " (a scripted shot)" : "",
+		        tpcam_status());
 		fclose(f);
 	}
 }

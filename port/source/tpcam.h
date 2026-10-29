@@ -33,3 +33,4 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy);
 float tpcam_yaw(void);              // the camera's forward, for the stick (forward = sin, cos)
 const float* tpcam_eye(void);
 const float* tpcam_watch(void);
+const char* tpcam_status(void);     // the orbit and the room it found, for the frame dump's stats
