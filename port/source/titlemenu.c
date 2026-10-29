@@ -226,6 +226,8 @@ int titlemenu_update(u32 down, float dt, int* action, int* riddle, const char** 
 		}
 		return TM_NONE;
 	}
+	if (down & KEY_START)
+		down |= KEY_A;               // START chooses, as A does (it skips the logos above)
 	int result = TM_NONE;
 	bool up = down & KEY_DUP, dn = down & KEY_DDOWN;
 	switch (s_screen) {

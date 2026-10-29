@@ -218,6 +218,8 @@ static void bind_key(ControlsAction act, u32 key)
 	save();
 }
 
+bool controls_capturing(void) { return C.capture; }
+
 bool controls_menu_update(u32 down)
 {
 	int n = N_MENU_ACTS + 2;          // the actions, "Defaults", "Back"

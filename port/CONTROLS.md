@@ -48,7 +48,14 @@ and SELECT held with L the map test. (An earlier SELECT + L frame capture froze 
 taken out.)
 
 Pressing both strafe buttons together also turns James round, as on the PC (0x54b290). Menus keep
-their own keys whatever the bindings: the D-Pad moves, A takes, B goes back, START closes.
+their own keys whatever the bindings: the D-Pad or the Circle Pad moves, A takes, B goes back, START
+closes. On the title's menus START chooses as A does, and on the start-up logos it skips them; EXIT
+is the one way out of the game from the title. In menus (`main.c` `menu_keys`, on every frame where
+James is not steered: the title, pause, items, map and memos, save files, options, questions, puzzles,
+results) the Circle Pad counts by its stronger axis, past a dead zone, and a direction held on it or
+the D-Pad repeats after 0.4 s, ten times a second. A direction already held when a menu opens waits
+until it is let go, so pausing on the move does not move the menu; the Buttons page takes keys as
+they are.
 
 ## The Buttons page
 

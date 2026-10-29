@@ -4103,8 +4103,6 @@ static bool title_update(u32 down, float dt)
 	}
 	if (s_title_sub)
 		return title_levels(down);
-	if (down & KEY_START)
-		return false;
 	// the PC's title screens (titlemenu.c): the menu, the scenarios, the levels, the movies
 	int action = s_action, riddle = s_riddle;
 	const char* movie = NULL;
@@ -4162,6 +4160,65 @@ static bool title_update(u32 down, float dt)
 
 static bool s_paused;
 static bool s_pause_dirty;
+
+// Menus take the Circle Pad as the D-pad, and a direction held on either repeats (3DS-only). Only
+// on frames where James is not steered: in play the stick walks him and the D-pad can hold actions
+// (controls.c), and the Buttons page binds whatever goes down. The stick gives its stronger axis
+// only, past a dead zone with some slack, so pushing down a list never also turns a setting.
+#define REPEAT_FIRST 0.4f
+#define REPEAT_EVERY 0.1f
+
+static bool menu_frame(void)
+{
+	if (controls_capturing())
+		return false;
+	if (s_state == ST_TITLE || s_results)
+		return true;
+	return s_state == ST_GAME && (s_paused || s_inv_open || screens_open() || savescreen_active() ||
+	                              optmenu_active() || s_save_prompt || s_msg_page || prog_choice_waiting() ||
+	                              prog_player_locked());
+}
+
+// menu: a menu frame. Directions already held when a menu opens (James was walking) wait for their
+// release, so pausing on the move does not also move the menu.
+static u32 menu_keys(u32 down, u32 held, float dt, bool menu)
+{
+	static const u32 DIR[4] = { KEY_DUP, KEY_DDOWN, KEY_DLEFT, KEY_DRIGHT };
+	static u32 s_stick;                  // the direction the stick gives now (one of DIR, or 0)
+	static u32 s_wait;                   // held since before the menu: no press until let go
+	static float s_next[4];              // until the next repeat of a held direction
+	circlePosition cp;
+	hidCircleRead(&cp);
+	playtest_pad(&cp);
+	int ax = cp.dx < 0 ? -cp.dx : cp.dx, ay = cp.dy < 0 ? -cp.dy : cp.dy, m = ax > ay ? ax : ay;
+	u32 stick = 0;
+	if (m >= (s_stick ? 40 : 70))
+		stick = ax > ay ? (cp.dx > 0 ? KEY_DRIGHT : KEY_DLEFT) : (cp.dy > 0 ? KEY_DUP : KEY_DDOWN);
+	u32 now = (held & (KEY_DUP | KEY_DDOWN | KEY_DLEFT | KEY_DRIGHT)) | stick;
+	bool pressed = stick && stick != s_stick;
+	s_stick = stick;
+	if (!menu) {
+		s_wait = now;
+		return down;
+	}
+	s_wait &= now;
+	if (pressed && !(s_wait & stick))
+		down |= stick;                   // the stick's press
+	down &= ~s_wait;
+	for (int i = 0; i < 4; i++) {
+		if (!(now & DIR[i]) || (s_wait & DIR[i])) {
+			s_next[i] = 0.0f;
+			continue;
+		}
+		if (down & DIR[i]) {
+			s_next[i] = REPEAT_FIRST;
+		} else if ((s_next[i] -= dt) <= 0.0f) {
+			down |= DIR[i];
+			s_next[i] += REPEAT_EVERY;
+		}
+	}
+	return down;
+}
 
 static void pause_draw(void)
 {
@@ -4990,6 +5047,7 @@ int main(void)
 		pt_frame(&down, &held, dt);
 		if (s_pt_quit)
 			break;
+		down = menu_keys(down, held, dt, menu_frame());
 		// console test: SELECT held with R steps the fog test (fog.c); the R press goes no further
 		if ((held & KEY_SELECT) && (down & KEY_R)) {
 			s_test_shown = fog_debug_cycle() >= 0 ? 3.0f : 0.0f;

@@ -54,6 +54,8 @@ void controls_game(u32 down, u32 held, u32* gdown, u32* gheld);
 // touchui_menu). controls_menu_update returns false once it is closed.
 void controls_menu_open(void);
 bool controls_menu_update(u32 down);
+// The Buttons page waits for the key to bind (main.c leaves the keys as they are meanwhile).
+bool controls_capturing(void);
 void controls_menu_draw(void);
 const char* controls_menu_label(void);     // the pause menu line
 // The same page inside an Options screen (the programs agent's optmenu.c): which touchui menu slot
