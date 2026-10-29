@@ -190,7 +190,13 @@ not in the PC game. It sits behind and above James and follows the way he walks 
 left it alone a moment (not when he walks towards it or sideways, so the stick never chases it). The
 C-Stick turns it on the New 3DS layout; on the Old one the D-Pad's free directions do (they then do
 not walk James), and a drag on an empty part of the touch screen does on both. The Look key swings it
-back behind him. It stops short of walls (col_clamp_ray) and stays above the floor. With the weapon
+back behind him. It keeps 150 from walls, testing a ray either side of the centre one so a wall at
+the edge of the picture counts too (the near plane, 100 deep, would otherwise cut into it), stays above
+the floor and under the ceiling (the highest top of the walls that stand on James' floor near him,
+which indoors reach the ceiling), and is never nearer than 450 unless a wall is. Squeezed against a
+wall it turns, a little at a time, to the most open side near behind him, and in a room too small for
+that (a wall at his back) to the most open way round him, as the PC's fixed shots stand in a room's far
+corner; pulled in close it looks past him into the room rather than at his head. With the weapon
 up it goes over his right shoulder; with a target locked it frames James and the target together, and
 the circle pad's x strafes instead of turning. In this mode the stick moves James relative to the
 camera (Directional Style's reading, taken every frame). Cutscenes, the event roads and program shots

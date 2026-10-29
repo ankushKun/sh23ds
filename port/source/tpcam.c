@@ -16,9 +16,15 @@
 #define ORBIT_PITCH 1.6f
 #define DRAG_RAD 0.012f       // rad per pixel of touch drag
 #define FOLLOW_WAIT 1.2f      // seconds after an orbit before it follows his walk again
-#define WALL_GAP 80.0f        // kept from a wall
-#define NEAR_DIST 200.0f
+#define WALL_GAP 150.0f       // kept from a wall: the near plane (the rooms' clip near, 100) stays clear of it
+#define CAM_RADIUS 90.0f      // the rays either side of the centre one, so walls beside the camera count too
+#define NEAR_DIST 450.0f      // never closer than this: inside his head nothing reads
+#define LEAD 700.0f           // pulled in all the way, it looks this far past him (into the room)
 #define LIFT_FROM 700.0f      // closer than this the camera rises
+#define LIFT 0.45f            // by this share of what it is short of LIFT_FROM
+#define CEIL_GAP 160.0f       // kept under the ceiling
+#define SQUEEZED 900.0f       // free room behind under this: look for a more open side
+#define SWING 1.4f            // rad/s it turns towards one
 #define FOVY 0.9273f          // 53.13 degrees: the PC camera's default (scr_z 448 of 448 lines)
 
 static struct {
@@ -34,6 +40,46 @@ const float* tpcam_eye(void) { return T.eye; }
 const float* tpcam_watch(void) { return T.watch; }
 
 static float wrap(float a) { return remainderf(a, 2.0f * PI); }
+
+// How far the camera can go from the pivot towards yaw / pitch before a wall, the centre ray and one
+// CAM_RADIUS either side of it (a wall at the edge of the near plane counts as much as one ahead).
+static float free_dist(const Collision* col, const float pivot[3], float yaw, float pitch, float want)
+{
+	float c = cosf(pitch), bx = -sinf(yaw) * c, bz = -cosf(yaw) * c, rx = cosf(yaw), rz = -sinf(yaw);
+	float ey = pivot[1] - sinf(pitch) * want, best = want;
+	for (int k = -1; k <= 1; k++) {
+		float ox = pivot[0] + rx * CAM_RADIUS * k, oz = pivot[2] + rz * CAM_RADIUS * k;
+		float ex = ox + bx * want, ez = oz + bz * want;
+		col_clamp_ray(col, ox, oz, &ex, &ez, ey);
+		float full = want * c, got = hypotf(ex - ox, ez - oz);
+		float d = full > 1.0f ? got / full * want : want;
+		best = d < best ? d : best;
+	}
+	return best;
+}
+
+// The ceiling over James, from the walls round him: indoors the walls go up to it, so the highest
+// top of the walls that stand on his floor within reach (Y down: the smallest y_top). None: no cap.
+static bool ceiling(const Collision* col, const float feet[3], float* y)
+{
+	bool any = false;
+	float top = 0.0f;
+	for (u32 i = 0, n = col_wall_count(col); i < n; i++) {
+		const WallSeg* w = col_wall(col, i);
+		if (w->y_bottom < feet[1] - 200.0f || w->y_top > feet[1] - 900.0f)
+			continue;                       // not down to his floor, or too low to be a room's wall
+		float dx = w->x1 - w->x0, dz = w->z1 - w->z0, l2 = dx * dx + dz * dz;
+		float t = l2 > 0.0f ? ((feet[0] - w->x0) * dx + (feet[2] - w->z0) * dz) / l2 : 0.0f;
+		t = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+		float px = w->x0 + dx * t - feet[0], pz = w->z0 + dz * t - feet[2];
+		if (px * px + pz * pz > 1800.0f * 1800.0f)
+			continue;
+		if (!any || w->y_top < top)
+			top = w->y_top, any = true;
+	}
+	*y = top;
+	return any && feet[1] - top < 4000.0f;   // a few metres: a room's, not a building's outside
+}
 
 // d towards 0 by the share a time constant of 1/rate takes off in dt
 static float ease(float rate, float dt) { return 1.0f - expf(-rate * dt); }
@@ -98,6 +144,25 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy)
 			float k = 1.5f * fminf(in->speed / 1500.0f, 1.0f);
 			T.yaw = wrap(T.yaw + wrap(in->yaw - T.yaw) * ease(k, dt));
 		}
+		// squeezed against a wall (a corridor, a small room): round to the most open side near
+		// behind him, a little at a time, so it sees the room instead of the back of his head
+		float now = in->col ? free_dist(in->col, pivot, T.yaw, T.pitch, DIST) : DIST;
+		if (in->col && (T.idle >= FOLLOW_WAIT || now < NEAR_DIST + WALL_GAP)) {
+			if (now < SQUEEZED) {
+				// near behind him first; in a room too small for that (a wall at his back), the
+				// most open way round him, as the PC's fixed shots stand in a room's far corner
+				bool tiny = now < NEAR_DIST + WALL_GAP;
+				float best = now, to = T.yaw;
+				for (int k = 1; k <= (tiny ? 9 : 6); k++)
+					for (int s = -1; s <= 1; s += 2) {
+						float y = wrap(T.yaw + s * k * 0.35f), d = free_dist(in->col, pivot, y, T.pitch, DIST);
+						if (d > best * 1.25f + 100.0f)
+							best = d, to = y;
+					}
+				float dy = wrap(to - T.yaw), step = SWING * (tiny ? 2.0f : 1.0f) * dt;
+				T.yaw = wrap(T.yaw + (dy > step ? step : dy < -step ? -step : dy));
+			}
+		}
 	}
 	T.pitch = T.pitch < PITCH_MIN ? PITCH_MIN : T.pitch > PITCH_MAX ? PITCH_MAX : T.pitch;
 
@@ -114,24 +179,34 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy)
 	}
 	float eye[3];
 	place(pivot, T.yaw, T.pitch, want_dist, side, eye);
-	float d = want_dist;
+	float d = want_dist, room = want_dist;
 	if (in->col) {
-		float ex = eye[0], ez = eye[2];
-		col_clamp_ray(in->col, pivot[0], pivot[2], &ex, &ez, eye[1]);
-		float full = hypotf(eye[0] - pivot[0], eye[2] - pivot[2]), got = hypotf(ex - pivot[0], ez - pivot[2]);
-		if (got < full - 1.0f && full > 1.0f)
-			d = fmaxf((got - WALL_GAP) / full * want_dist, NEAR_DIST);
+		room = free_dist(in->col, pivot, T.yaw, T.pitch, want_dist) - WALL_GAP;
+		if (room < want_dist - 1.0f)
+			d = fmaxf(room, NEAR_DIST);
+		d = fminf(d, fmaxf(room, 150.0f));   // a wall nearer than NEAR_DIST: no further than it
 	}
 	// in at once (no wall shows through), back out smoothly
 	T.dist = d < T.dist ? d : T.dist + (d - T.dist) * ease(4.0f, dt);
+	if (!in->aim) {
+		// pulled in close, it looks past him the way it faces, so the room fills the picture rather
+		// than the back of his head
+		float k = fminf(fmaxf((DIST - T.dist) / (DIST - NEAR_DIST), 0.0f), 1.0f) * LEAD;
+		k += fmaxf(NEAR_DIST - T.dist, 0.0f) * 0.8f;   // over his head: further on still
+		look[0] += sinf(T.yaw) * k, look[2] += cosf(T.yaw) * k;
+		look[1] += k * 0.25f;            // and a little lower: what is ahead of him, not over it
+	}
 	place(pivot, T.yaw, T.pitch, T.dist, side * (T.dist / want_dist), eye);
-	// pulled in close by a wall: up over his head rather than into the back of it
-	eye[1] -= fmaxf(0.0f, LIFT_FROM - T.dist) * 0.9f;
+	// pulled in close by a wall: up over his head rather than into the back of it, the more the
+	// closer (up to the ceiling, below)
+	eye[1] -= fmaxf(0.0f, LIFT_FROM - T.dist) * (T.dist < NEAR_DIST ? 1.2f : LIFT);
 	if (in->col) {
-		// not below the floor under the camera
-		float fy;
+		// not below the floor under the camera, nor up through the ceiling of the room
+		float fy, cy;
 		if (col_floor(in->col, eye[0], eye[2], eye[1], 2000.0f, &fy) && eye[1] > fy - 100.0f)
 			eye[1] = fy - 100.0f;
+		if (ceiling(in->col, in->pos, &cy) && eye[1] < cy + CEIL_GAP)
+			eye[1] = cy + CEIL_GAP;
 	}
 	float ke = ease(14.0f, dt), kw = ease(16.0f, dt);
 	for (int i = 0; i < 3; i++) {
@@ -143,6 +218,12 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy)
 	if (in->col) {
 		float ex = T.eye[0], ez = T.eye[2];
 		col_clamp_ray(in->col, pivot[0], pivot[2], &ex, &ez, T.eye[1]);
+		float full = hypotf(T.eye[0] - pivot[0], T.eye[2] - pivot[2]), got = hypotf(ex - pivot[0], ez - pivot[2]);
+		if (got < full - 1.0f && got > 1.0f) {
+			// stopped by a wall: back off it by the gap, so the near plane does not cut into it
+			float k = fmaxf(got - WALL_GAP, fminf(120.0f, got)) / got;
+			ex = pivot[0] + (ex - pivot[0]) * k, ez = pivot[2] + (ez - pivot[2]) * k;
+		}
 		T.eye[0] = ex, T.eye[2] = ez;
 	}
 	C3D_FVec e = FVec3_New(T.eye[0], T.eye[1], T.eye[2]);
