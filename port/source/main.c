@@ -1159,7 +1159,7 @@ static void events_update(u32 down)
 {
 	if (s_warp_pending || s_autotest)
 		return;
-	EvPlayer p = { s_px, s_py, s_pz, s_yaw, (down & KEY_A) != 0, s_use_item, james_can_see() };
+	EvPlayer p = { s_px, s_py, s_pz, s_yaw, (down & KEY_A) != 0, s_use_item, james_can_see(), chrlight_lit };
 	EvAction a;
 	int used = s_use_item;
 	s_use_item = 0;
@@ -4721,7 +4721,7 @@ static int pt_inv_index(int item)
 
 static const PtHost s_pt_host = {
 	host_player_set, pt_floor, pt_warp, pt_use_item, save_game, continue_game, pt_new_game, pt_shot, pt_quit,
-	pt_inv_index, pt_collision,
+	pt_inv_index, pt_collision, james_can_see,
 };
 
 static void pt_frame(u32* down, u32* held, float dt)
@@ -5343,7 +5343,7 @@ int main(void)
 						// ahead, unless the press meets an event (EventCheckLookLine 0x48e520)
 						bool ahead = false;
 						if ((gdown & KEY_A) && enemy_difficulty() < 2) {
-							EvPlayer ep = { s_px, s_py, s_pz, s_yaw, true, 0, james_can_see() };
+							EvPlayer ep = { s_px, s_py, s_pz, s_yaw, true, 0, james_can_see(), chrlight_lit };
 							ahead = ev_look_line(&ep) >= 0;
 						}
 						if (combat_auto_ready(&body, free_held, gdown, ahead))

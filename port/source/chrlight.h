@@ -32,3 +32,8 @@ void chrlight_end(void);
 // Scales the ambient of the next characters (demo.c's EnemyRevealLighting factor), 1 = normal.
 void chrlight_ambient_scale(float k);
 const char* chrlight_status(void);
+// 0x507e00 for a model at pos in the room loaded now: the strongest point or spot light it would be
+// drawn with (0x50ccb0 picks by 0x50c3d0's influence at the radius 800 every model gets, 0x8a2ccc)
+// is over 0.1 (0x8a2b60). EventCheckLookLine (0x48e520) asks it for items in a dark room while the
+// flashlight is off.
+bool chrlight_lit(const float pos[3]);

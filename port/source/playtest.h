@@ -34,6 +34,7 @@ typedef struct {
 	void (*quit)(void);
 	int (*inv_index)(int item);   // the item's row in the item list (-1 if James does not have it)
 	const Collision* (*collision)(void);   // the loaded collision James walks on, NULL if none
+	bool (*can_see)(void);                 // the room is lit or the flashlight is on (item pickups)
 } PtHost;
 
 void playtest_init(const PtHost* host);

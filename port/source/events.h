@@ -34,6 +34,9 @@ typedef struct {
 	bool action;             // action button pressed this frame
 	int use_item;            // item used from the inventory this frame (trigger kinds 5, 6, 10), 0 = none
 	bool can_see;            // the room is lit or the flashlight is on (for the cond "needs light" bit)
+	// In a dark room with the flashlight off: whether a room light shows a model at pos (0x507e00),
+	// for item pickups; NULL: none does.
+	bool (*lit)(const float pos[3]);
 } EvPlayer;
 
 void ev_reset(void);          // new game: all flags and items cleared
@@ -95,6 +98,7 @@ int ev_bullet_adjust(void);
 const char* ev_item_name(int item);      // NULL if unknown
 // Playtest driver: the current stage's item pickups (available: not taken and offered).
 int ev_pickup_count(void);
+const char* ev_pickup_why(int i, const EvPlayer* p);   // playtest: the test that refuses it, "" none
 bool ev_pickup_info(int i, int* item, float pos[3], bool* available);
 const char* ev_item_desc(int item);
 int ev_count(void);

@@ -40,7 +40,9 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
   atlases lined the ground; `VISUALS.md`), decals (drawn after
   the characters, as the PC's ordering table does, so a chain-link fence in front of them covers
   them), the transparent pass, map part switches with their flags (traffic lights, the clock room, stairwell lights;
-  `stageparts.c`), stage-placed models such as the lobby music box and its figure boxes (`stagemdl.c`).
+  `stageparts.c`), stage-placed models such as the lobby music box and its figure boxes (`stagemdl.c`),
+  set up as the PC's stay objects (0x554710): turned half round on top of their own turn and the
+  items scaled by kind (the keys up to 3 times), so the flashlight shows at the 205 mannequin's collar.
 - The town, forest and lake stream their tiles: touching tiles within 7000 units stay resident, the
   primary tile follows James, and the area-wide `<area>GB.cam` roads load first, as on the PC.
 - Lighting as on the PC (`envlight.c`, `tools/sh2conv/LIGHTING.md`): the per-room DrawEnvData record,
@@ -120,8 +122,11 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
 - Maria as a companion (`maria.c`) and as the Born From a Wish player with her revolver and knife.
 - Item pickups as on the PC: their models lie in the rooms (0x490080), `EventItemConditionCheck`
   (0x48cb20) decides which exist (35 town pickups only at night, flag 251), and in a dark room James
-  needs the flashlight to take one (0x48e520). Packs from before the condition was packed use a table
-  of those pickups' flags.
+  needs the flashlight to take one (0x48e520) unless a room light shows it (0x507e00, `chrlight_lit`:
+  the strongest light the model is drawn with over 0.1, as the drink at Wood Side's stairs). Packs from
+  before the condition was packed use a table of those pickups' flags. The item audit
+  (`tests/playtest/item_audit.py`) takes every pickup in Azahar. Save points say James' line about the
+  red square once in the game (flag 5, 0x48c680), not once per save point.
 - The parts models swap (0x50dfc0): one right and one left hand of James' eighteen by weapon and state,
   the flashlight on his chest once he has it (0x52f6a0, in scenes 0x540d80), Maria's in Born From a Wish
   (0x549050). Packs from before the converter kept the pose index still get James' gameplay model right.

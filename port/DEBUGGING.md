@@ -45,7 +45,10 @@ The playtest commands include `ev <n>`, `use <item>`, `combine <a> <b>`, `press 
 `riddle <levels> <command>` runs the command only on those riddle levels (`riddle 2,3 press A`). With
 `walkmode 1`, `ev <n> [@stage]` walks James there through the doors, and `walkto <x y z>`,
 `blocked <x y z>`, `collect`, `fight [s] [radius] [flag n]` and `cube <outer> <inner>` work on foot.
-`where` logs James' position.
+`where` logs James' position. `pickup <i>` takes the stage's pickup `i` the way a player does (James
+placed where its height window and the walls allow, facing it, then A) and logs whether it was taken,
+whether a room light shows it and, when refused, which test refused it; `tests/playtest/item_audit.py`
+runs it for every pickup of every stage (TESTING.md, "Item audit").
 
 ## In an emulator
 

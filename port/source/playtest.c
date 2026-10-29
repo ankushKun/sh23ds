@@ -11,6 +11,8 @@
 #include "prog.h"
 #include "playnav.h"
 #include "stagewalls.h"
+#include "chrlight.h"
+#include "collide.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -974,6 +976,144 @@ static void step(const PtState* st)
 		char what[192];
 		snprintf(what, sizeof what, "load %s", arg);
 		result(ok, what);
+		next();
+		return;
+	}
+	static float s_pick_at[3], s_pick_face;
+	if (!strcmp(op, "pickup") && sscanf(arg, "%d", &a) == 1) {
+		// "pickup I": the stage's pickup I as a player takes it (the item audit, tests/playtest/
+		// item_audit.py): James stands 180 to 330 from it on a floor its height window allows
+		// (py - 750 <= y <= py + 100), nothing of the room in between, facing it, and presses A.
+		// Logs what happened with what the dark-room rule saw (0x48e520, 0x507e00).
+		static int before, it;
+		static float ip[3];
+		if (s_phase == 0) {
+			bool av;
+			if (!ev_pickup_info(a, &it, ip, &av)) {
+				playtest_log("pickup %d: none", a);
+				next();
+				return;
+			}
+			if (!av) {
+				playtest_log("pickup %d: item %d not lying here now", a, it);
+				next();
+				return;
+			}
+			const Collision* col = H->collision ? H->collision() : NULL;
+			float best[3] = { 0 }, face = 0.0f;
+			bool found = false;
+			int nofloor = 0, height = 0, wall = 0;
+			static const float D[5] = { 230.0f, 320.0f, 180.0f, 130.0f, 380.0f };
+			for (int di = 0; di < 5 && !found; di++)
+				for (int k = 0; k < 16 && !found; k++) {
+					float ang = k * (float)M_PI / 8.0f, cx = ip[0] + sinf(ang) * D[di], cz = ip[2] + cosf(ang) * D[di], fy;
+					if (!H->floor || !H->floor(cx, cz, ip[1] + 750.0f, 1500.0f, &fy)) {
+						nofloor++;
+						continue;
+					}
+					if (ip[1] < fy - 750.0f || ip[1] > fy + 100.0f) {
+						height++;
+						continue;
+					}
+					// the table or shelf the item lies on has walls of its own: only the way up to
+					// 120 short of it has to be clear
+					float lx = ip[0] + (cx - ip[0]) * 120.0f / D[di], lz = ip[2] + (cz - ip[2]) * 120.0f / D[di];
+					if (col && ((D[di] > 125.0f && col_crosses(col, cx, cz, lx, lz, fy, 1000.0f)) ||
+					            col_clearance(col, cx, cz, fy, 1000.0f, 60.0f) < 60.0f)) {
+						wall++;
+						continue;
+					}
+					if (col) {
+						// where the walls push him (H->place does the same): still past the look point (50 ahead)
+						float px = cx, pz = cz;
+						col_push(col, &px, &pz, fy, 1000.0f, 120.0f);
+						if (hypotf(ip[0] - px, ip[2] - pz) < 70.0f) {
+							wall++;
+							continue;
+						}
+						cx = px, cz = pz;
+					}
+					best[0] = cx, best[1] = fy, best[2] = cz;
+					face = atan2f(ip[0] - cx, ip[2] - cz);
+					found = true;
+				}
+			if (!found) {
+				playtest_log("pickup %d: item %d at (%.0f %.0f %.0f): no place to stand (no floor %d, height %d, wall %d)", a,
+				             it, ip[0], ip[1], ip[2], nofloor, height, wall);
+				next();
+				return;
+			}
+			H->place(best, face);
+			playtest_log("pickup %d: James at (%.0f %.0f %.0f) facing %.2f, item %.0f above his feet", a, best[0], best[1],
+			             best[2], face, best[1] - ip[1]);
+			memcpy(s_pick_at, best, sizeof s_pick_at);
+			s_pick_face = face;
+			before = ev_item_count(it);
+			s_phase = 1;
+			s_frames = 0;
+			return;
+		}
+		if (s_phase == 1) {
+			// a scene or message the warp started (the room's events) plays out first, skipped
+			auto_advance(st);
+			if (s_frames < 8 || !idle(st)) {
+				if (s_frames > 30 * 60)
+					s_phase = 3;
+				return;
+			}
+			H->place(s_pick_at, s_pick_face);
+			s_phase = 4;
+			s_frames = 0;
+			return;
+		}
+		if (s_phase == 4) {
+			H->place(s_pick_at, s_pick_face);    // held still: a step he was taking would carry him on
+			if (s_frames < 4)
+				return;
+			if (strstr(arg, "shot")) {
+				// "pickup I shot": a picture of it from further back on the same line, so the camera
+				// behind him sees it past him; nothing taken
+				if (s_frames == 4) {
+					const Collision* col = H->collision ? H->collision() : NULL;
+					float dx = s_pick_at[0] - ip[0], dz = s_pick_at[2] - ip[2], l = hypotf(dx, dz);
+					static const float K[3] = { 650.0f, 500.0f, 380.0f };
+					for (int k = 0; k < 3 && l > 1.0f; k++) {
+						float cx = ip[0] + dx / l * K[k], cz = ip[2] + dz / l * K[k], fy;
+						if (!H->floor(cx, cz, s_pick_at[1], 300.0f, &fy) ||
+						    (col && col_crosses(col, cx, cz, s_pick_at[0], s_pick_at[2], fy, 1000.0f)))
+							continue;
+						s_pick_at[0] = cx, s_pick_at[1] = fy, s_pick_at[2] = cz;
+						break;
+					}
+				}
+				if (s_frames < 40)
+					return;
+				if (H->shot)
+					H->shot();
+				playtest_log("pickup %d: shot", a);
+				next();
+				return;
+			}
+			press(KEY_A, 2, 4);
+			s_phase = 2;
+			s_frames = 0;
+			return;
+		}
+		if (s_frames < 6)
+			H->place(s_pick_at, s_pick_face);
+		auto_advance(st);
+		if (s_frames < 40 || !idle(st))
+			return;
+		bool took = ev_item_count(it) > before;
+		if (!took) {
+			EvPlayer ep = { st->pos[0], st->pos[1], st->pos[2], st->yaw, true, 0, H->can_see && H->can_see(), chrlight_lit };
+			const char* why = ev_pickup_why(a, &ep);
+			playtest_log("pickup %d: refused by: %s (James at %.0f %.0f %.0f facing %.2f)", a,
+			             *why ? why : "nothing in items_update (an event took A?)", st->pos[0], st->pos[1], st->pos[2], st->yaw);
+		}
+		playtest_log("pickup %d: item %d (%s) at (%.0f %.0f %.0f) %s, lit by a room light %d, can see %d", a, it,
+		             ev_item_name(it) ? ev_item_name(it) : "?", ip[0], ip[1], ip[2], took ? "TAKEN" : "NOT TAKEN",
+		             chrlight_lit(ip), H->can_see ? H->can_see() : -1);
 		next();
 		return;
 	}

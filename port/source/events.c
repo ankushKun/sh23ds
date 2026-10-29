@@ -925,11 +925,14 @@ static bool exec(int i, const EvRec* e, EvAction* out)
 		ev_flag_set(flag, true);
 		break;
 	case RT_SAVE:
-		// the first touch of a save point shows system message 8 (0x48c680), later ones go straight
-		// to the save prompt
+		// 0x48c680: system message 8 (James on the red square) only while game flag 5 (gGameFlag
+		// 0x20) is clear, which it then sets: once in the whole game, not once per save point; every
+		// later touch of any save point goes straight to the save prompt. The point's own flag is set
+		// as well (case 7).
 		out->kind = EV_SAVE;
 		out->save_point = msg;
-		out->text = ev_flag(flag) ? NULL : msg_get(&s_common, 8);
+		out->text = ev_flag(5) ? NULL : msg_get(&s_common, 8);
+		ev_flag_set(5, true);
 		ev_flag_set(flag, true);
 		break;
 	default:
@@ -944,9 +947,9 @@ static bool exec(int i, const EvRec* e, EvAction* out)
 // Item pickups (EventCheckLookLine 0x48e520, ItemCheckLookPoint 0x48b980): offered while flags n
 // and n+1 are clear and item_there agrees, picking up sets n+1. Same 400 / 30 degree look test,
 // height window py - 750 <= y <= py + 100. In a dark room only with the flashlight lit (0x47b1f0,
-// 0x48c840: can_see), in stages 43..46, in Born From a Wish, or when 0x507e00 passes the item's
-// model: always while flag 625 is set, else when a light near it shows it, which the port doesn't
-// track, so those wait for the flashlight.
+// 0x48c840: can_see), in stages 43..46, in Born From a Wish, while flag 625 is set, or when 0x507e00
+// finds the item's model lit: the strongest room light it was drawn with is over 0.1
+// (chrlight_lit), as the health drink at the foot of Wood Side's stairs is by the lobby's lamp.
 static bool items_update(const EvPlayer* p, EvAction* out)
 {
 	if (!p->action)
@@ -959,7 +962,8 @@ static bool items_update(const EvPlayer* p, EvAction* out)
 			continue;
 		if (!look_point(p->x, p->z, p->yaw, it->pos[0], it->pos[2], 400.0f))
 			continue;
-		if (!p->can_see && !(s_stage >= 43 && s_stage <= 46) && !prog_chapter() && !ev_flag(625))
+		if (!p->can_see && !(s_stage >= 43 && s_stage <= 46) && !prog_chapter() && !ev_flag(625) &&
+		    !(p->lit && p->lit(it->pos)))
 			continue;
 		ev_flag_set(it->flag + 1, true);
 		ev_give_item(it->gives_item, ev_item_get_amount(it->gives_item));
@@ -971,6 +975,27 @@ static bool items_update(const EvPlayer* p, EvAction* out)
 		return true;
 	}
 	return false;
+}
+
+// Playtest driver: which of items_update's tests refuses pickup i to a player at p ("" if none).
+const char* ev_pickup_why(int i, const EvPlayer* p)
+{
+	if (i < 0 || (u32)i >= s_nitems)
+		return "no such pickup";
+	const ItemRec* it = &s_items[i];
+	if (!item_lying(it, true))
+		return "not lying";
+	if (it->pos[1] < p->y - 750.0f || it->pos[1] > p->y + 100.0f)
+		return "height window";
+	if (!look_point(p->x, p->z, p->yaw, it->pos[0], it->pos[2], 400.0f))
+		return "look test";
+	if (!p->can_see && !(s_stage >= 43 && s_stage <= 46) && !prog_chapter() && !ev_flag(625) && !(p->lit && p->lit(it->pos)))
+		return "dark";
+	for (u32 k = 0; k < i; k++)
+		if (item_lying(&s_items[k], true) && s_items[k].pos[1] >= p->y - 750.0f && s_items[k].pos[1] <= p->y + 100.0f &&
+		    look_point(p->x, p->z, p->yaw, s_items[k].pos[0], s_items[k].pos[2], 400.0f))
+			return "an earlier pickup is taken first";
+	return "";
 }
 
 // Playtest driver: the stage's item pickups (where, what, and whether it is still there).

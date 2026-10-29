@@ -382,4 +382,21 @@ void chrlight_end(void)
 	L.active = false;
 }
 
+bool chrlight_lit(const float pos[3])
+{
+	// 0x50c3d0: the falloff past the model's radius times the light's intensity (field 2 of the pick,
+	// which 0x50bda0 sorts by and 0x507f00 keeps); 0x507e00 wants it over 0x8a2b60 (0.1)
+	float best = 0.0f;
+	for (int i = 0; i < NSLOT; i++) {
+		const Slot* s = &L.s[i];
+		if (s->kind != K_POINT && s->kind != K_SPOT)
+			continue;
+		float d[3] = { pos[0] - s->pos[0], pos[1] - s->pos[1], pos[2] - s->pos[2] };
+		float dist = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+		float f = clamp01((dist - 800.0f) * s->f_a + s->f_b) * intensity(s->col);
+		best = f > best ? f : best;
+	}
+	return best - 0.1f > 0.0f;
+}
+
 const char* chrlight_status(void) { return L.status[0] ? L.status : "chr lights -"; }
