@@ -20,7 +20,10 @@ LR3DS_MODEL="Old 3DS" tools/lr3ds/smoke.sh # the original 3DS model and the Old 
 
 Twelve scenarios: the title, New Game into the prologue, the observation deck, an apartment door, a
 jammed door, a save point, Continue, healing, Born From a Wish, an indoor cutscene, Angela's scene in
-the cemetery (outdoor tiles and a voice) and the pause menu. It fails when a run does not reach its last frame, and writes PNGs and a contact sheet
+the cemetery (outdoor tiles and a voice) and the pause menu. It fails when a run does not reach its last
+frame, and when Azahar logged something it lets pass but a console stops on: a read of unmapped memory
+(a NULL pointer) or `svcBreak` (citro3d's own checks, such as deleting a render target inside a frame).
+The playthrough runner (`tests/playtest/pt.sh`) fails on the same lines. It writes PNGs and a contact sheet
 (`sheet.png`) to `.lr3ds/smoke/`. Look at the sheet: the test cannot tell a black screen from a picture.
 
 ## Warp autotest (area, door or streaming changes)

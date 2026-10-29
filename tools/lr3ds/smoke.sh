@@ -1,7 +1,8 @@
 #!/bin/sh
 # Smoke test for port/sh23ds.3dsx in Azahar (headless): title screen, new game (prologue at the mirror),
 # stepping out of the restroom door to the observation deck, an apartment door warp, the jammed door message, a save point. Writes PNGs and
-# a contact sheet to .lr3ds/smoke/ and fails if a run does not reach its last frame.
+# a contact sheet to .lr3ds/smoke/ and fails if a run does not reach its last frame, or if Azahar logged
+# something it lets pass but a console stops on (a read of unmapped memory, svcBreak).
 #
 #   tools/lr3ds/smoke.sh
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -15,7 +16,12 @@ fail=0
 run() {   # name, debug.txt contents, frames, lr3ds options...
 	name=$1; dbg=$2; frames=$3; shift 3
 	printf "logos 0\n$dbg" > "$SD/debug.txt"   # logos 0: no start-up screens, so the frame counts hold
-	if "$RUN" 1200 --frames "$frames" --shot "$((frames - 5)):$OUT/$name.bmp" "$@" 2>&1 | grep -q "^\[done\] $frames frames"; then
+	log=$("$RUN" 1200 --frames "$frames" --shot "$((frames - 5)):$OUT/$name.bmp" "$@" 2>&1)
+	fatal=$(echo "$log" | grep -m1 -o "unmapped [A-Za-z0-9]* @ 0x[0-9A-Fa-f]* at PC 0x[0-9A-Fa-f]*\|broke execution.*")
+	if [ -n "$fatal" ]; then
+		echo "FAIL  $name (a console stops here: $fatal)"
+		fail=1
+	elif echo "$log" | grep -q "^\[done\] $frames frames"; then
 		sips -s format png "$OUT/$name.bmp" --out "$OUT/$name.png" >/dev/null && rm -f "$OUT/$name.bmp"
 		echo "ok    $name"
 	else

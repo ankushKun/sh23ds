@@ -39,5 +39,7 @@ rm -f "$SD/debug.txt"
 end=$(date +%s)
 p=$(grep -c " PASS " "$OUT/logs/$NAME.log" 2>/dev/null); f=$(grep -c " FAIL " "$OUT/logs/$NAME.log" 2>/dev/null)
 done=$(grep -c "# end of script" "$OUT/logs/$NAME.log" 2>/dev/null)
-echo "$NAME: pass ${p:-0} fail ${f:-0} finished ${done:-0} ($((end - start)) s, $(tail -1 "$OUT/logs/$NAME.lr3ds"))"
-[ "${f:-0}" = 0 ] && [ "${done:-0}" != 0 ]
+# what Azahar lets pass but a console stops on: a read of unmapped memory, svcBreak (citro3d's checks)
+fatal=$(grep -m1 -o "unmapped [A-Za-z0-9]* @ 0x[0-9A-Fa-f]* at PC 0x[0-9A-Fa-f]*\|broke execution.*" "$OUT/logs/$NAME.lr3ds")
+echo "$NAME: pass ${p:-0} fail ${f:-0} finished ${done:-0} ($((end - start)) s, $(tail -1 "$OUT/logs/$NAME.lr3ds"))${fatal:+, a console stops here: $fatal}"
+[ "${f:-0}" = 0 ] && [ "${done:-0}" != 0 ] && [ -z "$fatal" ]

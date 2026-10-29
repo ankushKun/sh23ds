@@ -25,6 +25,7 @@ static struct {
 	u32 flags, shown_flags;
 	int level;                   // the level the next frames that may are drawn at
 	int limit;                   // the levels below it could be made (VRAM, the soft pass's texture)
+	bool swap;                   // big is the other level's: replaced after the frame (make_big)
 	bool wanted;                 // this frame asked for a larger target
 	int used, drew[2];           // this frame's level, the last two frames'
 	int fit, hold, backoff, run;
@@ -39,19 +40,14 @@ void supersample_init(C3D_RenderTarget* top, u32 transfer)
 	S.limit = 3;
 }
 
-// The larger target for level lv, made in place of the other one (only one is kept: 3 MB of the
-// 6 MB of VRAM at most). Called at a frame's start, when the GPU is done with the last one.
+// The larger target for level lv. Only one is kept (3 MB of the 6 MB of VRAM at most), and one made
+// for the other level is replaced after the frame: citro3d stops the app (svcBreak) when a target
+// is deleted inside a frame, so supersample_target draws that frame at the screen's size and
+// supersample_frame_end, after C3D_FrameEnd, deletes the old one (citro3d waits for the GPU first).
 static bool make_big(int lv)
 {
-	if (S.big_level == lv)
-		return true;
-	if (S.big) {
-		if (S.shown == S.big)
-			S.shown = NULL;
-		C3D_RenderTargetDelete(S.big);
-		S.big = NULL;
-		S.big_level = 0;
-	}
+	if (S.big)
+		return S.big_level == lv;
 	S.big = C3D_RenderTargetCreate(LEVEL[lv].w, LEVEL[lv].h, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
 	if (!S.big)
 		return false;
@@ -63,13 +59,20 @@ C3D_RenderTarget* supersample_target(bool want)
 {
 	bool soft = picture_soft();
 	int lv = want ? S.level : 0;
-	while (lv > 0 && (lv >= S.limit || (soft && !picture_reserve(LEVEL[lv].w, LEVEL[lv].h)) || !make_big(lv))) {
+	while (lv > 0) {
+		if (S.big && S.big_level != lv && lv < S.limit) {
+			S.swap = true;           // the other level's target: this frame at the screen's size
+			lv = 0;
+			break;
+		}
+		if (lv < S.limit && (!soft || picture_reserve(LEVEL[lv].w, LEVEL[lv].h)) && make_big(lv))
+			break;
 		if (lv < S.limit)
 			S.limit = lv;            // could not be made: never asked for again
 		lv--;
+		if (want)
+			S.level = lv;
 	}
-	if (S.level > lv && want)
-		S.level = lv;
 	// on Soft the soft pass brings the scene to the screen's target, which is the one shown
 	C3D_RenderTarget* draw = lv > 0 ? S.big : S.top;
 	C3D_RenderTarget* show = lv > 0 && !soft ? S.big : S.top;
@@ -98,6 +101,14 @@ C3D_RenderTarget* supersample_screen(C3D_RenderTarget* t, int* sx, int* sy)
 
 void supersample_frame_end(int fps, int cap)
 {
+	if (S.swap) {                        // outside the frame now (make_big)
+		S.swap = false;
+		if (S.shown == S.big)
+			S.shown = NULL;
+		C3D_RenderTargetDelete(S.big);
+		S.big = NULL;
+		S.big_level = 0;
+	}
 	float gpu = C3D_GetDrawingTime();    // the frame before this one's
 	int measured = S.drew[1];
 	S.drew[1] = S.drew[0];

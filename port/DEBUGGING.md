@@ -63,7 +63,10 @@ or clear Azahar's shader cache for title `0000000000000000`. A `dumpframe` line 
 whether the game drew anything.
 
 For 3D, `--opt citra_factor_3d=100` on a headless run sets the slider the game reads, but Azahar's
-software renderer shows only the left eye, so use `dumpframe` for the right one. The software renderer
+software renderer shows only the left eye, so use `dumpframe` for the right one. Azahar carries on
+where a console stops: a read of unmapped memory logs `unmapped Read32 @ ... at PC ...` and a
+`svcBreak` logs `Emulated program broke execution`, and the smoke run and `pt.sh` fail on both (a
+console freezes or shows Luma's crash screen there). The software renderer
 also samples every texture without filtering: magnified textures look blockier than on a console, and
 the Picture's soft pass shows as single texels instead of its filter. Its OpenGL renderer needs
 OpenGL 4.3, which macOS does not have. With both eyes drawn
