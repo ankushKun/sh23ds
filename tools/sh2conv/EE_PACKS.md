@@ -143,7 +143,7 @@ the English messages.
 
 | Category | Converter | With the pack |
 | --- | --- | --- |
-| Essential Files: maps, `.cam`, `.cld` | `convert.py`, `collision.py`, `events.py`, `sound.py` (footstep surfaces) | read in place of the originals; textures capped at 256 like the originals' |
+| Essential Files: maps, `.cam`, `.cld` | `convert.py`, `collision.py`, `events.py`, `sound.py` (footstep surfaces) | read in place of the originals; textures at 512 like the originals' |
 | Essential Files: models, motions, cutscene scripts | `chr.py`, `demos.py` | read in place of the originals (Maria's Born From a Wish model through make_pack's folder of links too) |
 | Essential Files: messages | `events_pack.py`, `maps.py`, `ui.py` | read in place of the originals |
 | Essential Files: `obGB.fcl` | `fog.py` | copied in place of the original |
@@ -206,13 +206,14 @@ those parts out. `SH2EE_DIR` names another mod folder, as `CustomModFolder` does
 
 ## Texture sizes and the memory budget
 
-The port caps room and character textures at 256x256 (`convert.py`, `chr.py`, `demos.py`; ETC1 or
-ETC1A4 with mipmaps) and keeps up to 12 MB of earlier rooms' textures (`TEXCACHE_BUDGET`,
-`port/source/room.c`). Everything lives in linear memory, of which about 83..88 MB is free after an
-area change in the 124 MB mode (`port/PERFORMANCE.md`). None of the EE packages has larger room or
-character textures: Essential Files' maps and models carry textures at the original sizes, so the
-256 cap does not lose anything from the packs. Raising it would be a separate change (four times
-the memory and card reads per texture).
+The pack keeps room textures at the PC's 512 and model textures at their own sizes up to 1024
+(`convert.py`, `chr.py`, `demos.py`, `stagemodels.py`; ETC1 or ETC1A4 with mipmaps). The New 3DS
+keeps them whole and up to 24 MB of earlier rooms' textures (`profile_texcache_budget`,
+`port/source/room.c`); the Old 3DS profile reads them from 256 and 512 down, the sizes packs had
+before (`port/VISUALS.md`). Everything lives in linear memory, of which about 83..88 MB is free after
+an area change in the 124 MB mode (`port/PERFORMANCE.md`). None of the EE packages has larger room or
+character textures: Essential Files' maps and models carry textures at the original sizes, which
+the pack now keeps as they are.
 
 The classes the Image Enhancement Pack does improve:
 

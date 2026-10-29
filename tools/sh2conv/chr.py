@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert an SH2 character (.mdl + .anm files) into sh23ds S3C/S3A for GPU skinning on the 3DS.
 
-  chr.py <game data dir> <pack dir> <chr folder> <model.mdl> [anm ...] [--max-tex 512]
+  chr.py <game data dir> <pack dir> <chr folder> <model.mdl> [anm ...] [--max-tex 1024]
   e.g. chr.py "Silent Hill 2/data" pack jms hll_jms.mdl jms_basic1.anm
 
 Writes pack/chr/<folder>/<model>.s3c, <anm>.s3a, tex/<id>.t3x.
@@ -160,7 +160,7 @@ def main():
     ap.add_argument('folder')
     ap.add_argument('model')
     ap.add_argument('anims', nargs='*')
-    ap.add_argument('--max-tex', type=int, default=512)
+    ap.add_argument('--max-tex', type=int, default=1024)
     a = ap.parse_args()
     src = os.path.join(a.data, 'chr', a.folder)
     out = os.path.join(a.pack, 'chr', a.folder)

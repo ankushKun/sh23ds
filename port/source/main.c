@@ -784,6 +784,7 @@ static void warp_prefetch(const char* map, int stage, const float* pos)
 	if (s_stream_sync)
 		return;
 	int area = map[0] ? map_area(map) : -1;
+	stream_set_draft(true);
 	if (area >= 0)
 		stream_request(STREAM_PREFETCH, s_areas[area], map);
 	if (area >= 0 && area != s_area) {
@@ -5244,6 +5245,14 @@ int main(void)
 			perf_event("arrival", "%s: %s after %.2f s more of black", s_rooms[s_room],
 			           s_tiles_missing ? "tiles still missing" : "tiles in", s_arrival_t);
 		}
+		// a door's room and the tiles round it read their map textures from the 256 level, so the
+		// black screen lasts as long as before; the whole files follow once it shows (room.h)
+		bool door = s_warp_pending || s_arrival;
+		stream_set_draft(door);
+		if (s_state == ST_GAME && !door) {
+			room_tex_refine(PACK_DIR);
+			chr_refine();
+		}
 		if (s_state == ST_GAME && !s_paused && ((frame % 8) == 0 || s_arrival)) {
 			primary_update();    // walked onto a neighbouring tile
 			if (stream_update_ex(s_stream_sync)) {   // load / drop touching tiles around James
@@ -5364,6 +5373,8 @@ int main(void)
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		perf_part("r_wait", tw);          // the previous frame's GPU work and the vertical blank
 		neighbours_reap();
+		room_tex_reap();                 // textures room_tex_refine and chr_refine swapped out last frame
+		chr_reap();
 		// the item screen's model goes into its own texture first (itemview_render switches targets)
 		s_inv_tex = s_inv_open && s_state == ST_GAME ?
 		            itemview_render(inv_current(), (float)(svcGetSystemTick() - s_inv_tick) / (float)SYSCLOCK_ARM11 * 0.9f) :
@@ -5413,8 +5424,8 @@ int main(void)
 			printf("room   %-20s +%d tiles  \n", s_status, s_nnb);
 			printf("area   %d/%d  room %d/%d          \n", s_area + 1, s_nareas, s_room + 1, s_nrooms);
 			printf("verts  %-6lu tris %-6lu      \n", (unsigned long)s_cur.n_vertices, (unsigned long)(s_cur.n_indices / 3));
-			printf("draws  %-4lu textures %-4lu miss %lu  \n", (unsigned long)calls, (unsigned long)texcache_count(),
-			       (unsigned long)s_cur.missing_textures);
+			printf("draws  %-4lu textures %-4lu miss %lu draft %d  \n", (unsigned long)calls,
+			       (unsigned long)texcache_count(), (unsigned long)s_cur.missing_textures, room_tex_drafts());
 			// walls: the room's, then the stage code's this frame ("?": the pack has no stagewalls.bin)
 			char swn[12] = "?";
 			if (!stagewalls_missing())

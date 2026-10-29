@@ -2,7 +2,7 @@
 """Convert Silent Hill 2 (PC Director's Cut) in-engine cutscenes for sh23ds (port/source/demo.c).
 
   demos.py [--data <game data dir>] [--exe sh2pc.exe] [--out pack] [--only tenbou,haka_agl]
-           [--no-models] [--no-voices] [--max-tex 256]
+           [--no-models] [--no-voices] [--max-tex 1024]
 
 How the PC plays a cutscene (static analysis of sh2pc.exe, see port/CUTSCENES.md)
   A stage program calls DramaDemoMain (0x4a1c80) every frame with a DramaDemo_PlayInfo record from
@@ -815,7 +815,7 @@ def main():
     ap.add_argument('--only', help='comma separated keys')
     ap.add_argument('--no-models', action='store_true')
     ap.add_argument('--no-voices', action='store_true')
-    ap.add_argument('--max-tex', type=int, default=256)
+    ap.add_argument('--max-tex', type=int, default=1024)
     a = ap.parse_args()
     exe = Exe(a.exe)
     if exe.read(0x8a93c4, 8) != b'\0' * 8 or exe.u32(0x8a93cc) != 0x160c:

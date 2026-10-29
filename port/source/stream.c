@@ -1,6 +1,8 @@
 #include "stream.h"
 #include "sdsim.h"
 #include "sdio.h"
+#include "t3xcap.h"
+#include "profile.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,6 +18,8 @@ typedef struct {
 	u8* data;
 	long size;
 	int state;
+	bool door;          // asked during a door: a model's texture from its 512 level (stream_set_draft)
+	bool draft;         // and it was larger
 } FileJob;
 
 static struct {
@@ -29,15 +33,43 @@ static struct {
 	bool ready;
 	u32 done_count;
 	u32 last_ticks;
+	bool draft;
 	char status[48];
 } W;
 
-static u8* read_file(const char* path, long* size)
+static u8* read_tex(const char* path, int max_side, long* size)
 {
 	sdsim_open();
 	FILE* f = fopen(path, "rb");
 	if (!f)
 		return NULL;
+	u8* d = t3x_read_capped(f, max_side, size, NULL);
+	fclose(f);
+	return d;
+}
+
+// door: a model's texture asked for during a door comes from its 512 level, and *draft says whether
+// that left levels out (chr.c chr_refine reads the rest once the room shows)
+static u8* read_file(const char* path, long* size, bool door, bool* draft)
+{
+	if (draft)
+		*draft = false;
+	sdsim_open();
+	FILE* f = fopen(path, "rb");
+	if (!f)
+		return NULL;
+	size_t l = strlen(path);
+	bool map = strstr(path, "/bg/") != NULL;
+	if (l > 4 && !strcmp(path + l - 4, ".t3x") && (map || strstr(path, "/chr/"))) {
+		// a room's or a model's texture, without the levels this console doesn't keep
+		int cap = map ? profile_tex_max_map() : profile_tex_max_chr(), dropped = 0;
+		bool first = door && !map && cap > 512;
+		u8* d = t3x_read_capped(f, first ? 512 : cap, size, &dropped);
+		fclose(f);
+		if (draft)
+			*draft = first && dropped > 0;
+		return d;
+	}
 	fseek(f, 0, SEEK_END);
 	long n = ftell(f);
 	fseek(f, 0, SEEK_SET);
@@ -56,13 +88,13 @@ static void read_job(StreamJob* j)
 	u64 t0 = svcGetSystemTick();
 	char path[192];
 	snprintf(path, sizeof path, "%s/bg/%s/%s.s3m", W.pack, j->area, j->name);
-	j->s3m = read_file(path, &j->s3m_size);
+	j->s3m = read_file(path, &j->s3m_size, false, NULL);
 	if (j->s3m)
 		j->s3m = room_prepare(j->s3m, &j->s3m_size);   // the index rebase and boxes, off the main thread
 	snprintf(path, sizeof path, "%s/bg/%s/%s.s3l", W.pack, j->area, j->name);
-	j->s3l = read_file(path, &j->s3l_size);
+	j->s3l = read_file(path, &j->s3l_size, false, NULL);
 	snprintf(path, sizeof path, "%s/sound/floor/%s.sfm", W.pack, j->name);
-	j->sfm = read_file(path, &j->sfm_size);
+	j->sfm = read_file(path, &j->sfm_size, false, NULL);
 	j->ntex = 0;
 	if (j->s3m) {
 		u32 ids[STREAM_MAX_TEX];
@@ -76,10 +108,11 @@ static void read_job(StreamJob* j)
 			snprintf(path, sizeof path, "%s/bg/%s/tex/%08lx.t3x", W.pack, j->area, (unsigned long)ids[i]);
 			RoomTexBlob* b = &j->tex[j->ntex];
 			long size = 0;
-			b->data = read_file(path, &size);
+			b->data = read_tex(path, j->draft ? 256 : profile_tex_max_map(), &size);
 			if (b->data) {
 				b->id = ids[i];
 				b->size = (size_t)size;
+				b->draft = j->draft;
 				j->ntex++;
 			}
 		}
@@ -126,7 +159,7 @@ static bool read_files(void)
 	LightLock_Unlock(&W.lock);
 	if (!f)
 		return false;
-	f->data = read_file(f->path, &f->size);
+	f->data = read_file(f->path, &f->size, f->door, &f->draft);
 	LightLock_Lock(&W.lock);
 	f->state = J_DONE;
 	size_t l = strlen(f->path);
@@ -222,6 +255,8 @@ bool stream_pending(int key, const char* area)
 	return found;
 }
 
+void stream_set_draft(bool on) { W.draft = on; }
+
 bool stream_request(int key, const char* area, const char* name)
 {
 	if (!W.ready || stream_pending(key, area))
@@ -237,6 +272,7 @@ bool stream_request(int key, const char* area, const char* name)
 		snprintf(j->area, sizeof j->area, "%s", area);
 		snprintf(j->name, sizeof j->name, "%s", name);
 		j->ncached = texcache_ids(area, j->cached, STREAM_MAX_TEX * 2);
+		j->draft = W.draft && profile_tex_max_map() > 256;
 		j->state = J_QUEUED;
 	}
 	LightLock_Unlock(&W.lock);
@@ -344,6 +380,8 @@ static void want_locked(const char* path)
 	snprintf(free_one->path, sizeof free_one->path, "%s", path);
 	free_one->data = NULL;
 	free_one->size = 0;
+	free_one->door = W.draft;
+	free_one->draft = false;
 	free_one->state = J_QUEUED;
 }
 
@@ -357,8 +395,12 @@ void stream_want_file(const char* path)
 	LightEvent_Signal(&W.wake);
 }
 
-void* stream_take_file(const char* path, long* size)
+void* stream_take_file(const char* path, long* size) { return stream_take_file_ex(path, size, NULL); }
+
+void* stream_take_file_ex(const char* path, long* size, bool* draft)
 {
+	if (draft)
+		*draft = false;
 	if (!W.ready)
 		return NULL;
 	for (;;) {
@@ -378,6 +420,8 @@ void* stream_take_file(const char* path, long* size)
 		if (f) {
 			d = f->data;
 			*size = f->size;
+			if (draft)
+				*draft = f->draft;
 			f->data = NULL;
 			f->state = J_FREE;
 		}

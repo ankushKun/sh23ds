@@ -6,7 +6,7 @@ Key facts:
 
 - What it is: a new engine written in C for the 3DS's ARM11 CPU and PICA200 GPU, ported function by function from the PC executable. It is not an emulator and not the 2024 remake.
 - Consoles: New Nintendo 3DS, New 3DS XL and New 2DS XL at full settings; original 3DS, 3DS XL and 2DS with a lighter profile aimed at 30 fps.
-- Requirements: Luma3DS custom firmware, FBI or the Homebrew Launcher, 1.3 GB on the SD card, and the PC release of Silent Hill 2: Director's Cut (sh2pc.exe MD5 f3f5360298b6d0f6f2e09cf24a0925d1). The v1.0 PC release isn't supported.
+- Requirements: Luma3DS custom firmware, FBI or the Homebrew Launcher, 1.8 GB on the SD card, and the PC release of Silent Hill 2: Director's Cut (sh2pc.exe MD5 f3f5360298b6d0f6f2e09cf24a0925d1). The v1.0 PC release isn't supported.
 - Content: all 17 areas, every puzzle and boss, all six endings, New Game+, Born From a Wish, all 128 in-engine cutscenes and the FMVs, the PC camera, lighting, fog and flashlight, and music and sound from the game's own archives.
 - Two screens: the game on the top screen; the map, items and memos on the touch screen.
 - Game data: the packer runs in a desktop browser (Pyodide and ffmpeg.wasm, nothing uploaded) or in Docker (ghcr.io/ankushkun/sh23ds-packer). It uses Enhanced Edition packs if they are installed.

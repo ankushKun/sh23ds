@@ -8,6 +8,8 @@
 #include <tex3ds.h>
 #include "stream.h"
 #include "sdsim.h"
+#include "t3xcap.h"
+#include "profile.h"
 
 #define CHR_LIGHT_SCALE 0.5f
 
@@ -107,6 +109,85 @@ static void parts_from_layout(Character* c, const char* name)
 		c->draws[p->draw].flags |= (u32)p->pose << 8;
 }
 
+static void tex_setup(C3D_Tex* t)
+{
+	C3D_TexSetFilter(t, GPU_LINEAR, GPU_LINEAR);
+	C3D_TexSetFilterMipmap(t, GPU_LINEAR);
+	C3D_TexSetWrap(t, GPU_REPEAT, GPU_REPEAT);
+}
+
+// ---------------------------------------------------------------- drafts (chr.h chr_refine)
+
+#define DRAFT_MAX 48
+static struct { Character* c; int i; bool asked; char path[112]; } s_draft[DRAFT_MAX];
+static int s_ndraft;
+static C3D_Tex s_retired[4];
+static int s_nretired;
+
+static void draft_add(Character* c, int i, const char* path)
+{
+	if (s_ndraft == DRAFT_MAX)
+		return;                          // stays at its 512 level
+	s_draft[s_ndraft].c = c;
+	s_draft[s_ndraft].i = i;
+	s_draft[s_ndraft].asked = false;
+	snprintf(s_draft[s_ndraft].path, sizeof s_draft[0].path, "%.111s", path);
+	s_ndraft++;
+}
+
+static void draft_forget(const Character* c)
+{
+	for (int k = 0; k < s_ndraft;)
+		if (s_draft[k].c == c)
+			s_draft[k] = s_draft[--s_ndraft];
+		else
+			k++;
+}
+
+void chr_reap(void)
+{
+	for (int i = 0; i < s_nretired; i++)
+		C3D_TexDelete(&s_retired[i]);
+	s_nretired = 0;
+}
+
+void chr_refine(void)
+{
+	for (int k = 0; k < s_ndraft; k++) {
+		if (!s_draft[k].asked) {
+			if (stream_file_state(s_draft[k].path) == -2) {
+				s_draft[k] = s_draft[--s_ndraft];   // no reader thread: it stays at its 512 level
+				return;
+			}
+			stream_want_file(s_draft[k].path);
+			s_draft[k].asked = true;
+			continue;
+		}
+		int st = stream_file_state(s_draft[k].path);
+		if (st == 0)
+			continue;
+		if (st < 0) {                    // dropped (a full queue, a warp): asked again
+			s_draft[k].asked = false;
+			continue;
+		}
+		long n = 0;
+		u8* d = stream_take_file(s_draft[k].path, &n);
+		Character* c = s_draft[k].c;
+		int i = s_draft[k].i;
+		s_draft[k] = s_draft[--s_ndraft];
+		C3D_Tex t;
+		Tex3DS_Texture t3x = d && s_nretired < 4 ? Tex3DS_TextureImport(d, n, &t, NULL, false) : NULL;
+		free(d);
+		if (t3x) {
+			Tex3DS_TextureFree(t3x);
+			tex_setup(&t);
+			s_retired[s_nretired++] = c->tex[i];   // the frame in flight may still sample it
+			c->tex[i] = t;
+		}
+		return;                          // one swap a frame
+	}
+}
+
 bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t errlen)
 {
 	memset(c, 0, sizeof *c);
@@ -161,7 +242,8 @@ bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t
 	for (u32 i = 0; i < h->textures; i++) {
 		snprintf(path, sizeof path, "%s/tex/%08lx.t3x", dir, (unsigned long)tex_ids[i]);
 		long tsize = 0;
-		void* blob = stream_take_file(path, &tsize);
+		bool draft = false;
+		void* blob = stream_take_file_ex(path, &tsize, &draft);
 		Tex3DS_Texture t = NULL;
 		if (blob) {
 			t = Tex3DS_TextureImport(blob, tsize, &c->tex[i], NULL, false);
@@ -171,17 +253,20 @@ bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t
 			if (!f)
 				continue;
 			sdsim_open();
-			t = Tex3DS_TextureImportStdio(f, &c->tex[i], NULL, false);
-			sdsim_read((u32)ftell(f));
+			blob = t3x_read_capped(f, profile_tex_max_chr(), &tsize, NULL);
 			fclose(f);
+			if (blob) {
+				t = Tex3DS_TextureImport(blob, tsize, &c->tex[i], NULL, false);
+				free(blob);
+			}
 		}
 		if (!t)
 			continue;
 		Tex3DS_TextureFree(t);
-		C3D_TexSetFilter(&c->tex[i], GPU_LINEAR, GPU_LINEAR);
-		C3D_TexSetFilterMipmap(&c->tex[i], GPU_LINEAR);
-		C3D_TexSetWrap(&c->tex[i], GPU_REPEAT, GPU_REPEAT);
+		tex_setup(&c->tex[i]);
 		c->tex_ok[i] = true;
+		if (draft)
+			draft_add(c, i, path);
 	}
 	free(d);
 	snprintf(path, sizeof path, "%s/%s.kg1", dir, name);   // shadow model, optional (shadow.c)
@@ -208,6 +293,7 @@ void chr_set_parts(Character* c, int a, int b, int d)
 
 void chr_free(Character* c)
 {
+	draft_forget(c);
 	if (c->draws)
 		for (u32 i = 0; i < c->n_draws; i++)
 			if (c->draws[i].indices)

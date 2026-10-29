@@ -65,6 +65,7 @@ typedef struct {
 	u32 id;
 	void* data;
 	size_t size;
+	bool draft;         // read from its 256 level for a door (stream_set_draft): room_tex_refine reads the rest
 } RoomTexBlob;
 
 // The same from an .s3m already in memory (takes ownership of data). Textures come from the blobs
@@ -87,6 +88,14 @@ void room_free(Room* room);
 
 // Texture cache shared by rooms of one area (textures are keyed by SH2 texture id).
 void texcache_clear(void);
+// A door reads the new room's map textures from their 256 level, the size packs had before, so the
+// black screen lasts no longer than it did; once the room shows, this asks the reader thread for the
+// whole files and swaps each one in as it comes, at the same address the materials point to (a few
+// frames per texture, main thread, between frames). room_tex_reap frees what was swapped out, after
+// C3D_FrameBegin has waited for the frame that may still have drawn it.
+void room_tex_refine(const char* pack);
+void room_tex_reap(void);
+int room_tex_drafts(void);          // drafts in the cache (debug page)
 // Keeps the textures of the resident rooms and trims the cache (call after loading rooms).
 void texcache_keep(const Room* const* rooms, int n);
 u32 texcache_count(void);

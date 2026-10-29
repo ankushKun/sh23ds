@@ -13,6 +13,7 @@ static struct {
 	int hw, quality, layout, fps; // CHOICE_*
 	int helper_core;         // options.txt "helpercore" (testing): -1 auto, else that core
 	int tex_half;            // options.txt "texhalf": 0 auto, 1 always, 2 never
+	int tex_full;            // options.txt "texfull": 0 auto, 1 the PC's sizes, 2 the earlier caps
 	char status[80];
 } P;
 
@@ -85,6 +86,7 @@ bool profile_option(const char* key, int val)
 	else if (!strcmp(key, "framerate")) P.fps = clamp_choice(val);
 	else if (!strcmp(key, "helpercore")) P.helper_core = val >= -2 && val <= 2 ? val : -1;
 	else if (!strcmp(key, "texhalf")) P.tex_half = clamp_choice(val);
+	else if (!strcmp(key, "texfull")) P.tex_full = clamp_choice(val);
 	else return false;
 	return true;
 }
@@ -166,7 +168,14 @@ bool profile_tex_half(void)
 	if (P.tex_half) return P.tex_half == 1;
 	return __ctru_linear_heap_size < 32 * MB;
 }
-u32 profile_texcache_budget(void) { return __ctru_linear_heap_size >= 80 * MB ? 12 * MB : 6 * MB; }
+u32 profile_texcache_budget(void) { return __ctru_linear_heap_size >= 80 * MB ? 24 * MB : 6 * MB; }
+static bool tex_full(void)
+{
+	if (P.tex_full) return P.tex_full == 1;
+	return profile_get() == PROFILE_NEW3DS && __ctru_linear_heap_size >= 56 * MB;
+}
+int profile_tex_max_map(void) { return tex_full() ? 512 : 256; }
+int profile_tex_max_chr(void) { return tex_full() ? 1024 : 512; }
 int profile_max_neighbours(void) { return low() ? 2 : 4; }
 float profile_stream_dist(void) { return low() ? 5000.0f : 7000.0f; }
 int profile_fog_sprites(void) { return low() ? 72 : 144; }

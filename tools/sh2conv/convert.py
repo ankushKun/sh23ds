@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert the user's Silent Hill 2 PC data into the sh23ds pack for the 3DS.
 
-  convert.py <game data dir> <pack out dir> [--areas ap,hp] [--max-tex 256] [--rooms ap01,ap06]
+  convert.py <game data dir> <pack out dir> [--areas ap,hp] [--max-tex 512] [--rooms ap01,ap06]
 
 Writes, per area:
   bg/<area>/<room>.s3m        room geometry (format below)
@@ -246,7 +246,7 @@ def main():
     ap.add_argument('pack')
     ap.add_argument('--areas', default='')
     ap.add_argument('--rooms', default='')
-    ap.add_argument('--max-tex', type=int, default=256)
+    ap.add_argument('--max-tex', type=int, default=512)
     ap.add_argument('--bg', default='bg', help='source folder under data (bg2 holds the DC-only area ma)')
     a = ap.parse_args()
     areas = a.areas.split(',') if a.areas else sorted(os.listdir(os.path.join(a.data, a.bg)))

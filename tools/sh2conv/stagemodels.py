@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Convert the models the stages place in their rooms (the stage data's mdl_list) for the 3DS.
 
-  stagemodels.py [--data <game data dir>] [--exe sh2pc.exe] [--out pack] [--max-tex 256]
+  stagemodels.py [--data <game data dir>] [--exe sh2pc.exe] [--out pack] [--max-tex 1024]
                  [--events pack/events/events.json]
 
 How the PC places them
@@ -65,7 +65,7 @@ def main():
     ap.add_argument('--exe', default=demos.DEFAULT_EXE)
     ap.add_argument('--out', default=demos.DEFAULT_OUT)
     ap.add_argument('--events', default=None)
-    ap.add_argument('--max-tex', type=int, default=256)
+    ap.add_argument('--max-tex', type=int, default=1024)
     a = ap.parse_args()
     exe = Exe(a.exe)
     table = model_table(exe)

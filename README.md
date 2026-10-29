@@ -45,7 +45,7 @@ You need:
 
 - a New 3DS, New 2DS XL, or any original 3DS or 2DS, running [Luma3DS](https://3ds.hacks.guide/)
 - the PC release of *Silent Hill 2: Director's Cut* (the packer checks for the retail `sh2pc.exe`)
-- about 1.3 GB free on the SD card
+- about 1.8 GB free on the SD card
 
 Then:
 

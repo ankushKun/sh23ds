@@ -1,4 +1,7 @@
 #include "room.h"
+#include "t3xcap.h"
+#include "stream.h"
+#include "perf.h"
 #include "sdsim.h"
 #include "sdio.h"
 #include <stddef.h>
@@ -18,6 +21,7 @@ typedef struct {
 	u32 bytes;
 	C3D_Tex tex;
 	bool ok;
+	bool draft;             // from its 256 level (RoomTexBlob.draft), the rest still to read
 } TexEntry;
 
 static TexEntry s_cache[TEXCACHE_MAX];
@@ -119,6 +123,31 @@ static void tex_halve(C3D_Tex* t)
 static bool s_map_mips;
 void room_set_map_mipmaps(bool on) { s_map_mips = on; }
 
+// Sampling for a map texture just made (texcache_get, room_tex_refine)
+static void tex_setup(TexEntry* e)
+{
+	e->bytes = e->tex.size * 4 / 3;      // level 0 plus the mipmap chain
+	C3D_TexSetFilter(&e->tex, GPU_LINEAR, GPU_LINEAR);
+	C3D_TexSetFilterMipmap(&e->tex, GPU_LINEAR);
+	// 0x459320 makes the map textures with one level (0x457460 passes the header's byte 0x15, 0 in
+	// every map), so the PC never samples a smaller one. The pack's mipmaps of these atlases blend
+	// each cell with its neighbours, which drew a line along every quad edge of the ground on a
+	// console when the whole chain was sampled. The pack keeps the PC's 512 atlases, and they are
+	// sampled down to the level whose larger side is 256 and no further: near walls and ground get
+	// the PC's texels, far ones the 256 level that packs before had as their only one, so nothing
+	// blends wider than it did then (debug.txt "mapmips 1" puts the whole chain back)
+	if (!s_map_mips) {
+		int top = e->tex.width > e->tex.height ? e->tex.width : e->tex.height, lv = 0;
+		while (lv < e->tex.maxLevel && top >> (lv + 1) >= 256)
+			lv++;
+		e->tex.maxLevel = lv;
+	}
+	// 0x5b4f10 sets D3DTSS_ADDRESSU and ADDRESSV to D3DTADDRESS_CLAMP on stage 0 for the whole map,
+	// and the material setup (0x5b2f90) never changes them: a quad on a cell at the atlas' border
+	// must not filter in the far side of the atlas, and the few UVs past 0..1 stop at the edge
+	C3D_TexSetWrap(&e->tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+}
+
 static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const RoomTexBlob* tex, int ntex)
 {
 	if (strcmp(area, s_cache_area) != 0) {
@@ -146,6 +175,7 @@ static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const R
 	for (int i = 0; i < ntex; i++)
 		if (tex[i].id == id && tex[i].data) {
 			t3x = Tex3DS_TextureImport(tex[i].data, tex[i].size, &e->tex, NULL, false);
+			e->draft = tex[i].draft;
 			break;
 		}
 	if (!t3x) {
@@ -155,30 +185,110 @@ static C3D_Tex* texcache_get(const char* pack, const char* area, u32 id, const R
 		if (!f)
 			return NULL;
 		sdsim_open();
-		t3x = Tex3DS_TextureImportStdio(f, &e->tex, NULL, false);
-		sdsim_read((u32)ftell(f));
+		long size = 0;
+		u8* blob = t3x_read_capped(f, profile_tex_max_map(), &size, NULL);
 		fclose(f);
+		if (blob) {
+			t3x = Tex3DS_TextureImport(blob, size, &e->tex, NULL, false);
+			free(blob);
+		}
 	}
 	if (!t3x)
 		return NULL;
 	Tex3DS_TextureFree(t3x);
 	if (profile_tex_half())
 		tex_halve(&e->tex);
-	e->bytes = e->tex.size * 4 / 3;      // level 0 plus the mipmap chain
-	C3D_TexSetFilter(&e->tex, GPU_LINEAR, GPU_LINEAR);
-	C3D_TexSetFilterMipmap(&e->tex, GPU_LINEAR);
-	// 0x459320 makes the map textures with one level (0x457460 passes the header's byte 0x15, 0 in
-	// every map), so the PC never samples a smaller one. The pack's mipmaps of these atlases blend
-	// each cell with its neighbours, which drew a line along every quad edge of the ground on a
-	// console; only level 0 is sampled, as on the PC (debug.txt "mapmips 1" puts the chain back)
-	if (!s_map_mips)
-		e->tex.maxLevel = 0;
-	// 0x5b4f10 sets D3DTSS_ADDRESSU and ADDRESSV to D3DTADDRESS_CLAMP on stage 0 for the whole map,
-	// and the material setup (0x5b2f90) never changes them: a quad on a cell at the atlas' border
-	// must not filter in the far side of the atlas, and the few UVs past 0..1 stop at the edge
-	C3D_TexSetWrap(&e->tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+	tex_setup(e);
 	e->ok = true;
 	return &e->tex;
+}
+
+// ---------------------------------------------------------------- drafts (room.h room_tex_refine)
+
+#define REFINE_ASKED 8               // whole files asked of the reader thread at once
+static struct { u32 slot, id; char path[160]; } s_asked[REFINE_ASKED];
+static int s_nasked;
+static C3D_Tex s_retired[REFINE_ASKED];
+static int s_nretired;
+static u64 s_refine_t0;              // the first ask of a run (perf.txt "refine" line)
+static int s_refined;
+
+int room_tex_drafts(void)
+{
+	int n = 0;
+	for (u32 i = 0; i < s_cached; i++)
+		n += s_cache[i].id && s_cache[i].draft;
+	return n;
+}
+
+void room_tex_reap(void)
+{
+	for (int i = 0; i < s_nretired; i++)
+		C3D_TexDelete(&s_retired[i]);
+	s_nretired = 0;
+}
+
+// The whole file of an entry asked for earlier, in place of its draft; false while it is not read yet
+static bool refine_take(int k)
+{
+	int st = stream_file_state(s_asked[k].path);
+	if (st == 0)
+		return false;
+	if (st < 0)
+		return true;                     // dropped (a full queue, a warp): asked again
+	long n = 0;
+	u8* d = stream_take_file(s_asked[k].path, &n);
+	TexEntry* e = &s_cache[s_asked[k].slot];
+	bool same = s_asked[k].slot < s_cached && e->id == s_asked[k].id && e->ok && e->draft;
+	if (same)
+		e->draft = false;                // read once, whatever came of it
+	C3D_Tex t;
+	Tex3DS_Texture t3x = d && same && s_nretired < REFINE_ASKED ? Tex3DS_TextureImport(d, n, &t, NULL, false) : NULL;
+	free(d);
+	if (t3x) {
+		Tex3DS_TextureFree(t3x);
+		s_retired[s_nretired++] = e->tex;    // the frame in flight may still sample it
+		e->tex = t;
+		tex_setup(e);
+		s_refined++;
+	}
+	return true;
+}
+
+void room_tex_refine(const char* pack)
+{
+	for (int k = 0; k < s_nasked; k++)
+		if (refine_take(k)) {            // one swap a frame
+			s_asked[k] = s_asked[--s_nasked];
+			if (!s_nasked && s_refine_t0 && !room_tex_drafts()) {
+				perf_event("refine", "%d textures whole after %.2f s", s_refined, perf_ms(svcGetSystemTick() - s_refine_t0) / 1000.0f);
+				s_refine_t0 = 0;
+				s_refined = 0;
+			}
+			return;
+		}
+	for (u32 i = 0; i < s_cached && s_nasked < REFINE_ASKED; i++) {
+		TexEntry* e = &s_cache[i];
+		if (!e->id || !e->ok || !e->draft)
+			continue;
+		bool asked = false;
+		for (int k = 0; k < s_nasked && !asked; k++)
+			asked = s_asked[k].slot == i && s_asked[k].id == e->id;
+		if (asked)
+			continue;
+		snprintf(s_asked[s_nasked].path, sizeof s_asked[0].path, "%s/bg/%s/tex/%08lx.t3x", pack, s_cache_area,
+		         (unsigned long)e->id);
+		if (stream_file_state(s_asked[s_nasked].path) == -2) {
+			e->draft = false;            // no reader thread: the draft stays
+			continue;
+		}
+		stream_want_file(s_asked[s_nasked].path);
+		if (!s_refine_t0)
+			s_refine_t0 = svcGetSystemTick();
+		s_asked[s_nasked].slot = i;
+		s_asked[s_nasked].id = e->id;
+		s_nasked++;
+	}
 }
 
 typedef struct {

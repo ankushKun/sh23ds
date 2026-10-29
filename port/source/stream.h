@@ -23,6 +23,7 @@ typedef struct {
 	u32 cached[STREAM_MAX_TEX * 2];  // ids the texture cache had when asked (not read again)
 	int ncached;
 	u32 read_ticks;                  // time the worker spent reading
+	bool draft;                      // its textures from their 256 level (stream_set_draft)
 	int state;                       // internal
 } StreamJob;
 
@@ -30,6 +31,11 @@ bool stream_init(const char* pack_dir);
 void stream_exit(void);
 // Queues a room unless it is queued already; false when the queue is full.
 bool stream_request(int key, const char* area, const char* name);
+// While on, rooms queued read their map textures from the 256 level (room.h room_tex_refine), and
+// files queued read a model's texture from the 512 level (chr.h chr_refine): a door's room, the tiles
+// round it and the models it brings, which the black screen waits for. Off for what loads out of sight
+// while James walks.
+void stream_set_draft(bool on);
 bool stream_pending(int key, const char* area);
 // A finished job (main thread), or NULL. Hand it back with stream_release.
 StreamJob* stream_take(void);
@@ -50,6 +56,8 @@ void stream_flush(const char* area);
 // still being read, or NULL when it was not asked for.
 void stream_want_file(const char* path);
 void* stream_take_file(const char* path, long* size);
+// The same, with whether a model's texture came from its 512 level only (asked during a door).
+void* stream_take_file_ex(const char* path, long* size, bool* draft);
 bool stream_files_busy(void);
 // 1 when a file asked for is read (stream_take_file will not wait), 0 while it is queued or being
 // read, -1 when nobody asked for it, -2 when there is no reader thread (read it yourself).

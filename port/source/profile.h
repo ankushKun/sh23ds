@@ -72,7 +72,15 @@ int profile_music_core(void);
 // little memory) or "texhalf 1" asks for it. Room textures turned out to be well under 1 MB of a
 // room's memory (port/OLD3DS.md), so the Old 3DS profile keeps them full size. Characters always do.
 bool profile_tex_half(void);
-u32 profile_texcache_budget(void);  // texture kept from earlier rooms: 12 MB, 6 MB under 80 MB of linear heap
+u32 profile_texcache_budget(void);  // texture kept from earlier rooms: 24 MB, 6 MB under 80 MB of linear heap
+// The largest texture side kept (t3xcap.h). The pack has the PC's sizes: 512 for the map, up to
+// 1024 x 512 for characters. The New 3DS profile with 56 MB of linear heap or more (the 124 MB and
+// 80 MB modes) keeps them whole; the Old 3DS profile, or less memory (a 3dsx from the Homebrew
+// Launcher), keeps them from the level that fits 256 for the map and 512 for characters, the sizes
+// packs had before, so those consoles read and keep what they did. "texfull 1" or "2" in options.txt
+// forces one or the other.
+int profile_tex_max_map(void);
+int profile_tex_max_chr(void);
 int profile_max_neighbours(void);   // resident touching tiles in the open areas (main.c MAX_NB at most)
 float profile_stream_dist(void);    // load a touching tile when James is this close to it
 int profile_fog_sprites(void);      // fog sprite budget (fog.c FOG_MAX at most)

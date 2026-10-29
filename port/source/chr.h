@@ -53,6 +53,12 @@ typedef struct {
 
 bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t errlen);
 void chr_free(Character* c);
+// A model loaded during a door gets its textures from their 512 level (stream.h stream_set_draft),
+// so the black screen lasts no longer than it did; once the room shows, chr_refine reads each whole
+// file and swaps it in, one a frame, at the same place in the Character (main thread, between
+// frames). chr_reap frees what was swapped out, after C3D_FrameBegin.
+void chr_refine(void);
+void chr_reap(void);
 bool anim_load(Anim* a, const char* path);
 void anim_free(Anim* a);
 int clips_load(AnimClip* clips, int max, const char* path);

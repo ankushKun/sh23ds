@@ -52,11 +52,15 @@ top: shadows are drawn when both allow them, and the fog sprites need Complex an
 quality level. The test keys `texhalf` and `helpercore` are read at start-up only; optmenu.c does
 not keep them when it rewrites the file.
 
-Memory, not the profile, decides two more things. Room textures load from their second mip level
-(half the width and height, a quarter of the memory, from the same `.t3x` files) only when the linear
-heap is under 32 MB, as for a 3dsx started from a title with little memory; `texhalf 1` or `2` in
-`options.txt` forces it on or off. The texture cache of earlier rooms keeps 12 MB with 80 MB of linear
-heap or more and 6 MB below that. Halving was the Old 3DS profile's default at first, but the
+The pack keeps textures at the PC's sizes (512 for the map, up to 1024 x 512 for models,
+`VISUALS.md`). The Old 3DS profile keeps them at the sizes packs had before, 256 for the map and 512
+for models: `t3xcap.c` reads only the levels from that size down, so the card reads and the memory are
+what they were (`profile_tex_max_map` / `_chr`, `texfull 1` or `2` in `options.txt` to force either).
+Memory, not the profile, decides two more things. Room textures load from one level further down
+(half the width and height again, a quarter of the memory, from the same `.t3x` files) only when the
+linear heap is under 32 MB, as for a 3dsx started from a title with little memory; `texhalf 1` or `2`
+in `options.txt` forces it on or off. The texture cache of earlier rooms keeps 24 MB with 80 MB of
+linear heap or more and 6 MB below that. Halving was the Old 3DS profile's default at first, but the
 measurements below showed room textures to be a small part of a room's memory: `memtest 1` over
 ten rooms of different areas in the 64 MB mode had only 0.2 to 0.6 MB more linear memory free with
 them halved, for a visibly blurrier picture.
