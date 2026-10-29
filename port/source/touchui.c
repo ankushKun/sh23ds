@@ -1081,6 +1081,8 @@ static void draw_map(void)
 		text(FONT_SMALL, 160, 116 - lh * 0.5f, "Drag to move the map", FONT_CENTER, s_grey_top, s_grey_bottom);
 		hit(16, 34, 304, 198, HIT_DRAG, 0, 0, 0);
 	} else {
+		// behind the pads, a drag moves the full-width sheet up and down (map.c)
+		hit(16, 34, 304, 198, HIT_DRAG, 0, 0, 0);
 		pad(110, 40, 210, 80, "Floor up", KEY_DUP, 0, -1);
 		pad(110, 140, 210, 180, "Floor down", KEY_DDOWN, 0, 1);
 		pad(20, 90, 104, 130, "Other map", KEY_DLEFT, -1, 0);

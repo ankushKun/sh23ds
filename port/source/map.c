@@ -38,6 +38,14 @@ static int s_room;               // PC room id of the player (FUN_00495220)
 static int s_shown, s_james;     // DAT_00950528, FUN_0049a7e0()
 static int s_zoom_state;         // DAT_00950520: 0 out, 1 zooming in, 2 in, 3 zooming out
 static float s_zoom;             // DAT_00950530
+// The port draws the map across the whole top screen (the PC fills the 4:3 middle): uniformly 400 /
+// 320 larger, so the sheet stands 300 pixels high and FULL_CROP map units of it are out of sight at
+// the top and bottom together. s_vy (map units) says where it stands: on James' arrow while zoomed out
+// (the top of the sheet, where its title is, when he is not on it) plus what a drag on the touch
+// screen moved it (s_vy_user), and with the pan while zoomed in, so every edge can still be reached.
+#define FULL_SCALE 1.25f
+#define FULL_CROP 51.2f          // 512 * (1 - 240 / 300) / 2
+static float s_vy, s_vy_user;
 static bool s_open_in = true;    // the Game Options' Map: Zoom In (the PC's default) or Zoom Out
 static float s_cx, s_cy;         // DAT_009504cc / 009504f4: the zoomed view's centre, map units
 static C3D_Tex s_tex, s_mark;
@@ -432,6 +440,7 @@ static void show(int m)
 	s_shown = m;
 	textures_for(m);
 	s_cx = s_cy = 0.0f;
+	s_vy_user = 0.0f;
 	float X, Y;
 	if (m == s_james && james_pos(&X, &Y))
 		s_cx = 2.0f * X, s_cy = 2.0f * Y;
@@ -624,19 +633,32 @@ bool map_update(u32 down, u32 held, const circlePosition* cp, float dt)
 
 void map_drag(float dx, float dy)
 {
-	// the zoomed map follows the finger: zoomed in, map_draw shows 512 texels across 320 pixels and
-	// 512 down 240, so a pixel of drag moves the map a pixel on the top screen
-	if (!s_open || s_mode >= 0 || s_zoom_state != 2)
+	// the zoomed map follows the finger: zoomed in, map_draw shows 512 texels across 400 pixels and
+	// 512 down 300 (the full-width sheet), so a pixel of drag moves the map a pixel on the top screen
+	if (!s_open || s_mode >= 0)
 		return;
-	s_cx -= dx * (512.0f / 320.0f);
-	s_cy -= dy * (512.0f / 240.0f);
+	if (s_zoom_state == 0) {
+		// zoomed out: up and down, what the full-width sheet leaves above or below
+		s_vy_user = fminf(fmaxf(s_vy_user - dy * (512.0f / 300.0f), -2.0f * FULL_CROP), 2.0f * FULL_CROP);
+		// past an end there is nothing more to show: no slack to drag back through first
+		float X, Y, base = -FULL_CROP;
+		if (s_shown == s_james && james_pos(&X, &Y))
+			base = fminf(fmaxf(Y, -FULL_CROP), FULL_CROP);
+		s_vy_user = fminf(fmaxf(s_vy_user, -FULL_CROP - base), FULL_CROP - base);
+		return;
+	}
+	if (s_zoom_state != 2)
+		return;
+	s_cx -= dx * (512.0f / 400.0f);
+	s_cy -= dy * (512.0f / 300.0f);
 	s_cx = s_cx > 256.0f ? 256.0f : s_cx < -256.0f ? -256.0f : s_cx;
 	s_cy = s_cy > 256.0f ? 256.0f : s_cy < -256.0f ? -256.0f : s_cy;
 }
 
-// Map units to top-screen pixels: the map fills 320x240 (4:3) in the middle of the screen.
-static float sx(float u) { return 200.0f + u * (320.0f / 512.0f); }
-static float sy(float u) { return 120.0f + u * (240.0f / 512.0f); }
+// Map units to top-screen pixels: the PC's 4:3 sheet (320 x 240 for 512 x 512 units) FULL_SCALE
+// larger, the whole width, standing at s_vy.
+static float sx(float u) { return 200.0f + u * (320.0f / 512.0f) * FULL_SCALE; }
+static float sy(float u) { return 120.0f + (u - s_vy) * (240.0f / 512.0f) * FULL_SCALE; }
 
 static void quad(C3D_Tex* tex, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, u32 rgba)
 {
@@ -652,12 +674,24 @@ void map_draw(void)
 	if (!s_open || !s_draw)
 		return;
 	float z = s_zoom, f = z / (2.0f - z);
+	{
+		// where the full-width sheet stands (s_vy): zoomed out on his arrow (or the sheet's top),
+		// zoomed in with the pan, in between the one into the other
+		float X, Y, out = -FULL_CROP;
+		if (s_shown == s_james && james_pos(&X, &Y))
+			out = Y * (1.0f + f) - s_cy * f;
+		out = fminf(fmaxf(out, -FULL_CROP), FULL_CROP);   // his arrow as far as the sheet goes, then the drag
+		out = fminf(fmaxf(out + s_vy_user, -FULL_CROP), FULL_CROP);
+		float in = fminf(fmaxf(s_cy * (FULL_CROP / 256.0f), -FULL_CROP), FULL_CROP);
+		s_vy = out + (in - out) * z;
+	}
 	quad(NULL, 0, 0, 400, 240, 0, 0, 0, 0, 0x000000ff);
 	if (s_tex_ok) {
-		// 0x49d9d0: a (2 - zoom) * 512 texel window of the 1024 map
+		// 0x49d9d0: a (2 - zoom) * 512 texel window of the 1024 map, over the sheet's place
 		float u0 = (s_cx + 256.0f) * z, v0 = (s_cy + 256.0f) * z, size = (2.0f - z) * 512.0f;
 		float u1 = u0 + size > 1023.0f ? 1023.0f : u0 + size, v1 = v0 + size > 1023.0f ? 1023.0f : v0 + size;
-		quad(&s_tex, 40, 0, 360, 240, u0 / 1024.0f, v0 / 1024.0f, u1 / 1024.0f, v1 / 1024.0f, 0xffffffff);
+		quad(&s_tex, sx(-256.0f), sy(-256.0f), sx(256.0f), sy(256.0f), u0 / 1024.0f, v0 / 1024.0f, u1 / 1024.0f,
+		     v1 / 1024.0f, 0xffffffff);
 	}
 	// 0x49afa0: the markers whose flags are set, anchored at their top left corner
 	const MapRec* r = &s_maps[s_shown];

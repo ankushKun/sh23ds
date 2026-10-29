@@ -367,6 +367,8 @@ Ordered by weight. Each line names where the work starts.
   three rows that each stand for two settings (Walk/Run Control with the Enhanced Edition's toggle,
   Noise Effect with its PS2 style, Heavy Attack for hold to stomp and the light and heavy swings) are
   the port's.
+- The map screen (`map.c`) fills the top screen's width where the PC fills its 4:3 middle, a fifth of
+  the zoomed-out sheet out of sight at a time (`PROGRAMS.md` "Map screen").
 
 ### 4. Renderer features the port does not have
 

@@ -23,7 +23,7 @@ save file, the setting being changed. Nothing is drawn on both screens.
 | Save and load | James' picture framed as on the PC at the right, its left edge mirrored to fill the width, slowly drifting, with the chosen file in full at the lower left (place on the touch screen's red band, play time, saves, levels) sliding in when another is chosen, and the questions | the ten files |
 | Items | the dimmed world, the item's model turning, its name and count, its text after Examine | the items, marks for Combine |
 | Memos | the memo paper with the chosen memo's title, then the memo itself | the memo list |
-| Map | the map | the map's name, floors and other maps, zoom; dragging scrolls a zoomed map |
+| Map | the map across the whole width | the map's name, floors and other maps, zoom; dragging scrolls a zoomed map and moves a whole one up and down |
 | Puzzles and stage panels | the puzzle's pictures, as the PC draws them | the panel text, the D-Pad and A / B as touch buttons |
 | Title | start00 and the pulsing logo | LOAD, CONTINUE, NEW GAME, OPTIONS, MOVIES, EXIT |
 | New Game levels | both levels as chosen so far, the current one lit | the current level's choices |

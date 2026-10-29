@@ -296,6 +296,10 @@ Maria and In Water have been seen.
 * Keys as on the PC: zoomed out the D-pad goes to the floor above or below and to the neighbouring
   maps (0x890108), A zooms in; zoomed in the Circle Pad and the D-pad scroll (307.2 and 384 units a
   second) and A zooms out; B or START closes. The bottom screen names the map.
+* The PC draws the map over its 4:3 screen; the port draws it 1.25 times larger across the whole top
+  screen, so a fifth of its height is out of sight. Zoomed out the sheet stands on James' arrow (on
+  its top, where the title is, on a map he is not on) and a drag on the touch screen moves it up and
+  down; zoomed in the pan reaches every edge as before.
 
 ## Memo list
 
