@@ -59,10 +59,19 @@ they are.
 
 ## The Buttons page
 
-Pause, Options, Control Options, then "Buttons". Up and down choose an action, A waits for the new button (START keeps the
+Pause, Options, the Controls tab, then "Buttons". Up and down choose an action, A waits for the new button (START keeps the
 old one), Y puts that action back to its default and "Defaults" resets the whole layout. A button
 does one thing: binding it to an action takes it off the action that had it. The page edits the
 layout in use, so an Old 3DS player never sees ZL, ZR or the C-Stick offered.
+
+## Toggle running
+
+Walk/Run Control's Toggle value is the Enhanced Edition's toggle sprint (`main.c` `player_update`):
+a press of the run button starts a run and the next ends it, and the run ends by itself when James
+stops. With Rotational Style he stops when the stick no longer pushes him ahead (the stick's y at 0
+or below); with Directional Style and the behind camera the stick's way is his way, so only when the
+stick is let go. Until 2026-10-29 the port ended it on the stick's y in every style, which cut any
+run sideways or towards the camera short.
 
 ## Reading the circle pad (main.c player_update, move.c)
 

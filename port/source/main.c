@@ -2178,12 +2178,16 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 		x = y = 0.0f;
 	in.x = x > 1.0f ? 1.0f : x < -1.0f ? -1.0f : x;
 	in.y = y > 1.0f ? 1.0f : y < -1.0f ? -1.0f : y;
-	// Enhanced Edition "EnableToggleSprint": B toggles running, which stops when James stops
+	// Enhanced Edition "EnableToggleSprint": B toggles running, which stops when James stops. With
+	// Rotational Style that is when the stick no longer pushes him ahead; with Directional Style and
+	// the behind camera the stick's way is his way, so only when it is let go (the stick's own y,
+	// which the earlier test read, ended a run sideways or towards the camera at once).
 	static bool s_run_latched;
 	if (s_toggle_run) {
+		bool tank = playtest_steering() || (s_controls == MOVE_TANK && !behind_camera());
 		if (s_run_pressed)
 			s_run_latched = !s_run_latched;
-		if (in.y <= 0.0f)
+		if (tank ? in.y <= 0.0f : in.x == 0.0f && in.y == 0.0f)
 			s_run_latched = false;
 	}
 	s_run_pressed = false;
