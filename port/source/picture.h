@@ -10,8 +10,11 @@
 // PC's frame looks like scaled down to this size. Sharp leaves every pixel as the GPU drew it.
 //
 // After the scene the GPU's transfer engine copies its colours into a texture (a raw copy of the
-// tiled buffer, queued after the scene in the same frame), and two quads draw it back with two
-// bilinear taps each, half a pixel off diagonally: the four taps average to the filter exactly.
+// tiled buffer, queued after the scene in the same frame), and four quads draw it back with one
+// bilinear tap each, half a pixel off diagonally, each blended over the ones before at 1/2, 1/3 and
+// 1/4: the four taps' mean is the filter exactly. All on texture unit 0: citro3d 1.7.1's
+// C3D_TexBind reads the texture's type for units 1 and 2 without a NULL check, so a unit there
+// could never be released again (binding NULL faults on a console).
 // The far edges, where a tap would leave the copy, take the copy as it is. From a supersampled
 // scene (supersample.h) the same taps are the downscale too: they read the larger copy at the
 // screen's pixels, which for 2 x 2 averages a 4 x 4 block, so the pass costs the same at any size.

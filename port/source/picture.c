@@ -89,11 +89,12 @@ static void quads(int w, int h)
 	s_quad_w = w, s_quad_h = h;
 }
 
-static void draw(float x0, float y0, float x1, float y1, u8 alpha, int first, int count)
+// One tap at (dx, dy) of the target's pixels, over what is there at alpha / 255.
+static void draw(float dx, float dy, u8 alpha, int first, int count)
 {
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uTaps, x0, y0, x1, y1);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uTaps, dx, dy, 0.0f, 0.0f);
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
-	C3D_TexEnvColor(env, (u32)alpha << 24 | 0x808080u);
+	C3D_TexEnvColor(env, (u32)alpha << 24);
 	if (alpha == 255)
 		C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
 	else
@@ -141,24 +142,24 @@ void picture_soft_pass(C3D_RenderTarget* scene, int sx, int sy, C3D_RenderTarget
 	C3D_CullFace(GPU_CULL_NONE);
 	C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
 	C3D_TexBind(0, &s_tex);
-	C3D_TexBind(1, &s_tex);
-	// the two taps' mean (the constant's grey is the half), the alpha from the constant
+	// the tap's colour, the alpha from the constant
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_TEXTURE1, GPU_CONSTANT);
-	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
+	C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, 0, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
 	C3D_TexEnvSrc(env, C3D_Alpha, GPU_CONSTANT, 0, 0);
 	C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 	C3D_TexEnvInit(C3D_GetTexEnv(2));
 	if (s_debug == 1) {
-		draw(0, 0, 0, 0, 255, 0, 30);              // the copy as it is
+		draw(0, 0, 255, 0, 30);                    // the copy as it is
 	} else {
-		// half a pixel each way diagonally, then the other diagonal over it at half: the four
+		// half a pixel off on each diagonal, each over the ones before at 1/2, 1/3 and 1/4: the four
 		// taps' mean is the [1, 2, 1] filter in both directions
-		draw(0.5f, 0.5f, -0.5f, -0.5f, 255, 0, 6);
-		draw(0.5f, -0.5f, -0.5f, 0.5f, 128, 0, 6);
-		draw(0, 0, 0, 0, 255, 6, 24);
+		draw(0.5f, 0.5f, 255, 0, 6);
+		draw(-0.5f, -0.5f, 128, 0, 6);
+		draw(0.5f, -0.5f, 85, 0, 6);
+		draw(-0.5f, 0.5f, 64, 0, 6);
+		draw(0, 0, 255, 6, 24);
 	}
-	C3D_TexBind(1, NULL);
 }

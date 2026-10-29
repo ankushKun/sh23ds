@@ -82,9 +82,10 @@ not polygon edges, and a [1, 2, 1] filter each way after it brings it to 4.0 to 
 
 `picture.c` (a 3DS-only system, `picture.h` explains it) is the Display tab's Picture: Soft (the
 default) or Sharp. Soft copies the finished scene into a texture with the transfer engine and draws
-it back through four bilinear taps half a pixel off diagonally, which is that filter exactly. The 2D
+it back through four bilinear taps half a pixel off diagonally, one quad each averaged in turn, which
+is that filter exactly. The 2D
 (messages, the grain, menus) goes on top afterwards, as the PC draws its text and noise after its own
-filters. It costs one copy and two full-screen quads at the screen's size on both models, in 2D and
+filters. It costs one copy and four full-screen quads at the screen's size on both models, in 2D and
 per eye in 3D, and 0.5 MB of linear memory (2 MB when a 2 x 2 scene is copied).
 
 ### Supersampling

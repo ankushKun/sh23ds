@@ -1,9 +1,9 @@
-; The Picture's soft pass (picture.c): a quad in the target's own pixels, and two texture coordinates
-; for two bilinear taps of the scene's copy, each the position moved by a tap's offset (in the
-; target's pixels) and mapped onto the texture.
+; The Picture's soft pass (picture.c): a quad in the target's own pixels, and the texture coordinate
+; of one bilinear tap of the scene's copy: the position moved by the tap's offset (in the target's
+; pixels) and mapped onto the texture.
 
 .fvec projection[4]
-.fvec taps        ; x, y: the first tap's offset; z, w: the second's
+.fvec taps        ; x, y: the tap's offset
 .fvec uvscale     ; texture units per target pixel along x and y
 .fvec uvbase      ; the texture coordinate at the target's origin
 
@@ -11,7 +11,6 @@
 
 .out outpos position
 .out outtc0 texcoord0
-.out outtc1 texcoord1
 
 .alias inpos v0
 
@@ -28,9 +27,5 @@
 	add r1.xy, taps.xy, inpos.xy
 	mul r1.xy, uvscale.xy, r1.xy
 	add outtc0.xy, uvbase.xy, r1.xy
-
-	add r2.xy, taps.zw, inpos.xy
-	mul r2.xy, uvscale.xy, r2.xy
-	add outtc1.xy, uvbase.xy, r2.xy
 	end
 .end
