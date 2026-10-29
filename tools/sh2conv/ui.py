@@ -7,7 +7,7 @@ Writes pack/ui/title.t3x: the Director's Cut logo (data/pic/etc/sh2dc.tex, 512x5
 a 512x128 strip around the lettering, RGB565 without mipmaps.
 
 Also writes the save screen's backgrounds (data/menu/mc/savebg.tbn2, James, and savebg2.tbn2,
-Maria; 512x512 DXT3 squeezed to 512x256 RGB565 like the stills: pack/ui/savebg.t3x, savebg2.t3x)
+Maria; 512x512 DXT3 squeezed to 512x256 RGB8: pack/ui/savebg.t3x, savebg2.t3x)
 and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg), and the options
 screens' texts (option_msg_e.mes as pack/events/option.msg) and the blood effects' texture
 (pack/effect/blood.t3x, see write_blood), the hyper spray's mist (pack/effect/mist.t3x, see
@@ -180,7 +180,8 @@ def write_save_screen(data, pack):
     jobs = []
     for name in ('savebg', 'savebg2'):
         # 512x512 DXT3; the Image Enhancement Pack's are 2732x2048 (4:3 at square pixels), which
-        # squeeze to the same 512x256 since both fill the PC's 4:3 screen
+        # squeeze to the same 512x256 since both fill the PC's 4:3 screen. RGB8: the pictures are
+        # nearly all one hue (James' red), and RGB565 left 17 of its 137 reds, in blotches
         img = load_tex(os.path.join(data, 'menu', 'mc', name + '.tbn2')).convert('RGB')
         png = 'ui/%s.png' % name
         img.resize((512, 256), Image.LANCZOS).save(os.path.join(pack, png))
@@ -188,7 +189,7 @@ def write_save_screen(data, pack):
         if os.path.exists(os.path.join(pack, t3x)):
             os.remove(os.path.join(pack, t3x))
         jobs.append((png, t3x, False))
-    encode_textures(jobs, pack, fmt='rgb565', mipmaps=False)
+    encode_textures(jobs, pack, fmt='rgb8', mipmaps=False)
     for png, _, _ in jobs:
         os.remove(os.path.join(pack, png))
     write_msg_langs(pack, 'mcard.msg', os.path.join(data, 'etc', 'message', 'm_card_x_msg'))

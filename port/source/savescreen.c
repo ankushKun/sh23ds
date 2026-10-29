@@ -233,10 +233,10 @@ static const char* level(int n)
 }
 
 // The top screen (port/UI.md), the port's own layout of the PC's parts: James' picture (Maria's in
-// Born From a Wish) over the whole width, the title, and the file chosen on the touch screen in full
-// at the lower left, where a shade keeps it readable. The picture drifts and breathes slowly (the
-// title logo's pulse is the model), and the file's lines slide in when another file is chosen, its
-// name on the touch screen's red band.
+// Born From a Wish) over the whole width at the PC's framing, the title, and the file chosen on the
+// touch screen in full at the lower left, where a shade keeps it readable. The picture drifts and
+// breathes slowly (the title logo's pulse is the model), and the file's lines slide in when another
+// file is chosen, its name on the touch screen's red band.
 
 // top-screen pixels to the PC's text space (font.h)
 static float pcx(float px) { return 256.0f + (px - 200.0f) / 0.625f; }
@@ -270,29 +270,30 @@ void savescreen_draw_top(void)
 	font_pc_color(10, &grey_t, &grey_b);
 	const float tau = 6.2831853f;
 	if (s_bg_ok) {
-		// the 4:3 picture over the 5:3 screen: 1.25 times its size fills the width, a slow zoom and
-		// drift on top, the crop kept inside the picture
-		float zoom = 1.27f + 0.05f * (0.5f - 0.5f * cosf(tau * t / 26.0f));
-		float w = 320.0f * zoom, h = 240.0f * zoom;
-		float cx = 200.0f + 0.4f * (w - 400.0f) * sinf(tau * t / 37.0f);
-		float cy = 120.0f + 0.25f * (h - 240.0f) + 0.2f * (h - 240.0f) * sinf(tau * t / 29.0f);   // the face sits high
-		float u0 = 0.5f - cx / w, v0 = 0.5f - cy / h;  // the picture under the screen's corners
-		float u1 = u0 + 400.0f / w, v1 = v0 + 240.0f / h;
-		float b = 0.86f + 0.14f * (0.5f + 0.5f * sinf(tau * t / 7.0f));
-		u32 c = 0xff;
-		c |= (u32)(255.0f * b) << 24 | (u32)(255.0f * b) << 16 | (u32)(255.0f * b) << 8;
-		c = faded(c, in);
+		// The PC shows the picture whole over its 4:3 screen, the head framed by what is round it.
+		// Here it keeps that framing at the screen's full height on the right (x 80..400), and the
+		// 80 pixels left of it are its own left edge mirrored, so the width is filled with no seam
+		// and nothing stretched. A slow zoom of a few percent and a drift inside that margin move it.
+		float f = 1.02f + 0.04f * (0.5f - 0.5f * cosf(tau * t / 26.0f));
+		float cx = 240.0f + 0.6f * 160.0f * (f - 1.0f) * sinf(tau * t / 37.0f);
+		float cy = 120.0f + 0.6f * 120.0f * (f - 1.0f) * sinf(tau * t / 29.0f);
+		float pw = 320.0f * f, ph = 240.0f * f, px0 = cx - pw * 0.5f, py0 = cy - ph * 0.5f;
+		float u80 = (80.0f - px0) / pw, u400 = (400.0f - px0) / pw;
+		float v0 = (0.0f - py0) / ph, v1 = (240.0f - py0) / ph;
+		float b = 0.9f + 0.1f * (0.5f + 0.5f * sinf(tau * t / 7.0f));   // the title logo's breathing
+		u32 c = faded((u32)(255.0f * b) << 24 | (u32)(255.0f * b) << 16 | (u32)(255.0f * b) << 8 | 0xff, in);
 		const u32 pic[4] = { c, c, c, c };
-		font_quad_px(&s_bg, 0.0f, 0.0f, 400.0f, 240.0f, u0, v0, u1, v1, pic);
+		font_quad_px(&s_bg, 80.0f, 0.0f, 400.0f, 240.0f, u80, v0, u400, v1, pic);
+		font_quad_px(&s_bg, 0.0f, 0.0f, 80.0f, 240.0f, u80 + 80.0f / pw, v0, u80, v1, pic);
 	} else {
 		const u32 black[4] = { faded(0x000000ff, in), faded(0x000000ff, in), faded(0x000000ff, in), faded(0x000000ff, in) };
 		font_quad_px(NULL, 0.0f, 0.0f, 400.0f, 240.0f, 0, 0, 0, 0, black);
 	}
-	// the shade under the text: from the left edge across, and from the middle down
-	const u32 left[4] = { faded(0x000000ff, 0.6f * in), 0x00000000, faded(0x000000ff, 0.6f * in), 0x00000000 };
-	font_quad_px(NULL, 0.0f, 0.0f, 260.0f, 240.0f, 0, 0, 0, 0, left);
-	const u32 low[4] = { 0x00000000, 0x00000000, faded(0x000000ff, 0.85f * in), faded(0x000000ff, 0.85f * in) };
-	font_quad_px(NULL, 0.0f, 110.0f, 400.0f, 240.0f, 0, 0, 0, 0, low);
+	// the shade under the text, on the left only: across from the edge, deeper at the bottom
+	const u32 left[4] = { faded(0x000000ff, 0.7f * in), 0x00000000, faded(0x000000ff, 0.7f * in), 0x00000000 };
+	font_quad_px(NULL, 0.0f, 0.0f, 230.0f, 240.0f, 0, 0, 0, 0, left);
+	const u32 corner[4] = { 0x00000000, 0x00000000, faded(0x000000ff, 0.5f * in), 0x00000000 };
+	font_quad_px(NULL, 0.0f, 120.0f, 260.0f, 240.0f, 0, 0, 0, 0, corner);
 
 	font_text(FONT_SMALL, pcx(LEFT), pcy(14.0f), card(154, "SILENT HILL 2 Save Files"), FONT_LEFT,
 	          faded(white, in), faded(white, in));

@@ -19,7 +19,7 @@ save file, the setting being changed. Nothing is drawn on both screens.
 | Pause | the dimmed world, PAUSED, where James is and the play time | Resume, Save Game, Load Game, Options, Quit, Map, Memos |
 | Options | the page title, the chosen setting large with its value and the PC's help line; the brightness picture | the page's rows with their values |
 | Buttons page | the chosen action and its buttons, "press a button" while waiting | the actions and their buttons |
-| Save and load | James' picture over the whole width, slowly drifting, with the chosen file in full at the lower left (place on the touch screen's red band, play time, saves, levels) sliding in when another is chosen, and the questions | the ten files |
+| Save and load | James' picture framed as on the PC at the right, its left edge mirrored to fill the width, slowly drifting, with the chosen file in full at the lower left (place on the touch screen's red band, play time, saves, levels) sliding in when another is chosen, and the questions | the ten files |
 | Items | the dimmed world, the item's model turning, its name and count, its text after Examine | the items, marks for Combine |
 | Memos | the memo paper with the chosen memo's title, then the memo itself | the memo list |
 | Map | the map | the map's name, floors and other maps, zoom; dragging scrolls a zoomed map |
