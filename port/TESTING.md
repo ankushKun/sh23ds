@@ -114,9 +114,12 @@ in tools/packer-web/README.md.
 ## Interface
 
 `tests/ui/capture.sh [names]` takes a screenshot of both screens in every interface state of
-`UI.md` (title, levels, play, the quick slots, pause and its question, options, items and Examine,
-memos, map, a message, the save files, a cutscene) into `.lr3ds/ui/`, with a contact sheet. The runs
-go one at a time because they share the virtual SD's `debug.txt`. Taps follow `touchui.c`'s layout,
+`UI.md` (title, the first run's two steps, levels, play, the quick slots, pause and its question,
+each Options tab with an explainer, Control Type dimmed under the Behind camera, items and Examine,
+memos, map, a message, the save files, a cutscene) into `.lr3ds/ui/`, with a contact sheet, then
+runs the text check (`textcheck 1`, `UI.md` "Text that always fits") and fails on any cut line;
+`tests/ui/capture.sh textcheck` runs the check alone. The runs go one at a time because they share
+the virtual SD's `debug.txt`. Taps follow `touchui.c`'s layout,
 so a layout change means checking the coordinates in the script.
 
 ## On a console

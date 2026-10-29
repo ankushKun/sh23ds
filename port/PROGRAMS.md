@@ -292,7 +292,7 @@ Maria and In Water have been seen.
   dark room without the flashlight on it says common message 2 ("It's too dark to read the map.");
   without a map of the area common message 3, and then the town map if the player has it, as on
   the PC. The screen opens zoomed in on the player except on the town map, and zoomed out
-  whenever the Game Options' Map is on Zoom Out (0x49de50 reads 0x1dbec0a).
+  whenever the Options' Map (Game tab) is on Zoom Out (0x49de50 reads 0x1dbec0a).
 * Keys as on the PC: zoomed out the D-pad goes to the floor above or below and to the neighbouring
   maps (0x890108), A zooms in; zoomed in the Circle Pad and the D-pad scroll (307.2 and 384 units a
   second) and A zooms out; B or START closes. The bottom screen names the map.
@@ -409,43 +409,47 @@ page and the Game Options, 0x464eb0 the Advanced Options, 0x466c30 the brightnes
 texts from `option_msg_e.mes` by number (`ui.py` writes it as `pack/events/option.msg`). The values
 live in Playing_Info (0x1dbeb80, the PS2 beta's struct of the same name has the field names) and
 in the config block at 0xa35fa8; 0x4f6ae0 and 0x4f6c70 set the defaults and 0x469ad0 copies them to
-`options.ini` on the way out. `optmenu.c` ports the screens: START's pause menu has "Options" and
-the title an "Options" row (the PC's title has OPTIONS too).
+`options.ini` on the way out. `optmenu.c` ports the settings: START's pause menu has "Options" and
+the title an "Options" row (the PC's title has OPTIONS too). The PC's pages are regrouped into five
+tabs for the 3DS (port/UI.md, "Options"; the regrouping and the top screen's explainer are the
+port's own, STATUS.md section 3). Each setting below keeps the PC's name, values, field and default.
 
-* OPTIONS (title: full-width codes, message 72): Game Options, Advanced Options, Control Options
-  and the port's Cheats open their pages; then Control Type (Rotational Style = the port's tank
-  controls, Directional Style = camera-relative, the port's default), Subtitles (Off / On, 0x1dbec07: no scene subtitles on
-  either screen when off), Speaker Config. (the PC lists DirectSound's speaker setups; here Mono,
-  Stereo and Surround, the three NDSP output modes, `audio_set_output`), BGM Volume and SE Volume
-  (0 to 15, 12 by default; the PC passes volume << 3 to its mixer, here the gain is volume / 15).
-  The PC's Language row (0x4630c0 case 5: English, French, German, Italian, Spanish, wrapping) is in;
-  Vibration has nothing to set on the 3DS and is left out.
-* Cheats (the port's own, `options.txt` `infstamina` / `infammo`): Infinite Stamina (on by
-  default: the run count never builds up, so the third pace stays open and James never stops to
-  pant, `move.c`) and Infinite Ammo (off: a shot leaves the round in the gun, `combat.c` `fire`).
+* The PC's first page: Control Type (Rotational Style = the port's tank controls, Directional
+  Style = camera-relative, the port's default; Controls tab), Language (0x4630c0 case 5: English,
+  French, German, Italian, Spanish, wrapping; System), Subtitles (Off / On, 0x1dbec07: no scene
+  subtitles on either screen when off; Sound), Speaker Config. (the PC lists DirectSound's speaker
+  setups; here Mono, Stereo and Surround, the three NDSP output modes, `audio_set_output`), BGM Volume
+  and SE Volume (0 to 15, 12 by default; the PC passes volume << 3 to its mixer, here the gain is
+  volume / 15; SE also sets the voices'; Sound). Vibration has nothing to set on the 3DS and is left
+  out.
 * GAME OPTIONS (message 73): Weapon Control (Normal: hold R to ready the weapon; Switch: R toggles
-  it), Map (the map screen opens Zoom In or Zoom Out), Walk/Run Control (Walk: B runs; Run: James
-  runs and B walks; Analog: a full tilt of the Circle Pad runs), View Control (Normal / Switch),
-  Blood Color (Normal, Green, Violet, Black) and, once a game has been cleared (0x1dbeb85, the
-  clear count, so a Born From a Wish clear alone does not count: 0x461600 / 0x45fcf0),
-  Bullet Adjust (x1 to x3, wrapping as on the PC). Weapon Control and Walk/Run Control reach the
-  game as the keys `combat.c` and the movement read (`move_keys` in main.c). View Control is how
-  the look button (controls.c's GK_LOOK: ZL on the New 3DS layout, L on the Old) brings up the
-  search view, sh2cam's far view: Normal while it is held, Switch on and off with each press
-  (0x5342b0 picks 0x1fbab13 or the toggle 0x1fba8fb that 0x52e110 flips; `search_view` in
-  main.c). Blood Color tints the blood (see Blood).
-* ADVANCED OPTIONS (message 167): Brightness Level opens its screen; Noise Effect (Off / On, off
-  by default as on the PC), Shadows (Off / On, 0xa35ffc: 0x5a8370 draws no character shadows when
+  it), Walk/Run Control (Walk: B runs; Run: James runs and B walks; Analog: a full tilt of the
+  Circle Pad runs) and View Control (Normal / Switch) on the Controls tab; Map (the map screen opens
+  Zoom In or Zoom Out), Blood Color (Normal, Green, Violet, Black) and, once a game has been cleared
+  (0x1dbeb85, the clear count, so a Born From a Wish clear alone does not count: 0x461600 /
+  0x45fcf0), Bullet Adjust (x1 to x3, wrapping as on the PC) on the Game tab. Weapon Control and
+  Walk/Run Control reach the game as the keys `combat.c` and the movement read (`move_keys` in
+  main.c). The Walk/Run Control row also holds the Enhanced Edition's toggle run as a fourth value,
+  Toggle (`togglerun`), since the toggle overrides the other three. View Control is how the look
+  button (controls.c's GK_LOOK: ZL on the New 3DS layout, L on the Old) brings up the search view,
+  sh2cam's far view: Normal while it is held, Switch on and off with each press (0x5342b0 picks
+  0x1fbab13 or the toggle 0x1fba8fb that 0x52e110 flips; `search_view` in main.c). Blood Color
+  tints the blood (see Blood).
+* ADVANCED OPTIONS (message 167), on the Display tab: Brightness Level opens its screen; Noise
+  Effect (off by default as on the PC; the row's PC and PS2 values also set the Enhanced Edition's
+  grain style, `ps2noise`), Shadows (Off / On, 0xa35ffc: 0x5a8370 draws no character shadows when
   off), Fog (Simple / Complex, 0xa35ff8: 0x476ff0 runs the fog particle layer only on Complex).
   Screen Position, High Res. Textures, Resolution, Advanced Filters, Lens Flare and Software 3D
-  Sound are the PC's own. The port's display settings follow on the same page: Messages (bottom or
-  top screen), and the Enhanced Edition's Flashlight, Noise Style, Camera Speed and Cutscene View
-  (PS2 looks, on by default as in the EE).
+  Sound are the PC's own. The port's display settings join them: Messages (bottom or top screen), 3D,
+  and the Enhanced Edition's Flashlight and Cutscene View (PS2 looks, on by default as in the EE).
 * Control Options: where the PC sets up its keys, the port's Buttons page (`controls.c`, see
-  CONTROLS.md: the button of each action in the active layout, chosen on the touch screen, the
-  top screen listing the bindings), then the port's control settings (the Enhanced Edition's
-  toggle run, hold-A heavy attacks and swapped swings). The pause menu keeps Resume, Map, Memos,
-  Options and Quit to title.
+  CONTROLS.md), on the Controls tab with the port's Camera (Original or Behind, `tpcam.c`), the
+  Enhanced Edition's Camera Speed and Heavy Attack (one row for its hold-A stomp and its light and
+  heavy swings, `holdstomp` and `swapattack`).
+* The port's own: Infinite Stamina (on by default: the run count never builds up, so the third pace
+  stays open and James never stops to pant, `move.c`) and Infinite Ammo (off: a shot leaves the
+  round in the gun, `combat.c` `fire`) on the Game tab; the hardware profile's Quality, Frame Rate,
+  Hardware and Layout (`profile.c`) on the System tab.
 * The brightness screen (0x466c30): "Adjust until vertical lines appear faint." at (25, 100),
   twenty vertical lines 20 apart from y 176 to 406 whose alpha is the level times 12, and "Level n"
   in full-width letters right-aligned at (316, 420) with arrows either side of the number. Levels
@@ -463,9 +467,10 @@ description at (70, 395). The volumes are fifteen two-tone blocks from x 273, 11
 the top corners cut), the description box below it and the dark blue outline around both; 0x45fcf0
 the fading band under the chosen row. Values change at once; leaving with changes asks "Change the
 settings?" (89) with Yes. and No. at (170, 240) and (280, 240) over rows 3 to 6, and No. restores
-what was set when the screen opened. The touch screen lists the page's rows (a tap on a row's
-arrows changes it) with Back, and the question with Yes. and No.; the D-pad and A / B work as on
-the PC's pad.
+what was set when the screen opened. The port keeps the question and its answers; the rest of this
+layout is the PC's, for reference: the port lists a tab's rows on the touch screen (a tap on a
+row's arrows changes it) and explains the chosen one on the top screen (port/UI.md). The D-pad and
+A / B work as on the PC's pad, L and R change the tab.
 
 `options.txt` keeps every setting by name (`opt_load` / `opt_save`); the earlier `musicvol` and
 `soundvol` (0 to 10) turn into the 0 to 15 volumes when the new keys are missing.
@@ -481,7 +486,7 @@ INVSRCALPHA / SRCALPHA (0x9458c0 picks that mode and is never set), so the pictu
 94 % of itself. 0x47cb30 (the brightness) sets the grey to 350 - k up to 255 and lowers the alpha
 byte for the two darkest levels. The Enhanced Edition's PS2StyleNoiseFilter (PS2NoiseFilter.cpp)
 divides the grey by 7.4 and starts the alpha from 0x1d7 instead of 0xff, a darker, stronger
-grain; the port offers it as Noise Style, PS2 by default as in the EE. Here the texture is 4-bit
+grain; the port offers it as Noise Effect's PS2 value (the style stays PS2 by default, as in the EE). Here the texture is 4-bit
 luminance with the same four levels (the tint goes into the TEV constant, MODULATE2X into the
 TEV's x2 scale), refilled from a xorshift every frame into one of two textures in turn, drawn one
 texel per pixel after the scene and the fades and under the text, and not over still pictures
@@ -652,8 +657,8 @@ full-width codes the cell width + 2; centred and right-aligned lines measure wit
 coloured with the PC's colour table (0x47eca0), top and bottom colour per glyph. All glyphs of a
 frame go out in one draw call.
 
-The Advanced Options' "Messages" setting (`options.txt` `messagestop`, top screen by default since
-the two-screen split in `UI.md`) puts messages and cutscene subtitles on the top screen the way the PC's message window places them when
+The Options' "Messages" setting (Display tab, (`options.txt` `messagestop`, top screen by default since
+the two-screen split in `UI.md`)) puts messages and cutscene subtitles on the top screen the way the PC's message window places them when
 the message gives no position (0x47ff50): the big font, the lines left-aligned in a block centred
 on the widest one, the first line at 476 - (lines + 4) * 15, half a line higher for each line
 past three. The pack's message text no longer carries the PC's position words (0xfa00 / 0xf800
@@ -703,9 +708,8 @@ The screen is redrawn only when something it shows changed (the condition, the w
 menu row, a message, the small map's picture: another map, James a pixel further, a new mark),
 from one vertex buffer allocated once, so a frame without a change costs a few comparisons, which
 matters on the Old 3DS; only the turning item model redraws continuously (every other frame) while
-the item screen is up. The rows of the Old 3DS profile go onto the options screens once
-`profile.h` is in the tree: hardware and quality on Advanced Options, the control layout on
-Control Options (`optmenu.c` `build` marks both places).
+the item screen is up. The Old 3DS profile's rows (Quality, Frame Rate, Hardware, Layout) are on
+the Options' System tab.
 
 ## Item use and item names
 ## Item use and item names

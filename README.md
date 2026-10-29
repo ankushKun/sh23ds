@@ -99,7 +99,7 @@ If sh23ds starts and can't find its data, it says so: whether the folder is miss
 | Map | touch screen | touch screen |
 | Pause | START | START |
 
-Every action can be rebound in *Control Options*. The full layouts are in [CONTROLS.md](port/CONTROLS.md).
+Every action can be rebound in *Options*, *Controls*, *Buttons*. The full layouts are in [CONTROLS.md](port/CONTROLS.md).
 
 ## Building from source
 

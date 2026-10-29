@@ -342,6 +342,97 @@ void font_quad_uv_px(C3D_Tex* tex, float x0, float y0, float x1, float y1, const
 	s_draw(tex, v, 6);
 }
 
+void font_tris_px(C3D_Tex* tex, const FontVert* v, int n)
+{
+	if (s_draw && n > 0)
+		s_draw(tex, v, n);
+}
+
+// The start of the character before s + k (a full-width code is five bytes).
+static int char_back(const char* s, int k)
+{
+	return k >= 5 && s[k - 5] == FONT_FULL_WIDTH ? k - 5 : k - 1;
+}
+
+// s wrapped to w pixels in one font: the lines (at most FONT_FIT_LINES kept), how many it took, and
+// whether a word on its own was wider than w.
+static int wrap_px(int font, const char* s, float w, FontFit* out, bool* wide)
+{
+	int n = 0;
+	char cur[FONT_FIT_CHARS] = "", word[FONT_FIT_CHARS];
+	*wide = false;
+	while (*s) {
+		int k = 0;
+		while (*s == ' ')
+			s++;
+		while (*s && *s != ' ' && *s != '\n' && k < FONT_FIT_CHARS - 1)
+			word[k++] = *s++;
+		word[k] = 0;
+		bool brk = *s == '\n';
+		if (brk)
+			s++;
+		if (k) {
+			char t[FONT_FIT_CHARS * 2];
+			snprintf(t, sizeof t, "%s%s%s", cur, cur[0] ? " " : "", word);
+			if (!cur[0] || (font_width_px(font, t) <= w && strlen(t) < FONT_FIT_CHARS)) {
+				snprintf(cur, sizeof cur, "%s", t);
+			} else {
+				if (n < FONT_FIT_LINES)
+					snprintf(out->line[n], FONT_FIT_CHARS, "%s", cur);
+				n++;
+				snprintf(cur, sizeof cur, "%s", word);
+			}
+			*wide |= font_width_px(font, word) > w;
+		}
+		if (brk || !*s) {
+			if (cur[0] || brk) {
+				if (n < FONT_FIT_LINES)
+					snprintf(out->line[n], FONT_FIT_CHARS, "%s", cur);
+				n++;
+			}
+			cur[0] = 0;
+		}
+	}
+	return n;
+}
+
+static int s_cuts;
+int font_fit_cuts(void) { return s_cuts; }
+
+bool font_fit_px(const char* s, float w, int max, bool big, FontFit* out)
+{
+	memset(out, 0, sizeof *out);
+	if (!s || !*s || !s_ready)
+		return true;
+	max = max < 1 ? 1 : max > FONT_FIT_LINES ? FONT_FIT_LINES : max;
+	bool wide;
+	for (int f = big ? FONT_BIG : FONT_SMALL; f <= FONT_SMALL; f++) {
+		out->font = f;
+		out->n = wrap_px(f, s, w, out, &wide);
+		if (out->n <= max && !wide)
+			return true;
+	}
+	// cut: the small font's first max lines, the last one shortened until "..." fits after it
+	out->n = out->n < max ? out->n : max;
+	out->cut = true;
+	s_cuts++;
+	char* last = out->line[out->n - 1];
+	int k = (int)strlen(last);
+	k = k > FONT_FIT_CHARS - 4 ? FONT_FIT_CHARS - 4 : k;
+	char t[FONT_FIT_CHARS];
+	for (;;) {
+		snprintf(t, sizeof t, "%.*s...", k, last);
+		if (k <= 0 || font_width_px(FONT_SMALL, t) <= w)
+			break;
+		k = char_back(last, k);
+	}
+	while (k > 0 && last[k - 1] == ' ')
+		k--;
+	snprintf(t, sizeof t, "%.*s...", k, last);
+	memcpy(last, t, sizeof t);
+	return false;
+}
+
 void font_flush(void)
 {
 	if (s_nverts && s_draw)

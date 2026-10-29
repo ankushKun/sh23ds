@@ -1152,7 +1152,7 @@ screen counts shot and beaten kills apart, and the ending score counts both).
 * Maria is not drawn while the world is stopped (a program holding James, the pause menu), so the
   demos do not show her twice; this also hides her behind the pause menu.
 * Born from a Wish: Maria's hurt voice is not chosen by damage state, and her ground speeds are
-  measured, not read from a PC table. (Bullet Adjust has its row in Extra Options after a clear.)
+  measured, not read from a PC table. (Bullet Adjust has its row on the Options' Game tab after a clear, as the PC's Extra Options.)
 * Balance: the stomp's ap 9999.9 finishes any body on the floor, and Pyramid Head's long swing (ap 1000)
   kills James outright, as in the PC tables.
 * Sounds without a confirmed label: the creeper's pain (12208..12213), Pyramid Head's footsteps

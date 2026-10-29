@@ -178,6 +178,16 @@ static const char* key_names(u32 k, char* out, size_t n)
 	return out;
 }
 
+const char* controls_key_text(u32 k, char* out, size_t n) { return key_names(k, out, n); }
+
+int controls_actions(ControlsAction* out, int max)
+{
+	int n = 0;
+	for (; n < N_MENU_ACTS && n < max; n++)
+		out[n] = MENU_ACTS[n];
+	return n;
+}
+
 int controls_help(char lines[][40], int max)
 {
 	int n = 0;

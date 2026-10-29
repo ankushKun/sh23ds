@@ -1,21 +1,19 @@
 #pragma once
 #include <3ds.h>
 #include "map.h"
+#include <stdio.h>
 
 // The PC's options screens (0x469ad0 runs them, 0x461600 / 0x464eb0 draw them, the texts are
-// data/etc/message/option_msg_?.mes, pack/events/option.msg), drawn on the top screen in the PC's
-// layout and driven from the touch screen (touchui.c) and the buttons:
+// data/etc/message/option_msg_?.mes, pack/events/option.msg), regrouped for the 3DS (port/UI.md,
+// "Options"): the PC's settings, its value names and defaults, the Enhanced Edition's and the
+// port's own, in five tabs on the touch screen (Controls, Game, Display, Sound, System; L and R or a
+// tap switch them), with the PC's Brightness Level screen and the port's Buttons page the only
+// screens a row opens. The PC's pages (Game, Advanced and Control Options) and the Vibration row,
+// which has nothing to set on the 3DS, are gone; the regrouping is the port's (STATUS.md section 3).
 //
-//   OPTIONS           Game Options, Advanced Options, Control Options, Control Type, Language,
-//                     Subtitles, Speaker Config., BGM Volume, SE Volume (the PC's Vibration row
-//                     has nothing to set on the 3DS)
-//   GAME OPTIONS      Weapon Control, Map, Walk/Run Control, View Control, Blood Color, and
-//                     Bullet Adjust once a game has been cleared
-//   ADVANCED OPTIONS  Brightness Level (its own screen), Noise Effect, Shadows, Fog, then the
-//                     port's display settings (messages, 3D, Enhanced Edition looks)
-//   Control Options   the PC's key setup has no 3DS counterpart: the port's control settings
-//
-// Values change at once; leaving the screen with changes asks "Change the settings?" as the PC
+// The top screen explains the chosen setting: what it does, each value and what it changes in play
+// (a drawing beside the two values where one helps, figures.c), and a note when another setting
+// overrides it. Values change at once; leaving with changes asks "Change the settings?" as the PC
 // does, and No puts the old values back. See PROGRAMS.md "Options".
 
 typedef struct {
@@ -57,6 +55,7 @@ typedef struct {
 	// Cheats (the port's): Infinite Stamina on by default, the rest off
 	u8 inf_stamina;      // James runs without tiring
 	u8 inf_ammo;         // firing takes no rounds
+	u8 setup;            // the first run's choices were made (setup.c)
 } Options;
 
 typedef struct {
@@ -77,3 +76,8 @@ bool optmenu_brightness(void);
 // Inside a C3D frame on the top screen, after the scene: the panels through draw (main.c's 2D
 // service), the text through font.c (the caller flushes it).
 void optmenu_draw_top(MapDrawFn draw);
+// Noise Effect is the chosen row: the title draws the grain under the explainer, so it can be seen.
+bool optmenu_noise_focus(void);
+// debug.txt "textcheck": every setting's explainer and row laid out in every language the pack has
+// and both button layouts, each text that had to be cut written to out; the number cut.
+int optmenu_textcheck(FILE* out, Options* live);

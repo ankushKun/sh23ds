@@ -101,6 +101,8 @@ void titlemenu_no_boot(void)
 	}
 }
 
+bool titlemenu_booting(void) { return s_screen == SC_BOOT; }
+
 void titlemenu_reset(bool saves)
 {
 	s_saves = saves;

@@ -38,9 +38,13 @@ typedef struct {
 	int nb;
 	u64 dim;
 	int flags;
+	char tabs[TOUI_MAX_TABS][16];    // the Options' tabs (none: the title)
+	int ntabs, shown_tab;
+	int* tab;
+	TouiRow kinds[MAX_ROWS];
 } Menu;
 
-enum { HIT_KEY, HIT_ROW, HIT_PASS, HIT_ZOOM, HIT_QUICK, HIT_DRAG };
+enum { HIT_KEY, HIT_ROW, HIT_PASS, HIT_ZOOM, HIT_QUICK, HIT_DRAG, HIT_TAB, HIT_CHOICE };
 typedef struct { float x0, y0, x1, y1; u8 kind, menu; s16 row; u32 key; } Hit;
 typedef struct { float x, y, u, v; u8 c[4]; } Vert;
 
@@ -58,6 +62,17 @@ static int s_heal[3];                // the healing items' counts (the quick slo
 static char s_sound[64];             // a sound problem the player should know of (audio_problem)
 static bool s_have_light;
 static int s_quick, s_quick_item;    // a quick slot tapped, for touchui_quick
+typedef struct {                     // the first run's two choices (touchui_choices)
+	bool on;
+	char name[2][40], line[2][160];
+	int* sel;
+	int shown;
+	char blabel[MAX_BUTTONS][16];
+	u32 bkey[MAX_BUTTONS];
+	int nb;
+	u32 dim;
+} Choices;
+static Choices s_ch;
 
 static Hit s_hits[MAX_HITS];
 static int s_nhits;
@@ -170,6 +185,12 @@ static void copy_buttons(char label[][16], u32* key, int* nb, const TouiButton* 
 void touchui_menu_ex(int id, const char* title, const char* const* rows, int n, int* sel, const TouiButton* buttons,
                      int nbuttons, u64 dim, int flags)
 {
+	touchui_menu_full(id, title, rows, n, sel, buttons, nbuttons, dim, flags, NULL);
+}
+
+void touchui_menu_full(int id, const char* title, const char* const* rows, int n, int* sel,
+                       const TouiButton* buttons, int nbuttons, u64 dim, int flags, const TouiMenuExtra* extra)
+{
 	if (id < 0 || id >= TOUI_MENUS)
 		return;
 	static Menu m;                   // big: off the stack
@@ -184,6 +205,15 @@ void touchui_menu_ex(int id, const char* title, const char* const* rows, int n, 
 	copy_buttons(m.blabel, m.bkey, &m.nb, buttons, nbuttons);
 	m.dim = dim;
 	m.flags = flags;
+	if (extra) {
+		m.ntabs = extra->ntabs > TOUI_MAX_TABS ? TOUI_MAX_TABS : extra->ntabs;
+		for (int i = 0; i < m.ntabs; i++)
+			snprintf(m.tabs[i], sizeof m.tabs[i], "%s", extra->tabs[i]);
+		m.tab = extra->tab;
+		m.shown_tab = extra->tab ? *extra->tab : 0;
+		for (int i = 0; extra->rows && i < m.n; i++)
+			m.kinds[i] = extra->rows[i];
+	}
 	if (memcmp(&m, &s_menus[id], sizeof m)) {
 		s_menus[id] = m;
 		s_dirty = true;
@@ -203,6 +233,34 @@ void touchui_menu_close(int id)
 		s_dirty = true;
 		if (id == TOUI_ITEMS)
 			itemview_free();             // the model's memory goes back with the item screen
+	}
+}
+
+void touchui_choices(const char* const* names, const char* const* lines, int* sel, const TouiButton* buttons,
+                     int nbuttons, u32 dim)
+{
+	Choices c;
+	memset(&c, 0, sizeof c);
+	c.on = true;
+	for (int i = 0; i < 2; i++) {
+		snprintf(c.name[i], sizeof c.name[i], "%s", names[i] ? names[i] : "");
+		snprintf(c.line[i], sizeof c.line[i], "%s", lines[i] ? lines[i] : "");
+	}
+	c.sel = sel;
+	c.shown = sel ? *sel : 0;
+	copy_buttons(c.blabel, c.bkey, &c.nb, buttons, nbuttons);
+	c.dim = dim;
+	if (memcmp(&c, &s_ch, sizeof c)) {
+		s_ch = c;
+		s_dirty = true;
+	}
+}
+
+void touchui_choices_close(void)
+{
+	if (s_ch.on) {
+		s_ch.on = false;
+		s_dirty = true;
 	}
 }
 
@@ -610,10 +668,59 @@ static void pad(float x0, float y0, float x1, float y1, const char* label_, u32 
 
 // ---------------------------------------------------------------- the pages
 
+// The Options' tabs in place of the title: L and R either side, the tabs between in small capitals
+// spread evenly, the chosen one white over a red rule.
+#define TAB_RED 0xa3141cff
+static void draw_tabs(const Menu* m, int id)
+{
+	glyph(4, 13, KEY_L, RING);
+	hit(0, 0, 24, 28, HIT_KEY, 0, 0, KEY_L);
+	glyph(301, 13, KEY_R, RING);
+	hit(296, 0, 320, 28, HIT_KEY, 0, 0, KEY_R);
+	char up[TOUI_MAX_TABS][16];
+	float w[TOUI_MAX_TABS], total = 0.0f;
+	for (int i = 0; i < m->ntabs; i++) {
+		int k = 0;
+		for (; m->tabs[i][k] && k < 15; k++)
+			up[i][k] = m->tabs[i][k] >= 'a' && m->tabs[i][k] <= 'z' ? m->tabs[i][k] - 32 : m->tabs[i][k];
+		up[i][k] = 0;
+		w[i] = spaced_width(FONT_SMALL, up[i], 1.0f);
+		total += w[i];
+	}
+	float gap = (268.0f - total) / (m->ntabs + 1), x = 26.0f + (gap > 4.0f ? gap : 4.0f);
+	gap = gap > 4.0f ? gap : 4.0f;
+	int cur = m->tab ? *m->tab : 0;
+	float ty = floorf(13.0f - font_line_px(FONT_SMALL) * 0.5f);
+	for (int i = 0; i < m->ntabs; i++) {
+		text_spaced(FONT_SMALL, x + w[i] * 0.5f, ty, up[i], 1.0f, i == cur ? s_white : LABEL);
+		if (i == cur)
+			rect(x, 23, x + w[i], 25, TAB_RED, TAB_RED);
+		hit(x - gap * 0.5f, 0, x + w[i] + gap * 0.5f, 28, HIT_TAB, id, i, 0);
+		x += w[i] + gap;
+	}
+	rule(12, 308, 28, RULE);
+}
+
+// The PC's volume blocks on a row (0x45bf10, fifteen two-tone blocks), right-aligned at x1.
+static void blocks(float x1, float cy, int level, int max, bool on)
+{
+	max = max < 1 ? 15 : max > 15 ? 15 : max;
+	for (int i = 0; i < max; i++) {
+		float x = x1 - (max - i) * 6.0f;
+		bool lit = i < level;
+		u32 t = lit ? (on ? 0xe2ded6ff : 0xa8a39bff) : 0x3a3533ff, b = lit ? (on ? 0x8c8882ff : 0x5c5852ff) : 0x2a2624ff;
+		rect(x, cy - 5, x + 4.5f, cy, t, t);
+		rect(x, cy, x + 4.5f, cy + 5, b, b);
+	}
+}
+
 static void draw_menu(int id)
 {
 	Menu* m = &s_menus[id];
-	header(m->title);
+	if (m->ntabs)
+		draw_tabs(m, id);
+	else
+		header(m->title);
 	int sel = m->sel ? *m->sel : -1;
 	float right = 312;
 	float top = 32.0f, bottom = m->nb ? FOOT_Y - 4 : 234.0f;
@@ -636,7 +743,10 @@ static void draw_menu(int id)
 		char lab[72];
 		snprintf(lab, sizeof lab, "%.*s", gap ? (int)(gap - m->rows[i]) : 71, m->rows[i]);
 		// a label too long for the row (some languages' scenario names) in the small font
+		const TouiRow* kind = &m->kinds[i];
 		float room = (gap ? right - 18 - font_width_px(FONT_BIG, gap) : right - 4) - 22;
+		if (kind->kind == TOUI_ROW_BAR)
+			room = right - 26 - (kind->max ? kind->max : 15) * 6.0f - 22;
 		int lf = font_width_px(FONT_BIG, lab) > room ? FONT_SMALL : FONT_BIG;
 		float ly = lf == FONT_BIG ? ty : y + (rh - font_line_px(FONT_SMALL)) * 0.5f;
 		if (on && !off)
@@ -670,6 +780,16 @@ static void draw_menu(int id)
 				arrow(vx - w - 8, cy, -1, 0, 3.5f, RING);
 				arrow(right - 9, cy, 1, 0, 3.5f, RING);
 			}
+		} else if (kind->kind == TOUI_ROW_BAR) {
+			float cy = y + rh * 0.5f, bx = right - 18;
+			blocks(bx, cy, kind->level, kind->max, on && !off);
+			lr = true;
+			if (on) {
+				arrow(bx - (kind->max ? kind->max : 15) * 6.0f - 6, cy, -1, 0, 3.5f, RING);
+				arrow(right - 9, cy, 1, 0, 3.5f, RING);
+			}
+		} else if (kind->kind == TOUI_ROW_PAGE) {
+			arrow(right - 9, y + rh * 0.5f, 1, 0, 3.5f, off ? DIM : RING);
 		}
 		hit(8, y, right, y + rh, HIT_ROW, id, i, lr ? 1 : 0);
 	}
@@ -678,6 +798,33 @@ static void draw_menu(int id)
 	if (first + fit < m->n)
 		arrow(right - 4, bottom + 1, 0, 1, 3.0f, RING);
 	footer(m->blabel, m->bkey, m->nb, 0);
+}
+
+// The first run's two choices, left and right as the drawings above them: the name, the chosen one
+// white on the band, and its lines under it.
+static void draw_choices(void)
+{
+	int sel = s_ch.sel ? *s_ch.sel : 0;
+	float ny = 64.0f, ly = 92.0f, lh = font_line_px(FONT_SMALL);
+	for (int i = 0; i < 2; i++) {
+		float x0 = i ? 164.0f : 8.0f, x1 = i ? 312.0f : 156.0f, cx = (x0 + x1) * 0.5f;
+		bool on = i == sel;
+		int f = font_width_px(FONT_BIG, s_ch.name[i]) > x1 - x0 - 12 ? FONT_SMALL : FONT_BIG;
+		if (on) {
+			band(x0, ny - 5, x1, ny + font_line_px(FONT_BIG) + 4);
+			text_lit(f, cx, ny, s_ch.name[i], FONT_CENTER, s_white);
+		} else {
+			text(f, cx, ny, s_ch.name[i], FONT_CENTER, s_grey_top, s_grey_bottom);
+		}
+		FontFit ff;
+		font_fit_px(s_ch.line[i], x1 - x0 - 16, 3, false, &ff);
+		for (int k = 0; k < ff.n; k++)
+			text(ff.font, cx, ly + k * lh, ff.line[k], FONT_CENTER, on ? RING : LABEL, on ? RING : LABEL);
+		hit(x0, 8, x1, FOOT_Y - 2, HIT_CHOICE, 0, i, 0);
+	}
+	rect(160, 44, 161, 104, CLEAR(RULE), RULE);
+	rect(160, 104, 161, 164, RULE, CLEAR(RULE));
+	footer(s_ch.blabel, s_ch.bkey, s_ch.nb, s_ch.dim);
 }
 
 static void draw_box(void)
@@ -1065,6 +1212,8 @@ void touchui_frame(void)
 	int m = top_menu();
 	if (s_movie)
 		draw_movie();
+	else if (s_ch.on)
+		draw_choices();
 	else if (m >= 0)
 		draw_menu(m);
 	else if (s_box_on && (s_box[0] || s_box_nb))
@@ -1180,6 +1329,17 @@ void touchui_input(u32* down, u32* held)
 			*down |= h->key;
 			if (h->y0 >= FOOT_Y || h->x1 - h->x0 < 320)
 				pressed(h);
+		} else if (h->kind == HIT_TAB) {
+			Menu* m = &s_menus[h->menu];
+			if (m->tab)
+				*m->tab = h->row;
+			s_dirty = true;
+		} else if (h->kind == HIT_CHOICE) {
+			if (s_ch.sel && *s_ch.sel == h->row)
+				*down |= KEY_A;          // a second tap on the chosen one takes it
+			else if (s_ch.sel)
+				*s_ch.sel = h->row;
+			s_dirty = true;
 		} else {
 			Menu* m = &s_menus[h->menu];
 			if (!m->sel)

@@ -79,7 +79,7 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
   left and right (0x54f100), PlayerCheckAimingToEnemy turning (0x5568c0); walking, backing off,
   strafing and running under the weapon by grip flag (0x6cf7cc) with the upper body on its own clip;
   the PC camera gets James' candidates and lower status.
-- A port-only behind camera (`tpcam.c`, Control Options > Camera: Original or Behind): orbit with the
+- A port-only behind camera (`tpcam.c`, Options > Controls > Camera: Original or Behind, also asked on the first run): orbit with the
   C-Stick (the D-Pad on an Old 3DS, a drag on the touch screen on both), the Look key recentres,
   over the shoulder when aiming, camera-relative movement; scenes and scripted shots keep the PC camera.
 - Collision from the `.cld` with the PC's floor and wall rules (James climbs stairs to the highest floor
@@ -143,10 +143,14 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
 ### Screens and interface
 
 - The PC's start-up logos, title with its logo pulse, scenario and level screens, Movie Menu, attract
-  mode, game over, Options, Game, Advanced and Control Options, Extra Options after a clear.
+  mode, game over, every setting of the PC's options screens (Bullet Adjust after a clear), regrouped
+  into the port's five tabs.
 - The two screens split as `UI.md` sets out: every list on the touch screen, the thing itself on top
-  (the item's model and text, the chosen save file, the chosen setting, the memo, the map), nothing
-  drawn twice. The touch screen in the PC front end's look (`touchui.c`): grain, the red selection
+  (the item's model and text, the chosen save file, the memo, the map), nothing drawn twice. The
+  chosen setting is explained there: what it does, what each value changes, with animated drawings
+  for the ones with two values (`figures.c`) and a note when another setting overrides it.
+- A first run (`setup.c`, 3DS-only): after the logos, once, Camera and then Control Type side by side
+  with their drawings; Control Type is skipped after Behind. The touch screen in the PC front end's look (`touchui.c`): grain, the red selection
   band, button prompts that show the bound button. The play page: the mini map with zoom, condition,
   the weapon (tap: next weapon), the healing items as quick slots. Messages and subtitles on top
   by default. The debug page sits behind SELECT twice.
@@ -167,7 +171,7 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
 - Stereoscopic 3D on the top screen (`stereo.c`): while the slider is up the world is drawn once per
   eye, with the screen plane a third of the way to what the camera looks at and 11.5 px between the eyes
   for far points at the slider's top. Text, menus, fades and the grain sit at the screen plane. The
-  Advanced Options row 3D (`stereo3d`) is on by default; Auto picks 60 or 30 fps by the GPU's time as
+  Display tab's row 3D (`stereo3d`) is on by default; Auto picks 60 or 30 fps by the GPU's time as
   in 2D. The map is culled per eye in runs of 32 triangles, which leaves the picture as it was (2D
   frames byte-identical) and sends 3 to 6 times fewer map vertices in the town and the forest.
 
@@ -317,8 +321,9 @@ Ordered by weight. Each line names where the work starts.
   climbing; the effect task 0x4ee470 that 0x4ed6f0 frees is not ported.
 - Languages: Japanese is not packed. The PC's options never offer it (0x4630c0 cycles 1..5) and its
   locale default never picks it (0x4f6cc0); its text needs about 1,800 full-width glyphs per font. The
-  port's own texts (touch prompts, Cheats, display and EE rows, the save screen's lines, the map
-  legend) stay English. Not ported per language: the save screen's date order (0x44f4d0), the
+  port's own texts (touch prompts, the tab names, the explainer's lines and the port's rows, the first
+  run, the save screen's lines, the map legend) stay English; the PC's setting and value names come
+  translated from the game. Not ported per language: the save screen's date order (0x44f4d0), the
   Italian and Spanish offset of its level text (0x452890), the options value column (0x463b33) and
   the UFO ending's captions (0x5785d0).
 - Room effects (`roomfx.c`): only rooms 0xaa and 0x0e of the AutoPost table (0x8942c8) are ported.
@@ -351,6 +356,12 @@ Ordered by weight. Each line names where the work starts.
   kept. Pyramid Head's one part (pose 3) always shows, where 0x53d3d0 hides it in his setup state 0xc
   and in some events. Packs made before the converter kept the pose index get the parts of every
   swapping model (`lll`, `hll`, `hhl`, `hhh` James and `lxx_mar`) from a layout table.
+- Options (`optmenu.c`): the PC's pages and their layout (0x461600, 0x464eb0, the panel 0x45e750)
+  give way to the port's five tabs and its top-screen explainer (`UI.md` "Options"); the settings,
+  their names, values and defaults are the PC's. The explainer's text, the first run (`setup.c`) and
+  three rows that each stand for two settings (Walk/Run Control with the Enhanced Edition's toggle,
+  Noise Effect with its PS2 style, Heavy Attack for hold to stomp and the light and heavy swings) are
+  the port's.
 
 ### 4. Renderer features the port does not have
 

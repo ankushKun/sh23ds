@@ -15,8 +15,7 @@ share of core 1. Its Old 3DS model does model the memory modes, the missing core
 
 `profile.c` detects the console with `APT_CheckNew3DS` before anything else starts and picks the
 Old 3DS or New 3DS profile. Four keys in `options.txt` override it and its defaults. The options
-screens (`optmenu.c`) show them as Hardware, Quality and Frame Rate in Advanced Options and Layout
-in Control Options, keep them with the other settings, and hand every change to
+screens (`optmenu.c`) show them as Quality, Frame Rate, Hardware and Layout on the System tab, keep them with the other settings, and hand every change to
 `profile_set_choices` through `options_apply`:
 
 | options.txt | Values | Default (Auto) | What it sets |
@@ -47,8 +46,8 @@ Azahar's count that would outgrow core 1, so the music stays on core 0. `helperc
 | Movies | `movie/<name>.mpg` | `movie/half/<name>.mpg` when the pack has it, drawn at twice the size | `movie.c` |
 | Frame rate cap | 60 | 30, so every frame lasts two vertical blanks (`framerate` overrides it) | `C3D_FrameRate` |
 
-The PC's own Shadows (On / Off) and Fog (Complex / Simple) rows in Advanced Options still work on
-top: shadows are drawn when both allow them, and the fog sprites need Complex and are capped by the
+The PC's own Shadows (On / Off) and Fog (Complex / Simple) rows on the Display tab still work on
+top (the explainer says so when the quality is Low): shadows are drawn when both allow them, and the fog sprites need Complex and are capped by the
 quality level. The test keys `texhalf` and `helpercore` are read at start-up only; optmenu.c does
 not keep them when it rewrites the file.
 
@@ -85,7 +84,7 @@ typedef enum { ACT_RUN, ACT_ACTION, ACT_AIM, ACT_WEAPON_NEXT, ACT_FLASHLIGHT, AC
 
 `controls.h` includes `profile.h` when it is there and has the same declarations as a fallback,
 so the two batches merge in either order. `ctrllayout` in `options.txt` (Auto follows the console,
-then Old 3DS or New 3DS) picks the layout, shown as Layout in Control Options. The New layout on an
+then Old 3DS or New 3DS) picks the layout, shown as Layout on the Options' System tab. The New layout on an
 Old 3DS is for players with the Circle Pad Pro: `profile.c` makes libctru open `ir:rst` on every
 model (`hidShouldUseIrrst`), which is how the add-on's ZL, ZR and right stick reach `hidKeysHeld`
 exactly like the New 3DS's own buttons. Without the add-on nothing changes.

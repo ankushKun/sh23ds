@@ -89,7 +89,7 @@ coordinates.
 | SwapLightHeavyAttack | SwapLightHeavyAttack.cpp | ported, option | `combat.c` `start_swing`: on the PC every first plank press is the heavy attack (0x533ff0 tests pressure above 0xc0). A tap is now the light swing (12), a hold the downswing (14). `swapattack 0` gives the PC behaviour |
 | PS2CameraSpeed | WidescreenFixesPack | ported, option | `sh2cam.c`: the PC limits the watch pitch speed to 1.106 indoors and 1.555 outdoors (0x51bb81/0x51bb95) and the vertical approach to accel_y x abs(dy) (0x51c080), which makes the camera float and bounce. The port uses 4.0 and 3 x abs(dy) as WSFix does; `ps2camera 0` restores the PC |
 | FastTransitions | WidescreenFixesPack | already covered | Forces 0.5 s fades (PC default 1.2 s at 0x4ee620); the port's fades are already 0.25 s out and 0.33 s in |
-| EnableToggleSprint | InputTweaks.cpp | already covered | Pause menu "Run: toggle B" |
+| EnableToggleSprint | InputTweaks.cpp | already covered | Options, Controls tab, Walk/Run Control: Toggle (`togglerun`) |
 | RestoreSearchCamMovement | ControllerTweaks.cpp | left out | It puts the search view on the right stick; on the 3DS the C-Stick already carries the quick turn, strafing and the map (`controls.c`), so this is for the controls work to decide |
 | DPadMovementFix, Southpaw, GamepadControlsFix, ReplaceButtonText, RestoreVibration, PadNumber, RemoveForceFeedbackFilter | ControllerTweaks.cpp, dinput8 | not applicable | PC gamepad mapping and rumble |
 
@@ -117,7 +117,7 @@ coordinates.
 
 | Option | EE file | Status | Where / why |
 | --- | --- | --- | --- |
-| PS2FlashlightBrightness | Patches/EnhancedFlashlight.cpp | ported (environment part), option | `envlight.c` `ee_flashlight()`: the PC multiplies the flashlight colour by 4 before the intensity table (0x47a9ee), which washes walls out; EE uses 1.2, so the beam on the map is 0.3 of the PC value. The reach goes from 6000 to 8500 (0x47be64). The pause menu entry "Flashlight PS2 / PC" (`ps2flashlight` in `options.txt`) switches back to the PC beam. The "movable object" presets and the 0.7 in the same patch (0x4ff1c6, 0x502b96) pick the range of the PC's per-pixel flashlight shader on characters (x8) and scale the beam colour to 0.7 for it, which makes characters bright under the dimmer PS2 beam; the port's character flashlight (`chrlight.c`) saturates at full brightness already, so nothing more is needed (LIGHTING.md section 10 has the details; an earlier version of this page wrongly called these shadow presets) |
+| PS2FlashlightBrightness | Patches/EnhancedFlashlight.cpp | ported (environment part), option | `envlight.c` `ee_flashlight()`: the PC multiplies the flashlight colour by 4 before the intensity table (0x47a9ee), which washes walls out; EE uses 1.2, so the beam on the map is 0.3 of the PC value. The reach goes from 6000 to 8500 (0x47be64). The Options' Flashlight row (Display tab, `ps2flashlight` in `options.txt`) switches back to the PC beam. The "movable object" presets and the 0.7 in the same patch (0x4ff1c6, 0x502b96) pick the range of the PC's per-pixel flashlight shader on characters (x8) and scale the beam colour to 0.7 for it, which makes characters bright under the dimmer PS2 beam; the port's character flashlight (`chrlight.c`) saturates at full brightness already, so nothing more is needed (LIGHTING.md section 10 has the details; an earlier version of this page wrongly called these shadow presets) |
 | RoomLightingFix | Patches/LightingPatch.cpp | ported | `lighting.py` `EE_RECORD_REMAP`: the cemetery (ca14) uses the forest's area default, as when walking in on the PC (the port reselects the record per room, which reproduces the PC's load-from-save bug). `envlight.c` `env_ee_room_level()` + `main.c` `lighting_frame`: fixed flashlight levels (0x8a2ba8) in town east/west, the courtyard, the lake shore, the motorhome and two Born From a Wish rooms. This needed the PC's own level logic first: `env_flash_off_level()` is FUN_0050a010 (1.0 before the flashlight is found, 0.3 after, per-map exceptions), and lit rooms now keep the last level as on the PC instead of a fixed 0.3. The swinging lamp of the Otherworld hotel (0x576fa0, y -3000, start -1000) is left out: the port has no event lights (FUN_0047b040) |
 | FogParameterFix | Patches/FogAdjustments.cpp | ported | Blue Creek 208/209 (ap72) fog start 4200 instead of 3000 (`lighting.py` `EE_FOG_START`); final boss room characters drawn without fog while the camera is above y -15750 (`main.c` `ee_final_boss_nofog`, PC 0x501e76 / 0x503507) |
 | FogSpeedFix | Patches/FogAdjustments.cpp | ported | The Blue Creek 209 fog value is the one above. On the particle layer (`fog.c` `ee_fog_speed`): the PC pushes fog out of dense grid cells by GridRate (0x1f7d28c, the value EE patches through 0x486ced); EE uses 0.25 in the town, the cemetery, the final rooms and most of the mansion and 0.5 in the courtyard and the Eddie rooms, and on the cemetery path it hides particles moving faster than 10 instead of 200 (0x6a7920) so the fog does not stick to James |
@@ -144,7 +144,7 @@ coordinates.
 | HotelWaterFix, WaterEnhancedRender, WaterDrawOrderFix | HotelWater.cpp, WaterEnhancement.cpp, WaterDrawOrderFix.cpp | left out | The PC water renderer (0x4d....) is not ported |
 | RainParticles | Patches/RainParticles.cpp | left out | No rain |
 | FlashlightReflection | Patches/FlashlightReflection.cpp | left out | Needs EE's reflection assets and a reflection pass |
-| PS2StyleNoiseFilter | PS2NoiseFilter.cpp | ported | `noise.c` `noise_set`: with Noise Style on PS2 (the default; `optmenu.c` "ps2noise") the grey byte is divided by 7.4, 0x22 replaces 0xff past the ramp's knee and the alpha base is 0x1d7, as EE patches 0x47cb8a, 0x47cbaf and 0x47834d |
+| PS2StyleNoiseFilter | PS2NoiseFilter.cpp | ported | `noise.c` `noise_set`: with the grain style on PS2 (the default; `optmenu.c` "ps2noise", Noise Effect's PS2 value) the grey byte is divided by 7.4, 0x22 replaces 0xff past the ramp's knee and the alpha base is 0x1d7, as EE patches 0x47cb8a, 0x47cbaf and 0x47834d |
 | IncreaseNoiseEffectRes | PS2NoiseFilter.cpp | already covered | The port's noise texture is drawn one texel per pixel over the 400 x 240 screen |
 | FmvSubtitlesNoiseFix | FmvSubtitles.cpp | left out | The port draws no movie subtitles |
 | JamesTextureFix | Patches/JamesTexture.cpp | left out | Needs EE's replacement jacket texture 9980 |
@@ -176,8 +176,9 @@ coordinates.
 
 Five EE options change how the game plays or looks rather than fixing a bug, so `options.txt`
 keeps them (all on by default, as in EE): `holdstomp`, `swapattack`, `ps2camera`, `cutscenefov` and
-`ps2flashlight`. Set one to 0 for the PC behaviour. The flashlight one is also in the pause menu
-("Flashlight  PS2 (soft) / PC (bright)"), because the PS2 brightness makes dark rooms darker.
+`ps2flashlight`. Set one to 0 for the PC behaviour. All of them are in the Options as well: Camera
+Speed and Heavy Attack (hold to stomp and the swapped swings in one row) on the Controls tab,
+Flashlight and Cutscene View on the Display tab, where the top screen shows what each changes.
 
 ## Where EE logic lives in the code
 

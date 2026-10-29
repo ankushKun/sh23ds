@@ -2,6 +2,7 @@
 #include "profile.h"
 #include "controls.h"
 #include "events.h"
+#include "figures.h"
 #include "font.h"
 #include "sfx.h"
 #include "touchui.h"
@@ -10,56 +11,45 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum { PG_MAIN, PG_GAME, PG_ADV, PG_CONTROL, PG_BRIGHT, PG_BUTTONS, PG_CHEATS };
+enum { TAB_CONTROLS, TAB_GAME, TAB_DISPLAY, TAB_SOUND, TAB_SYSTEM, TAB_N };
+enum { PG_TABS, PG_BRIGHT, PG_BUTTONS };   // the tabs, or the screen a row opens
 enum { ST_OFF, ST_MENU, ST_ASK };
-enum { K_PAGE, K_LIST, K_BAR, K_TIMES };
+enum { K_LIST, K_BAR, K_PAGE, K_TIMES };
 
+// A setting: where it is, its field and values, and what the top screen says about it. Text the
+// port writes may name buttons and the console with {AIM}, {RUN}, {ACT}, {LOOK} (the bound
+// button), {CAMTURN} (what turns the behind camera), {AUTOQ}, {AUTOFPS} and {CONSOLE} (expand).
 typedef struct {
-	int kind;
-	int label;                   // option.msg number, -1: name
+	int tab, kind;
+	int label;                       // option.msg number of the name, -1: name
 	const char* name;
-	int help;                    // option.msg number of the line in the box below, -1: text
-	const char* text;
-	int page;                    // K_PAGE: the page it opens
-	u8* v;                       // the setting
+	size_t off;                      // the field (rows with get and set stand for two)
 	int lo, hi;
-	bool wrap;
-	const short* names;          // option.msg numbers of the values lo..hi, NULL: texts
-	const char* const* texts;
-} Row;
+	const short* names;              // option.msg numbers of the values lo..hi, -1: texts[i]
+	const char* const* texts;        // the port's names of the values
+	int (*get)(const Options*);
+	void (*set)(Options*, int);
+	int page;                        // K_PAGE: PG_BRIGHT or PG_BUTTONS
+	int fig;                         // figures.h, beside a setting of two values
+	bool swatch;                     // Blood Color: its colours
+	const char* what;                // what the setting does
+	const char* const* lines;        // what each value does (lo..hi); NULL: the names alone
+	bool (*dim)(const Options*);     // another setting overrides it now
+	const char* (*note)(const Options*);
+	bool (*shown)(void);
+} Setting;
 
-#define MAX_ROWS 13
-#define VISIBLE 10               // the PC's panel holds ten rows (y 100 to 343)
+#define MAX_ROWS 10
 
 static Options* s_live;
 static Options s_old;            // as they were when the screen opened
 static OptHost s_host;
-static int s_state = ST_OFF, s_page, s_sel, s_top, s_bright_sel, s_yes = 1;
-static Row s_rows[MAX_ROWS];
+static int s_state = ST_OFF, s_page, s_tab, s_sel, s_shown_tab, s_shown_sel, s_bright_sel, s_yes = 1;
+static int s_tab_sel[TAB_N];     // the row last chosen on each tab (kept for the next opening)
+static const Setting* s_rows[MAX_ROWS];
 static int s_n;
-
-static const short OFF_ON[2] = { 176, 177 };
-static const short CONTROL_TYPE[2] = { 85, 86 };      // Rotational Style, Directional Style
-static const short SPEAKER[3] = { 194, 195, 197 };    // Mono, Stereo, Surround
-static const short FOG[2] = { 179, 180 };             // Simple, Complex
-static const short NORMAL_SWITCH[2] = { 70, 47 };
-static const short ZOOM[2] = { 95, 96 };
-static const short WALK_RUN[3] = { 102, 104, 103 };   // Walk, Analog, Run
-static const short BLOOD[4] = { 70, 50, 51, 52 };     // Normal, Green, Violet, Black
-static const short LANGUAGE[5] = { 79, 81, 80, 82, 83 }; // English, French, German, Italian, Spanish (0x461600)
-static const char* const SCREENS[2] = { "Bottom Screen", "Top Screen" };
-static const char* const PC_PS2[2] = { "PC", "PS2" };
-static const char* const FRAMING[2] = { "Full Width", "4:3" };
-static const char* const RUN_BUTTON[2] = { "Hold", "Toggle" };
-static const char* const CAMERA[2] = { "Original", "Behind" };
-static const char* const TIMING[2] = { "PC", "Hold A" };
-static const char* const SWAP[2] = { "Normal", "Swapped" };
-static const char* const OFF_ON_TEXT[2] = { "Off", "On" };
-// the hardware profile's rows (profile.c): three values each, Auto first
-static const char* const HARDWARE[3] = { "Auto", "Old 3DS", "New 3DS" };
-static const char* const QUALITY[3] = { "Auto", "Low", "High" };
-static const char* const FRAMES[3] = { "Auto", "30 fps", "60 fps" };
-#define OWN3(name, text, field, texts) add(K_LIST, -1, name, -1, text, &s_live->field, 0, 2, NULL, texts, 0)
+static u64 s_focus_ms;           // when the chosen row came up: its drawings start from there
+static int s_force_layout = -1;  // textcheck: the buttons of this layout in the texts
 
 static const char* msg(int n, const char* fallback)
 {
@@ -101,7 +91,7 @@ static const Key s_keys[] = {
 	K("cutscenefov", cutscene_fov, 0, 1), K("togglerun", toggle_run, 0, 1), K("holdstomp", hold_stomp, 0, 1),
 	K("swapattack", swap_attack, 0, 1), K("hwprofile", hwprofile, 0, 2), K("quality", quality, 0, 2),
 	K("framerate", framerate, 0, 2), K("ctrllayout", ctrllayout, 0, 2), K("infstamina", inf_stamina, 0, 1),
-	K("infammo", inf_ammo, 0, 1), K("camera", camera, 0, 1),
+	K("infammo", inf_ammo, 0, 1), K("camera", camera, 0, 1), K("setup", setup, 0, 1),
 };
 
 // options.txt files written before these defaults (no "optver" line) take the new defaults of the
@@ -150,104 +140,253 @@ void opt_save(const Options* o, const char* path)
 	fclose(f);
 }
 
-// ---------------------------------------------------------------- pages
+// ---------------------------------------------------------------- the settings
 
-static void add(int kind, int label, const char* name, int help, const char* text, u8* v, int lo, int hi,
-                const short* names, const char* const* texts, int page)
+static const short OFF_ON[2] = { 176, 177 };
+static const short CONTROL_TYPE[2] = { 85, 86 };      // Rotational Style, Directional Style
+static const short SPEAKER[3] = { 194, 195, 197 };    // Mono, Stereo, Surround
+static const short FOG[2] = { 179, 180 };             // Simple, Complex
+static const short NORMAL_SWITCH[2] = { 70, 47 };
+static const short ZOOM[2] = { 95, 96 };
+static const short WALK_RUN[4] = { 102, -1, 104, 103 };   // Walk, (Toggle), Analog, Run
+static const short BLOOD[4] = { 70, 50, 51, 52 };     // Normal, Green, Violet, Black
+static const short LANGUAGE[5] = { 79, 81, 80, 82, 83 }; // English, French, German, Italian, Spanish (0x461600)
+static const short NOISE[3] = { 176, -1, -1 };        // Off, (PC, PS2)
+static const char* const WALK_RUN_T[4] = { NULL, "Toggle", NULL, NULL };
+static const char* const NOISE_T[3] = { NULL, "PC", "PS2" };
+static const char* const SCREENS[2] = { "Bottom Screen", "Top Screen" };
+static const char* const PC_PS2[2] = { "PC", "PS2" };
+static const char* const FRAMING[2] = { "Full Width", "4:3" };
+static const char* const CAMERA[2] = { "Original", "Behind" };
+static const char* const HEAVY[2] = { "PC", "Hold {ACT}" };
+static const char* const OFF_ON_TEXT[2] = { "Off", "On" };
+// the hardware profile's rows (profile.c): three values each, Auto first
+static const char* const HARDWARE[3] = { "Auto", "Old 3DS", "New 3DS" };
+static const char* const QUALITY[3] = { "Auto", "Low", "High" };
+static const char* const FRAMES[3] = { "Auto", "30 fps", "60 fps" };
+
+static const char* const CAMERA_L[2] = { "The PC's own shots, framed for each room. They cut as James moves.",
+                                         "Follows James. {CAMTURN}" };
+static const char* const CONTROL_L[2] = { "Left and right turn James. Up walks ahead, down backs away.",
+                                          "Push the way you want James to go. It holds through camera cuts." };
+static const char* const CAMSPEED_L[2] = { "The PC's slower turns, which float and bounce.",
+                                           "Quicker, steadier turns, as on the PS2." };
+static const char* const WEAPON_L[2] = { "Hold {AIM} to keep the weapon up. Let go to lower it.",
+                                         "Press {AIM} to raise the weapon, and again to lower it." };
+static const char* const WALKRUN_L[4] = { "James walks. Hold {RUN} to run.", "Press {RUN} to run, until James stops.",
+                                          "Push the Circle Pad all the way to run.", "James runs. Hold {RUN} to walk." };
+static const char* const VIEW_L[2] = { "Hold {LOOK} to look ahead of James.",
+                                       "Press {LOOK} to look ahead of James, and again to stop." };
+static const char* const HEAVY_L[2] = { "Every press is heavy, as with a PC key: a downswing or a stomp.",
+                                        "Tap {ACT} to swing light or kick. Hold it to swing heavy or stomp." };
+static const char* const MAP_L[2] = { "Close up on where James is.", "The whole floor at once." };
+static const char* const BULLET_L[3] = { "As on the PC.", "Twice the rounds.", "Three times the rounds." };
+static const char* const STAMINA_L[2] = { "As on the PC: a long run tires James, sooner when he is hurt.",
+                                          "James runs for as long as you like." };
+static const char* const AMMO_L[2] = { "Every shot uses a round.", "Guns never run out." };
+static const char* const STEREO_L[2] = { "The top screen stays flat whatever the slider says.",
+                                         "The world gains depth. Text and menus stay on the screen." };
+static const char* const MESSAGES_L[2] = { "On the touch screen, which keeps the picture clear.",
+                                           "In the PC's message window over the game." };
+static const char* const NOISE_L[3] = { "A clean picture, as the PC starts.", "The PC's light grain.",
+                                        "The PS2's darker grain, which the Enhanced Edition restores." };
+static const char* const FLASH_L[2] = { "A strong, short beam that washes walls out.",
+                                        "A softer beam that reaches further. Dark rooms stay dark." };
+static const char* const CUTFOV_L[2] = { "Scenes widen to the screen and show more at the sides.",
+                                         "Scenes keep the width they were framed with, a little closer." };
+static const char* const SHADOWS_L[2] = { "No character shadows. Lighter for the console.",
+                                          "Characters cast shadows, softened as in the Enhanced Edition." };
+static const char* const FOG_L[2] = { "Fog without drifting particles. Lighter for the console.",
+                                      "Drifting fog particles, as on the PC." };
+static const char* const SUBS_L[2] = { "Voices only.", "Spoken lines are written out as they play." };
+static const char* const SPEAKER_L[3] = { "One channel from both speakers.", "Left and right kept apart.",
+                                          "The 3DS's virtual surround." };
+static const char* const QUALITY_L[3] = { "This console picks {AUTOQ}.",
+                                          "Fewer fog particles and lights, no shadows, no smoothing.",
+                                          "Everything the port draws." };
+static const char* const FRAMES_L[3] = { "Follows Quality: {AUTOFPS} fps on this console.",
+                                         "Every frame lasts the same time. The steadiest motion.",
+                                         "Smoother, when the console keeps up." };
+static const char* const HARDWARE_L[3] = { "This console, a {CONSOLE} 3DS.",
+                                           "Lighter defaults for quality, frame rate and textures.",
+                                           "Full defaults for quality, frame rate and textures." };
+static const char* const LAYOUT_L[3] = { "This console's buttons.", "No ZL, ZR or C-Stick.",
+                                         "Adds ZL, ZR and the C-Stick, or a Circle Pad Pro." };
+
+// Walk/Run Control and the Enhanced Edition's toggle in one row: Walk, Toggle, Analog, Run. The
+// toggle wins over the other two in main.c, so they are never set together here.
+static int walkrun_get(const Options* o) { return o->toggle_run ? 1 : o->walk_run == 0 ? 0 : o->walk_run == 1 ? 2 : 3; }
+static void walkrun_set(Options* o, int v)
 {
-	if (s_n >= MAX_ROWS)
-		return;
-	s_rows[s_n++] = (Row){ kind, label, name, help, text, page, v, lo, hi, kind != K_BAR && v != &s_live->bright,
-	                       names, texts };
+	o->toggle_run = v == 1;
+	o->walk_run = v == 2 ? 1 : v == 3 ? 2 : 0;
 }
-
-#define LIST(label, help, field, n, names) add(K_LIST, label, NULL, help, NULL, &s_live->field, 0, (n) - 1, names, NULL, 0)
-#define OWN(name, text, field, texts) add(K_LIST, -1, name, -1, text, &s_live->field, 0, 1, NULL, texts, 0)
-
-static void build(void)
+// Noise Effect and the Enhanced Edition's PS2 style in one row: Off, PC, PS2 (Off keeps the style).
+static int noise_get(const Options* o) { return !o->noise ? 0 : o->noise_ps2 ? 2 : 1; }
+static void noise_set_v(Options* o, int v)
 {
-	s_n = 0;
-	switch (s_page) {
-	case PG_MAIN:
-		// 0x461600 page 2: three pages, then the settings (Vibration left out)
-		add(K_PAGE, 189, NULL, 190, NULL, NULL, 0, 0, NULL, NULL, PG_GAME);
-		add(K_PAGE, 166, NULL, 191, NULL, NULL, 0, 0, NULL, NULL, PG_ADV);
-		add(K_PAGE, 6, NULL, 7, NULL, NULL, 0, 0, NULL, NULL, PG_CONTROL);
-		add(K_PAGE, -1, "Cheats", -1, "Infinite stamina, infinite ammo", NULL, 0, 0, NULL, NULL, PG_CHEATS);
-		LIST(84, 87, control_type, 2, CONTROL_TYPE);
-		// Language (76, help 77): English to Spanish and round again either way (0x4630c0 row 5)
-		add(K_LIST, 76, NULL, 77, NULL, &s_live->lang, 1, 5, LANGUAGE, NULL, 0);
-		LIST(74, 75, subtitles, 2, OFF_ON);
-		LIST(34, 35, speaker, 3, SPEAKER);
-		add(K_BAR, 40, NULL, 41, NULL, &s_live->bgm, 0, 15, NULL, NULL, 0);
-		add(K_BAR, 42, NULL, 43, NULL, &s_live->se, 0, 15, NULL, NULL, 0);
-		break;
-	case PG_GAME:
-		// 0x461600 with 0x944201 set: the extra gameplay options; Bullet Adjust once cleared
-		LIST(44, 45, weapon, 2, NORMAL_SWITCH);
-		LIST(94, 99, map_zoom, 2, ZOOM);
-		LIST(57, 58, walk_run, 3, WALK_RUN);
-		LIST(53, 54, view, 2, NORMAL_SWITCH);
-		LIST(48, 49, blood, 4, BLOOD);
-		if (s_host.cleared)
-			add(K_TIMES, 65, NULL, 66, NULL, &s_live->bullet, 1, 3, NULL, NULL, 0);
-		break;
-	case PG_ADV:
-		// 0x464eb0: Brightness Level, Noise Effect, Shadows and Fog apply here (Screen Position,
-		// the textures, resolution, filters, lens flare and 3D sound are the PC's own)
-		add(K_PAGE, 2, NULL, 3, NULL, NULL, 0, 0, NULL, NULL, PG_BRIGHT);
-		LIST(97, 98, noise, 2, OFF_ON);
-		LIST(175, 203, shadows, 2, OFF_ON);
-		LIST(178, 204, fog, 2, FOG);
-		OWN("Messages", "Show messages and subtitles on the top screen", msg_top, SCREENS);
-		OWN("3D", "Depth on the top screen with the 3D slider", stereo, OFF_ON_TEXT);
-		OWN("Flashlight", "Enhanced Edition: the PS2's softer flashlight", ps2_flash, PC_PS2);
-		OWN("Noise Style", "Enhanced Edition: the PS2's darker grain", noise_ps2, PC_PS2);
-		OWN("Camera Speed", "Enhanced Edition: the PS2's camera speed", ps2_camera, PC_PS2);
-		OWN("Cutscene View", "Enhanced Edition: keep the 4:3 framing in scenes", cutscene_fov, FRAMING);
-		// the hardware profile (profile.c): what Auto means on this console is in the help line
-		{
-			static char hw[80], q[80], fr[80];
-			bool n = profile_console_new();
-			snprintf(hw, sizeof hw, "Auto: this console (%s 3DS)", n ? "New" : "Old");
-			snprintf(q, sizeof q, "Low: lighter scenes, no shadows (Auto: %s)",
-			         profile_new() ? "High" : "Low");
-			snprintf(fr, sizeof fr, "30 fps keeps frames even (Auto: %d fps)", profile_frame_rate());
-			OWN3("Hardware", hw, hwprofile, HARDWARE);
-			OWN3("Quality", q, quality, QUALITY);
-			OWN3("Frame Rate", fr, framerate, FRAMES);
-		}
-		break;
-	case PG_CONTROL:
-		// the PC's key setup becomes the port's: the buttons of each action (controls.c), then the
-		// control settings
-		add(K_PAGE, -1, "Buttons", -1, "Choose the button for each action", NULL, 0, 0, NULL, NULL, PG_BUTTONS);
-		OWN("Camera", "Behind: a camera that follows James", camera, CAMERA);
-		OWN("Run Button", "Enhanced Edition: B starts and stops running", toggle_run, RUN_BUTTON);
-		OWN("Heavy Attack", "Enhanced Edition: hold A to stomp or swing heavy", hold_stomp, TIMING);
-		OWN("Light / Heavy", "Enhanced Edition: swap the light and heavy swings", swap_attack, SWAP);
-		// which buttons the bindings may use: the Old 3DS layout has no ZL, ZR or C-Stick
-		{
-			static char lay[80];
-			snprintf(lay, sizeof lay, "Old 3DS: no ZL, ZR or C-Stick (Auto: %s 3DS)", profile_console_new() ? "New" : "Old");
-			OWN3("Layout", lay, ctrllayout, HARDWARE);
-		}
-		break;
-	case PG_CHEATS:
-		// the port's own: not the PC's (its cheats are the clear rewards), off but for stamina
-		OWN("Infinite Stamina", "James can run for as long as B is held", inf_stamina, OFF_ON_TEXT);
-		OWN("Infinite Ammo", "Guns never run out of rounds", inf_ammo, OFF_ON_TEXT);
-		break;
+	o->noise = v != 0;
+	if (v)
+		o->noise_ps2 = v == 2;
+}
+// The Enhanced Edition's two button-pressure stand-ins (hold to stomp, light and heavy swings) in one
+// row: PC or Hold A. A hand-edited options.txt with them apart shows the stomp's until changed.
+static int heavy_get(const Options* o) { return o->hold_stomp; }
+static void heavy_set(Options* o, int v) { o->hold_stomp = o->swap_attack = (u8)v; }
+
+static bool behind(const Options* o) { return o->camera == 1; }
+static bool low(const Options* o) { (void)o; return profile_quality() == QUALITY_LOW; }
+static const char* camera_note(const Options* o) { (void)o; return "Scenes and scripted shots always use the PC's camera."; }
+static const char* scripted_note(const Options* o)
+{
+	return behind(o) ? "With the Behind camera, this only applies in scripted shots." : NULL;
+}
+static const char* view_note(const Options* o)
+{
+	return behind(o) ? "With the Behind camera, {LOOK} swings the camera behind James." : NULL;
+}
+static const char* noise_note(const Options* o) { (void)o; return "Brightness Level changes how strong the grain is."; }
+static const char* shadows_note(const Options* o) { return low(o) ? "Low quality turns shadows off." : NULL; }
+static const char* fog_note(const Options* o) { return low(o) ? "Low quality draws half as many particles." : NULL; }
+static bool cleared(void) { return s_host.cleared; }
+
+#define AT(field) .off = offsetof(Options, field)
+static const Setting SETTINGS[] = {
+	// Controls: the camera and the Control Type first, as they change the most
+	{ .tab = TAB_CONTROLS, .label = -1, .name = "Camera", AT(camera), .hi = 1, .texts = CAMERA, .fig = FIG_CAMERA,
+	  .what = "How the game frames James while you play.", .lines = CAMERA_L, .note = camera_note },
+	{ .tab = TAB_CONTROLS, .label = 84, .name = "Control Type", AT(control_type), .hi = 1, .names = CONTROL_TYPE,
+	  .fig = FIG_MOVEMENT, .what = "How the Circle Pad steers James.", .lines = CONTROL_L, .dim = behind,
+	  .note = scripted_note },
+	{ .tab = TAB_CONTROLS, .label = -1, .name = "Camera Speed", AT(ps2_camera), .hi = 1, .texts = PC_PS2,
+	  .what = "How quickly the PC camera turns and settles.", .lines = CAMSPEED_L, .dim = behind,
+	  .note = scripted_note },
+	{ .tab = TAB_CONTROLS, .label = 44, .name = "Weapon Control", AT(weapon), .hi = 1, .names = NORMAL_SWITCH,
+	  .fig = FIG_AIM, .what = "How {AIM} raises the weapon.", .lines = WEAPON_L },
+	{ .tab = TAB_CONTROLS, .label = 57, .name = "Walk/Run Control", .hi = 3, .names = WALK_RUN, .texts = WALK_RUN_T,
+	  .get = walkrun_get, .set = walkrun_set, .what = "When James walks and when he runs.", .lines = WALKRUN_L },
+	{ .tab = TAB_CONTROLS, .label = 53, .name = "View Control", AT(view), .hi = 1, .names = NORMAL_SWITCH,
+	  .fig = FIG_LOOK, .what = "How {LOOK} turns the view to where James faces.", .lines = VIEW_L, .dim = behind,
+	  .note = view_note },
+	{ .tab = TAB_CONTROLS, .label = -1, .name = "Heavy Attack", .hi = 1, .texts = HEAVY, .get = heavy_get,
+	  .set = heavy_set, .what = "How {ACT} picks a light or a heavy attack.", .lines = HEAVY_L },
+	{ .tab = TAB_CONTROLS, .kind = K_PAGE, .label = -1, .name = "Buttons", .page = PG_BUTTONS,
+	  .what = "Choose the button for each action." },
+	// Game: the PC's Game Options and the port's cheats
+	{ .tab = TAB_GAME, .label = 94, .name = "Map", AT(map_zoom), .hi = 1, .names = ZOOM, .fig = FIG_MAP,
+	  .what = "How the map opens.", .lines = MAP_L },
+	{ .tab = TAB_GAME, .label = 48, .name = "Blood Color", AT(blood), .hi = 3, .names = BLOOD, .swatch = true,
+	  .what = "The color of blood." },
+	{ .tab = TAB_GAME, .kind = K_TIMES, .label = 65, .name = "Bullet Adjust", AT(bullet), .lo = 1, .hi = 3,
+	  .what = "How many rounds a box of ammo holds.", .lines = BULLET_L, .shown = cleared },
+	{ .tab = TAB_GAME, .label = -1, .name = "Infinite Stamina", AT(inf_stamina), .hi = 1, .texts = OFF_ON_TEXT,
+	  .fig = FIG_STAMINA, .what = "Whether running tires James.", .lines = STAMINA_L },
+	{ .tab = TAB_GAME, .label = -1, .name = "Infinite Ammo", AT(inf_ammo), .hi = 1, .texts = OFF_ON_TEXT,
+	  .what = "Whether shots use up rounds.", .lines = AMMO_L },
+	// Display
+	{ .tab = TAB_DISPLAY, .kind = K_PAGE, .label = 2, .name = "Brightness Level", .page = PG_BRIGHT,
+	  .what = "How bright the game's darkness looks." },
+	{ .tab = TAB_DISPLAY, .label = -1, .name = "3D", AT(stereo), .hi = 1, .texts = OFF_ON_TEXT,
+	  .what = "Depth on the top screen with the 3D slider.", .lines = STEREO_L },
+	{ .tab = TAB_DISPLAY, .label = -1, .name = "Messages", AT(msg_top), .hi = 1, .texts = SCREENS, .fig = FIG_SCREENS,
+	  .what = "Where messages and subtitles appear.", .lines = MESSAGES_L },
+	{ .tab = TAB_DISPLAY, .label = 97, .name = "Noise Effect", .hi = 2, .names = NOISE, .texts = NOISE_T,
+	  .get = noise_get, .set = noise_set_v, .what = "Film grain over the picture.", .lines = NOISE_L,
+	  .note = noise_note },
+	{ .tab = TAB_DISPLAY, .label = -1, .name = "Flashlight", AT(ps2_flash), .hi = 1, .texts = PC_PS2, .fig = FIG_BEAM,
+	  .what = "How James' flashlight lights a room.", .lines = FLASH_L },
+	{ .tab = TAB_DISPLAY, .label = -1, .name = "Cutscene View", AT(cutscene_fov), .hi = 1, .texts = FRAMING,
+	  .fig = FIG_FRAMING, .what = "How scenes fill the wide top screen.", .lines = CUTFOV_L },
+	{ .tab = TAB_DISPLAY, .label = 175, .name = "Shadows", AT(shadows), .hi = 1, .names = OFF_ON,
+	  .what = "Shadows that characters cast from the lights.", .lines = SHADOWS_L, .dim = low, .note = shadows_note },
+	{ .tab = TAB_DISPLAY, .label = 178, .name = "Fog", AT(fog), .hi = 1, .names = FOG,
+	  .what = "How the drifting fog is drawn.", .lines = FOG_L, .note = fog_note },
+	// Sound
+	{ .tab = TAB_SOUND, .label = 74, .name = "Subtitles", AT(subtitles), .hi = 1, .names = OFF_ON,
+	  .what = "Spoken lines written out on screen.", .lines = SUBS_L },
+	{ .tab = TAB_SOUND, .label = 34, .name = "Speaker Config.", AT(speaker), .hi = 2, .names = SPEAKER,
+	  .what = "How sound is mixed for the speakers.", .lines = SPEAKER_L },
+	{ .tab = TAB_SOUND, .kind = K_BAR, .label = 40, .name = "BGM Volume", AT(bgm), .hi = 15,
+	  .what = "Music and ambient sound." },
+	{ .tab = TAB_SOUND, .kind = K_BAR, .label = 42, .name = "SE Volume", AT(se), .hi = 15,
+	  .what = "Sound effects and voices." },
+	// System: the language and the hardware profile (profile.c)
+	{ .tab = TAB_SYSTEM, .label = 76, .name = "Language", AT(lang), .lo = 1, .hi = 5, .names = LANGUAGE,
+	  .what = "The language of the game's text." },
+	{ .tab = TAB_SYSTEM, .label = -1, .name = "Quality", AT(quality), .hi = 2, .texts = QUALITY,
+	  .what = "How much the console draws.", .lines = QUALITY_L },
+	{ .tab = TAB_SYSTEM, .label = -1, .name = "Frame Rate", AT(framerate), .hi = 2, .texts = FRAMES,
+	  .what = "How often the picture is drawn.", .lines = FRAMES_L },
+	{ .tab = TAB_SYSTEM, .label = -1, .name = "Hardware", AT(hwprofile), .hi = 2, .texts = HARDWARE,
+	  .what = "Which console the game tunes itself for.", .lines = HARDWARE_L },
+	{ .tab = TAB_SYSTEM, .label = -1, .name = "Layout", AT(ctrllayout), .hi = 2, .texts = HARDWARE,
+	  .what = "Which buttons the controls may use.", .lines = LAYOUT_L },
+};
+#define N_SETTINGS ((int)(sizeof SETTINGS / sizeof *SETTINGS))
+static const char* const TABS[TAB_N] = { "Controls", "Game", "Display", "Sound", "System" };
+
+// ---------------------------------------------------------------- values and text
+
+static int get(const Setting* s) { return s->get ? s->get(s_live) : ((const u8*)s_live)[s->off]; }
+static void set(const Setting* s, int v)
+{
+	if (s->set)
+		s->set(s_live, v);
+	else
+		((u8*)s_live)[s->off] = (u8)v;
+}
+static bool is_lang(const Setting* s) { return !s->get && s->off == offsetof(Options, lang) && s->kind == K_LIST; }
+
+static int layout(void) { return s_force_layout >= 0 ? s_force_layout : (int)controls_layout(); }
+
+// the first button bound to an action, by name ("ZL"), or the action's own name when none is
+static const char* key_of(ControlsAction act, char* out, size_t n)
+{
+	u32 k = s_force_layout >= 0 ? controls_default((ControlsLayout)s_force_layout, act) : controls_keys(act);
+	if (!k) {
+		snprintf(out, n, "%s", controls_name(act));
+		return out;
 	}
+	return controls_key_text(k & -k, out, n);
 }
 
-static const char* label(const Row* r) { return r->label >= 0 ? msg(r->label, "") : r->name; }
-static const char* help(const Row* r) { return r->help >= 0 ? msg(r->help, "") : r->text; }
-
-static const char* value(const Row* r, char* buf, int size)
+// src with its {TOKENS} in place
+static const char* expand(const char* src, char* out, size_t n)
 {
-	int v = *r->v;
-	if (r->kind == K_TIMES) {
+	size_t k = 0;
+	out[0] = 0;
+	for (const char* p = src ? src : ""; *p && k + 1 < n;) {
+		const char* e = *p == '{' ? strchr(p, '}') : NULL;
+		if (!e) {
+			out[k++] = *p++;
+			continue;
+		}
+		char tok[16], val[96] = "", key[24];
+		snprintf(tok, sizeof tok, "%.*s", (int)(e - p - 1), p + 1);
+		if (!strcmp(tok, "AIM")) key_of(ACT_AIM, val, sizeof val);
+		else if (!strcmp(tok, "RUN")) key_of(ACT_RUN, val, sizeof val);
+		else if (!strcmp(tok, "ACT")) key_of(ACT_ACTION, val, sizeof val);
+		else if (!strcmp(tok, "LOOK")) key_of(ACT_LOOK, val, sizeof val);
+		else if (!strcmp(tok, "CAMTURN"))   // tpcam.c: the C-Stick on the New 3DS layout, the D-Pad's free directions on the Old
+			snprintf(val, sizeof val, "%s, and %s puts it back.",
+			         layout() == CONTROLS_LAYOUT_NEW ? "The C-Stick turns it" : "The D-Pad or a drag turns it",
+			         key_of(ACT_LOOK, key, sizeof key));
+		else if (!strcmp(tok, "AUTOQ")) snprintf(val, sizeof val, "%s", profile_new() ? "High" : "Low");
+		else if (!strcmp(tok, "AUTOFPS")) snprintf(val, sizeof val, "%d", profile_quality() == QUALITY_LOW ? 30 : 60);
+		else if (!strcmp(tok, "CONSOLE")) snprintf(val, sizeof val, "%s", profile_console_new() ? "New" : "Old");
+		k += snprintf(out + k, n - k, "%s", val);
+		k = k < n ? k : n - 1;
+		p = e + 1;
+	}
+	out[k] = 0;
+	return out;
+}
+
+static const char* label(const Setting* s) { return s->label >= 0 ? msg(s->label, s->name) : s->name; }
+
+static const char* value_name(const Setting* s, int v, char* buf, int size)
+{
+	if (s->kind == K_TIMES) {
 		// "x \1" (67) with the number inserted
 		const char* m = msg(67, "x \x01");
 		int k = 0;
@@ -256,23 +395,34 @@ static const char* value(const Row* r, char* buf, int size)
 		buf[k] = 0;
 		return buf;
 	}
-	if (r->kind == K_BAR) {
+	if (s->kind == K_BAR) {
 		snprintf(buf, size, "%d", v);
 		return buf;
 	}
-	return r->names ? msg(r->names[v - r->lo], "") : r->texts[v - r->lo];
+	int i = v - s->lo;
+	if (i < 0 || i > s->hi - s->lo)
+		i = 0;
+	if (s->names && s->names[i] >= 0)
+		return msg(s->names[i], "");
+	return expand(s->texts ? s->texts[i] : "", buf, size);
+}
+
+static bool dimmed(const Setting* s) { return s->dim && s->dim(s_live); }
+
+// ---------------------------------------------------------------- the touch screen
+
+static void build(void)
+{
+	s_n = 0;
+	for (int i = 0; i < N_SETTINGS && s_n < MAX_ROWS; i++)
+		if (SETTINGS[i].tab == s_tab && (!SETTINGS[i].shown || SETTINGS[i].shown()))
+			s_rows[s_n++] = &SETTINGS[i];
 }
 
 static const char* page_title(int page)
 {
-	switch (page) {
-	case PG_GAME: return msg(189, "Game Options");
-	case PG_ADV: return msg(166, "Advanced Options");
-	case PG_CONTROL: return msg(6, "Control Options");
-	case PG_BRIGHT: return msg(2, "Brightness Level");
-	case PG_BUTTONS: return "Buttons";
-	case PG_CHEATS: return "Cheats";
-	}
+	if (page == PG_BRIGHT)
+		return msg(2, "Brightness Level");
 	return ev_language() == 1 ? "Options" : msg(23, "Options");   // "Option" in English
 }
 
@@ -291,7 +441,7 @@ static void touch(void)
 		                TOUI_ONE_TAP);
 		return;
 	}
-	static char text[MAX_ROWS][64];
+	static char text[MAX_ROWS][72];
 	const char* rows[MAX_ROWS];
 	if (s_page == PG_BRIGHT) {
 		snprintf(text[0], sizeof text[0], "Level   < %d >", s_live->bright);
@@ -300,18 +450,45 @@ static void touch(void)
 		touchui_menu(TOUI_OPTIONS, page_title(PG_BRIGHT), rows, 1, &s_bright_sel, back, 1);
 		return;
 	}
+	TouiRow kinds[MAX_ROWS];
+	u64 dim = 0;
+	memset(kinds, 0, sizeof kinds);
 	for (int i = 0; i < s_n; i++) {
-		char v[24];
-		if (s_rows[i].kind == K_PAGE)
-			snprintf(text[i], sizeof text[i], "%s", label(&s_rows[i]));
+		const Setting* s = s_rows[i];
+		char v[48];
+		if (s->kind == K_PAGE || s->kind == K_BAR)
+			snprintf(text[i], sizeof text[i], "%s", label(s));
 		else
-			snprintf(text[i], sizeof text[i], "%s   < %s >", label(&s_rows[i]), value(&s_rows[i], v, sizeof v));
+			snprintf(text[i], sizeof text[i], "%s   < %s >", label(s), value_name(s, get(s), v, sizeof v));
+		kinds[i] = (TouiRow){ s->kind == K_PAGE ? TOUI_ROW_PAGE : s->kind == K_BAR ? TOUI_ROW_BAR : TOUI_ROW_VALUE,
+		                      (u8)(s->kind == K_BAR ? get(s) : 0), (u8)(s->kind == K_BAR ? s->hi : 0) };
+		if (dimmed(s))
+			dim |= 1ull << i;
 		rows[i] = text[i];
 	}
-	touchui_menu(TOUI_OPTIONS, page_title(s_page), rows, s_n, &s_sel, back, 1);
+	const TouiMenuExtra extra = { TABS, TAB_N, &s_tab, kinds };
+	touchui_menu_full(TOUI_OPTIONS, NULL, rows, s_n, &s_sel, back, 1, dim, 0, &extra);
 }
 
-static void go(int page, int sel)
+static void focus(void)
+{
+	s_shown_tab = s_tab;
+	s_shown_sel = s_sel;
+	s_tab_sel[s_tab] = s_sel;
+	s_focus_ms = osGetTime();
+}
+
+static void go_tab(int tab)
+{
+	s_page = PG_TABS;
+	s_tab = (tab % TAB_N + TAB_N) % TAB_N;
+	build();
+	s_sel = s_tab_sel[s_tab] < s_n ? s_tab_sel[s_tab] : 0;
+	focus();
+	touch();
+}
+
+static void go(int page)
 {
 	s_page = page;
 	if (page == PG_BUTTONS) {
@@ -322,9 +499,6 @@ static void go(int page, int sel)
 		controls_menu_draw();
 		return;
 	}
-	build();
-	s_sel = sel < s_n ? sel : 0;
-	s_top = 0;
 	touch();
 }
 
@@ -334,11 +508,16 @@ void optmenu_open(Options* live, const OptHost* host)
 	s_old = *live;
 	s_host = *host;
 	s_state = ST_MENU;
-	go(PG_MAIN, 0);
+	go_tab(s_tab);
 }
 
 bool optmenu_active(void) { return s_state != ST_OFF; }
 bool optmenu_brightness(void) { return s_state == ST_MENU && s_page == PG_BRIGHT; }
+
+bool optmenu_noise_focus(void)
+{
+	return s_state == ST_MENU && s_page == PG_TABS && s_sel < s_n && s_rows[s_sel]->get == noise_get;
+}
 
 static void close_screen(void)
 {
@@ -354,21 +533,22 @@ static void changed(void)
 	sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);       // 10000, as the PC on every change
 }
 
-static void step(Row* r, int dir)
+static void step(const Setting* r, int dir)
 {
-	int v = *r->v;
+	int v0 = get(r), v = v0;
+	bool wrap = r->kind != K_BAR;
 	for (int k = 0; k <= r->hi - r->lo; k++) {
 		v += dir;
 		if (v > r->hi)
-			v = r->wrap ? r->lo : r->hi;
+			v = wrap ? r->lo : r->hi;
 		if (v < r->lo)
-			v = r->wrap ? r->hi : r->lo;
+			v = wrap ? r->hi : r->lo;
 		// the Language row passes over the languages the pack lacks (the PC has them all)
-		if (r->v != &s_live->lang || ev_language_available(v))
+		if (!is_lang(r) || ev_language_available(v))
 			break;
 	}
-	if (v != *r->v) {
-		*r->v = (u8)v;
+	if (v != v0) {
+		set(r, v);
 		changed();
 	}
 }
@@ -414,11 +594,11 @@ bool optmenu_update(u32 down)
 		if (controls_menu_update(down))
 			controls_menu_draw();
 		else
-			go(PG_CONTROL, 0);
+			go_tab(s_tab);
 		return true;
 	}
 	if (s_page == PG_BRIGHT) {
-		// 0x466c30: left and right from 0 to 7, back to the Advanced Options with either button
+		// 0x466c30: left and right from 0 to 7, back to the tab with either button
 		int v = s_live->bright + (down & KEY_DRIGHT ? 1 : 0) - (down & KEY_DLEFT ? 1 : 0);
 		if (v >= 0 && v <= 7 && v != s_live->bright) {
 			s_live->bright = (u8)v;
@@ -427,33 +607,44 @@ bool optmenu_update(u32 down)
 		}
 		if (down & (KEY_A | KEY_B)) {
 			sfx_play(SFX_MENU_CANCEL, 1.0f, 0.0f);
-			go(PG_ADV, 0);
+			go_tab(s_tab);
 		}
 		return true;
 	}
+	if (s_tab != s_shown_tab) {          // a tab was tapped
+		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
+		go_tab(s_tab);
+		return true;
+	}
+	if (down & (KEY_L | KEY_R)) {
+		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
+		go_tab(s_tab + (down & KEY_R ? 1 : -1));
+		return true;
+	}
 	bool redraw = false;
-	if (down & (KEY_DUP | KEY_DDOWN)) {
+	if (s_n && (down & (KEY_DUP | KEY_DDOWN))) {
 		s_sel = (s_sel + (down & KEY_DDOWN ? 1 : s_n - 1)) % s_n;
 		sfx_play(SFX_MENU_MOVE, 1.0f, 0.0f);
 		redraw = true;
 	}
-	Row* r = &s_rows[s_sel];
-	if (r->kind == K_PAGE) {
+	if (s_sel >= s_n)
+		s_sel = 0;
+	if (s_sel != s_shown_sel) {          // moved, or a row was tapped
+		focus();
+		redraw = true;
+	}
+	const Setting* r = s_n ? s_rows[s_sel] : NULL;
+	if (r && r->kind == K_PAGE) {
 		if (down & KEY_A) {
 			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
-			go(r->page, 0);
+			go(r->page);
 			return true;
 		}
-	} else if (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A)) {
+	} else if (r && (down & (KEY_DLEFT | KEY_DRIGHT | KEY_A))) {
 		step(r, down & KEY_DLEFT ? -1 : 1);
 		redraw = true;
 	}
 	if (down & KEY_B) {
-		if (s_page != PG_MAIN) {
-			sfx_play(SFX_MENU_CANCEL, 1.0f, 0.0f);
-			go(PG_MAIN, s_page == PG_GAME ? 0 : s_page == PG_ADV ? 1 : s_page == PG_CONTROL ? 2 : 3);
-			return true;
-		}
 		if (memcmp(s_live, &s_old, sizeof s_old)) {
 			s_state = ST_ASK;
 			s_yes = 1;
@@ -465,10 +656,6 @@ bool optmenu_update(u32 down)
 		close_screen();
 		return false;
 	}
-	if (s_sel < s_top)
-		s_top = s_sel;
-	if (s_sel >= s_top + VISIBLE)
-		s_top = s_sel - VISIBLE + 1;
 	if (redraw)
 		touch();
 	return true;
@@ -481,76 +668,6 @@ static MapDrawFn s_draw;
 // The PC's text space (x 0..512, y 16..496, the 4:3 picture at 40..360 on the top screen).
 static float sx(float x) { return 200.0f + (x - 256.0f) * 0.625f; }
 static float sy(float y) { return 120.0f + (y - 256.0f) * 0.46875f; }
-
-static void quad(float x0, float y0, float x1, float y1, u32 rgba)
-{
-	MapVert a = { sx(x0), sy(y0), 0, 0 }, b = { sx(x1), sy(y0), 0, 0 };
-	MapVert c = { sx(x1), sy(y1), 0, 0 }, d = { sx(x0), sy(y1), 0, 0 };
-	MapVert v[6] = { a, b, c, a, c, d };
-	s_draw(NULL, v, 6, rgba);
-}
-
-// a convex outline given as fractions of the screen (0x45e750's vertices: W * (0.5 + x))
-static void poly(const float (*p)[2], int n, u32 fill, u32 line)
-{
-	MapVert v[3 * 8];
-	int k = 0;
-	for (int i = 1; i + 1 < n && k + 3 <= 24; i++) {
-		const float* q[3] = { p[0], p[i], p[i + 1] };
-		for (int j = 0; j < 3; j++)
-			v[k++] = (MapVert){ sx(256.0f + 512.0f * q[j][0]), sy(256.0f + 480.0f * q[j][1]), 0, 0 };
-	}
-	if (fill)
-		s_draw(NULL, v, k, fill);
-	if (!line)
-		return;
-	for (int i = 0; i < n; i++) {
-		// one-pixel edges as thin quads
-		float x0 = sx(256.0f + 512.0f * p[i][0]), y0 = sy(256.0f + 480.0f * p[i][1]);
-		float x1 = sx(256.0f + 512.0f * p[(i + 1) % n][0]), y1 = sy(256.0f + 480.0f * p[(i + 1) % n][1]);
-		float dx = x1 - x0, dy = y1 - y0, len = dx * dx + dy * dy;
-		if (len <= 0.0f)
-			continue;
-		float inv = 0.5f / __builtin_sqrtf(len), nx = -dy * inv, ny = dx * inv;
-		MapVert a = { x0 + nx, y0 + ny, 0, 0 }, b = { x1 + nx, y1 + ny, 0, 0 };
-		MapVert c = { x1 - nx, y1 - ny, 0, 0 }, d = { x0 - nx, y0 - ny, 0, 0 };
-		MapVert e[6] = { a, b, c, a, c, d };
-		s_draw(NULL, e, 6, line);
-	}
-}
-
-// 0x45e750: the panel, the help box below it and the outline around both
-static void panels(void)
-{
-	static const float panel[6][2] = {
-		{ -0.41015625f, -0.34375f }, { 0.41015625f, -0.34375f }, { 0.443359375f, -0.3020833f },
-		{ 0.443359375f, 0.2666667f }, { -0.443359375f, 0.2666667f }, { -0.443359375f, -0.3020833f },
-	};
-	static const float box[6][2] = {
-		{ -0.443359375f, 0.2791667f }, { 0.443359375f, 0.2791667f }, { 0.443359375f, 0.3291667f },
-		{ 0.41015625f, 0.3708333f }, { -0.41015625f, 0.3708333f }, { -0.443359375f, 0.3291667f },
-	};
-	static const float outline[8][2] = {
-		{ -0.4140625f, -0.3541667f }, { 0.4140625f, -0.3541667f }, { 0.453125f, -0.30625f },
-		{ 0.453125f, 0.3333333f }, { 0.4140625f, 0.38125f }, { -0.4140625f, 0.38125f },
-		{ -0.453125f, 0.3333333f }, { -0.453125f, -0.30625f },
-	};
-	// D3D colours 0x40808080 (fill) and 0x60252550 (lines) as RGBA
-	poly(panel, 6, 0x80808040, 0x25255060);
-	poly(box, 6, 0x80808040, 0x25255060);
-	poly(outline, 8, 0, 0x25255060);
-}
-
-// Text colours: 0x47edb0 takes PS2-style values (0x40 full), here doubled; alpha 0x60 for the
-// rows, full for the chosen one, which is drawn again 2 up and 2 left (0x461600).
-#define GREY 0x7e7e7e00u
-#define YELLOW 0x7e7e3e00u
-static void text(float x, float y, const char* s, int align, u32 rgb, bool chosen)
-{
-	font_text(FONT_BIG, x, y, s, align, rgb | 0xc0, rgb | 0xc0);
-	if (chosen)
-		font_text(FONT_BIG, x - 2, y - 2, s, align, rgb | 0xff, rgb | 0xff);
-}
 
 static void arrow(float x, float y, int dir, u32 rgba)
 {
@@ -566,52 +683,6 @@ static const char* full_width_msg(int n)
 {
 	const char* m = ev_option_message(n);
 	return m && strchr(m, FONT_FULL_WIDTH) ? m : NULL;
-}
-
-static void title(void)
-{
-	// the full-width titles: option_msg 72 OPTIONS, 73 GAME OPTIONS, 167 ADVANCED OPTIONS
-	// (0x461600 / 0x464eb0 at 0x100, 0x34)
-	bool control = s_page == PG_CONTROL || s_page == PG_BUTTONS;
-	const char* t = full_width_msg(s_page == PG_GAME ? 73 : s_page == PG_ADV ? 167 : 72);
-	if (control && ev_language() != 1) {
-		// the PC's Control Options screen (0x467440) is its own; the port's page is titled with
-		// the row's name in the other languages (a stand-in)
-		font_text(FONT_BIG, 256, 52, msg(6, "Control Options"), FONT_CENTER, 0x808080ff, 0x808080ff);
-		return;
-	}
-	if (t && !control) {
-		font_text(FONT_BIG, 256, 52, t, FONT_CENTER, 0x808080ff, 0x808080ff);
-		return;
-	}
-	// the English codes (option_msg_e.mes 72, 73, 167; 0xfc03 moves back 3, 0xfffe a space), with
-	// CONTROL in the same letters for the port's Control Options page
-	static const u16 opt[] = { 0x18a, 0x18b, 0x18f, 0xfc03, 0x184, 0xfc03, 0x18a, 0x189, 0x18e };
-	static const u16 game[] = { 0x182, 0x17c, 0x188, 0x180, 0xfffe };
-	static const u16 adv[] = { 0x17c, 0x17f, 0x191, 0x17c, 0x189, 0x17e, 0x180, 0x17f, 0xfffe };
-	static const u16 ctl[] = { 0x17e, 0x18a, 0x189, 0x18f, 0x18d, 0x18a, 0x187, 0xfffe };
-	u16 line[24];
-	int n = 0;
-	const u16* head = s_page == PG_GAME ? game : s_page == PG_ADV ? adv : control ? ctl : NULL;
-	int hn = s_page == PG_GAME ? 5 : s_page == PG_ADV ? 9 : control ? 8 : 0;
-	for (int i = 0; i < hn; i++)
-		line[n++] = head[i];
-	for (int i = 0; i < 9; i++)
-		line[n++] = opt[i];
-	font_codes(FONT_BIG, 256, 52, line, n, FONT_CENTER, 0x808080ff, 0x808080ff);
-}
-
-static void bar(float x0, float y, int v, bool changed)
-{
-	// 0x45bf10: fifteen blocks from x 273 (x0 256), 11 apart, lit up to the volume, two-tone
-	for (int i = 0; i < 15; i++) {
-		float x = x0 + 17.0f + 11.0f * i;
-		bool lit = i < v;
-		u32 top = lit ? (changed ? 0xb0b05880 : 0xb0b0b080) : (changed ? 0x50502580 : 0x50505080);
-		u32 bottom = lit ? (changed ? 0x40402080 : 0x40404080) : (changed ? 0x50502580 : 0x50505080);
-		quad(x - 2, y + 5, x + 7, y + 16, top);
-		quad(x - 2, y + 16, x + 7, y + 28, bottom);
-	}
 }
 
 static void brightness_screen(void)
@@ -645,9 +716,123 @@ static void brightness_screen(void)
 	arrow(322, 436, 1, 0x7e7e7eff);
 }
 
-// The PC's panel and title stay; the rows are on the touch screen (port/UI.md), so the panel shows
-// the chosen one large: its name, its value between the PC's arrows (or the volume blocks), and
-// the PC's help line in the box below; the question in the middle while it is asked.
+// The explainer's layout, in top-screen pixels: the title at 8, what the setting does at 31, the
+// values from 50, a note at 223. Two values with a drawing go side by side (the drawings 176 x 104
+// at x 16 and 208, the names under them, their lines under the names); the rest are listed, name
+// on the left and what it does beside it, the chosen one on the band.
+#define EX_TOP 50.0f
+#define EX_NOTE 223.0f
+
+static void key_for(int fig, char* out, size_t n)
+{
+	ControlsAction act = fig == FIG_AIM ? ACT_AIM : fig == FIG_LOOK ? ACT_LOOK : ACT_RUN;
+	key_of(act, out, n);
+}
+
+static void explain_buttons(void)
+{
+	// the actions of the Buttons page with their buttons, in two columns
+	ControlsAction acts[16];
+	int n = controls_actions(acts, 16), half = (n + 1) / 2;
+	for (int i = 0; i < n; i++) {
+		float x = i < half ? 26.0f : 214.0f, y = EX_TOP + 4 + (i % half) * 21.0f;
+		char keys[48];
+		u32 k = s_force_layout >= 0 ? controls_default((ControlsLayout)s_force_layout, acts[i]) : controls_keys(acts[i]);
+		fig_text(controls_name(acts[i]), x, y + 2, 92, 1, false, FONT_LEFT, FIGC_LABEL);
+		fig_text(controls_key_text(k, keys, sizeof keys), x + 96, y, 66, 1, true, FONT_LEFT, k ? FIGC_WHITE : FIGC_DIM);
+	}
+}
+
+static void explain(const Setting* s, float t)
+{
+	char buf[200], name[64];
+	fig_title(label(s), 8);
+	fig_text(expand(s->what, buf, sizeof buf), 200, 31, 372, 1, false, FONT_CENTER, FIGC_GREY);
+	const char* note = s->note ? s->note(s_live) : NULL;
+	float bottom = note ? EX_NOTE - 5 : 234;
+	if (s->kind == K_PAGE && s->page == PG_BUTTONS) {
+		explain_buttons();
+	} else if (s->kind == K_PAGE) {
+		// the brightness screen's lines at the level now, and the PC's own line for it
+		for (int k = -190; k < 0xd2; k += 20)
+			fig_rect(200.0f + k * 0.625f, EX_TOP + 12, 201.0f + k * 0.625f, 170, 0x80808000u | (u32)(s_live->bright * 12));
+		fig_text(msg(4, "Adjust until vertical lines appear faint."), 200, 186, 372, 1, true, FONT_CENTER, FIGC_GREY);
+	} else if (s->kind == K_BAR) {
+		// the PC's fifteen two-tone blocks (0x45bf10), large
+		int v = get(s);
+		float x0 = 200.0f - (15 * 18 - 4) * 0.5f;
+		for (int i = 0; i < 15; i++) {
+			bool lit = i < v;
+			fig_rect(x0 + i * 18, 92, x0 + i * 18 + 14, 104, lit ? 0xb0b0b0ffu : 0x3a3a3affu);
+			fig_rect(x0 + i * 18, 104, x0 + i * 18 + 14, 118, lit ? 0x5a5a5affu : 0x2e2e2effu);
+		}
+		snprintf(buf, sizeof buf, "%d", v);
+		fig_text(buf, 200, 130, 60, 1, true, FONT_CENTER, FIGC_WHITE);
+	} else if (s->swatch) {
+		// the blood's colours (blood.c) as drops, the chosen one lit
+		static const u32 col[4] = { 0x6e0a0aff, 0x2e5a1cff, 0x4c2161ff, 0x161313ff };
+		for (int i = 0; i <= s->hi; i++) {
+			float cx = 200.0f + (i - 1.5f) * 88.0f;
+			bool on = get(s) == i;
+			fig_drop(cx, 104, 17, col[i], on);
+			fig_text(value_name(s, i, name, sizeof name), cx, 140, 84, 1, true, FONT_CENTER, on ? FIGC_WHITE : FIGC_LABEL);
+			if (on)
+				fig_rect(cx - 12, 156, cx + 12, 158, FIGC_RED);
+		}
+	} else if (s->fig && s->hi - s->lo == 1) {
+		char key[24];
+		key_for(s->fig, key, sizeof key);
+		for (int i = 0; i < 2; i++) {
+			float x = i ? 208.0f : 16.0f, cx = x + FIG_W * 0.5f;
+			bool on = get(s) == s->lo + i;
+			fig_draw(s->fig, i, x, EX_TOP, t, on, key);
+			fig_text(value_name(s, s->lo + i, name, sizeof name), cx, 158, 172, 1, true, FONT_CENTER,
+			         on ? FIGC_WHITE : FIGC_LABEL);
+			if (on)
+				fig_rect(cx - 12, 174, cx + 12, 176, FIGC_RED);
+			int max = (int)((bottom - 179) / font_line_px(FONT_SMALL));
+			fig_text(expand(s->lines[i], buf, sizeof buf), cx, 179, 172, max > 3 ? 3 : max, false, FONT_CENTER,
+			         on ? FIGC_GREY : FIGC_DIM);
+		}
+	} else {
+		int n = s->hi - s->lo + 1;
+		float rh = s->lines ? (n > 3 ? 30.0f : 36.0f) : 18.0f, y = EX_TOP + (bottom - EX_TOP - rh * n) * 0.5f;
+		y = y < EX_TOP ? EX_TOP : y;
+		for (int i = 0; i < n; i++, y += rh) {
+			int v = s->lo + i;
+			bool on = get(s) == v;
+			const char* nm = value_name(s, v, name, sizeof name);
+			if (s->lines) {
+				float h = font_line_px(FONT_BIG);
+				char line[200];
+				expand(s->lines[i], line, sizeof line);
+				FontFit f;
+				font_fit_px(line, 236, 2, false, &f);
+				float lh = f.n * font_line_px(FONT_SMALL);
+				h = lh > h ? lh : h;
+				if (on)
+					fig_band(14, y - 4, 386, y + h + 3);
+				fig_text(nm, 30, y, 104, 1, true, FONT_LEFT, on ? FIGC_WHITE : FIGC_LABEL);
+				fig_text(line, 142, y + 1, 236, 2, false, FONT_LEFT, on ? FIGC_WHITE : FIGC_GREY);
+			} else {
+				if (on)
+					fig_band(110, y - 3, 290, y + font_line_px(FONT_BIG) + 2);
+				fig_text(nm, 200, y, 170, 1, true, FONT_CENTER, on ? FIGC_WHITE : FIGC_LABEL);
+			}
+		}
+	}
+	if (note)
+		fig_text(expand(note, buf, sizeof buf), 200, EX_NOTE, 372, 1, false, FONT_CENTER, FIGC_LABEL);
+}
+
+// Over play the explainer has a darker ground than the paused game's half dim (main.c), so its
+// text reads over bright rooms.
+static void scrim(void)
+{
+	MapVert v[6] = { { 0, 0, 0, 0 }, { 400, 0, 0, 0 }, { 400, 240, 0, 0 }, { 0, 0, 0, 0 }, { 400, 240, 0, 0 }, { 0, 240, 0, 0 } };
+	s_draw(NULL, v, 6, 0x0b0a0aa0);
+}
+
 void optmenu_draw_top(MapDrawFn draw)
 {
 	if (s_state == ST_OFF || !font_ready() || !draw)
@@ -657,42 +842,70 @@ void optmenu_draw_top(MapDrawFn draw)
 		brightness_screen();
 		return;
 	}
-	panels();
-	title();
+	if (!optmenu_noise_focus())
+		scrim();
+	fig_begin(1.0f);
 	if (s_page == PG_BUTTONS) {
+		// the chosen action and its buttons, "Press a button" while the page waits for one
 		const char* name;
 		char keys[48];
 		bool wait = controls_menu_focus(&name, keys, sizeof keys);
-		text(256, 190, name, FONT_CENTER, GREY, true);
-		text(256, 240, wait ? "Press a button" : keys, FONT_CENTER, wait ? YELLOW : GREY, false);
-		font_text(FONT_BIG, 70, 395, wait ? "START keeps the button it had" : "Choose the button for each action",
-		          FONT_LEFT, 0x7e7e7eff, 0x7e7e7eff);
-		return;
+		fig_title("Buttons", 8);
+		fig_text(name, 200, 96, 372, 1, true, FONT_CENTER, FIGC_WHITE);
+		fig_text(wait ? "Press a button" : keys, 200, 122, 372, 1, true, FONT_CENTER, wait ? FIGC_RED : FIGC_GREY);
+		if (wait)
+			fig_text("START keeps the button it had.", 200, EX_NOTE, 372, 1, false, FONT_CENTER, FIGC_LABEL);
+	} else if (s_state == ST_ASK) {
+		fig_text(msg(89, "Change the settings?"), 200, 110, 372, 2, true, FONT_CENTER, FIGC_WHITE);
+	} else if (s_sel < s_n) {
+		explain(s_rows[s_sel], (osGetTime() - s_focus_ms) / 1000.0f);
 	}
-	if (s_state == ST_ASK) {
-		// 0x461600 with 0x94421c set: the question; Yes. and No. are on the touch screen
-		text(256, 215, msg(89, "Change the settings?"), FONT_CENTER, GREY, true);
-		return;
-	}
-	if (s_sel >= s_n)
-		return;
-	const Row* r = &s_rows[s_sel];
-	if (r->kind == K_PAGE) {
-		text(256, 215, label(r), FONT_CENTER, GREY, true);
-	} else {
-		text(256, 190, label(r), FONT_CENTER, GREY, true);
-		size_t off = r->v - (u8*)s_live;
-		bool ch = ((u8*)&s_old)[off] != *r->v;
-		if (r->kind == K_BAR) {
-			bar(174.0f - 273.0f + 256.0f, 236, *r->v, ch);
-		} else {
-			char buf[24];
-			const char* v = value(r, buf, sizeof buf);
-			float w = font_width(FONT_BIG, v);
-			text(256, 236, v, FONT_CENTER, ch ? YELLOW : GREY, false);
-			arrow(256 - w * 0.5f - 14, 250, -1, 0x7e7e7eff);
-			arrow(256 + w * 0.5f + 12, 250, 1, 0x7e7e7eff);
+	fig_end();
+}
+
+// ---------------------------------------------------------------- debug.txt "textcheck"
+
+int optmenu_textcheck(FILE* out, Options* live)
+{
+	static const char* const LANG[6] = { "", "English", "French", "German", "Italian", "Spanish" };
+	Options* keep = s_live;
+	int lang0 = ev_language(), cuts0 = fig_cuts();
+	for (int lang = 1; lang <= 5; lang++) {
+		if (!ev_language_available(lang))
+			continue;
+		ev_set_language(lang);
+		for (int lay = 0; lay < 2; lay++) {
+			s_force_layout = lay;
+			for (int i = 0; i < N_SETTINGS; i++) {
+				const Setting* s = &SETTINGS[i];
+				int vals = s->kind == K_PAGE ? 1 : s->hi - s->lo + 1;
+				for (int k = 0; k < vals; k++)
+					for (int side = 0; side < 2; side++) {
+						// side 1: the settings that bring the notes up (Behind, Low quality)
+						Options o = *live;
+						if (side)
+							o.camera = 1;
+						s_live = &o;
+						if (s->kind != K_PAGE)
+							set(s, s->lo + k);
+						char ctx[96], v[48];
+						snprintf(ctx, sizeof ctx, "%s %s layout, %s = %d", LANG[lang], lay ? "New" : "Old", s->name, s->lo + k);
+						fig_measure(out, ctx);
+						explain(s, 0.0f);
+						// the touch screen's row: the label and its value side by side (touchui.c
+						// draws a long label small, so this only notes the tight ones)
+						if (s->kind == K_LIST || s->kind == K_TIMES) {
+							float w = font_width_px(FONT_BIG, label(s)) + font_width_px(FONT_BIG, value_name(s, get(s), v, sizeof v));
+							if (w > 304 - 22 - 18 - 30)
+								fprintf(out, "tight %s: %s / %s\n", ctx, label(s), v);
+						}
+						fig_measure_end();
+					}
+			}
 		}
 	}
-	font_text(FONT_BIG, 70, 395, help(r), FONT_LEFT, 0x7e7e7eff, 0x7e7e7eff);
+	s_force_layout = -1;
+	ev_set_language(lang0);
+	s_live = keep;
+	return fig_cuts() - cuts0;
 }

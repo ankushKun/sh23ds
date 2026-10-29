@@ -28,7 +28,22 @@ void touchui_menu(int id, const char* title, const char* const* rows, int n, int
 enum { TOUI_ONE_TAP = 1 };
 void touchui_menu_ex(int id, const char* title, const char* const* rows, int n, int* sel,
                      const TouiButton* buttons, int nbuttons, u64 dim, int flags);
+// The Options screen's extras: tabs in place of the title, with L and R either side (a tap presses
+// KEY_L or KEY_R, a tap on a tab writes *tab), and what each row shows on its right: its
+// "< value >", a small arrow for a row that opens a screen, or the PC's volume blocks.
+enum { TOUI_ROW_VALUE, TOUI_ROW_PAGE, TOUI_ROW_BAR };
+typedef struct { u8 kind, level, max; } TouiRow;
+#define TOUI_MAX_TABS 6
+typedef struct { const char* const* tabs; int ntabs; int* tab; const TouiRow* rows; } TouiMenuExtra;
+void touchui_menu_full(int id, const char* title, const char* const* rows, int n, int* sel,
+                       const TouiButton* buttons, int nbuttons, u64 dim, int flags, const TouiMenuExtra* extra);
 void touchui_menu_close(int id);
+// Two choices side by side (the first run, setup.c): each a name with up to three lines under it,
+// the chosen one on the red band. A tap on a choice chooses it, a second tap presses A. dim: bit i,
+// prompt i can't be taken (it keeps its place).
+void touchui_choices(const char* const* names, const char* const* lines, int* sel, const TouiButton* buttons,
+                     int nbuttons, u32 dim);
+void touchui_choices_close(void);
 // A message, subtitle or question (text NULL: none); a tap presses A unless buttons are given.
 // Empty text with no buttons: a message is up on the top screen (the play page with "Next").
 // nbuttons -1: text alone (a subtitle over play), no prompt, the taps left to the game.

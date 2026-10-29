@@ -6,7 +6,7 @@ see below). The buttons are actions, and the actions are bound per layout. The N
 of the buttons every 3DS has; the Old 3DS layout gets by with L, R, A, B, X, Y, the D-Pad, the
 Circle Pad, START, SELECT and the touch screen. Which layout is used follows the console unless the
 player picks one (`profile.c`, `controls_layout()`). Every action can be rebound on the Buttons
-page of the Options' Control Options (`controls.c`, drawn in the Options screen's menu slot through
+page of the Options' Controls tab (`controls.c`, drawn in the Options screen's menu slot through
 `controls_menu_slot(TOUI_OPTIONS)`), separately for each layout; the bindings are kept in
 `controls.txt` next to `options.txt`.
 
@@ -16,7 +16,7 @@ page of the Options' Control Options (`controls.c`, drawn in the Options screen'
 | --- | --- | --- |
 | Walk, turn | Circle Pad | Circle Pad |
 | Action (check, open, pick up, attack while aiming) | A | A |
-| Run (hold; "toggle" in the Control Options) | B | B |
+| Run (hold; Walk/Run Control has Toggle, Analog and Run too) | B | B |
 | Aim (hold) | R | R |
 | Look (hold: the PC's search view) | ZL | L |
 | Next weapon | L | D-Pad up |
@@ -26,7 +26,7 @@ page of the Options' Control Options (`controls.c`, drawn in the Options screen'
 | Strafe left / right | none (bindable) | none (bindable) |
 | Target left / right (while aiming) | C-Stick left / right | none (bindable) |
 | Map | tap the map on the touch screen, or the pause menu | the same |
-| Brightness | the Options (Advanced Options) | the same |
+| Brightness | the Options (Display tab) | the same |
 | Pause | START | START |
 | Debug page | SELECT twice | SELECT twice |
 
@@ -185,7 +185,7 @@ even when the frame rate is not a multiple of 30.
 
 ## The behind camera (tpcam.c, port only)
 
-Control Options, Camera: Original is the PC camera; Behind is the port's own third-person camera,
+Options, Controls tab, Camera (also the first run's first choice, `setup.c`): Original is the PC camera; Behind is the port's own third-person camera,
 not in the PC game. It sits behind and above James and follows the way he walks once the player has
 left it alone a moment (not when he walks towards it or sideways, so the stick never chases it). The
 C-Stick turns it on the New 3DS layout; on the Old one the D-Pad's free directions do (they then do

@@ -37,6 +37,19 @@ void font_quad_px(C3D_Tex* tex, float x0, float y0, float x1, float y1, float u0
 // The same with a texture coordinate per corner (uv: top left, top right, bottom left, bottom right
 // as u, v pairs), for a picture that is turned in its texture (gameover.c's still of the screen).
 void font_quad_uv_px(C3D_Tex* tex, float x0, float y0, float x1, float y1, const float uv[8], const u32 rgba[4]);
+// Triangles in top-screen pixels with a colour per vertex, drawn at once (tex NULL: flat), for the
+// drawings of figures.c.
+void font_tris_px(C3D_Tex* tex, const FontVert* v, int n);
+
+// Text laid out in a box of w pixels and at most max lines (port/UI.md, "Text that always fits"):
+// wrapped on spaces in the big font when big is asked and it fits, else in the small font; when
+// even that needs more lines (or a word is wider than the box) the last line is cut with "...",
+// cut is set and font_fit_cuts() counts it, for the start-up text check.
+#define FONT_FIT_LINES 4
+#define FONT_FIT_CHARS 112
+typedef struct { int font, n; bool cut; char line[FONT_FIT_LINES][FONT_FIT_CHARS]; } FontFit;
+bool font_fit_px(const char* s, float w, int max, bool big, FontFit* out);
+int font_fit_cuts(void);
 // The same glyphs laid out in plain screen pixels for a screen of the caller's own (touchui.c):
 // (x, y) is the top left of the first line, glyphs at their atlas size, the PC's advances times
 // 0.625 and the lines 0.46875 of the cell height apart. Writes up to max vertices (6 a glyph) and

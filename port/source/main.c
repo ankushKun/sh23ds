@@ -43,6 +43,7 @@
 #include "titlemenu.h"
 #include "pausemenu.h"
 #include "optmenu.h"
+#include "setup.h"
 #include "stagemdl.h"
 #include "stagewalls.h"
 #include "touchui.h"
@@ -4031,6 +4032,11 @@ static void title_start(int what)
 // New Game and Born From a Wish first ask for the action and riddle levels, as the PC does; hard
 // riddles become the extra level once FlagInit allows it (prog_extra_riddle).
 static int s_title_sub;          // 1: New Game levels, 2: Born From a Wish levels
+// The first run is due: options.txt has no "setup 1", or debug.txt "setup 1" asks for it. Not while
+// debug.txt starts a test or skips the logos (DEBUGGING.md), unless "setup 1" is there.
+static bool s_setup_due;
+static int s_setup_debug = -1;   // debug.txt "setup": 0 never, 1 always
+static bool s_logos_off, s_textcheck;
 
 static bool title_levels(u32 down)
 {
@@ -4103,6 +4109,18 @@ static bool title_update(u32 down, float dt)
 	if (optmenu_active()) {
 		if (!optmenu_update(down))
 			consoleClear();
+		return true;
+	}
+	// the first run (setup.c): once the start-up screens are over, before the title menu
+	if (setup_active()) {
+		setup_update(down);
+		if (!setup_active())
+			s_title_t = 0.0f;            // done: the title fades in as after the logos
+		return true;
+	}
+	if (s_setup_due && !titlemenu_booting()) {
+		s_setup_due = false;
+		setup_open(&s_opt, opt_changed, opt_keep);
 		return true;
 	}
 	if (s_title_sub)
@@ -4972,7 +4990,9 @@ int main(void)
 			if (!strcmp(key, "freeze") && val) s_orbit_speed = 0.0f;
 			if (!strcmp(key, "debughud")) s_debug_hud = val != 0;
 			if (!strcmp(key, "god")) combat_set_god(val != 0);   // enemy blows do not reach James
-			if (!strcmp(key, "logos") && !val) titlemenu_no_boot();   // no start-up screens
+			if (!strcmp(key, "logos") && !val) titlemenu_no_boot(), s_logos_off = true;   // no start-up screens
+			if (!strcmp(key, "setup")) s_setup_debug = val != 0;      // the first run: 0 never, 1 always
+			if (!strcmp(key, "textcheck")) s_textcheck = val != 0;   // textcheck.txt (optmenu.h)
 			if (!strcmp(key, "viewer")) titlemenu_viewer(val != 0);   // the title's room viewer row
 			if (!strcmp(key, "bloodtest")) s_blood_test = val != 0;
 			if (!strcmp(key, "results")) s_debug_results = val;
@@ -4988,6 +5008,19 @@ int main(void)
 			if (!strcmp(key, "movielog")) movie_debug(val & 1, val & 2);   // 1: log times, 2: CPU YUV
 		}
 		fclose(dbg);
+	}
+	bool test = s_logos_off || playtest_active() || s_autotest || s_spawn_map[0] || s_debug_demo[0] ||
+	            s_debug_movie[0] || s_debug_newgame;
+	s_setup_due = s_setup_debug == 1 || (s_setup_debug < 0 && !s_opt.setup && !test);
+	if (s_textcheck) {
+		// every explainer and first-run choice laid out in each language and button layout (optmenu.h)
+		FILE* f = fopen(PACK_DIR "/textcheck.txt", "w");
+		if (f) {
+			int cut = optmenu_textcheck(f, &s_opt);
+			cut += setup_textcheck(f);
+			fprintf(f, "%d cut\n", cut);
+			fclose(f);
+		}
 	}
 	{
 		char err[128];
@@ -5149,11 +5182,16 @@ int main(void)
 			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
 			C3D_FrameDrawOn(top);
-			if (s_state == ST_TITLE && !optmenu_active() && !savescreen_active() &&
+			if (s_state == ST_TITLE && !optmenu_active() && !savescreen_active() && !setup_active() &&
 			    !titlemenu_draw_top(ui_draw, bright))      // start00 and the PC's menus
 				draw_title(&ortho, bright);
 			savescreen_draw_top();       // Continue's file list over the title
+			if (optmenu_noise_focus() && noise_on()) {
+				ui_program_2d(&ortho);   // Noise Effect chosen: its grain under the explainer
+				noise_draw();
+			}
 			optmenu_draw_top(ui_draw);   // the options from the title, on black
+			setup_draw_top();            // the first run, on black
 			font_flush();
 			touchui_frame();
 			C3D_FrameEnd(0);

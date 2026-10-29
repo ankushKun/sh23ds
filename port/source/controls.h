@@ -68,5 +68,10 @@ bool controls_menu_focus(const char** name, char* keys, int size);
 void controls_draw_options(void);
 bool controls_handle(u32 down);
 
+// The Buttons page's actions in its order (the Options explainer lists them with their buttons).
+int controls_actions(ControlsAction* out, int max);
+// The buttons in k as text ("ZL", "B / ZR", "C-Left"), "-" when there are none.
+const char* controls_key_text(u32 k, char* out, size_t n);
+
 // One line per action of the active layout for the help screen ("Run  B / ZR").
 int controls_help(char lines[][40], int max);

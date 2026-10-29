@@ -17,7 +17,8 @@ save file, the setting being changed. Nothing is drawn on both screens.
 | Question ("Save the game?") | the question in the message window | the answers as rows that act on one tap |
 | Cutscene, movie | the scene | black, START Skip |
 | Pause | the dimmed world, PAUSED, where James is and the play time | Resume, Save Game, Load Game, Options, Quit, Map, Memos |
-| Options | the page title, the chosen setting large with its value and the PC's help line; the brightness picture | the page's rows with their values |
+| First run | the step's name and its two drawings, the chosen one lit | the two choices side by side, Back and Choose |
+| Options | the chosen setting explained: what it does, each value and what it changes, a note when another setting overrides it; the brightness picture | five tabs, the tab's rows with their values |
 | Buttons page | the chosen action and its buttons, "press a button" while waiting | the actions and their buttons |
 | Save and load | James' picture framed as on the PC at the right, its left edge mirrored to fill the width, slowly drifting, with the chosen file in full at the lower left (place on the touch screen's red band, play time, saves, levels) sliding in when another is chosen, and the questions | the ten files |
 | Items | the dimmed world, the item's model turning, its name and count, its text after Examine | the items, marks for Combine |
@@ -69,9 +70,68 @@ The PC's own front end, as on the website: no boxes.
   no prompt: tapping the map is the way to it. The zoom ring is drawn with the map's pictures so the
   map never covers it.
 
+## Options
+
+The PC's settings in five tabs (`optmenu.c`): Controls, Game, Display, Sound and System, in that
+order, L and R or a tap on a tab to switch. Every setting sits one step from the tab; only
+Brightness Level (the PC's screen) and Buttons (`controls.c`) open a screen of their own. Most
+played first: Camera and Control Type head Controls. A row another setting overrides is dim but can
+still be changed (Control Type, Camera Speed and View Control with the Behind camera; Shadows on Low
+quality). Rows show `< value >`, the PC's fifteen blocks for the volumes, or a small arrow for a
+row that opens a screen. The tab and row last chosen are kept while the game runs.
+
+One table in `optmenu.c` (`SETTINGS`) holds each setting: tab, field, values, what it does, what
+each value does, its drawing, and when it is dim or noted. Adding a setting is one entry there and,
+for a new field, one `options.txt` key.
+
+## The explainer
+
+The top screen explains the chosen setting (`optmenu.c` `explain`, `figures.c`):
+
+- its name, centred between fading rules, and one line on what it does;
+- two values with a drawing side by side: the drawings (176 x 104, animated, the value not chosen
+  drawn faint), the names under them (the chosen one white over a short red rule), up to three lines
+  each on what it changes in play;
+- other settings as a list: each value's name, and up to two lines beside it, the chosen one on the
+  red band; Language names only; the volumes as the PC's blocks; Blood Color as drops of each colour;
+  Buttons as every action with its buttons;
+- a note at the bottom when another setting overrides this one or something else changes it.
+
+Text names buttons by the player's own bindings, so "Hold R" follows a remap, and Auto values by what
+they come to on this console. Over the paused game the explainer has its own darker ground; with
+Noise Effect chosen it leaves it out, so the grain shows.
+
+The drawings use the touch screen's palette: thin warm grey lines, James as the map's red arrowhead,
+cameras as small bodies with a pale cone for what they see, the button as its ring. They move slowly
+and loop: Camera, the corridor walked under the PC's cutting shots or a trailing camera; Control
+Type, the same two pushes of the stick under each style; Weapon and View Control, the button's
+presses over what they do; Messages, the two screens; Flashlight, the beam's reach and strength;
+Cutscene View, a shot's framing; Map, the floor zoomed in or whole; Infinite Stamina, a run's
+stamina.
+
+## Text that always fits
+
+Every text on these screens has a box: a width and a number of lines. `font_fit_px` wraps it on
+spaces in the big font when that fits, else in the small font, and only when that fails too cuts the
+last line with "..." and counts it. `debug.txt` `textcheck 1` lays out every explainer and first-run
+choice at start-up, in every language the pack has and with both button layouts, and writes each
+cut to `textcheck.txt` with the count at the end; the UI capture fails on any cut.
+
+## First run
+
+Once, after the start-up logos and before the title menu (`setup.c`): Camera (Original or Behind),
+then Control Type, titled Movement (Rotational or Directional Style). The second step is skipped
+after Behind, since that camera moves James the way the stick points except in scripted shots. Each
+step shows its two drawings on the top screen and the two choices on the touch screen, left above
+left; the current value starts chosen, so A through keeps the defaults. A tap or the D-Pad chooses,
+a second tap or A goes on, B goes back (dim on the first step but in its place: B on the left and A
+on the right, as on the console). Choices apply at once; the last one saves `options.txt` with
+`setup 1`, so existing players see it once too, with their settings chosen. Everything here is in
+the Options as well.
+
 ## 3D
 
-The 3D row in Advanced Options (on by default) lets the slider give the top screen depth. The world sits
+The 3D row on the Options' Display tab (on by default) lets the slider give the top screen depth. The world sits
 behind the screen and only what is close to the camera comes out; text, menus and pictures stay on the
 screen plane. With the row off, or the slider down, the top screen is drawn as before.
 
