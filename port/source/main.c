@@ -3112,9 +3112,14 @@ static void ui_draw_font(C3D_Tex* tex, const FontVert* v, int n)
 	               GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
-	C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
-	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-	C3D_TexBind(0, tex);
+	if (tex) {
+		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
+		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+		C3D_TexBind(0, tex);
+	} else {                         // flat, the vertex colours alone (font_quad_px shades)
+		C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, 0, 0);
+		C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+	}
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);

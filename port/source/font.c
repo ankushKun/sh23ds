@@ -321,6 +321,17 @@ void font_image(C3D_Tex* tex, float x0, float y0, float x1, float y1, u32 rgba)
 	s_draw(tex, v, 6);
 }
 
+void font_quad_px(C3D_Tex* tex, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1,
+                  const u32 rgba[4])
+{
+	if (!s_draw)
+		return;
+	FontVert tl = { x0, y0, u0, v0, rgba[0] }, tr = { x1, y0, u1, v0, rgba[1] };
+	FontVert bl = { x0, y1, u0, v1, rgba[2] }, br = { x1, y1, u1, v1, rgba[3] };
+	const FontVert v[6] = { tl, bl, br, tl, br, tr };
+	s_draw(tex, v, 6);
+}
+
 void font_flush(void)
 {
 	if (s_nverts && s_draw)

@@ -4,7 +4,8 @@
 // The PC's save and load screens (0x453fc0, drawn by 0x4537b0): the save folder's files listed
 // five to a page over James' picture (Maria's in Born From a Wish), each with the place it was
 // saved at, the play time and the number of saves, an overwrite question and "Save completed.".
-// Drawn on the top screen in the PC font, driven from the touch screen (touchui.c) and buttons.
+// Drawn on the top screen in the PC font over the whole width (savescreen.c lays it out, a 3DS-only
+// layout of the PC's parts), driven from the touch screen (touchui.c) and buttons.
 
 #define SAVE_SLOTS 10
 
