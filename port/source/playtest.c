@@ -979,6 +979,45 @@ static void step(const PtState* st)
 		next();
 		return;
 	}
+	if (!strcmp(op, "view") && sscanf(arg, "%f %f %f", &f[0], &f[1], &f[2]) == 3) {
+		// "view X Y Z": a picture of that place (the placed models' audit, item_shots.py): James
+		// stands where the floor and walls allow 650 to 250 from it, facing it, and the frame is dumped
+		static float at[3], face;
+		if (s_phase == 0) {
+			const Collision* col = H->collision ? H->collision() : NULL;
+			static const float D[6] = { 650.0f, 500.0f, 380.0f, 250.0f, 180.0f, 130.0f };
+			bool found = false;
+			for (int pass = 0; pass < 2 && !found; pass++)   // pass 1: only a floor (a small room)
+			for (int di = 0; di < 6 && !found; di++)
+				for (int k = 0; k < 16 && !found; k++) {
+					float ang = k * (float)M_PI / 8.0f, cx = f[0] + sinf(ang) * D[di], cz = f[2] + cosf(ang) * D[di], fy;
+					if (!H->floor || !H->floor(cx, cz, f[1] + 400.0f, 1500.0f, &fy))
+						continue;
+					float lx = f[0] + (cx - f[0]) * 100.0f / D[di], lz = f[2] + (cz - f[2]) * 100.0f / D[di];
+					if (col && !pass && (col_crosses(col, cx, cz, lx, lz, fy, 1000.0f) || col_clearance(col, cx, cz, fy, 1000.0f, 60.0f) < 60.0f))
+						continue;
+					if (col && pass && col_clearance(col, cx, cz, fy, 1000.0f, 40.0f) < 40.0f)
+						continue;
+					at[0] = cx, at[1] = fy, at[2] = cz, face = atan2f(f[0] - cx, f[2] - cz), found = true;
+				}
+			if (!found) {
+				playtest_log("view: no place near (%.0f %.0f %.0f)", f[0], f[1], f[2]);
+				next();
+				return;
+			}
+			s_phase = 1;
+			s_frames = 0;
+		}
+		H->place(at, face);
+		auto_advance(st);
+		if (s_frames < 45 || !idle(st))
+			return;
+		if (H->shot)
+			H->shot();
+		playtest_log("view: shot (%.0f %.0f %.0f)", f[0], f[1], f[2]);
+		next();
+		return;
+	}
 	static float s_pick_at[3], s_pick_face;
 	if (!strcmp(op, "pickup") && sscanf(arg, "%d", &a) == 1) {
 		// "pickup I": the stage's pickup I as a player takes it (the item audit, tests/playtest/

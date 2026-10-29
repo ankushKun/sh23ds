@@ -130,8 +130,10 @@ pickup without the flashlight, then the ones left with it. It writes `.lr3ds/pla
 `FLAGS=251` sets story flags first, for the pickups that only lie later (condition type 1); `SLOT=2`
 runs it on the second virtual SD. On 2026-10-29 every pickup lying in a new game was taken: 109
 without the flashlight (57 in lit rooms, 52 in dark rooms shown by a room light), 81 with it, and the
-35 that wait for flag 251 with the flashlight. The test's own placement missed the shells in hp17's
-washbasin, which a player takes standing in front of it (checked by hand).
+35 that wait for flag 251 with the flashlight; a fallback standing place covers hp17's washbasin.
+`tests/playtest/item_shots.py` and `model_shots.py` take a picture of every pickup and every placed
+model (`pt pickup <i> shot`, `pt view <x y z>`, the models' rooms from the converter's room lookup)
+into `.lr3ds/playtest/audit/`.
 
 ## On a console
 
