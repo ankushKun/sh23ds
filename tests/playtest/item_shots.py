@@ -53,7 +53,7 @@ def main():
             order = [int(m.group(1)) for m in re.finditer(r'pickup (\d+): shot', open(os.path.join(OUT, 'logs', name + '.log')).read())]
             frames = sorted(glob.glob(os.path.join(sd, 'frame_*.bmp')), key=lambda p: int(re.search(r'frame_(\d+)', p).group(1)))
             for idx, fr in zip(order, frames):
-                Image.open(fr).rotate(90, expand=True).convert('RGB').save(
+                Image.open(fr).rotate(90, expand=True).transpose(Image.FLIP_LEFT_RIGHT).convert('RGB').save(
                     os.path.join(shots, '%02d_%02d.jpg' % (st['id'], idx)), quality=72)
             print('stage %d: %d shots of %d pickups' % (st['id'], min(len(order), len(frames)), len(items)), flush=True)
     finally:

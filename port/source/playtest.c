@@ -1004,6 +1004,9 @@ static void step(const PtState* st)
 			bool found = false;
 			int nofloor = 0, height = 0, wall = 0;
 			static const float D[5] = { 230.0f, 320.0f, 180.0f, 130.0f, 380.0f };
+			// pass 0: a clear way to it; pass 1 (nothing found): only a floor and room for him, as a
+			// player stands at a washbasin or a shelf whose own walls the way crosses
+			for (int pass = 0; pass < 2 && !found; pass++)
 			for (int di = 0; di < 5 && !found; di++)
 				for (int k = 0; k < 16 && !found; k++) {
 					float ang = k * (float)M_PI / 8.0f, cx = ip[0] + sinf(ang) * D[di], cz = ip[2] + cosf(ang) * D[di], fy;
@@ -1018,8 +1021,8 @@ static void step(const PtState* st)
 					// the table or shelf the item lies on has walls of its own: only the way up to
 					// 120 short of it has to be clear
 					float lx = ip[0] + (cx - ip[0]) * 120.0f / D[di], lz = ip[2] + (cz - ip[2]) * 120.0f / D[di];
-					if (col && ((D[di] > 125.0f && col_crosses(col, cx, cz, lx, lz, fy, 1000.0f)) ||
-					            col_clearance(col, cx, cz, fy, 1000.0f, 60.0f) < 60.0f)) {
+					if (col && !pass && ((D[di] > 125.0f && col_crosses(col, cx, cz, lx, lz, fy, 1000.0f)) ||
+					                     col_clearance(col, cx, cz, fy, 1000.0f, 60.0f) < 60.0f)) {
 						wall++;
 						continue;
 					}
