@@ -155,6 +155,11 @@ What changed:
   that second now reads the room ahead the same way (`title_start`): the start frame went from 747 to
   243 ms in Azahar.
 
+Since textures are packed at the PC's sizes (`VISUALS.md`), a door reads the room's map textures from
+their 256 level and the models' from their 512 level, and the whole files follow once the room shows
+(`stream_set_draft`, `room_tex_refine`, `chr_refine`): the same `memtest` on a 5 MB/s card keeps every
+black screen within 0.1 s of the old pack's, and the rooms are whole 0.7 to 2.4 s later.
+
 The last two columns have `memtest` going through the door path (prefetch and fade) like a real
 door. A real door within one area (ap06 to ap38) went from an 825 ms frame to 28 ms, with the screen
 black for half a second longer. What is left in an area change's frame, 50 to 90 ms in Azahar, is
@@ -238,6 +243,10 @@ during the first round and kept. That fits a cache filling up (the sound effect 
 in linear memory) rather than anything tied to rooms. The extra 59 KB in ap06 is the same effect in
 the first room visited. VRAM stays at 5394 KB free throughout; malloc stays between 2.7 and 2.8 MB
 in use, with a peak arena of 3.7 MB.
+
+Textures are kept at the PC's sizes on the New 3DS (`VISUALS.md`): a room's map textures take at
+most 3 MB (a median of 1 MB) where they took a quarter of that, and the texture cache of earlier rooms
+keeps 24 MB. The supersampling's target takes 1.5 MB of VRAM the first time it turns on.
 
 3D (`stereo.c`) takes nothing until the slider first goes up. Then the right eye's render target takes
 750 KB of VRAM, and its fog and 2D vertex buffers 0.7 to 0.9 MB of linear memory.
@@ -465,6 +474,11 @@ debug.txt can override one knob for a test, and the subsystems read only `qualit
 | `tile_distance` | 7000 | 5000 | `main.c` `stream_update_ex` |
 | `frame_cap` | 0 (60, an even 30 when it does not fit) | 30 | `perf_pace` |
 | `fog_fill_3d` | 3 screens per eye | 3 | `fog.c` `stereo_thin` |
+| `supersample` | 1 (the top screen at twice its height while the GPU has the time) | 0 | `supersample.c` |
+
+The supersampling (`VISUALS.md`) is the one knob that adds GPU work, and it watches the GPU's time
+itself: it turns on only after 2 seconds of frames under 7 ms and off after one doubled frame over
+14 ms, so it gives way before `perf_pace` would drop to 30.
 
 The fog sprites and the stencil shadows are the two likeliest to matter on a console's GPU: 144
 alpha-blended sprites can cover most of the top screen several times over, and each shadow volume

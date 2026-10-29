@@ -4,8 +4,8 @@ Goal: Silent Hill 2 Director's Cut (PC) running natively on the New 3DS and, wit
 original 3DS (real hardware and Azahar), as an installable `.cia` / `.3dsx` that uses the player's own
 game data, with the Enhanced Edition's fixes folded in where they apply.
 
-Last updated 2026-10-27, after 0.2.2: the fixes for the players' reports (sources and triage kept
-locally in `.triage/`).
+Last updated 2026-10-29: textures at the PC's sizes and the supersampling (`VISUALS.md`), after
+0.2.2's fixes for the players' reports (sources and triage kept locally in `.triage/`).
 
 ## Where it stands
 
@@ -27,16 +27,17 @@ summary and the list of what to do next. How to run the tests is in TESTING.md.
 | Decomp tooling | `tools/*.py`, `sh2-3ds-port-kit/` | PS2 beta DWARF names and types for the Ghidra project, PC to PS2 name mapping (`docs/RESEARCH.md`) |
 | Website | `site/` | GitHub Pages, deployed on push |
 
-Pack layout: `bg/<area>/<room>.s3m` (geometry), `.s3l` (collision), `tex/<id>.t3x` (ETC1/ETC1A4, 256 px
-max, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `demo/`, `movie/`, `sound/`,
+Pack layout: `bg/<area>/<room>.s3m` (geometry), `.s3l` (collision), `tex/<id>.t3x` (ETC1/ETC1A4, the
+PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `demo/`, `movie/`, `sound/`,
 `events/`, `fog/`, `pic/`, `map/`, `effect/`.
 
 ## Working (tested in Azahar)
 
 ### World and rendering
 
-- All 17 areas (16 in `data/bg` plus the DC-only `ma`): geometry, ETC1 textures sampled at their
-  first level as the PC's are (0x459320; the pack's mipmaps of the atlases lined the ground), decals (drawn after
+- All 17 areas (16 in `data/bg` plus the DC-only `ma`): geometry, ETC1 textures at the PC's 512 px
+  sampled down to 256 and no further (the PC samples one level, 0x459320; the whole mip chain of the
+  atlases lined the ground; `VISUALS.md`), decals (drawn after
   the characters, as the PC's ordering table does, so a chain-link fence in front of them covers
   them), the transparent pass, map part switches with their flags (traffic lights, the clock room, stairwell lights;
   `stageparts.c`), stage-placed models such as the lobby music box and its figure boxes (`stagemdl.c`).
@@ -152,6 +153,9 @@ max, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`; `demo/`
 
 ### Platform and performance
 
+- Textures at the PC's sizes on the New 3DS and the earlier caps on the Old 3DS (`t3xcap.c`), and the
+  top screen supersampled at twice its height while the GPU has the time (`supersample.c`); see
+  `VISUALS.md`.
 - `.cia` and `.3dsx`; New 3DS at 804 MHz with L2 and the 124 MB mode, the Old 3DS in its 64 MB mode with
   a Low quality profile and a 30 fps cap (`profile.c`, `OLD3DS.md`).
 - Music decoded on its own thread (core 2 when allowed), tiles, models and sound read on worker threads,
@@ -176,6 +180,10 @@ tree after the players' reports):
   and the walk on foot w01 to w11 with no failure, all in Azahar; the walk and the endings also pass
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
+
+- 2026-10-29, textures at the PC's sizes and the supersampling (`VISUALS.md`): smoke run 12 of 12 on both models on
+  a pack converted again at the new sizes, doors within 0.1 s of the old pack's black screen on a
+  5 MB/s card, the Old 3DS model drawing the new pack as it drew the old. Not run on a console.
 
 Earlier results, as of 2026-10-18:
 
@@ -341,7 +349,8 @@ Ordered by weight. Each line names where the work starts.
 
 ### 4. Renderer features the port does not have
 
-Water, specular (set to 0 in `chr.c`), blur, bloom and motion blur, rain and smoke particles, 3D trees,
+`VISUALS.md` orders these by what they show against their GPU cost. Water, specular (set to 0 in
+`chr.c`), blur, bloom and motion blur, rain and smoke particles, 3D trees,
 event lights such as the swinging hotel lamp outside cutscenes. EE_FIXES.md lists the EE options waiting
 on each. The lake (Effect2 class 42, 0x4d5210) and the cemetery lake (class 43, 0x4d3c20)
 surfaces are drawn (`water.c`); the indoor water (classes 27 to 41: the hotel, labyrinth, apartments,

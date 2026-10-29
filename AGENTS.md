@@ -73,6 +73,7 @@ or approximated".
 | [port/CONTROLS.md](port/CONTROLS.md), [port/UI.md](port/UI.md) | Controls, the two-screen interface |
 | [port/EE_FIXES.md](port/EE_FIXES.md), [tools/sh2conv/EE_PACKS.md](tools/sh2conv/EE_PACKS.md) | Enhanced Edition options and packages |
 | [port/PERFORMANCE.md](port/PERFORMANCE.md), [port/OLD3DS.md](port/OLD3DS.md) | Frame budget, streaming, memory, the original 3DS |
+| [port/VISUALS.md](port/VISUALS.md) | Texture sizes, the supersampling, the Enhanced Edition's visual packs and what to improve next |
 | [tools/sh2conv/EVENTS.md](tools/sh2conv/EVENTS.md), [tools/sh2conv/LIGHTING.md](tools/sh2conv/LIGHTING.md) | Event and lighting data formats |
 | [port/source/game/view/PORTING_NOTES.md](port/source/game/view/PORTING_NOTES.md) | The camera port, including Ghidra labels that were shifted by one |
 | [site/README.md](site/README.md), [tools/packer-web/README.md](tools/packer-web/README.md) | Website and browser packer |
