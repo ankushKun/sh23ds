@@ -13,7 +13,7 @@ There are two ways to run it. Both use the same converters (`tools/sh2conv`, dri
 
 ## In the browser
 
-Open the [packer page](https://ankush.one/sh23ds/packer.html), choose the game folder and save the zip it
+Open the [packer page](https://ankush.one/sh23ds/#pack), choose the game folder and save the zip it
 makes. The page runs the converters on your computer with Pyodide and ffmpeg.wasm, so nothing is
 uploaded or installed. It needs a desktop browser and about 1.5 GB of free disk space while it works;
 Chrome and Edge can also write straight into a folder such as the SD card. How the page works and how it

@@ -1,14 +1,15 @@
 # The browser packer
 
-`site/packer.html` builds the SD card data in the player's browser from their own game folder, the way
-the Docker packer does, with nothing uploaded. It runs the same converters: `tools/sh2conv/pack.py` is
-the step list for both, and the converters reach outside Python only through `tools/sh2conv/host.py`.
+The packer on the site (step 1 of `site/index.html`, at `#pack`) builds the SD card data in the
+player's browser from their own game folder, the way the Docker packer does, with nothing uploaded. It
+runs the same converters: `tools/sh2conv/pack.py` is the step list for both, and the converters reach
+outside Python only through `tools/sh2conv/host.py`.
 
 ## How it fits together
 
 | Piece | Where | What it does |
 | --- | --- | --- |
-| Page | `site/packer.html`, `site/packer/page.js`, `packer.css` | Picks the game folder (the File System Access picker in Chromium, a folder input elsewhere), the options, progress, the download |
+| Page | `site/index.html` (step 1), `site/packer/page.js`, `check.js`, `packer.css` | Picks the game folder (the File System Access picker in Chromium, a folder input elsewhere), the options, progress, the download |
 | Browser check | `site/packer/check.js`, `probe.js` | Runs when the page opens, before anything is picked: what the packer needs, with a message per browser when something is missing (below) |
 | Coordinator | `site/packer/page.js` | Starts the writer and one to four packing workers, hands out `pack.py`'s tasks, copies files between workers when a task needs them, adds up the progress |
 | Packing workers | `site/packer/worker.js` | Module workers, each with its own Pyodide. Mount the picked files read-only with WORKERFS (each file is read when a task opens it), load ffmpeg.wasm only for a task that needs it, send their output to the writer over a MessageChannel |
@@ -25,7 +26,7 @@ The page and its files are static, so GitHub Pages serves it as is.
 with SSE4.1: on an older one (a Core 2 before Penryn, a Phenom II) the first task that loads ffmpeg failed
 with "Compiling function #81 failed: Wasm SIMD unsupported". Each worker compiles and calls a two-instruction
 SIMD function first and takes 0.12.0, the last build without SIMD, when that fails (`worker.js`;
-`packer.html?simd=0` forces it). 0.12.0 has no `ffprobe`, so `core.js` answers the one probe `movies.py`
+`?simd=0` in the address forces it). 0.12.0 has no `ffprobe`, so `core.js` answers the one probe `movies.py`
 makes from `ffmpeg -i`'s log. Pyodide, numpy, Pillow and `texenc.mjs` have no SIMD.
 
 ### The browser check
@@ -105,7 +106,7 @@ node tools/packer-web/run.mjs "Silent Hill 2" /tmp/web-pack [--best] [--half]
 # the whole page in headless Chrome: folder input, Start, the zip download
 node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip [--only=collision,james] [--nosimd] [--savefile]
 # the same against the live site (its analytics host is blocked)
-node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip --url=https://ankush.one/sh23ds/packer.html
+node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip --url=https://ankush.one/sh23ds/
 ```
 
 `compare.py` fails when a file is missing or a file differs in a way it doesn't expect. CI checks that

@@ -6,22 +6,20 @@ Key facts:
 
 - What it is: a new engine written in C for the 3DS's ARM11 CPU and PICA200 GPU, ported function by function from the PC executable. It is not an emulator and not the 2024 remake.
 - Consoles: New Nintendo 3DS, New 3DS XL and New 2DS XL at full settings; original 3DS, 3DS XL and 2DS with a lighter profile aimed at 30 fps.
-- Requirements: Luma3DS custom firmware, FBI or the Homebrew Launcher, 1.8 GB on the SD card, and the PC release of Silent Hill 2: Director's Cut (sh2pc.exe MD5 f3f5360298b6d0f6f2e09cf24a0925d1). The v1.0 PC release isn't supported.
+- Requirements: Luma3DS custom firmware, 3dsDL (https://ankush.one/3dsDL/), FBI or the Homebrew Launcher, 2 GB on the SD card, and the PC release of Silent Hill 2: Director's Cut (sh2pc.exe MD5 f3f5360298b6d0f6f2e09cf24a0925d1, or a copy changed only where the packer doesn't read, such as a no-CD exe). The v1.0 PC release isn't supported.
 - Content: all 17 areas, every puzzle and boss, all six endings, New Game+, Born From a Wish, all 128 in-engine cutscenes and the FMVs, the PC camera, lighting, fog and flashlight, and music and sound from the game's own archives.
 - Two screens: the game on the top screen; the map, items and memos on the touch screen.
 - Game data: the packer runs in a desktop browser (Pyodide and ffmpeg.wasm, nothing uploaded) or in Docker (ghcr.io/ankushkun/sh23ds-packer). It uses Enhanced Edition packs if they are installed.
-- Install: copy the packer's 3ds folder to the SD card root, then install sh23ds.cia with FBI (Remote Install, Scan QR Code) or from the SD card.
+- Install, in three steps on the home page: pack the game in the browser, copy the 3ds folder to the SD card root, then install sh23ds.cia with 3dsDL (Scan QR Code, then Download). Run DSP1 once for sound.
 - Status: version 0.2.2, an experimental development build released October 2026. Every part of the game is in; a few of the PC's effects and finer behaviours are still to do.
 - Author: Ankush Singh (ankushKun). Not affiliated with Konami or Nintendo.
 
 ## Pages
 
-- [Home](https://ankush.one/sh23ds/): what the port covers, the FBI install code and common questions
+- [Home](https://ankush.one/sh23ds/): the one page. The video, the install in three steps with the browser packer built in (Docker as an option), and common questions
+- [Install](https://ankush.one/sh23ds/#install): what you need and the three steps
+- [Packer](https://ankush.one/sh23ds/#pack): builds the SD card data from your game folder in the page; nothing is uploaded
 - [Video](https://www.youtube.com/watch?v=l1cs-1I2atc): the install on a real 3DS and the first fifteen minutes of play (14:22)
-- [Install guide](https://ankush.one/sh23ds/install.html): the five steps from your PC copy to the HOME Menu, with a command builder for the Docker packer
-- [Browser packer](https://ankush.one/sh23ds/packer.html): builds the SD card data from your game folder in the page
-- [Roadmap](https://ankush.one/sh23ds/roadmap.html): every part's state and the release log
-- [Docs](https://ankush.one/sh23ds/docs.html): architecture, building from source, releases, the debug file, the converters and porting a feature
 
 ## Source and downloads
 

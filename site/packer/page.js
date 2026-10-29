@@ -1,4 +1,4 @@
-// packer.html: picks the game folder, then runs the packer in several workers at once and shows it.
+// The packer, step 2 of the install guide on the home page (index.html#pack): picks the game folder, then runs the packer in several workers at once and shows it.
 //
 // writer.js owns the output. worker.js runs pack.py's tasks (tasks() in tools/sh2conv/pack.py): the
 // 'main' ones in order in the first worker, since they read each other's files, and the 'any' ones (the
@@ -16,7 +16,7 @@
 	const trackError = window.trackError || (() => {});
 	const gb = (bytes) => Math.round(bytes / 1e8) / 10;
 
-	// packer.html?simd=0 makes the workers take ffmpeg's build without WebAssembly SIMD (worker.js)
+	// ?simd=0 in the page's address makes the workers take ffmpeg's build without WebAssembly SIMD (worker.js)
 	const WORKER_URL = 'packer/worker.js' + (new URLSearchParams(location.search).get('simd') === '0' ? '?simd=0' : '');
 
 	// workers: each holds its own Python (a few hundred MB), so fewer on a small machine
@@ -86,7 +86,6 @@
 			li.lastChild.textContent = item.text;
 			list.appendChild(li);
 		}
-		$('[data-check-name]').textContent = r.browser;
 		blocked = r.items.some((i) => i.level === 'stop');
 		if (!blocked && !r.zip && OPTIONS.out.length > 1) {
 			// no room for the zip in this window, but the browser can write into a folder
@@ -99,10 +98,22 @@
 		const ids = (level) => r.items.filter((i) => i.level === level).map((i) => i.id).join(',');
 		track('packer_browser', { browser: r.browser || 'other', stop: ids('stop'), warn: ids('warn'), note: ids('note') });
 	}
-	(window.SH2Check ? SH2Check.run() : Promise.reject(new Error('check.js didn’t load')))
-		.catch((e) => ({ browser: '', zip: true, items: [{ level: 'warn', id: 'check',
-			text: `The browser check itself failed (${e && e.message || e}), so the packer may or may not work here.` }] }))
-		.then(showCheck);
+	function runCheck() {
+		(window.SH2Check ? SH2Check.run() : Promise.reject(new Error('check.js didn’t load')))
+			.catch((e) => ({ browser: '', zip: true, items: [{ level: 'warn', id: 'check',
+				text: `The browser check itself failed (${e && e.message || e}), so the packer may or may not work here.` }] }))
+			.then(showCheck);
+	}
+	// The check starts a worker and touches the CDN and the site's storage, so it waits until the
+	// visitor gets near the packer on the page.
+	if ('IntersectionObserver' in window) {
+		const io = new IntersectionObserver((entries) => {
+			if (!entries.some((e) => e.isIntersecting)) return;
+			io.disconnect();
+			runCheck();
+		}, { rootMargin: '600px 0px' });
+		io.observe($('[data-check-list]'));
+	} else runCheck();
 
 	// ---------------------------------------------------------------- the game folder
 	async function walkHandle(dir, prefix, out) {
@@ -451,7 +462,7 @@
 			half: OPTIONS.half[state.half][0] === 'on',
 			out: OPTIONS.out[state.out][0],
 			lanes: lanesOpt === 'auto' ? autoLanes : Number(lanesOpt),
-			// for the tests (tools/packer-web/e2e.mjs): packer.html?only=rooms,james runs just those steps
+			// for the tests (tools/packer-web/e2e.mjs): ?only=rooms,james in the address runs just those steps
 			only: (new URLSearchParams(location.search).get('only') || '').split(',').filter(Boolean),
 		};
 		if (!opt.only.length) opt.only = null;
@@ -521,7 +532,7 @@
 			} else {
 				$('[data-done-text]').textContent = 'Packed in ' + $('[data-elapsed]').textContent + ', straight into the folder you picked, under 3ds/sh23ds.';
 			}
-			document.getElementById('step-4').scrollIntoView({ behavior: 'smooth' });
+			$('[data-done]').scrollIntoView({ behavior: 'smooth', block: 'center' });
 		} catch (err) {
 			stop();
 			$('[data-status]').textContent = 'Stopped';

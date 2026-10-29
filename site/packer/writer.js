@@ -1,4 +1,4 @@
-// The browser packer's writer (a module worker that packer.html starts): the one place the output is
+// The browser packer's writer (a module worker that page.js starts): the one place the output is
 // written, so several packing workers can run at once. Each packing worker sends its files here over its
 // own MessageChannel; this worker adds them, in the order each one sent them, to a zip: written straight
 // into a file the player picked where the browser can (Chrome, Edge), else built in the browser's private

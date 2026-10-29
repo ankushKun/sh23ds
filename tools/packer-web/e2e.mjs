@@ -1,10 +1,10 @@
-// The browser packer end to end in a real browser: serves site/ on localhost, opens packer.html in
+// The browser packer end to end in a real browser: serves site/ on localhost, opens the page in
 // headless Chrome, gives it the game folder through the page's folder input (as a person choosing it),
 // presses Start and saves the zip through Chrome's download, as the page's button does.
 //
 //   node tools/packer-web/e2e.mjs "<Silent Hill 2 folder>" <download folder> [--only=collision,james] [--best] [--shots=dir]
-//     [--url=https://ankush.one/sh23ds/packer.html]   the deployed page instead of site/ (analytics blocked)
-//     [--nosimd]     ffmpeg's build without WebAssembly SIMD (packer.html?simd=0), as on a processor without SSE4.1
+//     [--url=https://ankush.one/sh23ds/]   the deployed page instead of site/ (analytics blocked)
+//     [--nosimd]     ffmpeg's build without WebAssembly SIMD (?simd=0 in the address), as on a processor without SSE4.1
 //     [--savefile]   the zip written into a picked file (the picker answered with a file in the site's storage,
 //                    which is then downloaded), not built in the storage and saved with the page's button
 //
@@ -54,14 +54,17 @@ try {
 			? async () => (await navigator.storage.getDirectory()).getFileHandle('picked.zip', { create: true })
 			: undefined;
 	}, savefile);
-	await page.goto(`${url || `http://127.0.0.1:${PORT}/packer.html`}${query.size ? '?' + query : ''}`);
+	await page.goto(`${url || `http://127.0.0.1:${PORT}/`}${query.size ? '?' + query : ''}`);
 	// the folder input: Chrome expands a folder path for webkitdirectory inputs, with relative paths
 	await page.evaluate(() => { window.showDirectoryPicker = undefined; });
 	const input = await page.$('[data-pick-input]');
 	await input.uploadFile(gameDir);
 	await page.waitForFunction(() => !document.querySelector('[data-start]').disabled, { timeout: 120000 });
 	console.log(await page.$eval('[data-found]', (e) => e.textContent));
-	if (best) await page.click('[data-option="quality"] [data-step="1"]');
+	if (best) {
+		await page.$eval('[data-options]', (d) => { d.open = true; });   // the options are folded away
+		await page.click('[data-option="quality"] [data-step="1"]');
+	}
 	const t0 = Date.now();
 	await page.click('[data-start]');
 	let last = '';

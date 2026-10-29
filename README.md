@@ -18,7 +18,7 @@
 <p align="center">
   <a href="https://ankush.one/sh23ds/"><b>Website</b></a> ·
   <a href="#install">Install</a> ·
-  <a href="https://ankush.one/sh23ds/packer.html">Packer</a> ·
+  <a href="https://ankush.one/sh23ds/#pack">Packer</a> ·
   <a href="https://github.com/ankushKun/sh23ds/releases/latest">Download</a> ·
   <a href="port/STATUS.md">Status</a> ·
   <a href="#contributing">Contributing</a>
@@ -49,7 +49,7 @@ You need:
 
 Then:
 
-1. Convert your game: open the [packer page](https://ankush.one/sh23ds/packer.html) in a desktop browser, choose your `Silent Hill 2` folder and save the zip. Nothing is uploaded. If you'd rather use Docker:
+1. Convert your game: open the [packer page](https://ankush.one/sh23ds/#pack) in a desktop browser, choose your `Silent Hill 2` folder and save the zip. Nothing is uploaded. If you'd rather use Docker:
    ```sh
    docker run --rm -v "/path/to/Silent Hill 2:/game:ro" -v "$PWD/sd:/out" ghcr.io/ankushkun/sh23ds-packer
    ```
@@ -72,7 +72,7 @@ The CIA is the better choice on a New 3DS: it asks for the 804 MHz clock and the
 
 </details>
 
-If sh23ds starts and can't find its data, it says so: whether the folder is missing, in the wrong place or only half copied, with the steps and a QR code of the [install guide](https://ankush.one/sh23ds/install.html).
+If sh23ds starts and can't find its data, it says so: whether the folder is missing, in the wrong place or only half copied, with the steps and a QR code of the [install guide](https://ankush.one/sh23ds/#install).
 
 ## Features
 

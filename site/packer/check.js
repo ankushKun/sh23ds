@@ -1,4 +1,4 @@
-// The browser check on packer.html: before the player picks anything, find out whether this browser can
+// The packer's browser check (the home page's step 2): before the player picks anything, find out whether this browser can
 // run the packer, and say what to do when it can't, in that browser's own terms. page.js shows the result
 // and keeps the buttons off when something stops the packer.
 //

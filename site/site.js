@@ -1,5 +1,5 @@
-// sh23ds website: one script for every page. Every page works without it; each feature turns on only
-// when its markup is present.
+// sh23ds website: the page's script (the 404 loads it too). The page works without it; each feature
+// turns on only when its markup is present. The packer has its own scripts in packer/.
 
 // Analytics: PostHog, in the same project as the rest of ankush.one and through the same first-party
 // proxy (p1.ankush.one). This site shares the ankush.one origin with the others, so a visitor keeps one
@@ -102,31 +102,6 @@
 
   function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-  // On a phone the step and memo menus are rows that scroll sideways: bring the chosen one to the middle.
-  function reveal(strip, el) {
-    if (!strip || !el || strip.scrollWidth <= strip.clientWidth + 1) return;
-    var r = el.getBoundingClientRect(), b = strip.getBoundingClientRect();
-    strip.scrollBy({ left: r.left - b.left - (b.width - r.width) / 2, behavior: reduceMotion ? "auto" : "smooth" });
-  }
-
-  // Arrow keys move between the buttons of a tab list, as on a menu screen.
-  function arrowKeys(items, select) {
-    items.forEach(function (b, i) {
-      b.addEventListener("keydown", function (e) {
-        var k = e.key, n = null;
-        if (k === "ArrowDown" || k === "ArrowRight") n = i + 1;
-        else if (k === "ArrowUp" || k === "ArrowLeft") n = i - 1;
-        else if (k === "Home") n = 0;
-        else if (k === "End") n = items.length - 1;
-        if (n === null) return;
-        e.preventDefault();
-        select(items[(n + items.length) % items.length], true);
-      });
-    });
-  }
-
-  // ---------------------------------------------------------------- every page
-
   // The latest release's tag and file sizes. Until it answers, the pages show the values they were written with.
   function release() {
     if (!window.fetch || !$("[data-version], [data-size]")) return;
@@ -142,60 +117,6 @@
         });
       })
       .catch(function () {});
-  }
-
-  // Downloads of every file in every release, pre-releases included: the same sum as the shields.io badge
-  // in the README. Kept for an hour, so a returning visitor sees it at once and GitHub's 60 requests an
-  // hour go further. Hidden until there is a number to show.
-  function downloads() {
-    var els = $$("[data-downloads]");
-    if (!els.length || !window.fetch) return;
-    var key = "downloads:" + REPO, total = 0, saved = null;
-    function show(n) {
-      els.forEach(function (el) { el.textContent = n.toLocaleString("en") + (n === 1 ? " download" : " downloads"); el.hidden = false; });
-      $$("[data-downloads-sep]").forEach(function (el) { el.hidden = false; });
-    }
-    try { saved = JSON.parse(localStorage.getItem(key)); } catch (e) {}
-    if (saved && typeof saved.total === "number") {
-      show(saved.total);
-      if (Date.now() - saved.at < 3600000) return;
-    }
-    function page(n) {
-      return fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=100&page=" + n, { headers: { Accept: "application/vnd.github+json" } })
-        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-        .then(function (data) {
-          data.forEach(function (rel) { (rel.assets || []).forEach(function (a) { total += a.download_count || 0; }); });
-          if (data.length === 100) return page(n + 1);
-        });
-    }
-    page(1)
-      .then(function () {
-        show(total);
-        try { localStorage.setItem(key, JSON.stringify({ total: total, at: Date.now() })); } catch (e) {}
-      })
-      .catch(function () {});
-  }
-
-  function tabs() {
-    $$("[data-tabs]").forEach(function (box) {
-      var buttons = $$('[role="tab"]', box);
-      function select(b, focus) {
-        buttons.forEach(function (x) {
-          var on = x === b;
-          x.setAttribute("aria-selected", on ? "true" : "false");
-          x.tabIndex = on ? 0 : -1;
-          var p = document.getElementById(x.getAttribute("aria-controls"));
-          if (p) p.hidden = !on;
-        });
-        if (focus) b.focus();
-      }
-      function pick(b, focus) {
-        if (b.getAttribute("aria-selected") !== "true") track("tab_selected", { tab: b.id });
-        select(b, focus);
-      }
-      buttons.forEach(function (b) { b.addEventListener("click", function () { pick(b, false); }); });
-      arrowKeys(buttons, pick);
-    });
   }
 
   function copyText(text, button) {
@@ -227,36 +148,13 @@
         track("command_copied", { command: b.dataset.copy });
       });
     });
-    $$("[data-copy-text]").forEach(function (b) {
-      b.addEventListener("click", function () {
-        copyText(b.dataset.copyText, b);
-        track("command_copied", { command: b.dataset.copyText.split("\n")[0] });
-      });
-    });
   }
 
-  // The side menu's red bar follows the section on screen.
-  function scrollspy() {
-    var box = $("[data-spy]");
-    if (!box || !("IntersectionObserver" in window)) return;
-    var links = $$("a", box), byId = {};
-    if (links[0]) links[0].setAttribute("aria-current", "true");
-    links.forEach(function (a) { byId[decodeURIComponent(a.hash.slice(1))] = a; });
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (!e.isIntersecting) return;
-        var link = byId[e.target.id];
-        if (!link) return;
-        if (link.hasAttribute("aria-current")) return;
-        links.forEach(function (a) { a.removeAttribute("aria-current"); });
-        link.setAttribute("aria-current", "true");
-        reveal(box, link);
-      });
-    }, { rootMargin: "-20% 0px -70% 0px" });
-    Object.keys(byId).forEach(function (id) { var el = document.getElementById(id); if (el) io.observe(el); });
+  // A link to a folded section (#docker) opens it.
+  function openTarget() {
+    var el = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (el && el.tagName === "DETAILS") el.open = true;
   }
-
-  // ---------------------------------------------------------------- home
 
   // The movie loop behind the title: still for anyone who asks for less motion, and paused while off screen.
   function titleVideo() {
@@ -300,39 +198,7 @@
     });
   }
 
-  // Up and down move through the title menu, like the game's.
-  function titleMenu() {
-    var menu = $(".menu");
-    if (!menu) return;
-    var items = $$("a", menu);
-    arrowKeys(items, function (a) { a.focus(); });
-  }
-
-  function memos() {
-    var box = $("[data-memos]");
-    if (!box) return;
-    var tabsList = $$('[role="tab"]', box), count = $("[data-memo-count]", box);
-    function select(b, focus) {
-      tabsList.forEach(function (x, i) {
-        var on = x === b;
-        x.setAttribute("aria-selected", on ? "true" : "false");
-        x.tabIndex = on ? 0 : -1;
-        document.getElementById(x.getAttribute("aria-controls")).hidden = !on;
-        if (on && count) count.textContent = (i + 1) + " / " + tabsList.length;
-      });
-      reveal(b.parentNode, b);
-      if (focus) b.focus({ preventScroll: true });
-    }
-    function pick(b, focus) {
-      if (b.getAttribute("aria-selected") !== "true") track("memo_viewed", { memo: b.id });
-      select(b, focus);
-    }
-    tabsList.forEach(function (b) { b.addEventListener("click", function () { pick(b, false); }); });
-    arrowKeys(tabsList, pick);
-    select(tabsList[0], false);
-  }
-
-  // ---------------------------------------------------------------- install guide
+  // ---------------------------------------------------------------- the Docker packer
 
   function detectOS() {
     var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || "").toLowerCase();
@@ -341,7 +207,7 @@
     return "linux";
   }
 
-  // The packer commands for the chosen system and game folder.
+  // The Docker packer command for the chosen system and game folder.
   function builder() {
     var root = $("[data-builder]");
     if (!root) return;
@@ -350,7 +216,7 @@
     var SHELLS = { mac: "Terminal", windows: "PowerShell", linux: "Terminal" };
     var PLACEHOLDERS = { mac: "/Users/you/Games/Silent Hill 2", windows: "C:\\Games\\Silent Hill 2", linux: "/home/you/Games/Silent Hill 2" };
     var input = $("[data-game]", root), label = $("[data-os-label]", root), colima = $('[data-note="colima"]', root);
-    var outPack = $('[data-out="pack"]'), outHash = $('[data-out="md5"]');
+    var outPack = $('[data-out="pack"]');
     var KEY = "sh23ds.builder.v2";
     var saved = store(KEY) || {};
     var os = ORDER.indexOf(saved.os) >= 0 ? saved.os : detectOS();
@@ -370,22 +236,19 @@
       label.textContent = NAMES[os];
       input.placeholder = PLACEHOLDERS[os];
       $$("[data-shell]").forEach(function (el) { el.textContent = SHELLS[os]; });
-      var path = clean(input.value || ""), shown = path || PLACEHOLDERS[os], pack, hash;
+      var path = clean(input.value || ""), shown = path || PLACEHOLDERS[os], pack;
       if (os === "windows") {
         var g = "<mark>" + esc(ps(shown)) + "</mark>";
-        hash = 'Get-FileHash -Algorithm MD5 "' + g + '\\sh2pc.exe"';
         pack = "mkdir -Force sd\ndocker run --rm `\n  -v \"" + g + ":/game:ro\" `\n  -v \"${PWD}\\sd:/out\" `\n  " + IMAGE;
       } else {
         // A leading ~ doesn't expand inside quotes, so it becomes $HOME.
         var p = shown, prefix = "";
         if (/^~(\/|$)/.test(p)) { prefix = "$HOME"; p = p.slice(1); }
         var g2 = "<mark>" + prefix + esc(sh(p)) + "</mark>";
-        hash = (os === "mac" ? 'md5 -q "' : 'md5sum "') + g2 + '/sh2pc.exe"';
         pack = "mkdir -p sd\ndocker run --rm \\\n" + (os === "linux" ? '  --user "$(id -u):$(id -g)" \\\n' : "") +
           '  -v "' + g2 + ':/game:ro" \\\n  -v "$PWD/sd:/out" \\\n  ' + IMAGE;
       }
       outPack.innerHTML = pack;
-      outHash.innerHTML = hash;
       if (colima) colima.classList.toggle("is-on", os === "mac" && !!path && !/^(~|\/Users\/)/.test(path));
       store(KEY, { os: os, path: input.value });
     }
@@ -402,55 +265,11 @@
     render();
   }
 
-  // ---------------------------------------------------------------- roadmap
-
-  // Releases newer than the ones written into the page, from GitHub, with the first sentence of their notes.
-  function releases() {
-    var list = $("[data-releases]");
-    if (!list || !window.fetch) return;
-    var known = {};
-    $$("[data-tag]", list).forEach(function (a) { known[a.dataset.tag] = true; });
-    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=6", { headers: { Accept: "application/vnd.github+json" } })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (data) {
-        if (!data || !data.length) return;
-        data.filter(function (r) { return !r.draft && !r.prerelease && !known[r.tag_name]; }).reverse().forEach(function (r) {
-          var d = new Date(r.published_at);
-          var body = (r.body || "").replace(/[*_`#>]/g, "").trim();
-          var first = (body.match(/^[^\n]*?[.!?](\s|$)/) || [body.split("\n")[0] || ""])[0].trim();
-          var a = document.createElement("a");
-          a.className = "rel";
-          a.href = r.html_url;
-          a.dataset.tag = r.tag_name;
-          var tag = document.createElement("span");
-          tag.className = "rel-tag";
-          var name = document.createElement("b");
-          name.textContent = r.tag_name;
-          var date = document.createElement("span");
-          date.textContent = d.getUTCDate() + " " + months[d.getUTCMonth()] + " " + d.getUTCFullYear();
-          tag.appendChild(name);
-          tag.appendChild(date);
-          var text = document.createElement("span");
-          text.className = "rel-text";
-          text.textContent = first;
-          a.appendChild(tag);
-          a.appendChild(text);
-          list.insertBefore(a, list.firstChild);
-        });
-      })
-      .catch(function () {});
-  }
-
   release();
-  downloads();
-  tabs();
   copyButtons();
-  scrollspy();
-  titleMenu();
+  openTarget();
+  window.addEventListener("hashchange", openTarget);
   titleVideo();
   tape();
-  memos();
   builder();
-  releases();
 })();

@@ -1,4 +1,4 @@
-// A browser packer worker (packer.html starts one to four, as module workers: Pyodide needs that).
+// A browser packer worker (page.js starts one to four, as module workers: Pyodide needs that).
 // Each runs core.js with:
 //   - the game folder the player picked, mounted read-only and read only when a task needs a file
 //     (WORKERFS over the picked File objects; nothing is copied or sent anywhere)
@@ -19,7 +19,7 @@ import { PYODIDE_URL, FFMPEG_URL, FFMPEG_NOSIMD_URL } from './cdn.js';
 
 // Whether this browser runs WebAssembly SIMD here: a function with two SIMD instructions, compiled and
 // called (V8 compiles lazily, and on a processor without SSE4.1 it fails only then, with "Wasm SIMD
-// unsupported"). packer.html?simd=0 takes the build without SIMD anyway.
+// unsupported"). ?simd=0 in the page address takes the build without SIMD anyway.
 const SIMD_TEST = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 127, 3, 2, 1, 0, 7, 5, 1, 1, 102,
 	0, 0, 10, 11, 1, 9, 0, 65, 1, 253, 17, 253, 27, 0, 11]);
 function simd() {

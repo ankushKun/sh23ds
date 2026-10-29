@@ -7,44 +7,40 @@ looks right when the site is served under `/sh23ds/`.)
 
 | File | What it is |
 | --- | --- |
-| `index.html` | Home: the title screen with its menu, the opening scene (which also plays the YouTube video), the memo list of features, the save slots and FBI code, the results screen, questions |
-| `install.html` | The install guide: five steps, with a command builder for the packer (system, game folder, copy buttons) |
-| `roadmap.html` | Chapters done and ahead, every part's state on memo paper, and the release log |
-| `docs.html` | How the port fits together, building, releases, the debug file, the converters and porting a feature |
+| `index.html` | The site: the title screen, the video, the install in three steps with the browser packer built into step 1 (`#pack`; Options, Docker and Help folded under it), and questions |
+| `install.html`, `packer.html`, `roadmap.html`, `status.html`, `docs.html` | Redirects for old links. The in-game setup screen's QR code points at `install.html`, so it stays. The install's old `#step-N` anchors land on the matching step, `packer.html` keeps its query (`?simd=0`), the roadmap goes to `port/STATUS.md` and the docs to the README on GitHub |
 | `404.html` | "There was a hole here." GitHub Pages serves it for any missing page |
-| `status.html` | Sends old links on to `roadmap.html` |
-| `site.css`, `site.js` | One stylesheet and one script for every page. Each page works without the script |
-| `fonts/` | Libre Caslon Display (titles), Crimson Pro (text and menus), VT323 (system text and code). Latin subsets, SIL Open Font License (`OFL-*.txt`) |
+| `site.css`, `site.js` | The stylesheet and script. The page works without the script |
+| `packer/` | The browser packer: `page.js` and `check.js` run in the page, the rest in workers. `tools/packer-web/README.md` has the details |
+| `fonts/` | Libre Caslon Display (the big titles in capitals and the step numerals), Inter (everything you read, in sentence case), IBM Plex Mono (commands and values), VT323 (only the video's VCR display and the wordmark). Latin subsets, SIL Open Font License (`OFL-*.txt`) |
 | `qr/` | FBI install codes pointing at `releases/latest/download/...`; `tools/make_site_qr.py` regenerates them |
 | `assets/shots/` | Screenshots of the port, built by `tools/site/make_shots.py` from captures and the mapping in `tools/site/shots.txt` |
-| `assets/og/` | Each page's social card (1200 x 630): the title beside the port's two screens. `tools/site/render_banner.sh` renders them from `tools/site/banner.html` |
+| `assets/og/` | Social cards (1200 x 630) rendered by `tools/site/render_banner.sh` from `tools/site/banner.html`; the page uses `home.jpg` |
 | `assets/banner.jpg` | The README banner, a copy of `assets/og/home.jpg` |
-| `sitemap.xml` | Every indexable page with its images. `https://ankush.one/robots.txt` (the root site) points at it |
+| `sitemap.xml` | The page with its images. `https://ankush.one/robots.txt` (the root site) points at it |
 | `llms.txt` | A plain summary and link list for AI assistants and crawlers ([llmstxt.org](https://llmstxt.org)) |
 | `site.webmanifest`, `assets/icon-*.png` | The manifest and the nine squares at 192 and 512 px |
 
 ## How it is put together
 
-The site is the 2001 game's own front end. Home opens on a title screen whose menu is the navigation, with
-the red selection bar moving to whatever the pointer or keyboard is on, over a loop cut from the PC game's
-opening movies. Features are memos on paper and what the port covers is the results screen. Film grain
-and scanlines sit over every page.
+One page, read top to bottom. The title screen is the 2001 game's own, over a loop cut from the PC game's
+opening movies, with the GitHub mark in the corner and no menu. The video follows, then the install: three
+steps, each a big numeral beside its title, one line and what to do. Step 1 is the packer itself; the
+browser check (`check.js`) runs only once the visitor scrolls near it, since it starts a worker and
+touches the CDN, and it shows nothing unless something is wrong. Film grain and scanlines sit over
+everything.
 
-On phones the install steps and the docs contents become a sticky strip under the page heading, and the
-memo list becomes a row of tabs above the memo, so whatever you tap is on screen.
+Keep it short. Every line on the page should be something a player needs to get the game running;
+details belong in the folds under step 1 or in the repository. The mark is the nine red squares from
+the last wall in the game. Every colour comes from the tokens at the top of `site.css`; the one accent
+is the red of the save point. The grain is drawn by the browser from an SVG filter in those tokens, so
+there are no texture images. Motion stops under `prefers-reduced-motion`.
 
-The mark is the nine red squares from the last wall in the game. Every colour comes from the tokens at
-the top of `site.css`; the one accent is the red of the save point. The grain is drawn by the browser
-from an SVG filter in those tokens, so there are no texture images. Motion stops under
-`prefers-reduced-motion`.
-
-When the version, the controls or the install steps change, update `install.html` and the README together.
-Each page's `<head>` carries its title, description, social card and JSON-LD (the game and its source
-code on the home page with the questions, a HowTo on the install page, breadcrumbs on the rest). On a
-release, bump `softwareVersion` and `dateModified` in `index.html`, the facts in `llms.txt` and the
-`lastmod` dates in `sitemap.xml`. Questions added to the home page go in its FAQPage JSON-LD too.
-The release version, file sizes and any release newer than the ones written into `roadmap.html` come
-from the GitHub API at load time.
+When the install steps change, update `index.html` and the README together. The page's `<head>` carries
+its title, description, social card and JSON-LD (the game, its source code, the install as a HowTo, the
+packer and the questions). On a release, bump `softwareVersion` and `dateModified` in `index.html`, the
+facts in `llms.txt` and the `lastmod` date in `sitemap.xml`. Questions added to the page go in its
+FAQPage JSON-LD too. The release version and file sizes come from the GitHub API at load time.
 
 ## Analytics
 
@@ -55,8 +51,8 @@ pages share the ankush.one origin, a visitor keeps one id and one replay session
 portfolio and the other project pages. Nothing loads on localhost, so previews and the packer's e2e test
 send nothing, or when the browser sends Global Privacy Control.
 
-Custom events go through `window.track(name, props)`: `memo_viewed`, `tab_selected`,
-`install_os_changed`, `command_copied` and `video_played` from `site.js`, and `packer_browser` (the
+Custom events go through `window.track(name, props)`: `install_os_changed`, `command_copied` and
+`video_played` from `site.js`, and `packer_browser` (the
 browser check: the browser's name and the ids of what failed), `packer_folder`, `packer_started`,
 `packer_finished`, `packer_failed` (also sent to error tracking) and `packer_zip_saved` from
 `packer/page.js`. The packer's events carry counts, sizes and the chosen options, never file names or

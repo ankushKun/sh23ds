@@ -1,4 +1,7 @@
-/* Self-hosted fonts, Latin subsets from Google Fonts. SIL Open Font License, see fonts/OFL-*.txt. */
+/* Self-hosted fonts, Latin subsets from Google Fonts. SIL Open Font License, see fonts/OFL-*.txt.
+   Libre Caslon Display for the big titles and the step numerals, Inter (variable) for everything you
+   read, IBM Plex Mono for commands and values, VT323 only for the VCR display on the video and the
+   wordmark. */
 @font-face {
   font-family: "Libre Caslon Display";
   font-style: normal;
@@ -7,21 +10,28 @@
   src: url("fonts/libre-caslon-display-400-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
-/* Crimson Pro is a variable font: one file covers every weight. */
 @font-face {
-  font-family: "Crimson Pro";
+  font-family: "Inter";
   font-style: normal;
-  font-weight: 200 900;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("fonts/crimson-pro-latin.woff2") format("woff2");
+  src: url("fonts/inter-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
-  font-family: "Crimson Pro";
-  font-style: italic;
-  font-weight: 200 900;
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
   font-display: swap;
-  src: url("fonts/crimson-pro-italic-latin.woff2") format("woff2");
+  src: url("fonts/ibm-plex-mono-400-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 @font-face {

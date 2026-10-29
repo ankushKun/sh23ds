@@ -1,16 +1,16 @@
-/* packer.html: only what the shared stylesheet doesn't have, in its tokens. */
+/* The packer (step 2 on the home page): only what the shared stylesheet doesn't have, in its tokens. */
 .pk-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; }
-.pk-found { font-size: 19px; line-height: 1.5; color: var(--text-2); }
-.pk-time { font: 400 24px/1 var(--mono); letter-spacing: .1em; color: var(--dim); }
-.pk-option-note { margin: 0; padding: 16px 22px; font-size: 18px; line-height: 1.55; color: var(--text-2); }
+.pk-found { margin: 0; font-size: 17px; line-height: 1.55; color: var(--text-2); }
+.pk-time { font: 400 16px/1 var(--mono); color: var(--dim); }
+.pk-option-note { margin: 0; padding: 16px 22px; font-size: 15px; line-height: 1.6; color: var(--text-2); }
 .pk-option-note:empty { display: none; }
 .btn:disabled, .arrow:disabled { opacity: .4; pointer-events: none; }
 
-.pk-run { margin-top: 22px; }
+.pk-run { margin-top: 8px; }
 .pk-steps { margin: 0; padding: 10px 0; list-style: none; border-bottom: 1px solid var(--line); }
 .pk-steps li {
   display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(70px, 180px) 5.5em; align-items: center; gap: 6px 14px;
-  padding: 7px 22px; font-size: 18px; line-height: 1.4; color: var(--dim);
+  padding: 7px 22px; font-size: 15px; line-height: 1.45; color: var(--dim);
 }
 .pk-steps .pk-sec { text-align: right; }
 /* each step's bar, and the whole run's under the panel heading */
@@ -23,7 +23,7 @@
   .pk-steps .pk-bar { grid-column: 2 / -1; grid-row: 2; }
 }
 .pk-steps .sq { width: 8px; height: 8px; border: 1px solid var(--dim); align-self: center; }
-.pk-steps .pk-sec { font: 400 20px/1 var(--mono); letter-spacing: .08em; }
+.pk-steps .pk-sec { font: 400 14px/1 var(--mono); }
 .pk-steps li.is-now { color: #fff; }
 .pk-steps li.is-now .sq { border-color: var(--red-hi); background: var(--red); animation: pk-blink 1.2s steps(2) infinite; }
 .pk-steps li.is-done { color: var(--text-2); }
@@ -33,22 +33,23 @@
 
 .pk-log {
   margin: 0; max-height: 260px; overflow: auto; padding: 14px 22px;
-  font: 400 17px/1.35 var(--mono); color: var(--dim); white-space: pre-wrap; word-break: break-word;
+  font: 400 13px/1.5 var(--mono); color: var(--dim); white-space: pre-wrap; word-break: break-word;
 }
-.pk-done { margin-bottom: 18px; }
+.pk-done { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
 .pk-steps .pk-title::first-letter { text-transform: uppercase; }
 .pk-run .panel-head .sys { white-space: nowrap; }
 .pk-name { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.pk-count { font: 400 17px/1.2 var(--mono); letter-spacing: .06em; color: var(--dim); }
+.pk-count { font: 400 13px/1.3 var(--mono); color: var(--dim); }
 .pk-count:empty { display: none; }
 .pk-steps li.is-now .pk-count { color: var(--menu); }
 
-/* the browser check (check.js): one line per finding, the square says how much it matters */
-.pk-check { margin-bottom: 18px; }
-.pk-check-list { margin: 0; padding: 10px 0; list-style: none; }
+/* the browser check (check.js), under the buttons: one line per finding, the square says how much it
+   matters. Nothing shows while it runs or when everything works. */
+.pk-check-list { margin: 0; padding: 0; list-style: none; }
+.pk-check-list:not(:has(li:not(.is-ok, .is-wait))) { display: none; }
 .pk-check-list li {
   display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: baseline;
-  padding: 7px 22px; font-size: 18px; line-height: 1.5; color: var(--text-2);
+  padding: 4px 0; font-size: 16px; line-height: 1.55; color: var(--text-2);
 }
 .pk-check-list .sq { width: 8px; height: 8px; border: 1px solid var(--dim); background: none; transform: translateY(-2px); }
 .pk-check-list .is-ok .sq { border-color: var(--menu); background: var(--menu); }
