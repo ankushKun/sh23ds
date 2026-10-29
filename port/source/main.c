@@ -33,6 +33,7 @@
 #include "savescreen.h"
 #include "nodata.h"
 #include "noise.h"
+#include "picture.h"
 #include "blood.h"
 #include "boat.h"
 #include "mist.h"
@@ -3963,6 +3964,7 @@ static void options_apply(void)
 	audio_set_output(s_opt.speaker);
 	map_set_open_zoomed(s_opt.map_zoom == 0);
 	noise_set(s_opt.noise, s_opt.bright, s_opt.noise_ps2);
+	picture_set_soft(s_opt.picture == 0);
 	blood_set_color(s_opt.blood);
 	profile_set_choices(s_opt.hwprofile, s_opt.quality, s_opt.ctrllayout, s_opt.framerate);   // profile.c
 	s_env_dirty = true;
@@ -4497,6 +4499,7 @@ static void dump_info(u32 n)
 		fprintf(f, "linear free %lu KB, verts %lu\n", (unsigned long)(linearSpaceFree() / 1024),
 		        (unsigned long)s_cur.n_vertices);
 		fprintf(f, "fog test %d (%s), %s, demo %s\n", fog_debug_mode(), fog_debug_name(), chrlight_status(), demo_status());
+		fprintf(f, "picture %s\n", supersample_status());
 		fprintf(f, "camera %s%s, %s\n", s_tp_live ? "behind" : "pc", gamecam_scripted() ? " (a scripted shot)" : "",
 		        tpcam_status());
 		fclose(f);
@@ -4766,6 +4769,18 @@ static void draw_hit(float t)
 	font_quad_px(NULL, 0.0f, 0.0f, 400.0f, 240.0f, 0, 0, 0, 0, all);
 }
 
+// The Picture's soft pass (picture.h) for a scene drawn into target: it goes to the screen's target
+// (supersample.h), where the 2D after it is drawn.
+static void picture_frame(C3D_RenderTarget* target)
+{
+	if (!picture_soft())
+		return;
+	int sx, sy;
+	C3D_RenderTarget* out = supersample_screen(target, &sx, &sy);
+	picture_soft_pass(target, sx, sy, out);
+	use_world_program();
+}
+
 // The top screen of a frame of play into target, with the camera's projection (one eye's in a 3D
 // frame, stereo.h); dt is 0 for the second eye, so nothing advances twice. Returns the room's draws.
 static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx* mv, const C3D_Mtx* ortho, u32 clear,
@@ -4778,6 +4793,7 @@ static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx
 	if (s_render_mode == 3) {
 		draw_texture_test(ortho);
 		calls = 1;
+		picture_frame(target);
 	} else if (playtest_fast() && !s_pt_shot) {
 		calls = 0;               // playtest "fast 1": nothing drawn, the emulator's GPU idles
 	} else {
@@ -4827,6 +4843,9 @@ static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx
 		if (s_cam.mode == CAM_PLAYER)
 			roomfx_draw_flare(proj, mv);   // the lake's light, in front of the fog (roomfx.c)
 		perf_part("r_fog", tr);
+		tr = svcGetSystemTick();
+		picture_frame(target);           // the scene is done: the Picture's soft pass, then the 2D on top
+		perf_part("r_soft", tr);
 		tr = svcGetSystemTick();
 		static float black;              // the second eye keeps the first one's
 		if (!stereo_eye()) {
@@ -4896,6 +4915,7 @@ int main(void)
 	stereo_init(DISPLAY_TRANSFER_FLAGS);
 	supersample_init(top, DISPLAY_TRANSFER_FLAGS);
 	setup_pipeline();
+	picture_init();                  // the Picture's soft pass (picture.h)
 	movie_init(top);
 	touchui_init();                  // the touch screen is drawn from here on (touchui.c)
 
@@ -4984,6 +5004,7 @@ int main(void)
 				if (!strcmp(key, "supersample")) q.supersample = val;
 				quality_set(&q);
 			}
+			if (!strcmp(key, "picture")) picture_debug(val);   // 1: the soft pass's copy drawn back as it is
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "die")) s_debug_die = (u32)val;      // a killing blow at that frame (tests)
 			if (!strcmp(key, "hurt") && sscanf(line, "%*s %lu %d", &s_debug_die, &s_debug_die_pct) != 2)
@@ -5570,7 +5591,8 @@ int main(void)
 		// 60 while it fits, an even 30 when it does not, with both eyes drawn (stereo.h) too: perf_pace
 		// goes by the GPU's own time, which a console measures. Both eyes of a lit room take about
 		// twice one eye's 6 to 9 ms, inside a 60 fps frame; the fogged roads drop to 30 as in 2D
-		supersample_frame_end(perf_pace(quality()->frame_cap));
+		int cap = quality()->frame_cap;
+		supersample_frame_end(perf_pace(cap), cap);
 		for (int i = 0; i < s_ndump; i++)
 			if (s_dump_frames[i] == frame)
 				dump_frame(top, frame);

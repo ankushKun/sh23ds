@@ -47,6 +47,7 @@ shot optmove   "$ROOM" 580 --press 420-423:START --press 450-453:DOWN --press 47
 shot optbehind "$ROOM" 620 --press 420-423:START --press 450-453:DOWN --press 470-473:DOWN --press 490-493:DOWN --press 510-513:A --press 540-543:A --press 570-573:DOWN
 shot optgame   "$ROOM" 630 --press 420-423:START --press 450-453:DOWN --press 470-473:DOWN --press 490-493:DOWN --press 510-513:A --press 540-543:R --press 570-573:DOWN --press 590-593:DOWN
 shot optdisp   "$ROOM" 640 --press 420-423:START --press 450-453:DOWN --press 470-473:DOWN --press 490-493:DOWN --press 510-513:A --press 540-543:R --press 560-563:R --press 590-593:DOWN --press 610-613:DOWN
+shot optpict   "$ROOM" 620 --press 420-423:START --press 450-453:DOWN --press 470-473:DOWN --press 490-493:DOWN --press 510-513:A --press 540-543:R --press 560-563:R --press 590-593:DOWN
 shot optsound  "$ROOM" 660 --press 420-423:START --press 450-453:DOWN --press 470-473:DOWN --press 490-493:DOWN --press 510-513:A --press 540-543:L --press 560-563:L --press 590-593:DOWN --press 610-613:DOWN
 shot optsystem "$ROOM" 620 --press 420-423:START --press 450-453:DOWN --press 470-473:DOWN --press 490-493:DOWN --press 510-513:A --press 540-543:L --press 570-573:DOWN
 shot items     "$ROOM" 480 --press 420-423:Y

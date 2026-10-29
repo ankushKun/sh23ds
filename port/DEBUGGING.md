@@ -32,7 +32,8 @@ it to play normally.
 | `dumpframe <n>` | save frame *n* as `frame_<n>.bmp` and its stats as text; a 3D frame also as `frame_<n>_right.bmp` |
 | `perflog 1` / `memlog 1` / `memtest <n>` | frame time breakdown, memory use, a memory stress test |
 | `gpucost 1` / `mapcull 0` / `fogfill <tenths>` | the GPU cost model in perf.txt, the map sent whole, the fog's area per eye in 3D (PERFORMANCE.md, "3D") |
-| `supersample <0\|1\|2>` | the top screen at twice its height: off, while the GPU has the time (the default), always (VISUALS.md) |
+| `supersample <0\|1\|2\|3>` | the top screen drawn larger: off, as far as the GPU has the time (the default), always 2x, always 2x2 (VISUALS.md) |
+| `picture 1` | the Picture's copy drawn back without its filter, to check it against Sharp (picture.h) |
 | `die <frame>` / `hurt <frame> <percent>` | a blow at that main-loop frame: a killing one, or one taking that share of James' health (the death and game over, the hit flash) |
 | `mapmips 1` | sample the map textures' mipmaps (off by default: the PC makes its map textures with one level, and the mipmaps of its atlases drew lines along the ground's quad edges) |
 | `streamsync 1` | load streamed tiles on the main thread, to compare with the worker |
@@ -62,7 +63,10 @@ or clear Azahar's shader cache for title `0000000000000000`. A `dumpframe` line 
 whether the game drew anything.
 
 For 3D, `--opt citra_factor_3d=100` on a headless run sets the slider the game reads, but Azahar's
-software renderer shows only the left eye, so use `dumpframe` for the right one. With both eyes drawn
+software renderer shows only the left eye, so use `dumpframe` for the right one. The software renderer
+also samples every texture without filtering: magnified textures look blockier than on a console, and
+the Picture's soft pass shows as single texels instead of its filter. Its OpenGL renderer needs
+OpenGL 4.3, which macOS does not have. With both eyes drawn
 the game often runs at 30 fps, so a frame number can be reached about half as early in emulator frames.
 
 ## Headless runs (macOS)

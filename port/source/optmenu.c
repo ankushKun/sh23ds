@@ -86,7 +86,7 @@ static const Key s_keys[] = {
 	K("shadows", shadows, 0, 1), K("fog", fog, 0, 1), K("weaponcontrol", weapon, 0, 1),
 	K("mapzoom", map_zoom, 0, 1), K("walkrun", walk_run, 0, 2), K("viewcontrol", view, 0, 1),
 	K("bloodcolor", blood, 0, 3), K("bulletadjust", bullet, 1, 3), K("messagestop", msg_top, 0, 1),
-	K("stereo3d", stereo, 0, 1),
+	K("stereo3d", stereo, 0, 1), K("picture", picture, 0, 1),
 	K("ps2flashlight", ps2_flash, 0, 1), K("ps2noise", noise_ps2, 0, 1), K("ps2camera", ps2_camera, 0, 1),
 	K("cutscenefov", cutscene_fov, 0, 1), K("togglerun", toggle_run, 0, 1), K("holdstomp", hold_stomp, 0, 1),
 	K("swapattack", swap_attack, 0, 1), K("hwprofile", hwprofile, 0, 2), K("quality", quality, 0, 2),
@@ -156,6 +156,7 @@ static const char* const WALK_RUN_T[4] = { NULL, "Toggle", NULL, NULL };
 static const char* const NOISE_T[3] = { NULL, "PC", "PS2" };
 static const char* const SCREENS[2] = { "Bottom Screen", "Top Screen" };
 static const char* const PC_PS2[2] = { "PC", "PS2" };
+static const char* const PICTURE[2] = { "Soft", "Sharp" };
 static const char* const FRAMING[2] = { "Full Width", "4:3" };
 static const char* const CAMERA[2] = { "Original", "Behind" };
 static const char* const HEAVY[2] = { "PC", "Hold {ACT}" };
@@ -186,6 +187,8 @@ static const char* const STAMINA_L[2] = { "As on the PC: a long run tires James,
 static const char* const AMMO_L[2] = { "Every shot uses a round.", "Guns never run out." };
 static const char* const STEREO_L[2] = { "The top screen stays flat whatever the slider says.",
                                          "The world gains depth. Text and menus stay on the screen." };
+static const char* const PICTURE_L[2] = { "Edges and texture grain smoothed, as the PC looks at this size.",
+                                          "Every pixel as the console draws it, crisper and grainier." };
 static const char* const MESSAGES_L[2] = { "On the touch screen, which keeps the picture clear.",
                                            "In the PC's message window over the game." };
 static const char* const NOISE_L[3] = { "A clean picture, as the PC starts.", "The PC's light grain.",
@@ -202,10 +205,10 @@ static const char* const SUBS_L[2] = { "Voices only.", "Spoken lines are written
 static const char* const SPEAKER_L[3] = { "One channel from both speakers.", "Left and right kept apart.",
                                           "The 3DS's virtual surround." };
 static const char* const QUALITY_L[3] = { "This console picks {AUTOQ}.",
-                                          "Fewer fog particles and lights, no shadows, no smoothing.",
-                                          "Everything the port draws." };
+                                          "Fewer fog particles and lights, no shadows, no supersampling.",
+                                          "Everything the port draws, supersampled while the frame rate holds." };
 static const char* const FRAMES_L[3] = { "Follows Quality: {AUTOFPS} fps on this console.",
-                                         "Every frame lasts the same time. The steadiest motion.",
+                                         "The steadiest motion, and the most room for supersampling.",
                                          "Smoother, when the console keeps up." };
 static const char* const HARDWARE_L[3] = { "This console, a {CONSOLE} 3DS.",
                                            "Lighter defaults for quality, frame rate and textures.",
@@ -286,6 +289,8 @@ static const Setting SETTINGS[] = {
 	// Display
 	{ .tab = TAB_DISPLAY, .kind = K_PAGE, .label = 2, .name = "Brightness Level", .page = PG_BRIGHT,
 	  .what = "How bright the game's darkness looks." },
+	{ .tab = TAB_DISPLAY, .label = -1, .name = "Picture", AT(picture), .hi = 1, .texts = PICTURE, .fig = FIG_PICTURE,
+	  .what = "How smooth the picture looks.", .lines = PICTURE_L },
 	{ .tab = TAB_DISPLAY, .label = -1, .name = "3D", AT(stereo), .hi = 1, .texts = OFF_ON_TEXT,
 	  .what = "Depth on the top screen with the 3D slider.", .lines = STEREO_L },
 	{ .tab = TAB_DISPLAY, .label = -1, .name = "Messages", AT(msg_top), .hi = 1, .texts = SCREENS, .fig = FIG_SCREENS,

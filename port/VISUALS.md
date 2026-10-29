@@ -72,22 +72,38 @@ to; what was swapped out is freed after the next `C3D_FrameBegin` (`room_tex_rea
 that stream in while James walks are read whole, out of sight, as before. perf.txt gets a `refine`
 line with how long the room took to become whole, and the debug page counts the drafts left.
 
+### The Picture
+
+The video of the PC game is drawn at 3840 x 2160 and kept at 640 x 360, so scaled to the top screen
+it shows what a perfectly smoothed 400 x 240 picture looks like. Measured as edge energy (the mean
+step between neighbouring pixels) in four rooms, the PC at 400 x 240 is 2.5 to 5.5 and the port 6.8
+to 16.2. Supersampling 2 x 2 brings the port to 5.9 to 11.7; most of what is left is texture grain,
+not polygon edges, and a [1, 2, 1] filter each way after it brings it to 4.0 to 4.8.
+
+`picture.c` (a 3DS-only system, `picture.h` explains it) is the Display tab's Picture: Soft (the
+default) or Sharp. Soft copies the finished scene into a texture with the transfer engine and draws
+it back through four bilinear taps half a pixel off diagonally, which is that filter exactly. The 2D
+(messages, the grain, menus) goes on top afterwards, as the PC draws its text and noise after its own
+filters. It costs one copy and two full-screen quads at the screen's size on both models, in 2D and
+per eye in 3D, and 0.5 MB of linear memory (2 MB when a 2 x 2 scene is copied).
+
 ### Supersampling
 
-`supersample.c` (a 3DS-only system, `supersample.h` explains it): a frame drawn in 2D at 60 fps goes
-into a target of twice the screen's height, which the display transfer halves while it copies it to
-the screen. That smooths the edges across the screen (the ground's, the tops of walls, tables, the
-horizon) and samples the ground's texture twice as often down the screen, where it is squeezed most.
+`supersample.c` (a 3DS-only system, `supersample.h` explains it) draws the scene larger while the GPU
+has the time: 2x (twice the screen's height, 1.5 MB of VRAM) or 2x2 (twice both ways, 3 MB), one
+target at a time. On Sharp the display transfer halves it into the screen; on Soft the soft pass
+reads it at the screen's pixels, where its taps average a 2 x 4 or 4 x 4 block of the larger
+picture, so the soft pass costs the same at every level.
 
-It runs only while the GPU has the time, read from `C3D_GetDrawingTime` as `perf_pace` reads it: on
-after 2 seconds of frames under 7 ms of GPU, off as soon as one doubled frame takes over 14 ms (before
-the pacing's 15.5 ms would count it), then 5 seconds before it may come back, doubling up to a minute
-where it keeps switching off. 3D, the 30 fps rate and the Old 3DS profile never use it. It takes 1.5
-MB of VRAM the first time it turns on. `supersample 0`, `1` (the default) or `2` (always) in
-`debug.txt` overrides it, and the debug page shows `2x on` or `off`.
-
-The display transfer can only halve the GPU's x (the screen's height) or both axes, so 2x across the
-screen is not available; 4x (both) would cost four times the pixels.
+The level follows the GPU, read from `C3D_GetDrawingTime` as `perf_pace` reads it, in fractions of
+the frame's budget: 16.7 ms at 60 fps, 33.3 ms when the Frame Rate is 30. After 2 seconds of frames
+whose time doubled would fit 0.84 of the budget it steps up; a frame over 0.84 of it steps down at
+once, before the pacing would give up a frame, then 5 seconds before it may step up again, doubling up
+to a minute where it keeps stepping down. When the pacing has dropped an Auto 60 fps game to 30 it
+goes back to the screen's size. 3D frames and movies are drawn at the screen's size, and Quality Low
+(the Old 3DS profile's) has no supersampling. `supersample 0`, `1` (the default), `2` (always 2x) or
+`3` (always 2x2) in `debug.txt` overrides it; the debug page and frame dumps' `picture` line show the
+level and the Picture (`2x2 soft`).
 
 ## Checked in Azahar
 
@@ -111,6 +127,22 @@ models' textures at their own sizes), against the build before this change on th
   screenshots show the halved image.
 - **Smoke run** (`tools/lr3ds/smoke.sh` on the new pack): 12 of 12 on the New 3DS and Old 3DS models.
 
+On 2026-10-30, the Picture and the supersampling's 2x2 step:
+
+- **The copy.** `picture 1` in `debug.txt` draws the copy back without the filter; against Sharp it
+  differs by 0.04 of 255 on average (James' idle motion, the frames' timing differs), so the copy, its
+  orientation and its edges are right.
+- **The filter.** Azahar's software renderer samples every texture without filtering, so its frames
+  show the soft pass's taps as single texels, not the filter the console draws, and they show the
+  game's magnified textures blockier than a console does. Only a console shows the result.
+- **The ladder.** On Soft and on Sharp the level reaches 2x after 2 seconds and 2x2 after 4 (Azahar
+  reports almost no GPU time). Frame dumps work at every level on Soft; on Sharp they still need
+  `supersample 0`. In 3D both eyes get the soft pass at the screen's size. The Old 3DS model's Auto
+  profile runs `1x soft`.
+- **Text.** The explainer's lines fit in every language and button layout (`tests/ui/capture.sh
+  textcheck`).
+- **Smoke run:** 12 of 12 on both models.
+
 The packing gets slower: the map's textures take about four times the encoding they did. The browser
 packer encodes at rg_etc1's medium quality, about 20 times faster than the high quality tex3ds and
 the native packer use, so the change is smaller there. The pack on the SD card grows from about 1.3
@@ -120,14 +152,18 @@ to about 1.8 GB (the map's textures from 143 to 559 MB).
 
 Azahar does not time the GPU and hides the ground's mip seams, so these need a New 3DS:
 
-1. `perflog 1`, 2D, the debug page on: in er01, ap06, the hospital and the prison the line should say
-   `2x on` and the per-second `gpu` stay under 14 ms with no slow frame lines. In the fogged town and
-   forest it should say `2x off` and the frame rate be what it was.
-2. The ground and walls up close, against the previous build: no lines along the ground's quad edges
+1. `perflog 1`, 2D, the debug page on: in er01, ap06, the hospital and the prison the line should
+   reach `2x soft` or `2x2 soft` with the per-second `gpu` under 14 ms and no slow frame lines. In the
+   fogged town and forest it should stay at `1x soft` and the frame rate be what it was. The same
+   with Frame Rate on 30 fps: 2x2 in more places, `gpu` under 28 ms.
+2. Soft against Sharp in the same rooms: the picture smoother without looking smeared, the text and
+   menus as crisp, and `gpu` about 1 ms higher on Soft. On an Old 3DS, Soft at 30 fps with no new slow
+   frames.
+3. The ground and walls up close, against the previous build: no lines along the ground's quad edges
    (the first-level-only rule was made for those), no new shimmer on far floors.
-3. `supersample 0` against `1` in the same rooms: `gpu` should rise by less than twice; if a room
-   flips on and off, its `gpu` at 1x is near 7 ms and the hold-off should keep it off.
-4. Room loads with the larger textures (`memlog 1`, `perflog 1`): the `warp` lines' black screen
+4. `supersample 0`, `2` and `3` in the same rooms: `gpu` should rise by less than twice per step; if a
+   room flips between levels, the hold-off should keep it at the lower one.
+5. Room loads with the larger textures (`memlog 1`, `perflog 1`): the `warp` lines' black screen
    against the previous build, the `refine` lines (how long until the room is whole, and whether the
    sharpening shows as a pop), and that tiles still join out of sight in the town.
 
@@ -165,6 +201,6 @@ By what a player sees against what it costs the GPU. Each starts from the PC fun
 | 3 | Character transparent parts sorted far to near | 0x503e10 | sort the hair's triangles per frame on the CPU | none on the GPU |
 | 4 | Event lights outside cutscenes (the hotel's swinging lamp) | 0x47b040, 0x576fa0 | a point light in `envlight.c` and `chrlight.c` | none |
 | 5 | The EE's maps at 1024 x 1024 | | `maps.py`, `map.c` | none, 1 MB while the map is open |
-| 6 | Blur and bloom (`RestoreSpecialFX`) | the PC's blur object | the frame into a texture and a blended pass, only under the supersampling's budget rule | one to two screens of fill |
+| 6 | The PC's 2D filters: motion blur (boss deaths, scenes), glow (the radio tunnel, room 312), soft focus (the closet), depth of field (the opening toilets), with the Enhanced Edition's `RestoreSpecialFX` corrections | the dispatcher 0x479840 (motion blur 0x478de0, the blur 0x477a60), the setter 0x478740, `enSetBlur` 0x4a7d80 | the Picture's frame copy (`picture.c`) blended over or blurred, while a filter runs | one to five quads while it runs |
 | 7 | Rain and smoke particles | Effect2 rain, smoke classes | the blood module's sprite path | blended sprites, budgeted like the fog |
 | 8 | The 800-pixel mode on the New 3DS: the top screen's full horizontal resolution in 2D | | `gfxSetWide`, as an alternative to the supersampling where it fits | twice the pixels, and no 3D at the same time |

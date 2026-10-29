@@ -527,6 +527,29 @@ static void stamina(int v, float t, const char* key)
 	box(x0 + ph * W, 12, x0 + ph * W + 1, 92, 0xb4aea680);
 }
 
+// Picture: a slanted edge between the dark and the light, close up in the screen's pixels. Sharp
+// gives each pixel one side or the other; Soft shades it by how much of it each side covers.
+static void picture(int v, float t)
+{
+	(void)t;
+	const float px = 8, x0 = 16, y0 = 8;
+	const int nx = 18, ny = 11;
+	for (int j = 0; j < ny; j++)
+		for (int i = 0; i < nx; i++) {
+			int in = 0;                  // of 4 x 4 points in the pixel, those under the edge
+			for (int sj = 0; sj < 4; sj++)
+				for (int si = 0; si < 4; si++) {
+					float x = i + (si + 0.5f) / 4.0f, y = j + (sj + 0.5f) / 4.0f;
+					in += y > 1.5f + x * 0.42f;
+				}
+			float k = v == 0 ? in / 16.0f : in >= 8 ? 1.0f : 0.0f;
+			u32 c = (u32)(0x22 + k * (0xb4 - 0x22)) << 24 | (u32)(0x1d + k * (0xae - 0x1d)) << 16 |
+			        (u32)(0x1b + k * (0xa6 - 0x1b)) << 8 | 0xffu;
+			box(x0 + i * px, y0 + j * px, x0 + (i + 1) * px, y0 + (j + 1) * px, c);
+		}
+	frame(x0, y0, x0 + nx * px, y0 + ny * px, FIGC_GREY);
+}
+
 void fig_draw(int fig, int value, float x, float y, float t, bool lit, const char* key)
 {
 	if (s_measure || fig == FIG_NONE)
@@ -542,6 +565,7 @@ void fig_draw(int fig, int value, float x, float y, float t, bool lit, const cha
 	case FIG_FRAMING: framing(value, t); break;
 	case FIG_MAP: map(value, t); break;
 	case FIG_STAMINA: stamina(value, t, key); break;
+	case FIG_PICTURE: picture(value, t); break;
 	}
 	s_ox = s_oy = 0.0f, s_fa = 1.0f;
 }

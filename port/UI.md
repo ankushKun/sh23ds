@@ -105,7 +105,8 @@ The drawings use the touch screen's palette: thin warm grey lines, James as the 
 cameras as small bodies with a pale cone for what they see, the button as its ring. They move slowly
 and loop: Camera, the corridor walked under the PC's cutting shots or a trailing camera; Control
 Type, the same two pushes of the stick under each style; Weapon and View Control, the button's
-presses over what they do; Messages, the two screens; Flashlight, the beam's reach and strength;
+presses over what they do; Picture, a slanted edge in the screen's pixels, stepped or shaded;
+Messages, the two screens; Flashlight, the beam's reach and strength;
 Cutscene View, a shot's framing; Map, the floor zoomed in or whole; Infinite Stamina, a run's
 stamina.
 

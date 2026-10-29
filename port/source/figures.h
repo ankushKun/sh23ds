@@ -11,7 +11,7 @@
 
 enum {
 	FIG_NONE, FIG_CAMERA, FIG_MOVEMENT, FIG_AIM, FIG_LOOK, FIG_SCREENS, FIG_BEAM, FIG_FRAMING, FIG_MAP,
-	FIG_STAMINA,
+	FIG_STAMINA, FIG_PICTURE,
 };
 #define FIG_W 176.0f                 // a drawing's box
 #define FIG_H 104.0f

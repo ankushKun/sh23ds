@@ -4,8 +4,9 @@ Goal: Silent Hill 2 Director's Cut (PC) running natively on the New 3DS and, wit
 original 3DS (real hardware and Azahar), as an installable `.cia` / `.3dsx` that uses the player's own
 game data, with the Enhanced Edition's fixes folded in where they apply.
 
-Last updated 2026-10-29: textures at the PC's sizes and the supersampling (`VISUALS.md`), after
-0.2.2's fixes for the players' reports (sources and triage kept locally in `.triage/`).
+Last updated 2026-10-30: the Picture's soft pass and the 2x2 supersampling (`VISUALS.md`), after the
+textures at the PC's sizes and 0.2.2's fixes for the players' reports (sources and triage kept locally
+in `.triage/`).
 
 ## Where it stands
 
@@ -162,9 +163,9 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
 
 ### Platform and performance
 
-- Textures at the PC's sizes on the New 3DS and the earlier caps on the Old 3DS (`t3xcap.c`), and the
-  top screen supersampled at twice its height while the GPU has the time (`supersample.c`); see
-  `VISUALS.md`.
+- Textures at the PC's sizes on the New 3DS and the earlier caps on the Old 3DS (`t3xcap.c`), the top
+  screen supersampled 2x or 2x2 as far as the GPU has the time (`supersample.c`), and the Picture's
+  soft pass on both models (`picture.c`, Display tab, Soft or Sharp), both 3DS-only; see `VISUALS.md`.
 - `.cia` and `.3dsx`; New 3DS at 804 MHz with L2 and the 124 MB mode, the Old 3DS in its 64 MB mode with
   a Low quality profile and a 30 fps cap (`profile.c`, `OLD3DS.md`).
 - Music decoded on its own thread (core 2 when allowed), tiles, models and sound read on worker threads,
@@ -190,6 +191,9 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
+- 2026-10-30, the Picture and the 2x2 step (`VISUALS.md`): the copy matches Sharp, the ladder climbs to
+  2x2, 3D and the Old 3DS model run `1x soft`, smoke run 12 of 12 on both models. Azahar cannot show
+  the filter (its renderer samples without filtering). Not run on a console.
 - 2026-10-29, textures at the PC's sizes and the supersampling (`VISUALS.md`): smoke run 12 of 12 on both models on
   a pack converted again at the new sizes, doors within 0.1 s of the old pack's black screen on a
   5 MB/s card, the Old 3DS model drawing the new pack as it drew the old. Not run on a console.

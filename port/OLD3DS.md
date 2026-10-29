@@ -45,8 +45,10 @@ Azahar's count that would outgrow core 1, so the music stays on core 0. `helperc
 | Point and spot lights per character | 4 (3 with the flashlight) | 2 (plus the flashlight) | `chrlight.c` |
 | Movies | `movie/<name>.mpg` | `movie/half/<name>.mpg` when the pack has it, drawn at twice the size | `movie.c` |
 | Frame rate cap | 60 | 30, so every frame lasts two vertical blanks (`framerate` overrides it) | `C3D_FrameRate` |
+| Supersampling | 2x or 2x2 while the GPU has the time | none | `supersample.c` |
 
-The PC's own Shadows (On / Off) and Fog (Complex / Simple) rows on the Display tab still work on
+The Picture (Soft or Sharp, `picture.c`) is the same on both: its soft pass is one copy and two
+full-screen quads, well inside a 30 fps frame. The PC's own Shadows (On / Off) and Fog (Complex / Simple) rows on the Display tab still work on
 top (the explainer says so when the quality is Low): shadows are drawn when both allow them, and the fog sprites need Complex and are capped by the
 quality level. The test keys `texhalf` and `helpercore` are read at start-up only; optmenu.c does
 not keep them when it rewrites the file.

@@ -246,7 +246,9 @@ in use, with a peak arena of 3.7 MB.
 
 Textures are kept at the PC's sizes on the New 3DS (`VISUALS.md`): a room's map textures take at
 most 3 MB (a median of 1 MB) where they took a quarter of that, and the texture cache of earlier rooms
-keeps 24 MB. The supersampling's target takes 1.5 MB of VRAM the first time it turns on.
+keeps 24 MB. The supersampling's target takes 1.5 MB of VRAM at 2x and 3 MB at 2x2, one at a time,
+made when that level is first used; the Picture's copy takes 0.5 MB of linear memory (2 MB once a
+2x2 scene is copied).
 
 3D (`stereo.c`) takes nothing until the slider first goes up. Then the right eye's render target takes
 750 KB of VRAM, and its fog and 2D vertex buffers 0.7 to 0.9 MB of linear memory.
@@ -474,11 +476,11 @@ debug.txt can override one knob for a test, and the subsystems read only `qualit
 | `tile_distance` | 7000 | 5000 | `main.c` `stream_update_ex` |
 | `frame_cap` | 0 (60, an even 30 when it does not fit) | 30 | `perf_pace` |
 | `fog_fill_3d` | 3 screens per eye | 3 | `fog.c` `stereo_thin` |
-| `supersample` | 1 (the top screen at twice its height while the GPU has the time) | 0 | `supersample.c` |
+| `supersample` | 1 (the top screen drawn 2x or 2x2 as far as the GPU has the time) | 0 | `supersample.c` |
 
 The supersampling (`VISUALS.md`) is the one knob that adds GPU work, and it watches the GPU's time
-itself: it turns on only after 2 seconds of frames under 7 ms and off after one doubled frame over
-14 ms, so it gives way before `perf_pace` would drop to 30.
+itself: a step up waits for 2 seconds of frames that would still fit 0.84 of the frame's budget
+doubled, and one frame over that steps down, so it gives way before `perf_pace` would drop to 30.
 
 The fog sprites and the stencil shadows are the two likeliest to matter on a console's GPU: 144
 alpha-blended sprites can cover most of the top screen several times over, and each shadow volume
@@ -494,7 +496,7 @@ With `perflog 1` every 60-frame line is followed by a `parts` line, for example 
 Each is the average and the worst of those frames in ms: the update's parts (`game`, `stream`,
 `join`, `cam`, ...), then the render's: `r_wait` (`C3D_FrameBegin` waiting for the GPU and the
 vertical blank, which is the slack), `r_map` (the room), `r_chr` (James, enemies, stage models),
-`r_shadow` (shadows and blood), `r_fog`, `r_ui`, `r_touch` and `r_end` (`C3D_FrameEnd`). In the
+`r_shadow` (shadows and blood), `r_fog`, `r_soft` (the Picture's soft pass), `r_ui`, `r_touch` and `r_end` (`C3D_FrameEnd`). In the
 town the camera (0.9 ms) and the fog (1.3 ms) are the biggest parts after citro3d's own command
 building.
 

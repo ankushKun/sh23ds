@@ -176,9 +176,9 @@ order:
 5. Movies: the picture sits right (MOVIES.md, the Y2R line nudge), the sound keeps in sync.
 6. On an original 3DS: the Old 3DS profile is picked, frame times hold 30 fps, music and movies keep
    up at 268 MHz, and the Circle Pad Pro works if there is one.
-7. The textures at the PC's sizes and the supersampling (VISUALS.md, "On a console"): `2x on` in lit
-   rooms with `gpu` under 14 ms, `2x off` in the fog, no lines along the ground's quad edges, and the
-   `refine` lines after doors.
+7. The textures at the PC's sizes, the Picture and the supersampling (VISUALS.md, "On a console"):
+   `2x soft` or `2x2 soft` in lit rooms with `gpu` under 14 ms, `1x soft` in the fog, Soft against
+   Sharp, no lines along the ground's quad edges, and the `refine` lines after doors.
 
 `tools/lr3ds` can't stand in for these: Azahar finishes Y2R conversions at once, does not count GPU
 time, and serves SD reads faster than most cards (`sdthrottle <KB/s> [open ms]` in `debug.txt` simulates

@@ -38,6 +38,7 @@ typedef struct {
 	// the port's own: display and Enhanced Edition settings (all EE ones on by default as in the EE)
 	u8 msg_top;          // messages and subtitles on the top screen
 	u8 stereo;           // stereoscopic 3D on the top screen (stereo.h), on by default
+	u8 picture;          // Picture: 0 Soft (the default), 1 Sharp (picture.h)
 	u8 ps2_flash;        // EE "PS2FlashlightBrightness"
 	u8 noise_ps2;        // EE "PS2StyleNoiseFilter"
 	u8 ps2_camera;       // EE PS2 camera speed

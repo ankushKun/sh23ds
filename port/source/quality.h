@@ -13,7 +13,7 @@ typedef struct {
 	float tile_distance;      // how close James must be to a touching tile for it to load (main.c)
 	int frame_cap;            // 0: 60 when the frame fits, an even 30 when it does not; 30 or 60 fixed
 	float fog_fill_3d;        // in 3D, the fog sprites' area per eye in screens (fog.c stereo_thin); 0: no limit
-	int supersample;          // the top screen drawn at twice its height (supersample.h): 0 off, 1 while the GPU has the time, 2 always
+	int supersample;          // the top screen drawn larger (supersample.h): 0 off, 1 as far as the GPU has the time, 2 always 2x, 3 always 2x2
 } Quality;
 
 const Quality* quality(void);
