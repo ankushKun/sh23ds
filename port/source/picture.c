@@ -4,15 +4,12 @@
 
 // picture.h says what this is.
 
-#define PAD 8                    // the copy sits one tile in from the texture's edges on every side
-
 typedef struct { float x, y; } V;
 
 static DVLB_s* s_dvlb;
 static shaderProgram_s s_prog;
 static int s_uProj, s_uTaps, s_uScale, s_uBase;
-static C3D_Tex s_tex;
-static bool s_tex_ok, s_ready, s_soft = true;
+static bool s_ready, s_soft = true;
 static int s_debug;
 static V* s_quads;               // linear: the interior, then the four edges (30 vertices)
 static int s_quad_w, s_quad_h;   // the target size they were made for
@@ -40,36 +37,6 @@ bool picture_init(void)
 void picture_set_soft(bool on) { s_soft = on; }
 bool picture_soft(void) { return s_ready && (s_soft || s_debug == 1); }
 void picture_debug(int mode) { s_debug = mode; }
-
-static int pow2(int n)
-{
-	int p = 8;
-	while (p < n)
-		p <<= 1;
-	return p;
-}
-
-// The texture for a copy of a w x h scene and its padding, kept at the largest size asked for so
-// far (2 MB of linear memory for a 2 x 2 scene, 512 KB at the screen's size).
-static bool tex_fit(int w, int h)
-{
-	int tw = pow2(w + 2 * PAD), th = pow2(h + 2 * PAD);
-	if (s_tex_ok && s_tex.width >= tw && s_tex.height >= th)
-		return true;
-	if (s_tex_ok) {
-		tw = tw > s_tex.width ? tw : s_tex.width, th = th > s_tex.height ? th : s_tex.height;
-		C3D_TexDelete(&s_tex);
-		s_tex_ok = false;
-	}
-	if (tw > 1024 || th > 1024 || !C3D_TexInit(&s_tex, tw, th, GPU_RGBA8))
-		return false;
-	C3D_TexSetFilter(&s_tex, GPU_LINEAR, GPU_LINEAR);
-	C3D_TexSetWrap(&s_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-	s_tex_ok = true;
-	return true;
-}
-
-bool picture_reserve(int w, int h) { return s_ready && tex_fit(w, h); }
 
 // The interior, whose four taps stay inside the copy, then the edge pixels, which take it as it is.
 static void quads(int w, int h)
@@ -102,21 +69,12 @@ static void draw(float dx, float dy, u8 alpha, int first, int count)
 	C3D_DrawArrays(GPU_TRIANGLES, first, count);
 }
 
-void picture_soft_pass(C3D_RenderTarget* scene, int sx, int sy, C3D_RenderTarget* out)
+void picture_soft_pass(const PictureTarget* t)
 {
-	if (!picture_soft())
+	if (!picture_soft() || !t->tex)
 		return;
-	int w = scene->frameBuf.width, h = scene->frameBuf.height;   // the GPU's x and y
-	if (!tex_fit(w, h))
-		return;
-	// the scene's colours, tile row by tile row, into the texture one tile in: the copy waits for
-	// the scene's commands, and the quads below wait for the copy
-	u32 line = (u32)w * 8 * 4, stride = (u32)s_tex.width * 8 * 4;
-	u8* dst = (u8*)s_tex.data + stride * (PAD / 8) + 8 * 8 * 4 * (PAD / 8);
-	C3D_FrameSplit(0);
-	GX_TextureCopy((u32*)scene->frameBuf.colorBuf, GX_BUFFER_DIM(line >> 4, 0), (u32*)dst,
-	               GX_BUFFER_DIM(line >> 4, (stride - line) >> 4), line * (u32)(h / 8), GX_TRANSFER_RAW_COPY(1));
-
+	C3D_RenderTarget* out = t->out;
+	C3D_Tex* tex = t->tex;
 	int W = out->frameBuf.width, H = out->frameBuf.height;
 	quads(W, H);
 	C3D_FrameDrawOn(out);
@@ -130,18 +88,17 @@ void picture_soft_pass(C3D_RenderTarget* scene, int sx, int sy, C3D_RenderTarget
 	C3D_Mtx proj;
 	Mtx_Ortho(&proj, 0.0f, (float)W, 0.0f, (float)H, 0.0f, 1.0f, true);
 	C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, s_uProj, &proj);
-	// a target pixel is sx x sy texels of the copy
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uScale, (float)sx / s_tex.width, (float)sy / s_tex.height, 0.0f, 0.0f);
-	// along t the texture runs the other way from the target's rows, so there the copy starts PAD
-	// and its own height in from the far end
-	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uBase, (float)PAD / s_tex.width, (float)(s_tex.height - PAD - h) / s_tex.height,
-	              0.0f, 0.0f);
+	// a target pixel is sx x sy texels of the scene, which starts at the texture's origin: the GPU
+	// writes the viewport's row y to the buffer's row height - 1 - y, and the texture's t runs the
+	// other way, so both axes start at 0
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uScale, (float)t->sx / tex->width, (float)t->sy / tex->height, 0.0f, 0.0f);
+	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uBase, 0.0f, 0.0f, 0.0f, 0.0f);
 	C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
 	C3D_AlphaTest(false, GPU_ALWAYS, 0);
 	C3D_StencilTest(false, GPU_ALWAYS, 0, 0, 0);
 	C3D_CullFace(GPU_CULL_NONE);
 	C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
-	C3D_TexBind(0, &s_tex);
+	C3D_TexBind(0, tex);
 	// the tap's colour, the alpha from the constant
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvInit(env);
@@ -152,7 +109,7 @@ void picture_soft_pass(C3D_RenderTarget* scene, int sx, int sy, C3D_RenderTarget
 	C3D_TexEnvInit(C3D_GetTexEnv(1));
 	C3D_TexEnvInit(C3D_GetTexEnv(2));
 	if (s_debug == 1) {
-		draw(0, 0, 255, 0, 30);                    // the copy as it is
+		draw(0, 0, 255, 0, 30);                    // the scene as it is
 	} else {
 		// half a pixel off on each diagonal, each over the ones before at 1/2, 1/3 and 1/4: the four
 		// taps' mean is the [1, 2, 1] filter in both directions

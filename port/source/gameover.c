@@ -52,13 +52,13 @@ void gameover_start(void)
 
 void gameover_capture(const void* color, int w, int h)
 {
-	int tw = w <= 256 ? 256 : 512;
-	if (s_still_ok && s_still.width != tw) {
+	int tw = w <= 256 ? 256 : 512, th = h <= 512 ? 512 : 1024;   // 1024 rows for Sharp's 2x2 (480 x 800)
+	if (s_still_ok && (s_still.width != tw || s_still.height != th)) {
 		C3D_TexDelete(&s_still);
 		s_still_ok = false;
 	}
 	if (!s_still_ok) {
-		if (!C3D_TexInit(&s_still, tw, 512, GPU_RGBA8))
+		if (!C3D_TexInit(&s_still, tw, th, GPU_RGBA8))
 			return;
 		C3D_TexSetFilter(&s_still, GPU_LINEAR, GPU_LINEAR);
 		C3D_TexSetWrap(&s_still, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);

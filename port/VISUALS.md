@@ -81,20 +81,23 @@ to 16.2. Supersampling 2 x 2 brings the port to 5.9 to 11.7; most of what is lef
 not polygon edges, and a [1, 2, 1] filter each way after it brings it to 4.0 to 4.8.
 
 `picture.c` (a 3DS-only system, `picture.h` explains it) is the Display tab's Picture: Soft (the
-default) or Sharp. Soft copies the finished scene into a texture with the transfer engine and draws
-it back through four bilinear taps half a pixel off diagonally, one quad each averaged in turn, which
-is that filter exactly. The 2D
-(messages, the grain, menus) goes on top afterwards, as the PC draws its text and noise after its own
-filters. It costs one copy and four full-screen quads at the screen's size on both models, in 2D and
-per eye in 3D, and 0.5 MB of linear memory (2 MB when a 2 x 2 scene is copied).
+default) or Sharp. Soft draws the scene into a texture in VRAM, as the item screen draws its model,
+and draws it into the screen through four bilinear taps half a pixel off diagonally, one quad each
+averaged in turn, which is that filter exactly. The 2D (messages, the grain, menus) goes on top
+afterwards, as the PC draws its text and noise after its own filters. It costs four full-screen quads
+at the screen's size on both models, in 2D and per eye in 3D, and 1 MB of VRAM (3 MB with the 2x
+scene or a 3D frame's right eye). The first version copied the scene out with the transfer engine
+between two halves of the frame (`C3D_FrameSplit` and `GX_TextureCopy`); Azahar ran it, but a New 3DS
+froze on the first frame of play, so the frame now stays one command list.
 
 ### Supersampling
 
 `supersample.c` (a 3DS-only system, `supersample.h` explains it) draws the scene larger while the GPU
 has the time: 2x (twice the screen's height, 1.5 MB of VRAM) or 2x2 (twice both ways, 3 MB), one
 target at a time. On Sharp the display transfer halves it into the screen; on Soft the soft pass
-reads it at the screen's pixels, where its taps average a 2 x 4 or 4 x 4 block of the larger
-picture, so the soft pass costs the same at every level.
+reads its 2x texture at the screen's pixels, where its taps average a 2 x 4 block, so the soft pass
+costs the same at every level. Soft stops at 2x: a 2x2 texture with its depth (4 MB) would not fit
+beside a 3D frame's right eye.
 
 The level follows the GPU, read from `C3D_GetDrawingTime` as `perf_pace` reads it, in fractions of
 the frame's budget: 16.7 ms at 60 fps, 33.3 ms when the Frame Rate is 30. After 2 seconds of frames
@@ -127,6 +130,12 @@ models' textures at their own sizes), against the build before this change on th
   GPU); menus drawn on their own frames, movies and 3D stay at the screen's size. Frame dumps and
   screenshots show the halved image.
 - **Smoke run** (`tools/lr3ds/smoke.sh` on the new pack): 12 of 12 on the New 3DS and Old 3DS models.
+
+On 2026-10-30, the soft pass drawn from a texture target instead of a copy, with the console's own
+saves and options (CONTINUE into the town): `picture 1` against Sharp differs by 0.96 of 255 on
+average with no shifted row or column (the extra GPU work moves the frames' timing; two Sharp runs
+match exactly), 2x on Soft, 3D (`citra_render_3d`, `citra_factor_3d 100`) and the smoke run (12 of
+12 on both models) log nothing a console stops on.
 
 On 2026-10-30, the Picture and the supersampling's 2x2 step:
 

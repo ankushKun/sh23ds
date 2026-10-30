@@ -4769,31 +4769,30 @@ static void draw_hit(float t)
 	font_quad_px(NULL, 0.0f, 0.0f, 400.0f, 240.0f, 0, 0, 0, 0, all);
 }
 
-// The Picture's soft pass (picture.h) for a scene drawn into target: it goes to the screen's target
-// (supersample.h), where the 2D after it is drawn.
-static void picture_frame(C3D_RenderTarget* target)
+// The Picture's soft pass (picture.h): t's scene into the screen's target, where the 2D after it is
+// drawn.
+static void picture_frame(const PictureTarget* t)
 {
-	if (!picture_soft())
+	if (!t->tex)
 		return;
-	int sx, sy;
-	C3D_RenderTarget* out = supersample_screen(target, &sx, &sy);
-	picture_soft_pass(target, sx, sy, out);
+	picture_soft_pass(t);
 	use_world_program();
 }
 
-// The top screen of a frame of play into target, with the camera's projection (one eye's in a 3D
+// The top screen of a frame of play into t (supersample.h), with the camera's projection (one eye's in a 3D
 // frame, stereo.h); dt is 0 for the second eye, so nothing advances twice. Returns the room's draws.
-static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx* mv, const C3D_Mtx* ortho, u32 clear,
+static u32 draw_top(const PictureTarget* t, const C3D_Mtx* proj, const C3D_Mtx* mv, const C3D_Mtx* ortho, u32 clear,
                     float dt)
 {
 	u32 calls = 0;
-	C3D_RenderTargetClear(target, C3D_CLEAR_ALL, s_render_mode == 3 ? 0x808080FF : clear,
+	C3D_RenderTargetClear(t->scene, C3D_CLEAR_ALL, s_render_mode == 3 ? 0x808080FF : clear,
 	                      (s_depth_variant == 1 ? 0xFFFFFF : 0) | SHADOW_STENCIL_CLEAR);
-	C3D_FrameDrawOn(target);
+	C3D_FrameDrawOn(t->scene);
+	C3D_SetViewport(0, 0, t->w, t->h);   // a scene texture is larger than the scene (picture.h)
 	if (s_render_mode == 3) {
 		draw_texture_test(ortho);
 		calls = 1;
-		picture_frame(target);
+		picture_frame(t);
 	} else if (playtest_fast() && !s_pt_shot) {
 		calls = 0;               // playtest "fast 1": nothing drawn, the emulator's GPU idles
 	} else {
@@ -4844,7 +4843,7 @@ static u32 draw_top(C3D_RenderTarget* target, const C3D_Mtx* proj, const C3D_Mtx
 			roomfx_draw_flare(proj, mv);   // the lake's light, in front of the fog (roomfx.c)
 		perf_part("r_fog", tr);
 		tr = svcGetSystemTick();
-		picture_frame(target);           // the scene is done: the Picture's soft pass, then the 2D on top
+		picture_frame(t);                // the scene is done: the Picture's soft pass, then the 2D on top
 		perf_part("r_soft", tr);
 		tr = svcGetSystemTick();
 		static float black;              // the second eye keeps the first one's
@@ -5004,7 +5003,7 @@ int main(void)
 				if (!strcmp(key, "supersample")) q.supersample = val;
 				quality_set(&q);
 			}
-			if (!strcmp(key, "picture")) picture_debug(val);   // 1: the soft pass's copy drawn back as it is
+			if (!strcmp(key, "picture")) picture_debug(val);   // 1: the soft pass draws the scene back as it is
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "die")) s_debug_die = (u32)val;      // a killing blow at that frame (tests)
 			if (!strcmp(key, "hurt") && sscanf(line, "%*s %lu %d", &s_debug_die, &s_debug_die_pct) != 2)
@@ -5565,7 +5564,9 @@ int main(void)
 		u32 clear = s_cam.mode == CAM_PLAYER ? ((u32)s_env.clear_rgb[0] << 24 | (u32)s_env.clear_rgb[1] << 16 |
 		                                       (u32)s_env.clear_rgb[2] << 8 | 0xFF) : CLEAR_COLOR;
 		if (eyes == 1) {
-			calls = draw_top(supersample_target(true), &proj, &mv, &ortho, clear, dt);   // twice the rows when the GPU has the time
+			PictureTarget t;
+			supersample_top(true, &t);   // twice the rows when the GPU has the time
+			calls = draw_top(&t, &proj, &mv, &ortho, clear, dt);
 		} else {
 			supersample_target(false);
 			for (int eye = 0; eye < 2; eye++) {
@@ -5573,7 +5574,9 @@ int main(void)
 				stereo_projection(&eye_proj, eye, cam_fovy, cam_near, cam_far, cam_focus);
 				stereo_set_eye(eye);
 				s_ui_used = 0;           // each eye has its own 2D vertices (ui_draw)
-				u32 n = draw_top(stereo_target(eye, top), &eye_proj, &mv, &ortho, clear, eye ? 0.0f : dt);
+				PictureTarget t;
+				supersample_eye(eye, stereo_target(eye, top), &t);
+				u32 n = draw_top(&t, &eye_proj, &mv, &ortho, clear, eye ? 0.0f : dt);
 				if (!eye)
 					calls = n;
 			}
