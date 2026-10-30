@@ -3132,8 +3132,10 @@ static void host_panel(const char* text)
 }
 
 // Stills from data/pic (tools/sh2conv/pics.py: pack/pic/<dir>/<name>.t3x, 512x256 RGB565). The
-// programs name them like the PC's file ids ("apt_clock_memo" is pic/apt/clock_memo); shown 320x240
-// in the middle of the top screen over black, as the PC stretches its 512x512 stills to 4:3.
+// programs name them like the PC's file ids ("apt_clock_memo" is pic/apt/clock_memo). The PC
+// stretches its 512x512 stills to 4:3; a still alone fills the top screen's width (1.25 x, a tenth of
+// its height cut off at the top and the bottom, a 3DS-only choice), while one under a puzzle keeps
+// the 4:3 frame (320x240 over black) so none of the puzzle's sprites are cut off (draw_sprites).
 static C3D_Tex s_pic_tex;
 static bool s_pic_shown;
 static void* s_picquad;          // linear memory, 6 ROOM_VERTEX_SIZE vertices
@@ -3166,13 +3168,20 @@ static bool host_picture(const char* name)
 	return true;
 }
 
+static bool s_sheet_ok;          // a puzzle's sprite sheet is up (puzzle overlays, below)
+
 static void draw_picture(const C3D_Mtx* ortho)
 {
 	typedef struct { float x, y, z, u, v; u8 c[4]; s8 n[4]; } V;
-	static const V quad[6] = {
+	static const V quad[12] = {
 		{ 40, 240, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },  { 40, 0, 0.5f, 0, 1, {255,255,255,255}, {0,0,127,0} },
 		{ 360, 0, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} },   { 40, 240, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },
 		{ 360, 0, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} },   { 360, 240, 0.5f, 1, 0, {255,255,255,255}, {0,0,127,0} },
+		// the screen's width, 400 x 300 round the middle: a still alone fills it where the PC keeps
+		// 4:3 (3DS-only, STATUS section 3)
+		{ 0, 270, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },   { 0, -30, 0.5f, 0, 1, {255,255,255,255}, {0,0,127,0} },
+		{ 400, -30, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} }, { 0, 270, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },
+		{ 400, -30, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} }, { 400, 270, 0.5f, 1, 0, {255,255,255,255}, {0,0,127,0} },
 	};
 	if (!s_picquad) {
 		s_picquad = linearAlloc(sizeof quad);
@@ -3189,7 +3198,7 @@ static void draw_picture(const C3D_Mtx* ortho)
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, s_picquad, ROOM_VERTEX_SIZE, 4, 0x3210);
-	C3D_DrawArrays(GPU_TRIANGLES, 0, 6);
+	C3D_DrawArrays(GPU_TRIANGLES, s_sheet_ok ? 0 : 6, 6);   // a puzzle's sprites go over the 4:3 frame
 }
 
 // ---------------------------------------------------------------- map screen and memo list
@@ -5059,11 +5068,11 @@ static u32 draw_top(const PictureTarget* t, const C3D_Mtx* proj, const C3D_Mtx* 
 			fog_frame(proj, mv, ortho, s_paused ? 0.0f : dt);
 		if (s_cam.mode == CAM_PLAYER)
 			roomfx_draw_flare(proj, mv);   // the lake's light, in front of the fog (roomfx.c)
-		if (s_cam.mode == CAM_PLAYER)
-			lensflare_draw(proj, mv, s_fogf.scr_z, s_paused ? 0.0f : dt);   // a lamp facing the camera
 		perf_part("r_fog", tr);
 		tr = svcGetSystemTick();
 		picture_frame(t);                // the scene is done: the Picture's soft pass, then the 2D on top
+		if (s_cam.mode == CAM_PLAYER)    // a lamp facing the camera, on the screen's target on Soft
+			lensflare_draw(proj, mv, s_fogf.scr_z, s_paused ? 0.0f : dt, t->tex != NULL);
 		perf_part("r_soft", tr);
 		tr = svcGetSystemTick();
 		static float black;              // the second eye keeps the first one's

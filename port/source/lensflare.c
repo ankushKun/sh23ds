@@ -318,7 +318,7 @@ static void flush(V* first, int n)
 	C3D_DrawArrays(GPU_TRIANGLES, 0, n);
 }
 
-void lensflare_draw(const C3D_Mtx* proj, const C3D_Mtx* view, float scr_z, float dt)
+void lensflare_draw(const C3D_Mtx* proj, const C3D_Mtx* view, float scr_z, float dt, bool on_screen)
 {
 	if (!s_bind || !s_tex_ok || !s_verts[0] || !s_verts[1])
 		return;
@@ -350,9 +350,13 @@ void lensflare_draw(const C3D_Mtx* proj, const C3D_Mtx* view, float scr_z, float
 	C3D_TexEnvInit(C3D_GetTexEnv(2));
 	C3D_TexBind(0, &s_tex);
 	V* base = s_verts[s_buf];
-	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
-	flush(base, s_n_depth);
-	C3D_DepthTest(true, GPU_ALWAYS, GPU_WRITE_COLOR);
+	if (on_screen) {
+		C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
+	} else {
+		C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+		flush(base, s_n_depth);
+		C3D_DepthTest(true, GPU_ALWAYS, GPU_WRITE_COLOR);
+	}
 	flush(base + s_n_depth, s_n_top);
 	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
 	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA, GPU_SRC_ALPHA,

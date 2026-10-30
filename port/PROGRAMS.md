@@ -85,7 +85,10 @@ last door (44), Maria in the day room (20) and the small room functions of stage
 (the PC stretches its 512x512 stills to 4:3, so nothing is lost on a 240-line screen), RGB565
 without mipmaps. Programs name a still like the PC's file id without `data/pic` and `.tex`, with
 the first underscore as the folder: `hsp_p_box` is `pic/hsp/p_box`. `main.c` loads one at a time
-into linear memory (256 KB) and frees it when the program hides it or ends.
+into linear memory (256 KB) and frees it when the program hides it or ends. A still on its own fills
+the top screen's width (1.25x, a tenth of its height cut at the top and at the bottom), where the PC
+keeps it 4:3; a still with a puzzle's sprite sheet stays 4:3, since the sprites are placed on that
+frame (`draw_picture`).
 
 ### Overlay sprites
 

@@ -25,5 +25,10 @@ void lensflare_exit(void);
 void lensflare_light(int kind, const float pos[3], const float dir[3], float bright);
 // Last of the scene, in each eye (the first eye steps it by dt, 0 while paused). view: the camera's;
 // scr_z: its projection distance in 448-line units (gCameraFOV).
-void lensflare_draw(const C3D_Mtx* proj, const C3D_Mtx* view, float scr_z, float dt);
+// on_screen: drawn on the screen's target after the Picture's soft pass (picture.h), which has no
+// depth of the scene: no depth test, and the quads the PC tests at the lamp while it is not seen are
+// left out. Drawn into the soft pass's scene texture, its additive quads came out over black on a
+// New 3DS (a dark disc with the violet dot), though Azahar blended them; on the screen's target, as
+// the 2D is, they blend on a console.
+void lensflare_draw(const C3D_Mtx* proj, const C3D_Mtx* view, float scr_z, float dt, bool on_screen);
 const char* lensflare_status(void);      // a line for the frame dumps
