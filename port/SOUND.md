@@ -204,12 +204,16 @@ console's speakers the quiet ones were hard to hear next to the others.
   music step (from the game's files, `sound/adx/levels.txt`), the voices in the demos step
   (`sound/voice/levels.txt`) and every audio track of the movies in the movies step (`movie/levels.txt`).
 - `levels.c` turns a measurement into the gain that brings the file to its kind's target (`levels.h`):
-  music -11 LUFS in place of the PC's per-file master (the duck under scenes and the area fades stay),
-  voices -10, movies -11. A file's peak may be lifted at most 3 dB (music), 6 dB (movies) or 9 dB
+  music -8 LUFS in place of the PC's per-file master (the duck under scenes and the area fades stay),
+  voices -10, movies -11. A file's peak may be lifted at most 6 dB (music, movies) or 9 dB
   (speech, whose consonants stand far over the voice) over full scale: the software mix runs a peak
   limiter (`levels_limiter`: 32-frame blocks turned down at once to 3/4 of full scale, back up over
   80 ms) and then bends what is left towards full scale (`levels_limit`) instead of clipping it.
-- A pack made before `levels.py` keeps the PC's masters 2 dB up and the voices 2 dB up.
+- A pack made before `levels.py` keeps the PC's masters 5 dB up and the voices 2 dB up.
+- The music's first target was -11 LUFS with 3 dB of peak room; on a New 3DS at full volumes it played
+  under the effects. At -8 with 6 dB the median track comes up 3 dB and the quietest from -13.7 to
+  -10.7 (34 of the 46 files had been held under -8 by their peaks); the town's music measured 2 dB
+  louder in Azahar with no sample at full scale.
 - Effects keep the PC's curve, 6 dB higher up to full scale and a quarter of that past it, where ndsp
   clips softly (`sfx.c`): the steps and the far-off sounds come up most, those at full level 2 dB.
 - Measured in Azahar at the default option volumes (12 of 15): the apartment's music with a door came

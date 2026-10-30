@@ -195,6 +195,11 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
+- 2026-10-31, a door's black screen froze a New 3DS twice (Wood Side 2F hall to room 205, Soft at 2x).
+  The watchdog's `stall.txt` stopped at the first frame after the room load, waiting for the GPU:
+  `gpu_sync` (C3D_FrameSync) only waited for a refresh, and the hall's 18.6 ms of GPU work outlasted
+  it, so the old room's buffers were freed and refilled while the GPU still drew them. `gpusync.h`
+  now waits for the GPU's queue. Console run pending.
 - 2026-10-30, the soft pass from a texture target, drawn with the movie's program (`VISUALS.md`): two
   versions froze a New 3DS on their first frame of Soft (Sharp played); this one keeps the frame one
   command list and draws with two vertex attributes like every other draw. Azahar with the

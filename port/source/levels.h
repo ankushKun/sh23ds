@@ -7,13 +7,14 @@
 // movie 20 LU over another), and on the console's small speakers the quiet ones were hard to hear.
 // The packer measures every file (tools/sh2conv/levels.py, <dir>/levels.txt) and these targets are
 // what each kind is brought to, in LUFS at full option volume (port/SOUND.md, "Levels").
-#define LEVEL_MUSIC  -11.0f      // an AIX file with all its layers on; fewer layers play quieter
-#define LEVEL_VOICE  -10.0f      // scene dialogue, a little over the music under it
+// music 3 dB over its first -11, which played under the effects on a New 3DS at full volumes
+#define LEVEL_MUSIC  -8.0f       // an AIX file with all its layers on; fewer layers play quieter
+#define LEVEL_VOICE  -10.0f      // scene dialogue, over the music ducked under scenes
 #define LEVEL_MOVIE  -11.0f
 
 // How far over full scale each kind's peak may be lifted (dBFS); levels_limiter takes what goes over
 // back down. Speech's loud consonants stand far over the voice around them, so it may go furthest.
-#define LEVEL_PEAK_MUSIC   3.0f
+#define LEVEL_PEAK_MUSIC   6.0f   // as the movies: at 3, 34 of the 46 files could not reach -8
 #define LEVEL_PEAK_MOVIE   6.0f
 #define LEVEL_PEAK_VOICE   9.0f
 
