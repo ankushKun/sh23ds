@@ -6,8 +6,9 @@
 // monitor's resolution and has nothing like it, so nothing here is ported from the exe.
 //
 // Soft (the default) passes the finished scene through a [1, 2, 1] filter each way before the 2D
-// goes on top: the edges and the texture grain of a 400 x 240 picture softened to about what the
-// PC's frame looks like scaled down to this size. Sharp leaves every pixel as the GPU drew it.
+// goes on top, half of it mixed with the scene's own pixels (picture_softness): the steps of the
+// edges and the texture grain of a 400 x 240 picture softened toward what the PC's frame looks like
+// scaled down to this size, without the whole filter's out-of-focus look on a console. Sharp leaves every pixel as the GPU drew it.
 //
 // The scene is drawn into a texture in VRAM (supersample.h makes them), and four quads draw it into
 // the screen's target with one bilinear tap each, half a pixel off diagonally, each blended over
@@ -45,3 +46,4 @@ void picture_soft_pass(const PictureTarget* t);
 // with 3 is in the draws and one only without it is in drawing the scene into a texture.
 void picture_debug(int mode);
 bool picture_probe(void);            // debug.txt "picture 3"
+void picture_softness(int percent);  // debug.txt "softness": the share of the filter, 50 by default

@@ -5004,6 +5004,7 @@ int main(void)
 				quality_set(&q);
 			}
 			if (!strcmp(key, "picture")) picture_debug(val);   // 1: the soft pass draws the scene back as it is
+			if (!strcmp(key, "softness")) picture_softness(val);   // percent of the filter (picture.h)
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "die")) s_debug_die = (u32)val;      // a killing blow at that frame (tests)
 			if (!strcmp(key, "hurt") && sscanf(line, "%*s %lu %d", &s_debug_die, &s_debug_die_pct) != 2)

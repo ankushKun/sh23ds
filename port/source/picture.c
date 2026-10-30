@@ -17,6 +17,10 @@ static shaderProgram_s s_prog;
 static int s_uProj;
 static bool s_ready, s_soft = true;
 static int s_debug;
+// How much of the filtered picture is kept (percent): the rest is the scene's own pixel, drawn over
+// the filter. The whole filter keeps a quarter of each pixel and looked out of focus on a console;
+// at half, edges still lose their steps and the picture stays clear. debug.txt "softness".
+static int s_softness = 50;
 // linear, one set per scene texture width (256 and 512, supersample.h): the two eyes of a 3D frame
 // read different ones, and the GPU reads both at C3D_FrameEnd
 static struct { V* v; int key[6]; } s_set[2];
@@ -44,6 +48,7 @@ void picture_set_soft(bool on) { s_soft = on; }
 bool picture_soft(void) { return s_ready && (s_soft || s_debug == 1 || s_debug == 3); }
 bool picture_probe(void) { return s_ready && s_debug == 3; }
 void picture_debug(int mode) { s_debug = mode; }
+void picture_softness(int percent) { s_softness = percent < 0 ? 0 : percent > 100 ? 100 : percent; }
 
 // The quads for a w x h target over a scene sx x sy times its size in tex. The interior's taps stay
 // inside the scene; the edge pixels take it as it is. Along both axes the scene starts at the
@@ -140,6 +145,10 @@ void picture_soft_pass(const PictureTarget* t)
 		draw(128, TAPS + 6, 6);
 		draw(85, TAPS + 12, 6);
 		draw(64, TAPS + 18, 6);
+		// then the pixel itself over it (from a larger scene, its box average), leaving softness %
+		// of the filter
+		if (s_softness < 100)
+			draw((u8)((100 - s_softness) * 255 / 100), PLAIN, 6);
 	}
 	draw(255, EDGES, 24);
 }

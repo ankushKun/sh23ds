@@ -194,7 +194,8 @@ tree after the players' reports):
 - 2026-10-30, the soft pass from a texture target, drawn with the movie's program (`VISUALS.md`): two
   versions froze a New 3DS on their first frame of Soft (Sharp played); this one keeps the frame one
   command list and draws with two vertex attributes like every other draw. Azahar with the
-  console's saves and options, 2D, 3D and 2x, smoke run 12 of 12 on both models. Console run pending.
+  console's saves and options, 2D, 3D and 2x, smoke run 12 of 12 on both models. On the console Soft
+  plays; the whole filter looked out of focus there, so Soft now keeps half of it (`softness`).
 - 2026-10-30, the Picture and the 2x2 step (`VISUALS.md`): the copy matches Sharp, the ladder climbs to
   2x2, 3D and the Old 3DS model run `1x soft`, smoke run 12 of 12 on both models. Azahar cannot show
   the filter (its renderer samples without filtering). Not run on a console.

@@ -83,8 +83,11 @@ not polygon edges, and a [1, 2, 1] filter each way after it brings it to 4.0 to 
 `picture.c` (a 3DS-only system, `picture.h` explains it) is the Display tab's Picture: Soft (the
 default) or Sharp. Soft draws the scene into a texture in VRAM, as the item screen draws its model,
 and draws it into the screen through four bilinear taps half a pixel off diagonally, one quad each
-averaged in turn, which is that filter exactly. The 2D (messages, the grain, menus) goes on top
-afterwards, as the PC draws its text and noise after its own filters. It costs four full-screen quads
+averaged in turn, which is that filter exactly. The whole filter keeps a quarter of each pixel's
+own colour and looked out of focus on a New 3DS, so a fifth quad draws the pixel itself over it at
+half strength (`softness 50`, `debug.txt`): each pixel keeps about five eighths of its own colour and the
+edges still lose their steps. The 2D (messages, the grain, menus) goes on top
+afterwards, as the PC draws its text and noise after its own filters. It costs five full-screen quads
 at the screen's size on both models, in 2D and per eye in 3D, and 1 MB of VRAM (3 MB with the 2x
 scene or a 3D frame's right eye). The first version copied the scene out with the transfer engine
 between two halves of the frame (`C3D_FrameSplit` and `GX_TextureCopy`); Azahar ran it, but a New 3DS
