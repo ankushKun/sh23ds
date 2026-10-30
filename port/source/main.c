@@ -872,6 +872,7 @@ static void apply_warp(void)
 	u64 t0 = svcGetSystemTick();
 	if (s_warp.stage != ev_stage())
 		ev_load_stage(s_warp.stage);
+	perf_crumb("door: stage loaded");
 	warp_area_tile();
 	perf_part("ld_stage", t0);
 	s_px = s_warp.pos[0];
@@ -902,6 +903,7 @@ static void apply_warp(void)
 			col_spawn(&s_col, s_px, s_pz, &s_px, &s_py, &s_pz);
 	}
 	s_async_arrival = false;
+	perf_crumb("door: room loaded");
 	u64 ts = svcGetSystemTick();
 	stagemdl_preload(ev_stage(), s_px, s_pz);   // the placed models in range, behind the fade
 	perf_part("ld_stagemdl", ts);
@@ -1393,7 +1395,9 @@ static void fade_update(float dt)
 		s_fade = s_fade + dt * 4.0f > 1.0f ? 1.0f : s_fade + dt * 4.0f;
 		if (s_fade >= 1.0f && warp_ready(dt)) {
 			s_fade = 1.0f;
+			perf_crumb("door: apply_warp");
 			apply_warp();
+			perf_crumb("door: room in");
 			s_warp_pending = false;
 			s_fade_hold = FADE_IN_HOLD;
 			float feet[3] = { s_px, s_py, s_pz };
@@ -4424,6 +4428,7 @@ static void draw_top_text(void)
 // on a console, so a black screen can be told apart from missing data.
 static bool s_debug_newgame;
 static u32 s_debug_die;              // debug.txt "die N" / "hurt N P": a blow at frame N (tests)
+static u32 s_stalltest;              // debug.txt "stalltest N": the main loop held 5 s at frame N (perf_watchdog_start)
 static int s_debug_die_pct = 300;    // of his health
 static int s_debug_weapon;           // debug.txt "weapon <item>": equipped on the first free frame
 static u32 s_dump_frames[8];
@@ -5007,6 +5012,7 @@ int main(void)
 			if (!strcmp(key, "softness")) picture_softness(val);   // percent of the filter (picture.h)
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "die")) s_debug_die = (u32)val;      // a killing blow at that frame (tests)
+			if (!strcmp(key, "stalltest")) s_stalltest = (u32)val;
 			if (!strcmp(key, "hurt") && sscanf(line, "%*s %lu %d", &s_debug_die, &s_debug_die_pct) != 2)
 				s_debug_die = 0;
 			if (!strcmp(key, "batch")) s_only_batch = val;
@@ -5094,8 +5100,13 @@ int main(void)
 		enter_title();
 	}
 	perf_set_log(s_perflog, s_memlog || s_memtest);
+	perf_watchdog_start();
 	mem_log("boot");
-	perf_event("boot", "%s, %s", profile_status(), sdsim_status());
+	{
+		extern u32 __ctru_heap_size, __ctru_linear_heap_size;   // the memory mode the console gave
+		perf_event("boot", "%s, %s, linear %lu KB, heap %lu KB", profile_status(), sdsim_status(),
+		           (unsigned long)(__ctru_linear_heap_size >> 10), (unsigned long)(__ctru_heap_size >> 10));
+	}
 	load_title();
 	if (s_autotest)
 		autotest_begin();
@@ -5129,6 +5140,11 @@ int main(void)
 			dt = (n < 1.0f ? 1.0f : n) * refresh;
 		}
 		perf_frame_begin();
+		perf_crumb("loop top");
+		if (s_stalltest && frame == s_stalltest) {
+			perf_crumb("stalltest: held 5 s");
+			svcSleepThread(5000000000LL);
+		}
 		hidScanInput();
 		s_ui_used = 0;
 		memtest_step(frame);
@@ -5175,6 +5191,7 @@ int main(void)
 		}
 		if (s_results && results_update(down)) {
 			stereo_frame(s_opt.stereo, false);
+			perf_crumb("menu frame begin");
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
@@ -5201,6 +5218,7 @@ int main(void)
 					bright = 1.0f - s_title_go_t / TITLE_GO_SECONDS;
 			}
 			stereo_frame(s_opt.stereo, false);
+			perf_crumb("menu frame begin");
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
@@ -5226,6 +5244,7 @@ int main(void)
 				continue;
 			}
 			stereo_frame(s_opt.stereo, false);
+			perf_crumb("menu frame begin");
 			C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 			supersample_target(false);
 			C3D_RenderTargetClear(top, C3D_CLEAR_ALL, 0x000000FF, 0);
@@ -5553,6 +5572,7 @@ int main(void)
 		int eyes = stereo_frame(s_opt.stereo, s_render_mode != 3 && !(playtest_fast() && !s_pt_shot));
 		perf_mark_render();
 		u64 tw = svcGetSystemTick();
+		perf_crumb("frame begin: waits for the GPU");
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		perf_part("r_wait", tw);          // the previous frame's GPU work and the vertical blank
 		neighbours_reap();
@@ -5588,6 +5608,7 @@ int main(void)
 		perf_part("r_touch", tt);
 		perf_cmdbuf(C3D_GetCmdBufUsage());   // how full the frame's GPU command buffer got
 		tt = svcGetSystemTick();
+		perf_crumb("frame end");
 		C3D_FrameEnd(0);
 		perf_part("r_end", tt);
 		perf_frame_end(s_nrooms ? s_rooms[s_room] : "-");
@@ -5596,7 +5617,9 @@ int main(void)
 		// goes by the GPU's own time, which a console measures. Both eyes of a lit room take about
 		// twice one eye's 6 to 9 ms, inside a 60 fps frame; the fogged roads drop to 30 as in 2D
 		int cap = quality()->frame_cap;
+		perf_crumb("ladder");
 		supersample_frame_end(perf_pace(cap), cap);
+		perf_crumb("ladder done");
 		for (int i = 0; i < s_ndump; i++)
 			if (s_dump_frames[i] == frame)
 				dump_frame(top, frame);

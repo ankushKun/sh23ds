@@ -87,6 +87,7 @@ void perf_frame_begin(void)
 
 void perf_part(const char* name, u64 t0)
 {
+	perf_crumb(name);                    // done: the watchdog shows the step after it
 	float t = ms(svcGetSystemTick() - t0);
 	for (int i = 0; i < P.nparts; i++)
 		if (P.part[i].name == name) {
@@ -282,4 +283,67 @@ const char* mem_log(const char* what)
 		}
 	}
 	return P.mem;
+}
+
+// Breadcrumbs and the watchdog (perf.h).
+#define CRUMBS 32
+static struct {
+	const char* volatile step[CRUMBS];
+	volatile u32 frame[CRUMBS], ms[CRUMBS];
+	volatile u32 n;                  // steps so far: the newest is n - 1
+	Thread thread;
+} C;
+
+static u32 now_ms(void) { return (u32)(svcGetSystemTick() / (SYSCLOCK_ARM11 / 1000)); }
+
+void perf_crumb(const char* step)
+{
+	u32 i = C.n % CRUMBS;
+	C.step[i] = step;
+	C.frame[i] = P.total;
+	C.ms[i] = now_ms();
+	C.n++;
+}
+
+static void watchdog(void* arg)
+{
+	(void)arg;
+	u32 seen = 0, since = now_ms(), written = 0;
+	for (;;) {
+		svcSleepThread(500 * 1000 * 1000LL);
+		u32 n = C.n;
+		if (n != seen) {
+			seen = n, since = now_ms();
+			continue;
+		}
+		if (n == written || now_ms() - since < 3000)
+			continue;
+		written = n;                     // once per stop
+		char path[128];
+		snprintf(path, sizeof path, "%s/stall.txt", P.pack);
+		FILE* f = fopen(path, "a");
+		if (!f)
+			continue;
+		fprintf(f, "main loop stopped %lu ms at frame %lu (%s; %s); its last steps, ms before the last:\n",
+		        (unsigned long)(now_ms() - since), (unsigned long)P.total, P.status, P.mem);
+		u32 first = n > CRUMBS ? n - CRUMBS : 0;
+		for (u32 k = first; k < n; k++) {
+			u32 i = k % CRUMBS;
+			fprintf(f, "  %6ld  frame %lu  %s\n", -(long)(C.ms[(n - 1) % CRUMBS] - C.ms[i]), (unsigned long)C.frame[i],
+			        C.step[i]);
+		}
+		fclose(f);
+	}
+}
+
+void perf_watchdog_start(void)
+{
+	if (C.thread || !P.log_frames)
+		return;
+	s32 prio = 0x30;
+	svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
+	// above the main thread, so a main thread spinning on its core does not keep it from writing;
+	// it sleeps nearly all the time
+	C.thread = threadCreate(watchdog, NULL, 16 * 1024, prio - 1, -2, true);
+	perf_event("watchdog", "%s", C.thread ? "on" : "could not start");
 }

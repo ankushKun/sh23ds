@@ -32,3 +32,9 @@ float perf_ms(u64 ticks);
 void perf_cmdbuf(float used);
 // Free linear, VRAM and heap memory now, as a HUD line; logged to mem.txt with "what" when enabled.
 const char* mem_log(const char* what);
+// Where the main loop is, for a console freeze: the last steps go to <pack>/stall.txt from a
+// watchdog thread when the loop has stopped for 3 seconds (with perflog 1). A freeze that leaves no
+// stall.txt stopped the whole process (svcBreak, a fault), not just the main thread. step must be a
+// string literal; it costs a store.
+void perf_crumb(const char* step);
+void perf_watchdog_start(void);

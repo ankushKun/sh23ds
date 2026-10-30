@@ -34,6 +34,7 @@ it to play normally.
 | `gpucost 1` / `mapcull 0` / `fogfill <tenths>` | the GPU cost model in perf.txt, the map sent whole, the fog's area per eye in 3D (PERFORMANCE.md, "3D") |
 | `supersample <0\|1\|2\|3>` | the top screen drawn larger: off, as far as the GPU has the time (the default), always 2x, always 2x2 (VISUALS.md) |
 | `picture 1` | the Picture's scene drawn back without its filter, to check it against Sharp (picture.h) |
+| `stalltest <frame>` | holds the main loop 5 s at that frame of play, to check the watchdog (with `perflog 1` it writes `stall.txt`, see below) |
 | `softness <percent>` | the share of the Picture's filter on Soft, 50 by default; 100 is the whole [1, 2, 1] filter, 0 the scene as it is (picture.h) |
 | `picture 3` | a console probe: the scene drawn as on Sharp and the soft pass's draws made over it without changing a pixel. A freeze with it is in the pass's draws; one only without it is in drawing the scene into a texture (picture.h) |
 | `die <frame>` / `hurt <frame> <percent>` | a blow at that main-loop frame: a killing one, or one taking that share of James' health (the death and game over, the hit flash) |
@@ -91,3 +92,16 @@ tests/playtest/run_chain.sh   # the whole story by teleport, every ending, Born 
 `run.sh` uses `.lr3ds/save/Azahar/sdmc/` as the SD card, so the game data goes in
 `.lr3ds/save/Azahar/sdmc/3ds/sh23ds/`. Every option is listed at the top of
 [`lr3ds.c`](../tools/lr3ds/lr3ds.c).
+
+## When a console freezes
+
+With `perflog 1` a watchdog thread watches the main loop. When the loop stops for 3 seconds it adds
+to `stall.txt` in the pack folder: how long, the frame, the last second's timings and memory, and
+the loop's last 32 steps (the frame's parts, each door step, frame begin and end) with their time
+before the last one. The last step names where the main thread stopped: `frame begin: waits for the
+GPU` is a GPU hang, a door step is the room load. No `stall.txt` after a freeze means the whole
+process stopped (`svcBreak` or a fault, which Luma may dump to `/luma/dumps/arm11`). The HOME Menu
+pauses the loop too, so a stop while it was open is not a freeze. perf.txt's `boot` line gives the
+linear and malloc heaps the console handed out: 91 MB and 32 MB in the New 3DS's 124 MB mode, about
+47 MB and 15 MB in the 64 MB mode (a `.3dsx` from the Homebrew Launcher), where the PC-size textures
+stay off.

@@ -1,4 +1,5 @@
 #include "movie.h"
+#include "perf.h"
 #include "supersample.h"
 #include "gpusync.h"
 #include "noise.h"
@@ -819,6 +820,7 @@ static bool fade(float secs, FadeDraw draw, bool* skip)
 		f = f > 1.0f ? 1.0f : f;
 		f = f * f * (3.0f - 2.0f * f);          // eased at both ends
 		float a = prev >= 1.0f ? 1.0f : (f - prev) / (1.0f - prev);
+		perf_crumb("movie frame");
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		u32 transfer;
 		C3D_FrameDrawOn(supersample_shown(&transfer));   // no clear: blend over the last picture, where it is
@@ -881,6 +883,7 @@ bool movie_play(const char* name)
 		touchui_input(&kd, &kh);        // the touch screen's Skip button
 		if (!movie_update(kd))
 			break;
+		perf_crumb("movie frame");
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		supersample_target(false);         // movies go to the screen's own target
 		C3D_RenderTargetClear(s_top, C3D_CLEAR_ALL, 0x000000FF, 0);
@@ -903,6 +906,7 @@ bool movie_play(const char* name)
 	consoleClear();
 	if (alive) {
 		// black while the caller loads what comes next, instead of the last movie frame
+		perf_crumb("movie frame");
 		C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
 		supersample_target(false);         // movies go to the screen's own target
 		C3D_RenderTargetClear(s_top, C3D_CLEAR_ALL, 0x000000FF, 0);
