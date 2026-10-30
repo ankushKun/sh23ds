@@ -2461,10 +2461,13 @@ static void head_update(const circlePosition* cp, u32 gheld, float dt, bool on)
 // James' flashlight, where the record has ShadowDarkNess set (0x47bb00); elsewhere the drop
 // shadows. None in cutscenes (their own shadow lights are not ported). The darkness is the Enhanced Edition's, faded in over about 33 frames when the
 // flashlight comes on, as EE's SetShadowFading does (3 of 100 a frame).
+static float s_clip_far;                 // (defined with the projection, below)
+
 static void shadow_frame(bool paused)
 {
 	static float fade;
 	float k = 0.0f;
+	shadow_view(view_eye(), s_clip_far);
 	if (!s_opt.shadows) {
 		shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, 0.0f);
 		return;

@@ -63,6 +63,8 @@ static struct {
 	int map_tris, maps;          // this frame's map volumes (shadow_cast_maps)
 	int map_id;                  // the map James is in (shadow_begin_drop, shadow_cast_maps)
 	int vmax;                    // the vertices emit may fill (the maps' share, shadow_cast_maps)
+	bool full;                   // emit ran out of room: the volume being built is taken back whole
+	float cam[3], far;           // the camera and its far plane (shadow_view): far caps stay inside
 	void* quad;                  // linear memory, the darkening quad
 	bool drop;                   // this frame draws drop shadows instead (shadow_begin_drop)
 	DVtx* dbuf;                  // linear memory, drop shadow triangles
@@ -179,8 +181,10 @@ void shadow_begin_parallel(const float dir[3], float strength)
 // winding, so every face of a volume must agree on which side is the outside).
 static void emit(V3 a, V3 b, V3 c, V3 out)
 {
-	if (S.nv + 3 > S.vmax)
+	if (S.nv + 3 > S.vmax) {
+		S.full = true;
 		return;
+	}
 	if (dot(cross(sub(b, a), sub(c, a)), out) < 0.0f) {
 		V3 t = b;
 		b = c, c = t;
@@ -192,15 +196,29 @@ static void emit(V3 a, V3 b, V3 c, V3 out)
 
 // A corner pulled S.len from the light (a corner farther than that a little past itself, where the
 // PC's volume would fold back), and *p moved S.eps away from it (map volumes, see shadow_cast_maps).
+// The volumes are counted where they pass behind the scene (depth fail), which needs their far caps
+// drawn: past the camera's far plane the GPU clips them and the count goes wrong over whole walls
+// (a console showed hard dark wedges flickering as the lamp swayed). So no corner is pulled farther
+// from the camera than the far plane less a margin; a shadow ends there, inside the fog.
+static float far_room(V3 from)
+{
+	if (S.far <= 0.0f)
+		return 1e9f;
+	V3 c = sub(from, v3(S.cam[0], S.cam[1], S.cam[2]));
+	float room = S.far - 300.0f - sqrtf(dot(c, c));
+	return room > 200.0f ? room : 200.0f;
+}
+
 static V3 pull_from(V3* p, V3 L)
 {
 	if (S.parallel)
-		return add(*p, scl(v3(S.dir[0], S.dir[1], S.dir[2]), S.len));
+		return add(*p, scl(v3(S.dir[0], S.dir[1], S.dir[2]), fminf(S.len, far_room(*p))));
 	V3 d = sub(*p, L);
 	float l = sqrtf(dot(d, d));
 	if (l <= 1.0f)
 		return *p;
-	V3 q = add(L, scl(d, (S.len > l + 1.0f ? S.len : l + 1.0f) / l));
+	float len = fminf(S.len, far_room(L));
+	V3 q = add(L, scl(d, (len > l + 1.0f ? len : l + 1.0f) / l));
 	if (S.eps > 0.0f)
 		*p = add(*p, scl(d, S.eps / l));
 	return q;
@@ -424,8 +442,13 @@ static void cast(const Character* c, const Mtx34* model, V3 Lw, bool cull, bool 
 			for (int j = 0; in && j < ngeo && g + 16 <= size; j++) {
 				const s16* h = (const s16*)(d + g);
 				int nv = h[0], prim = h[1], qw = h[3];
-				if ((prim == 5 || prim == 6 || prim == 8 || prim == 9) && g + 16u * (u32)qw <= size)
+				if ((prim == 5 || prim == 6 || prim == 8 || prim == 9) && g + 16u * (u32)qw <= size) {
+					int keep = S.nv;
+					S.full = false;
 					strip(&w, h + 8, nv, L, Lw);
+					if (S.full)
+						S.nv = keep;     // a volume short of its faces darkens whole walls: none
+				}
 				g += 16u * (u32)(qw > 0 ? qw : 1);
 			}
 		}
@@ -992,7 +1015,13 @@ static void map_cast(const MapShd* ms, int glb, const ShadowMapCtx* c)
 				if (dot(cl, m.D) < 0.0f || sqrtf(dot(cl, cl)) > m.range + r || !in_cone(&m, gc, r))
 					continue;
 			}
+			int keep = S.nv;
+			S.full = false;
 			map_geom(&w, h, L, m.L, &m, s704, dxz);
+			if (S.full) {
+				S.nv = keep;             // whole volumes only, and none past the budget
+				return;
+			}
 		}
 	}
 }
@@ -1200,3 +1229,9 @@ int shadow_ee_opacity(int room, bool bfaw)
 const char* shadow_status(void) { return S.status; }
 
 void shadow_debug(int mode) { S.debug = mode; }
+
+void shadow_view(const float cam[3], float far)
+{
+	memcpy(S.cam, cam, sizeof S.cam);
+	S.far = far;
+}

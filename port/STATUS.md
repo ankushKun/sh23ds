@@ -392,7 +392,9 @@ Ordered by weight. Each line names where the work starts.
   (0x5ac5d0, 0x5ae060), the light kinds of 0x5ad1e0 for props (they take the flashlight spot like the
   enemies), and the own-light rooms other than ap42 and 312 with the flashlight off. The map volumes
   are the port's closed, depth-fail ones, started 4 units behind their face and capped at 4096
-  triangles a frame. 0x5aad70's two room lights are ported (`shadow_frame`):
+  triangles a frame; a volume that does not fit is dropped whole, and no far cap goes past the
+  camera's far plane less 300 (`shadow_view`): on a console, far caps clipped there and caps cut off
+  at the budget left hard dark wedges flickering over the walls of room 205 (2026-10-31). 0x5aad70's two room lights are ported (`shadow_frame`):
   room 312 (rr91) casts from far above (light kind 4, as a parallel light), ap42 with the flashlight
   off from its lamp. The kind 4 volumes are the port's own (the PC's are 0x444a70's cases 3 and 4),
   0x5a5860 (apartments) is not ported, and neither light has been seen casting in Azahar. James'

@@ -64,6 +64,8 @@ void shadow_draw(const C3D_Mtx* proj, const C3D_Mtx* view, const C3D_Mtx* ortho)
 // Enhanced Edition EnableSoftShadows opacity (of 255) for a room (bgm_room_id) and chapter.
 int shadow_ee_opacity(int room_id, bool born_from_a_wish);
 const char* shadow_status(void);
+// Each frame before the casts: the camera and its far plane, which the volumes' far caps stay inside.
+void shadow_view(const float cam[3], float far);
 // debug.txt "shadowdebug N": 1 draws the volumes in red, 2 darkens every pixel whose count changed,
 // 3 darkens the whole screen, 4 the pixels with an unchanged count, 5 counts on depth pass, 6 off,
 // 7 drop shadows in red, 8 no map volumes.
