@@ -88,7 +88,7 @@ typedef struct {
 	float life;              // crawl life in seconds (EnLOCAL +0xd0)
 	float vx, vz;            // crawl velocity (units/s)
 	int timer;               // 60 Hz ticks
-	float sound_wait;        // ticks since the last idle noise (EnLOCAL +0xa0)
+	float sound_wait;        // since the last idle noise (EnLOCAL +0xa0): PC frames or ticks, as the kind counts
 	float crawl_snd;         // ticks to the next crawling noise (EnSCU count, +0xcc)
 	float speed_mul, speed_goal;   // nurse walk speed factor and its target (EnLOCAL +0xa8 / +0xac)
 	s8 amb;                  // Lying Figure ambush spot (index into the glb's ambush_apart list), -1 none

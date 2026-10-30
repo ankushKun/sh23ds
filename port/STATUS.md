@@ -197,6 +197,24 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
+- 2026-10-31, enemy timing against the PC (`enemy.c`): the rolls and counters the PC makes once a
+  call (wanders, retargets, idle noises, the communication queue, the size easing, the hit-back) now
+  count the PC's 30 fps calls, so they no longer run twice as often at 60 fps; the Lying Figure spits
+  at a fifth of the chance below hard when James has no rounds (0x4c4010, 0x4a6340) and its crawl grab
+  lands once a pass (0x4c5800, +0x10 bit 0x200), the two causes of attacks coming back to back; the
+  stand waits are the PC's whole loops (0x4c42c0, 0x4c1400, the nurse's 0x4ba000); Mannequins have
+  their full health (x0.7 only for status 9, 0x4c15c0) and their own walk rate (0x4c11d0); the health
+  spread covers only the kinds 0x4a5b50 spreads, with the building multipliers of 0x4a5860. Damage
+  and James' attack power already matched; an adjacent Mannequin still swings about every 2.4 s, as
+  on the PC. Azahar only.
+- 2026-10-31, James' combat timing against the PC (`combat.c`, `move.c`): a blow that meets an
+  enemy plays back only on Normal and Hard and never off a downed one (0x5350d0), from the PC's own
+  rebound entries (the plank's 366 / 372, the pipe's 412 / 418, the heavy swings' and the lunge's;
+  0x52fae0), so a hit recovers in 0.6 s, not 0.85; the next swing after the follow-through waits for
+  its end (0x5569b0) with the Enhanced Edition's 0.3 s tap buffer; a handgun or revolver press from
+  frame 9 of a shot queues the next (0x544ac0, 0x558bd0); the walk's clip rate at part tilt is the
+  PC's fixed offset (0x54bd70, 0x54c0e0, the 2D movers); stamina counts 60 Hz refreshes, 10 s of
+  running (0x54cf10). Movement speeds, turn rates and attack power already matched. Azahar only.
 - 2026-10-31, characters keep apart (`enemy_push_apart`, clCollectCharaALL 0x525ed0) and close blows
   land (the PC's sweep from bone 0, 0x543b10); the stomp plays 11021 (0x549e20), not the pipe's
   11040. Only the Lying Figure, Mannequin, nurse and creeper have push columns (the others keep the
@@ -207,7 +225,9 @@ tree after the players' reports):
   0x511db0): round James' lamp and room 205's spot, with the PC's Lens Flare option (0xa36000, on);
   `effect/lensflare.t3x` from the packer's ui step. Port stand-ins: the lamp's visibility is a ray
   through the rooms' triangles (camray) in place of the PC's depth readback (0x511170), no flare in
-  cutscenes or for the mirror's James (0x546280), and its rates follow dt. The map shadow models
+  cutscenes or for the mirror's James (0x546280), and its rates follow dt. On Soft it is drawn on the
+  screen after the soft pass, with no depth test (drawn into the pass's scene texture it came out as a
+  dark disc on a New 3DS). The map shadow models
   (`.kg2`) and placed props cast flashlight shadows (shadows step); the barred gates of Wood Side
   throw theirs. Azahar only; console run pending.
 - 2026-10-31, room 205's light (`main.c` room_spot, `LIGHTING.md`): the flashlight lying on the
@@ -410,7 +430,11 @@ Ordered by weight. Each line names where the work starts.
   the encrypted 0x56e456 (after 0x534700); the port plays the knockdown (anime 112, which ends
   standing again) from the set's fall to its last frame on the floor and holds it there, as the PC
   holds the damage motion once 0x1fbad17 is set (0x559100). Blows that hurt always play anime 121,
-  where the PC also has 123 (lower state 0x15).
+  where the PC chooses among 121 to 130 (122 and 123 last about 0.6 s, 121 holds him 1.2 s) inside
+  the encrypted 0x534700; the v1.0 exe would show the choice. After a blow James can't be hurt
+  again for a second (`s_invuln`), a timer with no PC address: 0x5350d0 shows none, and the PC's
+  damage motion (0x1fbad18) may be the whole of it. A swing does not play back off a wall
+  (0x5350d0 with +0x124 2 or 3), only off an enemy.
 - Model parts (`combat_set_parts`, `demo.c`): James' left hand reads the port's states for the PC's
   upper-body ones, so walking into a wall counts as walking, being held as DAMAGE, a reload as ATTACK,
   every scene as EVENT with a non-standing motion, and the plank's two-handed frames 8..21 count from the
@@ -426,6 +450,9 @@ Ordered by weight. Each line names where the work starts.
   the port's.
 - The map screen (`map.c`) fills the top screen's width where the PC fills its 4:3 middle, a fifth of
   the zoomed-out sheet out of sight at a time (`PROGRAMS.md` "Map screen").
+- Stills on their own (the chute's among them) fill the top screen's width where the PC shows them
+  4:3, losing a tenth of their height at the top and at the bottom; puzzle stills keep 4:3 for their
+  sprites (`PROGRAMS.md` "Pictures").
 
 ### 4. Renderer features the port does not have
 

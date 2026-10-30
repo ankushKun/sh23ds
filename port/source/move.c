@@ -31,9 +31,12 @@
 //             Locked on (0x1fbad07) the stick's way picks walk, back or strafe and he goes that way.
 //   0x54e0f0 / 0x547bf0 under an attack (upper status 0x1c): the lower state is kept while the
 //             weapon's flags allow its gait (keep_gait).
-//   0x533ad0 / 0x5350d0  stamina: running counts frames up to 600 at full health (fewer when hurt),
-//             standing counts them down; run3 needs it below the limit, and standing with more than
-//             a third of it plays the tired breathing (113, 114 past two thirds).
+//   0x533ad0 / 0x5350d0  stamina: the limit is health percent x 6 (600 at full health, 0x5350d0);
+//             run2, run3 and the strafe runs (0x54cf10, 0x54d300, 0x54d670, 0x54d8e0) add the 60 Hz
+//             refreshes the frame took (0x1d824a4, 2 a frame at 30 fps), standing takes them off
+//             (0x557b20, 0x557cd0 with 0x1d82514), so the limit is 10 seconds of running; run3 needs
+//             it below the limit, and standing with more than a third of it plays the tired breathing
+//             (113, 114 past two thirds).
 #include "move.h"
 #include <math.h>
 #include <stdio.h>
@@ -42,7 +45,7 @@
 
 #define PI 3.14159265f
 #define UNIT 500.0f          // 0x54ef10: metres per second to world units
-#define FRAME (1.0f / 30.0f) // the PC's frame counts (blends, stamina) are 30 fps frames
+#define FRAME (1.0f / 30.0f) // the PC's frame counts (the blends) are 30 fps frames
 
 typedef struct { u16 id, start, end; bool loop; s16 speed; } Clip;   // speed 2048 = 30 frames/s
 
@@ -109,7 +112,7 @@ static struct {
 	int state, prev;
 	float spd;            // m/s, the PC's 0xa8
 	float off;            // movement direction relative to the facing (0xb4)
-	float stam;           // 30 fps frames run (0x1fbacf4)
+	float stam;           // 60 Hz refreshes run (0x1fbacf4)
 	float still;          // seconds standing (0x1fbacd0, for the relax idles)
 	float turned, turn_to;// the 180 turn so far, and the yaw it ends on
 	float cam_lock, stick_at_lock;   // the PC 2D type's camera yaw and stick angle, held across cuts
@@ -432,7 +435,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	switch (M.state) {
 	case MV_STAND: case MV_RELAX: case MV_TIRED: case MV_ALERT: {
 		M.still += dt;
-		M.stam -= dt * 30.0f;
+		M.stam -= dt * 60.0f;
 		if (M.stam < 0.0f) M.stam = 0.0f;
 		M.spd -= (running(M.prev) ? 20.0f : 10.0f) * dt;      // 0x5567b0
 		if (M.spd < 0.0f) M.spd = 0.0f;
@@ -514,7 +517,8 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 			t = 2.0f;
 		ramp(t, 3.0f, 3.0f, dt);
 		rate = 1.7f * tx;
-		M.stam += dt * 30.0f;
+		if (M.state != MV_RUN1)
+			M.stam += dt * 60.0f;     // 0x54cbb0 (run1) counts none
 		// the next pace is earned (0x54cbb0, 0x54cf10, 0x54d300)
 		if (M.state == MV_RUN1 && M.spd >= 3.5f)
 			M.allow = (M.allow | B(MV_RUN2)) & ~B(MV_RUN1);
@@ -530,7 +534,7 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 		else
 			ramp(3.8f, 6.0f, 6.0f, dt);
 		rate = 1.7f * tx;
-		M.stam += dt * 30.0f;
+		M.stam += dt * 60.0f;
 		off_to = M.state == MV_LSRUN ? -PI / 2.0f : PI / 2.0f;
 		break;
 	case MV_LTURN: case MV_RTURN: {
@@ -600,9 +604,49 @@ void move_update(const MoveInput* in, float* yaw, float dt, MoveOut* out)
 	else if (M.state != MV_RELAX)
 		set_clip(c, M.state, out);
 	c = M.clip;
-	float fps = c->speed / 2048.0f * 30.0f;
-	if (M.state == MV_WALK || M.state == MV_BACK)
-		fps *= ty;                            // 0x54bd70 / 0x54c0e0: the clip slows with the tilt
+	// 0x538e00 (part 2, +0x244): the movers add a rate to the legs' clip, which 0x551820 steps by
+	// (speed + rate) x the 60 Hz refreshes / 4096 frames, so the rate is in the clip speed's units.
+	// With the stick the walk and the back-off slow with the tilt by a fixed share, not in
+	// proportion: 0x54bd70 (1 - tilt) x -896, 0x54c0e0 x -1024; the 2D type's movers by the stick's
+	// length, 0x546aa0 walk -896, 0x546cc0 back -512, 0x546ea0 / 0x547050 strafes -1001 / -1024,
+	// 0x547700 strafe runs -1536. Run held with a target locked adds 512 with the keys (and to the
+	// 3D strafes, 0x54c470 / 0x54c810); with the stick 0x54bd70 adds (1 - tilt) x 512, 0x54c0e0
+	// tilt x 512, 0x546aa0 length x 512 (0x546cc0's own sum is left out: it takes the turn key's
+	// byte x 10). A program's walk and the great knife keep the clip in step with the tilt as before.
+	float arate = 0.0f, fps;
+	if (in->autowalk || in->drag) {
+		fps = c->speed / 2048.0f * 30.0f;
+		if (M.state == MV_WALK || M.state == MV_BACK)
+			fps *= ty;
+	} else {
+		float slack = 1.0f - (ty > 1.0f ? 1.0f : ty);
+		bool strafe = M.state == MV_LSWALK || M.state == MV_RSWALK;
+		if (in->digital) {
+			if (lock_run && (M.state == MV_WALK || M.state == MV_BACK || strafe))
+				arate = 512.0f;
+		} else if (tank) {
+			if (M.state == MV_WALK)
+				arate = slack * -896.0f + (lock_run ? slack * 512.0f : 0.0f);
+			else if (M.state == MV_BACK)
+				arate = slack * -1024.0f + (lock_run ? ty * 512.0f : 0.0f);
+			else if (strafe && lock_run)
+				arate = 512.0f;
+		} else {
+			if (M.state == MV_WALK)
+				arate = slack * -896.0f + (lock_run ? ty * 512.0f : 0.0f);
+			else if (M.state == MV_BACK)
+				arate = slack * -512.0f;
+			else if (M.state == MV_LSWALK)
+				arate = slack * -1001.0f;
+			else if (M.state == MV_RSWALK)
+				arate = slack * -1024.0f;
+			else if (M.state == MV_LSRUN || M.state == MV_RSRUN)
+				arate = slack * -1536.0f;
+		}
+		fps = (c->speed + arate) / 2048.0f * 30.0f;
+		if (fps < 0.0f)
+			fps = 0.0f;
+	}
 	bool rev = false;
 	float f0 = M.frame;
 	M.frame += (rev ? -fps : fps) * dt;

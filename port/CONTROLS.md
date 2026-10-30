@@ -160,7 +160,7 @@ The PC's lower-body states of the 3D control type, from sh2pc.exe:
 | --- | --- | --- | --- |
 | Stand | 101 (relax 115 to 117 after 10 s still, alert 118 with an enemy about; tired 113 / 114) | slows at 10 m/s/s (20 after a run) | |
 | Turn on the spot | 103 left, 102 right | | 2.4 x tilt (x1.5 with run held) |
-| Walk | 104, played slower with less tilt | 1.5 x tilt | 1.9 x tilt |
+| Walk | 104, (1 - tilt) x -896 off its clip speed (0x54bd70; back 105 x -1024) | 1.5 x tilt | 1.9 x tilt |
 | Back | 105 | 1.2 x tilt | 1.3 x tilt |
 | Strafe | 125 left, 124 right | up to 1.3 | 1.9 x tilt |
 | Run 1, 2, 3 | 106, 107, 108 | up to 3.5, 4.0, 4.8 at 3 m/s/s | 1.7 x tilt |
@@ -172,7 +172,7 @@ Maria plays with the same table: her anm (xmar_wp*) holds the same moves at the 
 strafes, backs off, turns round and idles like James, at 0.8 of his speed (0x54ef10).
 
 Running starts at run 1; reaching its top speed lets run 2 follow, and run 2's top speed lets run 3
-follow while James has stamina (600 frames at full health, fewer when hurt; standing gives it back).
+follow while James has stamina (600 refreshes at 60 Hz, 10 seconds of running at full health, fewer when hurt; run 1 counts none; standing gives it back).
 A wall within 250 units ahead stops a run from starting. From a run he cannot back off or turn
 round; the quick turn runs to its end.
 

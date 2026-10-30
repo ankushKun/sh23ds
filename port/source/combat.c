@@ -100,6 +100,13 @@ typedef struct {
 	AttackInfo a_light[2], a_combo, a_heavy[2], a_extra;
 	int snd_swing, snd_hit;
 	u8 f_light[2], f_combo, f_heavy[2], f_extra;    // frame of the swing sound and the effort (0x549e20)
+	// A blow that meets an enemy plays back (0x5350d0, 0x52fae0): "rebound" for the light and the
+	// combo swing, these for the heavy swing and the lunge; rb_skip is how far back the full light
+	// swing's place is moved into its "rebound" entry (0x52fae0 takes 0x4000 off the plank's 363 /
+	// 369, 0x6000 off the pipe's 409 / 415). Only the plank and the pipe play back (grips 5 and 6).
+	JAnim rb_heavy[2], rb_extra[2];
+	u8 rb_skip;
+	bool rebounds;
 } MeleeDef;
 
 static const MeleeDef MELEE_PLANK = {
@@ -107,12 +114,13 @@ static const MeleeDef MELEE_PLANK = {
 	{ { 722, 733, 0, 2048 }, { 734, 745, 0, 2048 } }, { { 722, 733, 0, -1794 }, { 734, 745, 0, -1794 } },  // 351, 353 / 352, 354
 	{ { 746, 755, 1, 320 }, { 756, 765, 1, 320 } },                                                      // 359, 360
 	{ { 776, 797, 0, 1536 }, { 810, 831, 0, 1536 } }, { { 780, 797, 0, 1536 }, { 814, 831, 0, 1536 } },   // 363, 369 / 365, 371
-	{ { 776, 797, 0, -1024 }, { 810, 831, 0, -1024 } }, { { 800, 809, 0, 1024 }, { 834, 843, 0, 1536 } }, // 364, 370 / 367, 373
+	{ { 781, 797, 0, -1024 }, { 815, 831, 0, -1024 } }, { { 800, 809, 0, 1024 }, { 834, 843, 0, 1536 } }, // 366, 372 / 367, 373
 	{ { 846, 873, 0, 1024 }, { 876, 903, 0, 1024 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },                // 375, 379
 	{ { 12, 100.0f, 80.0f, -150.0f, 350.0f, 12, 15 }, { 12, 100.0f, 80.0f, -150.0f, 350.0f, 12, 15 } },
 	{ 13, 80.0f, 80.0f, -150.0f, 350.0f, 8, 11 },
 	{ { 14, 140.0f, 80.0f, -150.0f, 350.0f, 8, 10 }, { 14, 140.0f, 80.0f, -150.0f, 350.0f, 8, 10 } }, { 0 },
 	11027, 11032, { 0, 0 }, 0, { 0, 0 }, 0,
+	{ { 846, 873, 0, -1024 }, { 876, 903, 0, -1024 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } }, 4, true,     // 376, 380
 };
 // Maria's knife (grip 10, table 0x6cf454, 21201..21232): the plank's layout, the follow-through and
 // the downswing two frames earlier, attacks 28..30
@@ -121,7 +129,7 @@ static const MeleeDef MELEE_KNIFE = {
 	{ { 722, 733, 0, 2048 }, { 734, 745, 0, 2048 } }, { { 722, 733, 0, -1794 }, { 734, 745, 0, -1794 } },
 	{ { 746, 755, 1, 320 }, { 756, 765, 1, 320 } },
 	{ { 776, 797, 0, 1536 }, { 810, 831, 0, 1536 } }, { { 780, 797, 0, 1536 }, { 814, 831, 0, 1536 } },
-	{ { 776, 797, 0, -1024 }, { 810, 831, 0, -1024 } }, { { 798, 809, 0, 1024 }, { 832, 843, 0, 1536 } },
+	{ { 780, 797, 0, -1024 }, { 814, 831, 0, -1024 } }, { { 798, 809, 0, 1024 }, { 832, 843, 0, 1536 } },   // 21216, 21222
 	{ { 844, 873, 0, 1024 }, { 874, 903, 0, 1024 } }, { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } },
 	{ { 28, 60.0f, 0.0f, -100.0f, 250.0f, 12, 15 }, { 28, 60.0f, 0.0f, -100.0f, 250.0f, 12, 15 } },
 	{ 29, 35.0f, 0.0f, -100.0f, 250.0f, 8, 11 },
@@ -135,13 +143,14 @@ static const MeleeDef MELEE_PIPE = {
 	{ { 722, 731, 0, 2048 }, { 732, 741, 0, 2048 } }, { { 722, 731, 0, -2048 }, { 732, 741, 0, -2048 } },  // 401, 403 / 402, 404
 	{ { 742, 751, 1, 256 }, { 752, 761, 1, 256 } },                                                      // 405, 406
 	{ { 772, 795, 0, 1536 }, { 807, 830, 0, 1536 } }, { { 778, 795, 0, 1536 }, { 813, 830, 0, 1536 } },   // 409, 415 / 411, 417
-	{ { 772, 795, 0, -768 }, { 807, 830, 0, -768 } }, { { 796, 806, 0, 1536 }, { 831, 841, 0, 1536 } },   // 410, 416 / 413, 419
+	{ { 778, 795, 0, -768 }, { 813, 830, 0, -768 } }, { { 796, 806, 0, 1536 }, { 831, 841, 0, 1536 } },   // 412, 418 / 413, 419
 	{ { 842, 876, 0, 1792 }, { 877, 911, 0, 1792 } }, { { 912, 941, 0, 1024 }, { 942, 971, 0, 1024 } },   // 421, 425 / 429, 431
 	{ { 15, 120.0f, 100.0f, -150.0f, 540.0f, 10, 12 }, { 15, 120.0f, 100.0f, -150.0f, 540.0f, 10, 12 } },
 	{ 16, 96.0f, 100.0f, -150.0f, 540.0f, 4, 6 },
 	{ { 17, 160.0f, 100.0f, -150.0f, 540.0f, 15, 17 }, { 17, 160.0f, 100.0f, -150.0f, 540.0f, 15, 17 } },
 	{ 18, 130.0f, 50.0f, -150.0f, 540.0f, 8, 10 },
 	11027, 11040, { 8, 8 }, 2, { 15, 15 }, 8,
+	{ { 842, 876, 0, -1536 }, { 877, 911, 0, -1536 } }, { { 912, 941, 0, -896 }, { 942, 971, 0, -896 } }, 6, true,  // 422, 426 / 430, 432
 };
 // Great knife (grip 8, table 0x6cf1dc, 451..466): one swing from each shoulder in turn, attacks 19 /
 // 20 and the heavier 21 / 22 by shoulder, reach 725, no combo; sound 11039 on frames 8 / 11 and
@@ -300,6 +309,14 @@ static float s_wall_ap, s_wall_ap_next;
 static bool s_swing_wall;
 static bool s_hit[ENEMY_MAX];
 static bool s_combo_req;
+static bool s_hit_down;                 // the enemy the blow met was down (0x5350d0: no play back)
+static bool s_rb_light;                 // the rebound plays back a light or combo swing (presses count)
+// The Enhanced Edition's SwapLightHeavyAttack keeps a released tap for 0.3 s
+// (kLightAttackBufferTimerMax) and asks for the heavy swing once A has been held 0.2 s; the game
+// reads either when it next asks for an attack (0x533ff0), here as the follow-through ends.
+static int s_queue;                     // 0 none, 1 light, 2 heavy
+static float s_queue_t, s_qhold = -1.0f;
+static bool s_shot_queued;              // 0x544ac0: the next shot asked for during this one
 static const AttackInfo* s_stomp_atk;   // ATK_KICK or ATK_STOMP while M_STOMP
 static float s_hold;                    // grab meter (DAT_01fbacd4): frame times of struggling left
 static int s_stick_dir;                 // last circle pad direction (0 centre, 1..4), for flicks
@@ -909,7 +926,7 @@ void combat_damage_james(int attack_id, float ap, float from_x, float from_z)
 	if (s_mode == M_HURT)
 		return;
 	s_mode = M_HURT;
-	s_invuln = 1.0f;
+	s_invuln = 1.0f;     // a port stand-in: no such timer found in 0x5350d0 (STATUS section 3)
 	sfx_play(pdef()->snd_hurt + (int)(s_hp) % pdef()->n_hurt, 1.0f, 0.0f);   // injured (four or five takes)
 	play(&J_HURT);
 }
@@ -1238,6 +1255,7 @@ static void swing_hits(const CombatBody* b)
 				continue;
 			s_hit[i] = true;
 			s_hit_any = true;
+			s_hit_down = enemy_is_down(en);
 			met = true;
 			// the hit (0x5350d0): the plank's 11032, the knife's 17035, both at 0.8
 			sfx_play(md()->snd_hit, 0.8f, 0.0f);
@@ -1265,6 +1283,7 @@ static void start_swing(const CombatBody* b, bool combo, bool heavy)
 	s_attack_seq = true;             // 0x52fae0 sets the attack side byte with every swing
 	memset(s_hit, 0, sizeof s_hit);
 	s_hit_any = false;
+	s_hit_down = false;
 	s_prev_ok = false;
 	s_swing_wall = false;
 	s_combo_req = false;
@@ -1672,6 +1691,77 @@ bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead
 	return false;
 }
 
+// The EE's SwapLightHeavyAttack (HandleAttackInput, on in the hold and attack statuses 0x1a and
+// 0x1c with a melee weapon) keeps a released tap 0.3 s (kLightAttackBufferTimerMax) and asks for the
+// heavy swing once A has been held 0.2 s; the game takes either the next time it asks for an attack
+// (its hook in 0x533ff0). In the hold status the PC asks only once the raise or the follow-through
+// has ended, so a tap in their last 0.3 s still swings. Without the option a press there is lost
+// and only A held on attacks again (M_READY's action_again).
+static void ee_queue_update(u32 held, bool action_down, float dt)
+{
+	if (!s_swap_light_heavy)
+		return;
+	if (s_queue == 1 && (s_queue_t -= dt) <= 0.0f)
+		s_queue = 0;
+	if (action_down)
+		s_qhold = 0.0f;
+	else if (s_qhold >= 0.0f && (held & KEY_A))
+		s_qhold += dt;
+	if (s_qhold >= HOLD_SECONDS && (held & KEY_A)) {
+		s_queue = 2;
+		s_qhold = -1.0f;
+	} else if (s_qhold >= 0.0f && !(held & KEY_A)) {
+		s_queue = 1;
+		s_queue_t = 0.3f;
+		s_qhold = -1.0f;
+	}
+}
+
+// The hold status asks for an attack again (0x5569b0): the kept tap or hold swings, a downed enemy
+// at his feet taking the kick or stomp first (HoldToStomp: a tap kicks, a hold stomps); A still
+// down undecided goes on being timed in M_READY.
+static void ee_queue_fire(const CombatBody* b, u32 held)
+{
+	if (s_queue && (held & KEY_R)) {
+		if (s_stompable && s_weapon != W_KNIFE)
+			start_stomp(s_queue == 2 || !s_hold_to_stomp);
+		else
+			start_swing(b, false, s_queue == 2);
+	} else if (s_qhold >= 0.0f && (held & KEY_A)) {
+		bool stomp = s_stompable && s_weapon != W_KNIFE;
+		if (stomp && !s_hold_to_stomp)
+			start_stomp(true);
+		else
+			s_charge = s_qhold, s_charge_stomp = stomp;
+	}
+	s_queue = 0;
+	s_qhold = -1.0f;
+}
+
+// 0x5569b0 grips 1 to 3 and 9: a shot, or the reload when the gun is empty and rounds are left;
+// the handgun's and the revolver's lock again if the lock was lost. A press with neither clicks
+// (0x533ff0, on the press only).
+static void gun_attack(const CombatBody* b, bool press)
+{
+	const WeaponDef* w = wdef();
+	if (s_weapon == W_HANDGUN || s_weapon == W_COLT)
+		lock_on(b);
+	if (loaded() > 0 || spare() > 0)
+		s_attack_seq = true;
+	if (loaded() > 0) {
+		s_mode = M_SHOT;
+		s_fired = false;
+		s_shot_queued = false;
+		play(&w->shot);
+	} else if (spare() > 0) {
+		s_mode = M_RELOAD;
+		s_reloaded = false;
+		play(&w->reload);
+	} else if (press) {
+		sfx_play(w->snd_empty, 1.0f, 0.0f);
+	}
+}
+
 bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, float dt,
                    const Collision* col, u32* held_out)
 {
@@ -1740,9 +1830,14 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		free_moves(b, cp, held, dt);
 		return false;
 	case M_RAISE:
+		// the raise is the hold status' clip too (0x52fae0 case 0x1a): the attack waits for its end
+		if (is_melee())
+			ee_queue_update(held, action_down, dt);
 		if (s_end) {
 			s_mode = M_READY;
 			play(is_melee() ? &md()->ready[s_side] : &w->aim);
+			if (is_melee())
+				ee_queue_fire(b, held);
 		}
 		break;
 	case M_READY:
@@ -1796,22 +1891,7 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 				if (s_spray > 0.0f)
 					sfx_play_at(11047, s_spray < 10.0f ? s_spray * 0.05f : 0.5f, s_body_pos);
 			} else if (is_gun()) {
-				// 0x5569b0 grips 1 and 9: a shot or reload locks again if the lock was lost
-				if (s_weapon == W_HANDGUN || s_weapon == W_COLT)
-					lock_on(b);
-				if (loaded() > 0 || spare() > 0)
-					s_attack_seq = true;
-				if (loaded() > 0) {
-					s_mode = M_SHOT;
-					s_fired = false;
-					play(&w->shot);
-				} else if (spare() > 0) {
-					s_mode = M_RELOAD;
-					s_reloaded = false;
-					play(&w->reload);
-				} else if (action_down) {
-					sfx_play(w->snd_empty, 1.0f, 0.0f);   // click (0x533ff0, on the press only)
-				}
+				gun_attack(b, action_down);
 			}
 			break;
 		}
@@ -1827,10 +1907,23 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			s_fired = true;
 			fire(b);
 		}
+		// 0x558bd0 asks 0x533ff0 for the next attack while 0x544ac0 allows it: for the handgun's
+		// and the revolver's shots (attacks 1, 2, 25, 26) from 9 frames past the attack's first
+		// frame to 9 past its last (frames 9..19 of attack 2, so from frame 9 to the shot's end).
+		// 0x558bd0 then starts it as the shot ends, straight into the next shot (207, 0x52fae0) or
+		// the reload. The shotgun's and the rifle's shots take none.
+		if ((action_down || action_again) && (w->atk.id == 2 || w->atk.id == 26)) {
+			float f = s_frame - w->shot.start;
+			if (f >= w->atk.first + 9.0f && f <= w->atk.last + 9.0f + 0.99f)
+				s_shot_queued = true;
+		}
 		aim_turn(b, dt);
 		if (s_end) {
 			s_mode = M_READY;
 			play(&w->aim);
+			if (s_shot_queued && (held & KEY_R))
+				gun_attack(b, false);
+			s_shot_queued = false;
 		}
 		break;
 	case M_RELOAD:
@@ -1898,10 +1991,25 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 			s_combo_req = true;       // 0x558bd0 asks 0x533ff0 again through the swing
 		swing_sound();
 		swing_hits(b);
-		if (s_hit_any && !s_atk_heavy && m->rebound[s_side].end && s_cur != &m->extra[s_side]) {
-			// 0x52fae0: a swing that connects plays back (the plank's 364 / 370 from the same frame)
+		// 0x5350d0: a plank or pipe blow that meets an enemy (+0x124 1) plays back on normal and hard
+		// only, and not when the one it met is down (+0x148 & 4); on beginner and easy the swing goes
+		// on through. 0x52fae0 then sets the attack's reversed entry in mode 6, which keeps the
+		// place in the clip: the plank's 366 / 372 and the pipe's 412 / 418 for a light or combo
+		// swing (the full swing's place less 4 or 6 frames), the heavy swing's and the lunge's own
+		// (376 / 380, 422 / 426, 430 / 432). Maria's knife, the great knife and the chainsaw go on
+		// through an enemy (grips 10, 8 and 7 play back only off a wall, which the port does not test).
+		const JAnim* rb = NULL;
+		if (s_hit_any && m->rebounds && enemy_difficulty() >= 2 && !s_hit_down) {
+			rb = s_cur == &m->heavy[s_side] ? &m->rb_heavy[s_side]
+			   : s_cur == &m->extra[s_side] ? &m->rb_extra[s_side] : &m->rebound[s_side];
+			if (!rb->end)
+				rb = NULL;
+		}
+		if (rb) {
+			float f = rb->start + (s_frame - s_cur->start) - (s_cur == &m->light[s_side] ? m->rb_skip : 0);
+			s_rb_light = rb == &m->rebound[s_side];
 			s_mode = M_REBOUND;
-			play_from(&m->rebound[s_side], s_frame);
+			play_from(rb, f < rb->start ? rb->start : f > rb->end ? rb->end : f);
 			break;
 		}
 		if (s_end) {
@@ -1935,7 +2043,10 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		break;
 	}
 	case M_REBOUND:
-		if (action_down || action_again)
+		// 0x544ac0: while a light or combo swing plays back every press counts (its speed below 0 with
+		// 0x1fbac7b set) and the combo follows from the same shoulder; the heavy swings' and the
+		// lunge's attacks (14, 17, 18) take none
+		if ((action_down || action_again) && s_rb_light)
 			s_combo_req = true;
 		if (s_end) {
 			s_atk = NULL;
@@ -1948,17 +2059,16 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		}
 		break;
 	case M_RECOVER:
-		if (action_down || action_again)
-			s_combo_req = true;
-		if (s_combo_req && (held & KEY_R)) {
-			s_side ^= 1;
-			start_swing(b, true, false);
-			break;
-		}
+		// The follow-through (367 / 373, the pipe's 413 / 419) is the hold status' clip: 0x5569b0 reads
+		// the button there only once the clip has ended (0x1fba90c & 2) or loops, and 0x1fbad19 goes
+		// back to 0, so the next swing is the light one (attack 12, 15) from the new shoulder; a tap
+		// meanwhile is kept the EE's way (ee_queue_update)
+		ee_queue_update(held, action_down, dt);
 		if (s_end) {
 			s_side ^= 1;
 			s_mode = M_READY;
 			play(&md()->ready[s_side]);
+			ee_queue_fire(b, held);
 		}
 		break;
 	case M_SPRAY: {
@@ -2057,6 +2167,8 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		s_combo_req = false;
 	else
 		s_charge = -1.0f;
+	if (s_mode != M_RAISE && s_mode != M_RECOVER)
+		s_queue = 0, s_qhold = -1.0f;    // a kept tap lives until the hold status asks (ee_queue_fire)
 	if (s_mode == M_SWING || s_mode == M_REBOUND || s_mode == M_RECOVER)
 		aim_turn(b, dt);                 // 0x558bd0: the upper attack keeps him on the lock
 	// the run key stays the legs' while they walk under the weapon (combat_legs)

@@ -156,7 +156,7 @@ of twelve states, in the order of the PC table:
 | 3 Backward | 0x4c5230 | yes | walks backwards when James is within 750 (type bit 2, not on beginner) |
 | 4 Ambush | 0x4c5370 | no | needs the `ambush_apart` rectangles (hard and up only); falls back to Wander |
 | 5 WaitCar | 0x4c5740 | simplified | lies in wait (status 8) until James is within 2000, then crawls |
-| 6 Crawl | 0x4c5800 | yes | dashes along the floor at 1500 x crawl rate units/s, grabbing at James (attack 43), rests, writhes, or stands up |
+| 6 Crawl | 0x4c5800 | yes | dashes along the floor at 1500 x crawl rate units/s, grabbing at James (attack 43) once a pass: a grab that lands sets +0x10 bit 0x200 and it dashes on past him, rests, writhes, or stands up |
 | 7 Attack | 0x4c63f0 | yes | sprays acid (attack 42), turning slowly toward James; may repeat |
 | 8 Damage | 0x4c65d0 | yes | applies the hit: flinch, or a knock-down when endurance runs out |
 | 9 Confuse | 0x4c6840 | no | only for special hits; goes to Precaution |
@@ -184,15 +184,17 @@ Per difficulty (gActionDifficulty 0..3, 4 unused; the port plays Normal = 2 unle
 | walk anime rate | 0x4c3ea0 | 0.7 | 0.8 | 1.0 | 1.2 (x hp% * 0.004 + 0.6, x1.2 dark + light on, x0.8 dark + light off) |
 | crawl rate | 0x4c3f30 | 1.5 | 1.7 | 2.0 | 2.0 (x hp% * 0.0025 + 0.75) |
 | acid reach | 0x4c3fb0 | 750 | 900 | 1200 | 1500 (x1.5 lit / light on, x0.8 dark without light) |
-| spit chance | 0x4c4010 | 0.5 | 0.5 | 0.7 | 0.8 |
+| spit chance | 0x4c4010 | 0.5 | 0.5 | 0.7 | 0.8 (x0.2 below hard when James has no rounds, 0x4a6340; 1.0 in the town stages but for the first one, and for status 6) |
 | repeat spit | 0x4c40a0 | 0 | 0 | 0.2 | 0.5 |
 | turn speed | 0x4c4140 | 1.5 | 2.1 | 3.0 | 3.6 degrees per 1/60 s |
-| turn while spitting | 0x4c4190 | 0 | 0 | 0.3 | 1.5 degrees per 1/60 s |
+| turn while spitting | 0x4c4190 | 0 | 0 | 0.1 | 0.5 degrees per 1/60 s (town: 0, 0.1, 0.3, 0.7) |
 | endurance regain | 0x4c3e30 | 0 | 10 | 30 | 60 per second |
 | time down | 0x4c4220 | 900 | 400 | 300 | 240 ticks (+0..600 when spawned lying) |
 
-Health and endurance get a random spread (0x4a5b50, 0x448910): x(1 + r) with |r| <= 0.5 for health
-and 0.3 for endurance, doubled upward half the time above easy. Spawn status scales them (1: x1.2,
+Health and endurance get a random spread (0x4a5b50, 0x448910) for the Lying Figure, Mannequin, nurse
+and Mandarin only (EnLOCAL kinds 1, 2, 6, 10): x(1 + r) with |r| <= 0.5 for health and 0.3 for
+endurance, doubled upward half the time above easy. For the first three the building scales them too
+(0x4a5860 set 2: health x1.5; set 3: x1.5 and endurance x1.2; sets 4 and 5: x2 and x1.5). Spawn status scales them (1: x1.2,
 2: x0.5, 3/4 lying: x0.3, default x1.0). Endurance is the stagger budget: every hit takes the damage
 from both; a hit that leaves endurance at 0, or fails the roll `rand <= endurance * 0.002 + 0.8`, knocks
 it down (0x4c65d0). A knocked-down figure takes downward swings and stomps; at 0 health it twitches a
@@ -264,7 +266,7 @@ Root motion (0x4c1020 applies the foot-based 0x4a7a20 to anime 1, 3, 4, 11 and 1
 Sight table 0x8930f0: sight 5000 / 3000 / 3000 / 900 by light, half angle 60 degrees, the same hearing
 ranges, attack range 1100 within 15 degrees. Attacks 44 and 45 (kind 2, ap 18, sp 10, reach 400, frames
 19..22). The reach is counted from the striking limb, whose position function was not ported; the port
-adds 300 for the limb and James' radius of 130. Health and endurance use the same tables as the Lying Figure times 0.7 by default.
+adds 300 for the limb and James' radius of 130. Health and endurance use the same tables as the Lying Figure, x1.0 by default and x0.7 for status 9 (0x4c15c0).
 
 ## James and the plank
 
@@ -287,7 +289,7 @@ with the plank in hand, 722.. the weapon moves).
 | 361 / 362 | 766-775 | +-1536 | change shoulder |
 | 363 / 369 | 776-797 / 810-831 | 1536 | swing from the right / left (hit frames 12-15, attack 12) |
 | 365 / 371 | 780-797 / 814-831 | 1536 | combo swing (attack 13, hit frames 8-11) |
-| 364 / 370 | same | -1024 | rebound: played back from the current frame when a swing connects |
+| 366 / 372 | 781-797 / 815-831 | -1024 | rebound: a light or combo swing that meets an enemy plays back (the full swing 4 frames back); the heavy swing has its own (376 / 380) |
 | 367 / 373 | 800-809 / 834-843 | 1024 / 1536 | follow-through back to the other shoulder |
 | 375 / 379 | 846-873 / 876-903 | 1024 | downward swing at a figure on the floor (attack 14, frames 8-10) |
 
@@ -312,7 +314,7 @@ up; the PC handles fog attacks in their own routine (`shBattleAttackByEnemyFog`)
 decompiled, so this is a gameplay choice: with a flinch on every spray the fight could not be won.
 
 Sounds (sfx.h, ids from `pack/sound/se_index.txt`): spray 12000, Lying Figure noises 12001..12008
-every 5 s at the earliest (0x4c4350), crawling 12009..12014 every 20 ticks (0x4c43e0), footsteps 12019
+every 10 s at the earliest (0x4c4350: a count of 300 calls), crawling 12009..12014 every 20 ticks (0x4c43e0), footsteps 12019
 (0x2ef3) on walk frames 2 and 18, pain 12017/12018; Mannequin footsteps 12500, noises 12505..12508,
 pain 12503/12504; plank swing 11027 and hit 11032; James hurt 11020..11023 and dying 11024.
 
@@ -392,9 +394,19 @@ The plank keeps its own downward swing (attack 14, anims 375 / 379). That is its
 asks for it on every first press (pressure again), and the port follows the EE's "SwapLightHeavyAttack"
 (`swapattack`): a tap is the light swing (12), holding A for 0.2 s the heavy downswing. A downed target
 within 1400 units always gets the downswing (port choice: the level swing passes over a body on the
-floor). Pressing A again during a plank swing chains the short swing from the other shoulder at once
-(the PC sets `DAT_01fbad19` and the next request becomes attack 13 without the recovery), which is the
-quicker rhythm the Normal fights needed.
+floor). Pressing A again during a plank swing chains the short swing from the other shoulder (the PC
+sets `DAT_01fbad19` and the next request becomes attack 13). After the follow-through (367 / 373, the
+pipe's 413 / 419) the PC reads the button only once the clip ends (0x5569b0), so the next swing waits
+for it; with the Enhanced Edition's Swap Light/Heavy a tap in its last 0.3 s, or in the raise's, is
+kept, and a 0.2 s hold asks for the heavy swing.
+
+A blow that meets an enemy plays back (0x5350d0, 0x52fae0) only on Normal and Hard, and never off a
+downed enemy; on Beginner and Easy the swing carries on through. The plank's and the pipe's heavy
+swings and the pipe's lunge play back too (376 / 380, 422 / 426, 430 / 432); Maria's knife, the great
+knife and the chainsaw never play back off an enemy (off a wall they do on the PC, which the port does
+not test). During a light rebound a press queues the combo; during a heavy one presses are ignored
+(0x544ac0, attacks 14, 17, 18). A press from frame 9 of a handgun or revolver shot to its end queues
+the next shot or the reload (0x544ac0, 0x558bd0); the shotgun and the rifle take none.
 
 ## Bubble Head Nurse
 
@@ -1010,7 +1022,7 @@ Each melee weapon's clips are its row of the PC tables (0x52fae0 / 0x531a00 with
 
 | Weapon (grip) | Light press | Hard press | Notes |
 | --- | --- | --- | --- |
-| Steel pipe (6) | lunge 429 / 431, attack 18 (130, reach 540, frames 8..10) | overhead 421 / 425, attack 17 (160, frames 15..17) | on hard with run held the swing 409 / 415 (15, 120, frames 10..12) and its follow-up 411 / 417 (16, 96, frames 4..6) instead of the lunge (0x533ff0); a swing that connects plays back; hit 11040 |
+| Steel pipe (6) | lunge 429 / 431, attack 18 (130, reach 540, frames 8..10) | overhead 421 / 425, attack 17 (160, frames 15..17) | on hard with run held the swing 409 / 415 (15, 120, frames 10..12) and its follow-up 411 / 417 (16, 96, frames 4..6) instead of the lunge (0x533ff0); a swing that connects plays back (412 / 418, the full swing 6 frames back) on Normal and Hard; hit 11040 |
 | Great knife (8) | swing 461 / 459, attacks 19 / 20 by shoulder (600, reach 725) | heavy 465 / 463, attacks 21 / 22 (1000) | one swing from each shoulder in turn, no follow-up; swing sound 11039 on frames 8 / 11 and 17 / 18; dragged at the speeds of 0x54b3b0, no running, slower turns; hit 11038 |
 | Chainsaw (7) | saw 567 / 565, attack 23 (250, reach 525, frames 12..27) | thrust 571 / 569, attack 24 (300, frames 6..13) | pressed again while sawing: the thrust; the engine revs (11044) on raising and runs (11045) in each cut, stops when lowered; no fuel; cut 11046 |
 | Hyper spray (4) | spray 508, attack 8 (frames 8..25), 509 (attack 9) while the button stays down | | 20 seconds a can, used up while it sprays; costs James a point of health a second on normal and hard; empty, the can is gone (0x545260); hiss 11047 |

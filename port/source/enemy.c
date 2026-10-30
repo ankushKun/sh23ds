@@ -86,7 +86,7 @@ static struct {
 
 // Communication queue (EnCOMMUNICATION, 0x4a7e60 add / 0x4a7f20 find): a chasing enemy calls
 // the others to the player's position.
-typedef struct { float x, z, radius; int kind, time; } Comm;
+typedef struct { float x, z, radius, time; int kind; } Comm;   // time in PC frames (0x4a88e0 takes 1 a frame)
 static Comm s_comm[8];
 
 // ---------------------------------------------------------------- game random numbers
@@ -112,6 +112,21 @@ static float rnd_signed(float a, float b)
 	float r = rnd();
 	return ((b + 1.0f) * b / (r + b) - b) * s;
 }
+
+// ---------------------------------------------------------------- the PC's frame
+//
+// The PC runs the enemy code once a frame at its fixed 30 frames a second (the Enhanced Edition's
+// 60 fps mode is an addition, with fixes of its own). Its timers count the frame's 60 Hz ticks
+// (enReduceTimer 0x4a6be0 takes DAT_00935954, which 0x447960 sets from the refreshes the frame
+// took, 2 at 30 fps) and its turns and moves go by gFrametime (0x935948, ticks / 60), so those follow
+// real time. What the code does once a call, a chance rolled (enSCUCtrlWander's 0.002), a count
+// (the idle noise's 300 in 0x4c4350, the communication queue's in 0x4a88e0) or a step (the size's
+// 25 and the hit-back's halving in 0x4a9e60), happens 30 times a second there. pc_frames() is how
+// many PC frames this frame stands for: at 60 fps such a chance is rolled with half the odds.
+static float pc_frames(float dt) { return dt * 30.0f; }
+static bool chance(float p, float dt) { return rnd() < p * pc_frames(dt); }
+static int ticks60(float dt) { return (int)(dt * 60.0f + 0.5f); }   // DAT_00935954
+static float s_dt;                        // this frame's step, for the helpers without one (steer)
 
 // ---------------------------------------------------------------- angles
 
@@ -324,14 +339,16 @@ static void anim_set(Enemy* e, int a)
 	e->anim_end = false;
 }
 
-// 0x4c42c0: the stand loop plays a random number of times before it counts as ended.
+// 0x4c42c0 (Mannequin 0x4c1400): the stand loop plays n / 2 times, n = 6 - 0.2 x level +- up to 2,
+// before it counts as ended (0x4a7c50 sets the length, +0x18); the nurse's 0x4ba000 takes
+// 8 - 0.4 x level. It plays on from where it is; the port also started it at a random frame and
+// gave the nurse the figure's n until 2026-10-31, which cut each wait by half a loop on average,
+// so one that hesitated struck again sooner.
 static void anim_random_loops(Enemy* e)
 {
-	float n = 6.0f - s_diff * 0.2f + rnd_signed(-2.0f, 0.5f);
+	float n = (e->kind == EN_KIND_NSE ? 8.0f - s_diff * 0.4f : 6.0f - s_diff * 0.2f) + rnd_signed(-2.0f, 0.5f);
 	e->loop_limit = (int)(n * 0.5f + 0.5f);
 	if (e->loop_limit < 1) e->loop_limit = 1;
-	const ScuAnim* t = &anim_tab(e)[e->anim];
-	e->frame = t->start + rnd() * (t->end - t->start);
 }
 
 // 0x4a77a0 (enAnimeExec) reduced to frame stepping; returns the animation frames advanced.
@@ -381,17 +398,35 @@ static void size_upright(Enemy* e, bool now) { set_size(e, 150.0f, 800.0f, now);
 // Lying: 225 wide outside the special areas (0x4c5740), 200 tall.
 static void size_lying(Enemy* e, bool now) { set_size(e, 225.0f, 200.0f, now); }
 
-// enSetHP 0x4a5b50: kind 1 gets a random spread on both values.
+static int glb_set(void);
+
+// enSetHP 0x4a5b50. For the Lying Figure, the Mannequin and the nurses (EnLOCAL kinds 1, 2 and 6)
+// the buildings past the apartments ask more (0x4a5860's set: 2 health x1.5; 3 health x1.5 and
+// endurance x1.2; 4 and 5 health x2 and endurance x1.5); these and the Mandarin (kind 10) get a
+// random spread on both values, health x(1 + r) with |r| <= 0.5 and endurance with |r| <= 0.3, a
+// cut turned into twice the gain half the time above easy. The creepers and the other kinds take
+// the values as given. Until 2026-10-31 the port spread every kind and scaled no building.
 static void set_hp(Enemy* e, float hp, float endurance)
 {
-	float r = rnd_signed(-0.5f, 1.0f);
-	if (r < 0.0f && s_diff > 1 && (rnd() < 0.5f))
-		r *= -2.0f;
-	hp *= r + 1.0f;
-	r = rnd_signed(-0.3f, 1.0f);
-	if (r < 0.0f && s_diff > 1 && (rnd() < 0.5f))
-		r *= -2.0f;
-	endurance *= r + 1.0f;
+	bool common = e->kind == EN_KIND_SCU || e->kind == EN_KIND_MKN || e->kind == EN_KIND_NSE;
+	if (common) {
+		switch (glb_set()) {
+		case 2: hp *= 1.5f; break;
+		case 3: hp *= 1.5f; endurance *= 1.2f; break;
+		case 4: case 5: hp *= 2.0f; endurance *= 1.5f; break;
+		default: break;
+		}
+	}
+	if (common || e->kind == EN_KIND_ARM) {
+		float r = rnd_signed(-0.5f, 1.0f);
+		if (r < 0.0f && s_diff > 1 && (rnd() < 0.5f))
+			r *= -2.0f;
+		hp *= r + 1.0f;
+		r = rnd_signed(-0.3f, 1.0f);
+		if (r < 0.0f && s_diff > 1 && (rnd() < 0.5f))
+			r *= -2.0f;
+		endurance *= r + 1.0f;
+	}
 	e->hp = e->hp_max = hp;
 	e->endurance = e->endurance_max = endurance;
 	e->damage = 0.0f;
@@ -528,10 +563,33 @@ static float attack_range(const EnPlayer* p)
 	return r;
 }
 
-// 0x4c4010: chance to spit when in range.
-static float attack_probability(void)
+// 0x494d80(0): the stage is one of the town's, 1..4 or 17
+static bool town_stage(void)
+{
+	int st = ev_stage();
+	return (st >= 1 && st <= 4) || st == 17;
+}
+
+// 0x4a6340: James has nothing to shoot with: no handgun rounds or bullets (items 4, 5), and no
+// shotgun (6, 7) or rifle (8, 9) rounds for one he owns
+static bool james_out_of_rounds(void)
+{
+	return ev_item_count(4) == 0 && ev_item_count(5) == 0 &&
+	       (!combat_owns_item(6) || (ev_item_count(6) == 0 && ev_item_count(7) == 0)) &&
+	       (!combat_owns_item(8) || (ev_item_count(8) == 0 && ev_item_count(9) == 0));
+}
+
+// 0x4c4010: chance to spit when in range. In the town (except the first monster, type 0x40) and for
+// status 6 it always spits; below hard it spits a fifth as often at a James with no rounds, which is
+// the whole time he has only the plank. The port rolled the table alone until 2026-10-31, so on
+// normal a figure spat at a James with the plank in 70 % of its tries, not 14 %.
+static float attack_probability(const Enemy* e)
 {
 	static const float t[5] = { 0.5f, 0.5f, 0.7f, 0.8f, 1.0f };
+	if ((town_stage() && e->type != 0x40) || e->status == 6)
+		return 1.0f;
+	if (s_diff < 3 && james_out_of_rounds())
+		return t[s_diff] * 0.2f;
 	return t[s_diff];
 }
 
@@ -553,10 +611,10 @@ static float turn_rate(void)               // 0x4c4140: radians per 1/60 s
 	return t[s_diff] * 0.05235988f;
 }
 
-static float aim_rate(void)                // 0x4c4190 (indoor row): turning while spitting
+static float aim_rate(void)                // 0x4c4190: turning while spitting, by 1/60 s
 {
-	static const float t[5] = { 0.0f, 0.0f, 0.1f, 0.5f, 1.0f };
-	return t[s_diff] * 0.05235988f;
+	static const float town[5] = { 0.0f, 0.1f, 0.3f, 0.7f, 1.0f }, t[5] = { 0.0f, 0.0f, 0.1f, 0.5f, 1.0f };
+	return (town_stage() ? town : t)[s_diff] * 0.05235988f;
 }
 
 // 0x4c4220 (Lying Figure) / 0x4c13a0 (Mannequin): ticks lying before getting up.
@@ -652,11 +710,11 @@ static int sight_check(Enemy* e, const EnPlayer* p, float dt)
 	return res;
 }
 
-static void comm_add(float x, float z, float radius, int ticks, int kind)
+static void comm_add(float x, float z, float radius, int frames, int kind)
 {
 	for (int i = 0; i < 8; i++)
-		if (s_comm[i].time <= 0) {
-			s_comm[i] = (Comm){ x, z, radius, kind, ticks };
+		if (s_comm[i].time <= 0.0f) {
+			s_comm[i] = (Comm){ x, z, radius, (float)frames, kind };
 			return;
 		}
 }
@@ -665,7 +723,7 @@ static bool comm_heard_kind(const Enemy* e, int kind)
 {
 	for (int i = 0; i < 8; i++) {
 		const Comm* c = &s_comm[i];
-		if (c->time > 0 && c->kind == kind) {
+		if (c->time > 0.0f && c->kind == kind) {
 			float dx = e->x - c->x, dz = e->z - c->z;
 			if (dx * dx + dz * dz < c->radius * c->radius)
 				return true;
@@ -721,7 +779,7 @@ static bool steer(Enemy* e, float tx, float tz)
 		return false;
 	}
 	if (e->detour_t > 0.0f && ray_clear(e, e->detour, 400.0f)) {
-		e->detour_t -= 1.0f / 30.0f;
+		e->detour_t -= s_dt;            // seconds (it took 1/30 a call, which halved it at 60 fps)
 		e->mark_angle = e->detour;
 		return true;
 	}
@@ -929,7 +987,7 @@ static void scu_wander(Enemy* e, const EnPlayer* p, float dt)
 		float ds = hypotf(e->stx - e->x, e->stz - e->z);
 		if (!(e->type & 1) || ds <= 3500.0f) {
 			float dt_ = hypotf(e->tx - e->x, e->tz - e->z);
-			if (dt_ < 400.0f || rnd() < 0.002f) {
+			if (dt_ < 400.0f || chance(0.002f, dt)) {      // 0.002 and 0.0001 a PC frame
 				float a = (rnd() - 0.5f) * (PI / 2.0f) + e->yaw;
 				e->tx = e->x + sinf(a) * 1000.0f;
 				e->tz = e->z + cosf(a) * 1000.0f;
@@ -938,7 +996,7 @@ static void scu_wander(Enemy* e, const EnPlayer* p, float dt)
 					e->tx = e->x + sinf(a) * 1000.0f;
 					e->tz = e->z + cosf(a) * 1000.0f;
 				}
-			} else if (rnd() < 1e-4f) {
+			} else if (chance(1e-4f, dt)) {
 				pose(e, A_STAND);
 				e->slv = 3;
 			}
@@ -951,7 +1009,7 @@ static void scu_wander(Enemy* e, const EnPlayer* p, float dt)
 	}
 	case 2:
 		if (hypotf(e->stx - e->x, e->stz - e->z) >= 3500.0f) {
-			if (reduce_timer(e, 1) > 0)
+			if (reduce_timer(e, ticks60(dt)) > 0)
 				break;
 			e->tx = e->x, e->tz = e->z;
 		}
@@ -1057,7 +1115,7 @@ static void scu_attack(Enemy* e, const EnPlayer* p, float dt)
 {
 	if (check_damage(e)) { e->attacking = false; go(e, SCU_DAMAGE); return; }
 	if (e->slv == 0) {
-		if (rnd() < attack_probability()) {
+		if (rnd() < attack_probability(e)) {
 			anim_set(e, A_ATTACK);
 			e->rate = attack_anim_rate(e);
 			play_at(e, 12000);
@@ -1366,7 +1424,11 @@ static void scu_crawl(Enemy* e, const EnPlayer* p, float dt)
 			e->crawl_snd = 20.0f;
 			play_at(e, 12009 + (int)(rnd() * 5.99f));
 		}
-		// attack 43: kind 3, ap 5, reach 250 in front, rearmed every frame on normal and up
+		// attack 43: kind 3, ap 5, reach 250 in front, armed all through the dash on normal and up.
+		// Once it connects (0x4a6000 returns 1 and clears the armed bit) 0x4c5800 arms it again and
+		// sets +0x10 bit 0x200, so the figure stops homing on James within 600 and dashes on to its
+		// own point: one grab per pass. Until 2026-10-31 the port kept steering it at his feet, and
+		// it grabbed him again each time his second of immunity ran out.
 		if (e->attacking && !e->maria_hit) {
 			blow_maria(e, 250.0f + e->size, 0.6f, 5.0f);
 			e->maria_hit = false;       // rearmed every frame, like the grab on James
@@ -1375,10 +1437,12 @@ static void scu_crawl(Enemy* e, const EnPlayer* p, float dt)
 			float fx = sinf(e->yaw), fz = cosf(e->yaw);
 			float dx = p->x - e->x, dz = p->z - e->z;
 			float along = dx * fx + dz * fz, side = fabsf(dx * fz - dz * fx);
-			if (along > 0.0f && along < 250.0f + e->size && side < 200.0f)
+			if (along > 0.0f && along < 250.0f + e->size && side < 200.0f) {
 				hit_james(p, 43, 5.0f, e);
+				e->flags |= 0x200;
+			}
 		}
-		if (hypotf(e->tx - e->x, e->tz - e->z) < 400.0f || rnd() < 0.002f) {
+		if (hypotf(e->tx - e->x, e->tz - e->z) < 400.0f || chance(0.002f, dt)) {
 			float a = rnd_signed(-PI / 2.0f, 0.5f) + e->yaw;
 			e->tx = e->x + sinf(a) * 1000.0f;
 			e->tz = e->z + cosf(a) * 1000.0f;
@@ -1465,8 +1529,10 @@ static void scu_crawl(Enemy* e, const EnPlayer* p, float dt)
 		e->slv = 0;
 		return;
 	case 5:
-		if (e->hb == 0.0f && reduce_timer(e, ticks) <= 0)
+		if (e->hb == 0.0f && reduce_timer(e, ticks) <= 0) {
+			e->flags &= ~0x200u;        // 0x4c5800 sub-state 5: homes on James again after the fall
 			go(e, SCU_DOWN);
+		}
 		return;
 	case 0xff:
 		pose(e, A_TO_CRAWL);
@@ -1551,7 +1617,9 @@ static bool push_column(const Enemy* e, float* r, int* weight)
 // enMoveExec 0x4a9e60: size easing, root motion, crawl velocity, hit-back and the room.
 static void move_exec(Enemy* e, float adv, float dt)
 {
-	float step = dt * 25.0f * 30.0f / 30.0f;    // size eases 25 units per 1/30 s (0x63887c)
+	// the size eases 25 units a PC frame (0x63887c, not scaled by the frame time). It moved 25 a
+	// second until 2026-10-31, so a body that fell took 3 s, not 0.1 s, to spread to its lying size
+	float step = pc_frames(dt) * 25.0f;
 	if (e->size != e->new_size) {
 		float d = e->new_size - e->size;
 		e->size += d > step ? step : d < -step ? -step : d;
@@ -1590,16 +1658,12 @@ static void move_exec(Enemy* e, float adv, float dt)
 		mz += cosf(e->yaw) * adv * stride;
 	}
 	if (e->hb != 0.0f) {
-		float n = dt * 60.0f;
-		float total = 0.0f;
-		while (n > 0.0f && e->hb != 0.0f) {
-			e->hb *= 0.5f;
-			total += e->hb * (n >= 1.0f ? 1.0f : n);
-			if (e->hb < 1.0f) e->hb = 0.0f;
-			n -= 1.0f;
-		}
-		mx += e->hbx * total;
-		mz += e->hbz * total;
+		// the hit-back halves each PC frame and the body moves by what is left (0x4a9e60 +0x54,
+		// dropped below 1): over this frame's share of PC frames it moves by what the halvings take
+		float left = e->hb * powf(0.5f, pc_frames(dt));
+		mx += e->hbx * (e->hb - left);
+		mz += e->hbz * (e->hb - left);
+		e->hb = left < 1.0f ? 0.0f : left;
 	}
 	if (mx == 0.0f && mz == 0.0f)
 		return;
@@ -1627,8 +1691,9 @@ static void move_exec(Enemy* e, float adv, float dt)
 }
 
 // Footsteps on the walk cycle (0x4c3c20 / 0x4c1020: frames 2 and 18 of the Lying Figure's walk,
-// 2 and 17 of the Mannequin's) and the idle noises (enSCUSoundLife 0x4c4350, every 5 s at the
-// earliest, sooner while standing; Mannequin 0x4c1490).
+// 2 and 17 of the Mannequin's) and the idle noises (enSCUSoundLife 0x4c4350, Mannequin 0x4c1490):
+// +0xa0 counts the PC frames up to 300, 10 s, then a noise comes at once while standing and with a
+// chance of 0.2 a second otherwise. The count went by 60 Hz ticks until 2026-10-31, every 5 s.
 static void sounds(Enemy* e, float f0, float dt)
 {
 	if (e->kind == EN_KIND_NSE) {
@@ -1657,7 +1722,7 @@ static void sounds(Enemy* e, float f0, float dt)
 		if ((a < s1 && b >= s1) || (a < s2 && b >= s2))
 			play_at(e, mkn ? 12500 : 12019);
 	}
-	e->sound_wait += dt * 60.0f;
+	e->sound_wait += pc_frames(dt);
 	if (e->sound_wait < 300.0f || e->mlv == (mkn ? MKN_DYING : SCU_DYING) || (mkn && e->mlv == MKN_STAY))
 		return;
 	if (e->anim != A_STAND && rnd() >= dt * 0.2f)
@@ -1731,7 +1796,7 @@ static void scu_update(Enemy* e, const EnPlayer* p, float dt)
 static float mkn_walk_rate(const Enemy* e, const EnPlayer* p)   // 0x4c11d0
 {
 	static const float t[5] = { 0.7f, 0.8f, 1.0f, 1.4f, 1.5f };
-	float r = t[s_diff] * (hp_rate(e) * 0.004f + 0.6f);
+	float r = t[s_diff] * (hp_rate(e) * 0.005f + 0.5f);       // not the Lying Figure's 0.004, 0.6
 	int li = light_index(p);
 	if (li <= 1 && s_diff >= 2) r *= 1.2f;
 	else if (li == 3 && s_diff <= 2) r *= 0.8f;
@@ -1871,8 +1936,9 @@ static void mkn_wander(Enemy* e, const EnPlayer* p, float dt)
 		// fall through
 	case 1: {
 		if (e->type > 1 || hypotf(e->stx - e->x, e->stz - e->z) <= 5000.0f) {
-			float r = rnd();
-			if (hypotf(e->tx - e->x, e->tz - e->z) < 600.0f || r < 0.02f) {
+			// one roll a PC frame: below 0.02 a new point, below 0.021 a stop to stand
+			float r = rnd(), k = pc_frames(dt);
+			if (hypotf(e->tx - e->x, e->tz - e->z) < 600.0f || r < 0.02f * k) {
 				float a = (rnd() - 0.5f) * (PI / 2.0f) + e->yaw;
 				e->tx = e->x + sinf(a) * 1500.0f;
 				e->tz = e->z + cosf(a) * 1500.0f;
@@ -1881,7 +1947,7 @@ static void mkn_wander(Enemy* e, const EnPlayer* p, float dt)
 					e->tx = e->x + sinf(a) * 1500.0f;
 					e->tz = e->z + cosf(a) * 1500.0f;
 				}
-			} else if (r < 0.021f) {
+			} else if (r < 0.021f * k) {
 				pose(e, A_STAND);
 				e->slv = 3;
 			}
@@ -1893,9 +1959,18 @@ static void mkn_wander(Enemy* e, const EnPlayer* p, float dt)
 		break;
 	}
 	case 2:
+		// 0x4c2420 sub-state 2, back toward home: within 5000 again, or after its 300 ticks (the
+		// place it gave up at becomes home), it wanders on; meanwhile 0.01 a PC frame to stop
 		e->rate = mkn_walk_rate(e, p);
-		if (hypotf(e->stx - e->x, e->stz - e->z) < 5000.0f || reduce_timer(e, 1) <= 0)
+		if (hypotf(e->stx - e->x, e->stz - e->z) < 5000.0f) {
 			e->slv = 1;
+		} else if (reduce_timer(e, ticks60(dt)) <= 0) {
+			e->stx = e->x, e->stz = e->z;
+			e->slv = 1;
+		} else if (chance(0.01f, dt)) {
+			pose(e, A_STAND);
+			e->slv = 3;
+		}
 		break;
 	case 3:
 		if (!e->anim_end)
@@ -2072,7 +2147,10 @@ static void mkn_init(Enemy* e, int status)
 	size_upright(e, true);
 	anim_set(e, A_WALK);
 	e->stx = e->x, e->stz = e->z;
-	float scale = 0.7f;
+	// 0x4c16ce: status 0 and those without a case take the tables as they are (x1.0); only the ones
+	// waiting for their event (status 9) take x0.7. The port had the two the other way round until
+	// 2026-10-31, so every placed mannequin had 0.7 of its health and endurance
+	float scale = 1.0f;
 	switch (status) {
 	case 1: scale = 1.2f; break;
 	case 2: scale = 0.5f; break;
@@ -2093,7 +2171,7 @@ static void mkn_init(Enemy* e, int status)
 		// lies in wait (event state 1 in the PC, it gets up when the story says so): wakes like a
 		// standing mannequin here
 		e->type = 6;
-		scale = 1.0f;
+		scale = 0.7f;
 		break;
 	case 10: case 11: scale = 1.0f; break;   // drops from the ceiling (not ported): stands instead
 	default: break;
@@ -2120,10 +2198,10 @@ static float nse_turn_rate(const EnPlayer* p)                  // 0x4b9f50: radi
 	return t[s_diff] * (light_index(p) == 3 ? 0.5f : 1.0f) * 0.05235988f;
 }
 
-// The walk speed factor (+0xa8) moves toward its target (+0xac) by at most 0.01 a frame.
+// The walk speed factor (+0xa8) moves toward its target (+0xac) by at most 0.01 a PC frame.
 static void nse_speed_drift(Enemy* e, float dt)
 {
-	float d = e->speed_goal - e->speed_mul, m = 0.01f * dt * 60.0f;
+	float d = e->speed_goal - e->speed_mul, m = 0.01f * pc_frames(dt);
 	e->speed_mul += d < -m ? -m : d > m ? m : d;
 	e->rate = nse_walk_rate(e);
 }
@@ -2142,13 +2220,13 @@ static void nse_wander(Enemy* e, const EnPlayer* p, float dt)          // 0x4ba3
 		e->speed_mul = e->speed_goal = rnd() * 0.5f + 1.0f;
 		e->slv = 1;
 	} else if (e->slv == 1) {
-		float r = rnd();
-		if (r < 0.002f * dt * 60.0f) {
+		float r = rnd(), k = pc_frames(dt);      // one roll a PC frame (0x4ba3f0)
+		if (r < 0.002f * k) {
 			// stops to twitch for a while, with a gurgle (0x4ba100, SE 0x2f4d / 0x2f4e)
 			pose(e, A_STAND);
 			play_at(e, 12109 + (int)(rnd() * 1.99f));
 			e->slv = 2;
-		} else if (r < 0.02f * dt * 60.0f) {
+		} else if (r < 0.02f * k) {
 			e->speed_goal = rnd() * 0.5f + 1.0f;
 			dir += (rnd() - 0.5f) * 0.2094395f;
 		}
@@ -2405,7 +2483,7 @@ static void tyu_wander(Enemy* e, const EnPlayer* p, float dt)          // 0x4af6
 		e->path_angle = e->yaw;
 		e->slv = 1;
 	}
-	if (rnd() < 0.003f * dt * 60.0f)
+	if (chance(0.003f, dt))              // 0.003 a PC frame (0x4af6f0)
 		e->path_angle = wrap(e->path_angle + rnd() * 1.0471976f);
 	steer(e, e->x + sinf(e->path_angle) * 500.0f, e->z + cosf(e->path_angle) * 500.0f);
 	tyu_move(e, tyu_speed(), dt);
@@ -2710,7 +2788,7 @@ static void tyu_on_ceiling(Enemy* e, const EnPlayer* p, float dt)       // 0x4b0
 	e->vx = e->vz = 0.0f, e->hb = 0.0f;
 	if (check_damage(e)) { tyu_fall(e); return; }
 	if (e->slv == 0) { anim_set(e, 1); e->slv = 1; }
-	if (rnd() < 0.01f * dt * 60.0f) e->yaw = wrap(e->yaw + rnd() * 1.0471976f);
+	if (chance(0.01f, dt)) e->yaw = wrap(e->yaw + rnd() * 1.0471976f);   // 0.01 a PC frame (0x4b00f0)
 	if (s_col && !ceiling_clear(e, e->yaw)) {
 		for (int n = 1; n <= 12; n++) {
 			float a = wrap(e->yaw + ((n & 1) ? 1.0f : -1.0f) * ((n + 1) / 2) * 0.2617994f);
@@ -6167,6 +6245,7 @@ void enemy_push_apart(float jx, float jz, float jy, float jyaw, float jr, float 
 
 void enemy_update(const EnPlayer* p, float dt)
 {
+	s_dt = dt;
 	s_px = p->x, s_pz = p->z;
 	for (int i = 0; i < ENEMY_MAX; i++) {    // where the push columns start (enemy_push_apart)
 		s_was_ok[i] = s_en[i].used;
@@ -6178,8 +6257,8 @@ void enemy_update(const EnPlayer* p, float dt)
 	}
 	moths_update(dt);
 	for (int i = 0; i < 8; i++)
-		if (s_comm[i].time > 0)
-			s_comm[i].time -= (int)(dt * 60.0f + 0.5f);
+		if (s_comm[i].time > 0.0f)
+			s_comm[i].time -= pc_frames(dt);
 	EnPlayer mp;
 	bool with_maria = maria_target(p, &mp);
 	for (int i = 0; i < ENEMY_MAX; i++) {
