@@ -200,6 +200,9 @@ void prog_abort(void);
 // EventMain (0x48ecb0) clears it every frame before the program runs. bgm.c reads it.
 int prog_demo_number(void);
 int prog_choice_waiting(void);         // a choice is up: how many answers (0 none), for playtest.c
+// The choice up now for the touch screen: its answers, the one chosen (written by a tap) and the
+// question; 0 when none.
+int prog_choice(const char* const** labels, int** answer, const char** title);
 
 // Called by the program helpers; the engine hook decides what to show. True when finished.
 bool prog_demo_request(int id);

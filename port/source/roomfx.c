@@ -477,6 +477,35 @@ static bool load(C3D_Tex* tex, const char* pack_dir, const char* name)
 	return true;
 }
 
+// Port only, no PC counterpart (port/STATUS.md section 3): a soft additive glow that enemy.c posts
+// for the frame (Pyramid Head behind the bars, red_bars_glow). A camera-facing quad of a 64x64
+// alpha blob (1 - r^2)^3 made here, tested against the scene's depth without writing it, so the bars,
+// the walls and the figure in front of it cut it, and fogged like the map.
+static C3D_Tex s_glow_tex;
+static bool s_glow_ok, s_glow_on;
+static float s_glow_at[3], s_glow_r[2], s_glow_rgba[4];
+static V* s_glow_v;                      // 4 sets of 4 vertices, one per draw in turn
+static int s_glow_n;
+
+static bool make_glow(void)
+{
+	if (!C3D_TexInit(&s_glow_tex, 64, 64, GPU_A8))
+		return false;
+	static const u8 m[8] = { 0, 1, 4, 5, 16, 17, 20, 21 };
+	u8* d = (u8*)s_glow_tex.data;
+	for (int y = 0; y < 64; y++)
+		for (int x = 0; x < 64; x++) {
+			float u = (x + 0.5f) / 32.0f - 1.0f, v = (y + 0.5f) / 32.0f - 1.0f, a = 1.0f - (u * u + v * v);
+			a = a < 0.0f ? 0.0f : a * a * a;
+			d[((y >> 3) * 8 + (x >> 3)) * 64 + (m[x & 7] | m[y & 7] << 1)] = (u8)(a * 255.0f);
+		}
+	C3D_TexFlush(&s_glow_tex);
+	C3D_TexSetFilter(&s_glow_tex, GPU_LINEAR, GPU_LINEAR);
+	C3D_TexSetWrap(&s_glow_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+	s_glow_v = linearAlloc(16 * sizeof(V));
+	return s_glow_v != NULL;
+}
+
 bool roomfx_init(const char* pack_dir, RoomFxBindFn bind)
 {
 	s_bind = bind;
@@ -485,6 +514,7 @@ bool roomfx_init(const char* pack_dir, RoomFxBindFn bind)
 		s_tex_ok[i] = load(&s_tex[i], pack_dir, names[i]);
 	for (int i = 0; i < 2; i++)
 		s_verts[i] = linearAlloc(MAX_VERTS * sizeof(V));
+	s_glow_ok = make_glow();
 	return s_tex_ok[0] && s_tex_ok[1] && s_tex_ok[2] && s_verts[0] && s_verts[1];
 }
 
@@ -497,6 +527,19 @@ void roomfx_exit(void)
 		linearFree(s_verts[i]);
 	memset(s_tex_ok, 0, sizeof s_tex_ok);
 	s_verts[0] = s_verts[1] = NULL;
+	if (s_glow_ok)
+		C3D_TexDelete(&s_glow_tex);
+	linearFree(s_glow_v);
+	s_glow_v = NULL;
+	s_glow_ok = s_glow_on = false;
+}
+
+void roomfx_glow(const float at[3], float half_w, float half_h, const float rgba[4])
+{
+	memcpy(s_glow_at, at, sizeof s_glow_at);
+	memcpy(s_glow_rgba, rgba, sizeof s_glow_rgba);
+	s_glow_r[0] = half_w, s_glow_r[1] = half_h;
+	s_glow_on = true;
 }
 
 void roomfx_room_loaded(void) { s_reload = true; }
@@ -609,6 +652,45 @@ static void sprite_uv(bool smoke, int k, float uv[4][2])
 	}
 }
 
+// roomfx_glow's quad (port only): the colour is the vertex colour, the blob only its alpha, added
+// as SRCALPHA, ONE
+static void draw_glow(const C3D_Mtx* proj, const C3D_Mtx* view)
+{
+	if (!s_glow_on || !s_glow_ok || !s_bind)
+		return;
+	s_glow_on = false;                   // posted again for the next frame (and the second eye)
+	float rt[3] = { view->r[0].x, view->r[0].y, view->r[0].z };
+	float dn[3] = { -view->r[1].x, -view->r[1].y, -view->r[1].z };
+	static const float corner[4][2] = { { -1, -1 }, { -1, 1 }, { 1, -1 }, { 1, 1 } };
+	V* v = s_glow_v + 4 * (s_glow_n++ & 3);
+	for (int n = 0; n < 4; n++) {
+		float q[3];
+		for (int k = 0; k < 3; k++)
+			q[k] = s_glow_at[k] + corner[n][0] * rt[k] * s_glow_r[0] + corner[n][1] * dn[k] * s_glow_r[1];
+		v[n] = vert(q, corner[n][0] * 0.5f + 0.5f, 0.5f - corner[n][1] * 0.5f, s_glow_rgba);
+	}
+	GSPGPU_FlushDataCache(v, 4 * sizeof(V));
+	s_bind(proj, view);
+	C3D_DepthMap(true, -1.0f, 0.0f);
+	C3D_DepthTest(true, GPU_GREATER, GPU_WRITE_COLOR);
+	C3D_AlphaTest(false, GPU_ALWAYS, 0);
+	C3D_CullFace(GPU_CULL_NONE);
+	// the room's fog, still bound from the scene: black where the glow is used, so it fades the glow
+	// with the distance as it does the map
+	C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
+	C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE, GPU_ZERO, GPU_ONE);
+	C3D_TexEnv* env = C3D_GetTexEnv(0);
+	C3D_TexEnvInit(env);
+	C3D_TexEnvSrc(env, C3D_RGB, GPU_PRIMARY_COLOR, 0, 0);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+	C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
+	C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
+	C3D_TexEnvInit(C3D_GetTexEnv(1));
+	C3D_TexEnvInit(C3D_GetTexEnv(2));
+	C3D_TexBind(0, &s_glow_tex);
+	flush(v, v + 4, GPU_TRIANGLE_STRIP);
+}
+
 void roomfx_draw(const C3D_Mtx* proj, const C3D_Mtx* view)
 {
 	if (!s_bind || !s_verts[0] || !s_verts[1])
@@ -658,6 +740,7 @@ void roomfx_draw(const C3D_Mtx* proj, const C3D_Mtx* view)
 	s_drawn = (int)(v - base) / 6;
 	if (v > base)
 		GSPGPU_FlushDataCache(base, (u32)((u8*)v - (u8*)base));
+	draw_glow(proj, view);
 	C3D_DepthMap(true, -1.0f, 0.0f);
 }
 

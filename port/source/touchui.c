@@ -1160,7 +1160,7 @@ static void status_check(void)
 // What is up, most important first.
 static int top_menu(void)
 {
-	static const int order[] = { TOUI_OPTIONS, TOUI_SAVE, TOUI_PAUSE, TOUI_ITEMS, TOUI_MEMOS, TOUI_LEVELS, TOUI_TITLE };
+	static const int order[] = { TOUI_OPTIONS, TOUI_SAVE, TOUI_CHOICE, TOUI_PAUSE, TOUI_ITEMS, TOUI_MEMOS, TOUI_LEVELS, TOUI_TITLE };
 	for (u32 i = 0; i < sizeof order / sizeof *order; i++)
 		if (s_menus[order[i]].on)
 			return order[i];

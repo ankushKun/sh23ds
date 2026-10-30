@@ -5335,14 +5335,15 @@ int main(void)
 		down = menu_keys(down, held, dt, menu_frame());
 		if (s_debug_die && frame == s_debug_die && s_state == ST_GAME)
 			combat_damage_james(0x3e, JAMES_HP_MAX * (float)s_debug_die_pct / 100.0f, s_px, s_pz);
-		// console test: SELECT held with R steps the fog test (fog.c); the R press goes no further
-		if ((held & KEY_SELECT) && (down & KEY_R)) {
+		// console tests, with the debug HUD on only (debug.txt "debughud 1"): players hit them by
+		// accident. SELECT held with R steps the fog test (fog.c); the R press goes no further
+		if (s_debug_hud && (held & KEY_SELECT) && (down & KEY_R)) {
 			s_test_shown = fog_debug_cycle() >= 0 ? 3.0f : 0.0f;
 			down &= ~(KEY_R | KEY_SELECT);
 			held &= ~KEY_R;
 		}
 		// and SELECT held with L steps the map test (s_map_test)
-		if ((held & KEY_SELECT) && (down & KEY_L)) {
+		if (s_debug_hud && (held & KEY_SELECT) && (down & KEY_L)) {
 			s_map_test = (s_map_test + 1) % MAP_TESTS;
 			perf_event("maptest", "mode %d: %s", s_map_test, MAP_TEST_NAME[s_map_test]);
 			down &= ~(KEY_L | KEY_SELECT);
@@ -5862,6 +5863,18 @@ int main(void)
 		}
 		pause_draw();
 		inventory_draw();
+		{
+			// a stage program's question (prog.c p_choice): its answers under it, as the pause menu asks
+			static const TouiButton ok[2] = { { "OK", KEY_A }, { "Back", KEY_B } };
+			const char* const* labels;
+			int* answer;
+			const char* title;
+			int n = s_paused || s_inv_open ? 0 : prog_choice(&labels, &answer, &title);
+			if (n)
+				touchui_menu_ex(TOUI_CHOICE, title, labels, n, answer, ok, 2, 0, TOUI_ONE_TAP);
+			else
+				touchui_menu_close(TOUI_CHOICE);
+		}
 		static int s_sub_serial = -1;
 		if (demo_active() || (s_free_voice && !s_msg_page && !s_save_prompt)) {
 			int serial;

@@ -152,7 +152,7 @@ The sprites' console flashes (opaque white rectangles, worst on the town roads) 
 be the sprites past the far plane or before the near plane, which the fog now cuts to both planes
 on the CPU (2026-10-19); console confirmation pending.
 
-SELECT held with L steps through the map test (`main.c` `s_map_test`, 7 modes: normal, nearest
+With `debughud 1` in `debug.txt`, SELECT held with L steps through the map test (`main.c` `s_map_test`, 7 modes: normal, nearest
 filtering, no texture, no flashlight stage, no fog, flat colour without fog, this room only). Its
 name stays top left while a mode other than normal is on, and `perf.txt` logs each change. It is
 for the light lines along the ground's triangle edges (V18), which show on a console and not in

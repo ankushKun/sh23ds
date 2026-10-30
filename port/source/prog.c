@@ -457,7 +457,38 @@ void prog_abort(void)
 }
 
 static int s_choice_n;               // answers of the choice waiting last frame (playtest.c)
+static const char* const* s_choice_labels;
+static int* s_choice_answer;
+static char s_choice_title[96];      // the question: the last page of its message, on one line
 int prog_choice_waiting(void) { return s_running ? s_choice_n : 0; }
+
+int prog_choice(const char* const** labels, int** answer, const char** title)
+{
+	if (!s_running || !s_choice_n)
+		return 0;
+	*labels = s_choice_labels, *answer = s_choice_answer, *title = s_choice_title;
+	return s_choice_n;
+}
+
+// The message's last page (pages split by '\f'), its lines joined with spaces
+static void choice_title(const char* text)
+{
+	s_choice_title[0] = 0;
+	if (!text)
+		return;
+	const char* page = strrchr(text, '\f');
+	page = page ? page + 1 : text;
+	int k = 0;
+	for (const char* c = page; *c && k < (int)sizeof s_choice_title - 1; c++) {
+		char ch = *c == '\n' ? ' ' : *c;
+		if (ch == ' ' && (k == 0 || s_choice_title[k - 1] == ' '))
+			continue;
+		s_choice_title[k++] = ch;
+	}
+	while (k > 0 && s_choice_title[k - 1] == ' ')
+		k--;
+	s_choice_title[k] = 0;
+}
 
 int prog_demo_number(void) { return s_demo_no; }
 void p_demo_number(int n) { s_demo_no = n; }
@@ -740,10 +771,10 @@ int p_question(Prog* p, int msg)
 }
 
 // A choice with up to four answers after the message (the PC's code ff f9 lists them in the text;
-// the programs give the labels). B picks the last one, like "No".
+// the programs give the labels). B picks the last one, like "No". The touch screen shows it as a
+// menu under the question (main.c, prog_choice), the way the pause menu asks.
 int p_choice(Prog* p, int msg, const char* const* labels, int n)
 {
-	static char panel[256];
 	switch (p->sub) {
 	case 0:
 	case 1:
@@ -751,9 +782,12 @@ int p_choice(Prog* p, int msg, const char* const* labels, int n)
 			return 0;
 		p->answer = 0;
 		p->sub = 2;
+		choice_title(msg >= 0 ? ev_stage_message(msg) : NULL);
 		// fallthrough
 	case 2:
 		s_choice_n = n;
+		s_choice_labels = labels;
+		s_choice_answer = &p->answer;
 		if (p->down & (KEY_DLEFT | KEY_DUP))
 			p->answer = (p->answer + n - 1) % n;
 		if (p->down & (KEY_DRIGHT | KEY_DDOWN))
@@ -761,21 +795,10 @@ int p_choice(Prog* p, int msg, const char* const* labels, int n)
 		if (p->down & KEY_B)
 			p->answer = n - 1;
 		if (p->down & (KEY_A | KEY_B)) {
-			p_panel(NULL);
 			p->sub = 3;
+			s_choice_n = 0;
 			return 1;
 		}
-		{
-			int k = snprintf(panel, sizeof panel, "\n");
-			if (n == 2)
-				k += snprintf(panel + k, sizeof panel - k, "   %c %s        %c %s\n\n\n\n\n\n", p->answer ? ' ' : '>',
-				              labels[0], p->answer ? '>' : ' ', labels[1]);
-			else
-				for (int i = 0; i < n; i++)
-					k += snprintf(panel + k, sizeof panel - k, "   %c %s\n", p->answer == i ? '>' : ' ', labels[i]);
-			snprintf(panel + k, sizeof panel - k, "\n               D-pad: choose   A: OK");
-		}
-		p_panel(panel);
 		return 0;
 	default:
 		return 1;

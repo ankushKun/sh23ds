@@ -11,22 +11,26 @@
 #include "t3xcap.h"
 #include "profile.h"
 
-#define CHR_LIGHT_SCALE 0.5f
+static int s_light_range = 2;          // chr_light_range: what chr_draw's combiner multiplies by
 
 static float light_clamp(float v, float max) { return v < 0.0f ? 0.0f : v > max ? max : v; }
+
+void chr_light_range(int k) { s_light_range = k == 4 ? 4 : 2; }
+int chr_light_range_now(void) { return s_light_range; }
 
 void chr_light_color(C3D_Light* l, float r, float g, float b, float mat_diffuse)
 {
 	float max = mat_diffuse > 0.0f ? 1.0f / mat_diffuse : 1.0f;   // the register holds material x light
-	C3D_LightDiffuse(l, light_clamp(r * CHR_LIGHT_SCALE, max), light_clamp(g * CHR_LIGHT_SCALE, max),
-	                 light_clamp(b * CHR_LIGHT_SCALE, max));
+	float k = 1.0f / (float)s_light_range;
+	C3D_LightDiffuse(l, light_clamp(r * k, max), light_clamp(g * k, max), light_clamp(b * k, max));
 	C3D_LightSpecular0(l, 0.0f, 0.0f, 0.0f);     // the characters' combiner uses no specular
 	C3D_LightSpecular1(l, 0.0f, 0.0f, 0.0f);
 }
 
 void chr_light_ambient(C3D_LightEnv* env, float r, float g, float b)
 {
-	C3D_LightEnvAmbient(env, r * CHR_LIGHT_SCALE, g * CHR_LIGHT_SCALE, b * CHR_LIGHT_SCALE);
+	float k = 1.0f / (float)s_light_range;
+	C3D_LightEnvAmbient(env, r * k, g * k, b * k);
 }
 
 
@@ -625,13 +629,14 @@ void chr_draw(Character* c, int uBones)
 		}
 		if ((int)textured != env_mode) {
 			// stage 0 doubles the half-strength lighting (chr_light_color) and clamps it to 1, as
-			// the fragment lighting's own sum would be; stage 1 puts the texture on it
+			// the fragment lighting's own sum would be (x4 for a quarter-strength one, chr_light_range);
+			// stage 1 puts the texture on it
 			C3D_TexEnv* env = C3D_GetTexEnv(0);
 			C3D_TexEnvInit(env);
 			C3D_TexEnvSrc(env, C3D_RGB, GPU_FRAGMENT_PRIMARY_COLOR, 0, 0);
 			C3D_TexEnvSrc(env, C3D_Alpha, textured ? GPU_TEXTURE0 : GPU_PRIMARY_COLOR, 0, 0);
 			C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-			C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);
+			C3D_TexEnvScale(env, C3D_RGB, s_light_range == 4 ? GPU_TEVSCALE_4 : GPU_TEVSCALE_2);
 			C3D_TexEnv* e1 = C3D_GetTexEnv(1);
 			C3D_TexEnvInit(e1);
 			if (textured) {

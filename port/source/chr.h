@@ -120,3 +120,10 @@ void chr_set_parts(Character* c, int a, int b, int d);
 // what the register holds, and chr_draw doubles them back.
 void chr_light_color(C3D_Light* l, float r, float g, float b, float mat_diffuse);
 void chr_light_ambient(C3D_LightEnv* env, float r, float g, float b);
+// A few record lights are brighter than that (the red one before Pyramid Head behind the bars, 5 in
+// ap50; ap18's 5, rr21's 12.7): the PC's character shader 0x8a2ed8 adds every light unclamped and
+// clamps only the sum, so such a light saturates where its falloff is still low. Range 4 sends the
+// colours above and the ambient at a quarter and chr_draw multiplies by four; 2 is the default.
+// chrlight.c picks it per character and sets 2 again in chrlight_end.
+void chr_light_range(int k);
+int chr_light_range_now(void);

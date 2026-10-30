@@ -567,9 +567,11 @@ static bool idle(const PtState* st)
 
 // While waiting: close messages, skip scenes, answer choices, cancel save prompts, leave the
 // results screen. Returns true when it pressed something.
+static bool s_noauto;                // "noauto 1": nothing answered or skipped on its own (interface shots)
+
 static void auto_advance(const PtState* st)
 {
-	if (s_npress || ++s_auto_f < 10)
+	if (s_noauto || s_npress || ++s_auto_f < 10)
 		return;
 	if (st->state == PT_RESULTS) {
 		// the results go on with START; the clear data question and slot screen are left with B
@@ -913,6 +915,7 @@ static void step(const PtState* st)
 	}
 	if (!strcmp(op, "walkdebug")) { s_walkdebug = atoi(arg) != 0; next(); return; }
 	if (!strcmp(op, "fast")) { s_fast = atoi(arg) != 0; next(); return; }
+	if (!strcmp(op, "noauto")) { s_noauto = atoi(arg) != 0; next(); return; }
 	if (!strcmp(op, "god")) { s_god = atoi(arg) != 0; combat_test_god(s_god); next(); return; }
 	if (!strcmp(op, "noenemies")) { s_noenemies = atoi(arg) != 0; next(); return; }
 	if (!strcmp(op, "autoskip")) { s_skip = atoi(arg) != 0; next(); return; }

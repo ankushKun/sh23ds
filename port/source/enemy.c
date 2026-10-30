@@ -27,6 +27,7 @@
 #include "bgm.h"
 #include "perf.h"
 #include "mist.h"
+#include "roomfx.h"
 
 #define PI 3.14159265f
 #define MAX_LIST 512
@@ -3139,6 +3140,39 @@ static void red_update(Enemy* e, const EnPlayer* p, float dt)       // 0x4c0b00
 	red_sounds(e, f0, dt);
 }
 
+// Behind the bars (event control type 0, status 12) the PC lights him with nothing of his own: the
+// red is ap50's record point light 4 (0x7fa758 in the record at 0x7fa5e8: colour 5, 0.9, 0.9, falloff
+// 500..900, at (-99400, -1000, 31275), 375 in front of him at the height of his helmet), a character light
+// like any other (chrlight.c, which lets it go past the doubled range as 0x8a2ed8 does).
+//
+// Port only, no PC counterpart (port/STATUS.md section 3): to make him read as a figure standing in
+// red light from the far end of the corridor, he also gets a red point light behind him (as seen
+// from the camera), which catches his outline, and a soft red haze behind him that the bars and
+// the corridor's walls cut, swelling and fading slowly. Both only while he stands there; one light
+// more on him and one quad.
+static void red_bars_glow(const Enemy* e, const C3D_Mtx* view)
+{
+	float cam[3];
+	for (int k = 0; k < 3; k++)          // eye = -R^T t (the view's rows: right, up, back)
+		cam[k] = -(view->r[0].c[3 - k] * view->r[0].w + view->r[1].c[3 - k] * view->r[1].w +
+		           view->r[2].c[3 - k] * view->r[2].w);
+	float dx = e->x - cam[0], dz = e->z - cam[2], n = sqrtf(dx * dx + dz * dz);
+	if (n < 1.0f)
+		return;
+	dx /= n, dz /= n;                    // away from the camera, level
+	const float rim[3] = { e->x + dx * 400.0f, e->y - 800.0f, e->z + dz * 400.0f };
+	static const float rim_col[3] = { 4.0f, 0.3f, 0.2f };
+	chrlight_add_point(rim, rim_col, 200.0f, 900.0f);
+	// narrower than the corridor (700 wide, its ceiling about 1260 up), so it has faded before the
+	// walls and the ceiling cut it
+	// it breathes: a slow, uneven swell (two beats about every 3.5 s), never quite out
+	float t = (float)((double)svcGetSystemTick() / SYSCLOCK_ARM11);
+	float beat = 0.5f + 0.5f * sinf(t * 1.8f) * (0.75f + 0.25f * sinf(t * 0.7f));
+	const float haze[3] = { e->x + dx * 200.0f, e->y - 600.0f, e->z + dz * 200.0f };
+	const float haze_col[4] = { 255.0f, 18.0f, 10.0f, 110.0f + 50.0f * beat };
+	roomfx_glow(haze, 330.0f, 650.0f, haze_col);
+}
+
 // 0x4bf2d0 enREDInitData
 static void red_init(Enemy* e, int status)
 {
@@ -6080,6 +6114,8 @@ void enemy_draw(const C3D_Mtx* view, int uModelView, int uBones, float dt)
 		}
 		float at[3] = { e->x, e->y, e->z };
 		chrlight_at(at, false);         // the PC's per-character light list (chrlight.c)
+		if (e->kind == EN_KIND_RED && e->ctrl == 4 && e->type == 0)
+			red_bars_glow(e, view);     // port only: behind the bars
 		shadow_cast(c, at, e->yaw);     // its flashlight shadow, if it has a .kg1 (shadow.c)
 		chr_draw(c, uBones);
 	}

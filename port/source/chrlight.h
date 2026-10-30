@@ -28,6 +28,9 @@ void chrlight_begin(const C3D_Mtx* view, const float ambient[3], float level, fl
 // Before each character's chr_draw: its root position. James does not light himself with his own
 // flashlight.
 void chrlight_at(const float pos[3], bool james);
+// Port only (no PC counterpart): after chrlight_at, one more point light for that character, with
+// the PC's falloff from start to end. Colours are in the range chrlight_at chose for it.
+void chrlight_add_point(const float pos[3], const float col[3], float start, float end);
 // After the characters: their lights off, the game's environment bound again.
 void chrlight_end(void);
 // Scales the ambient of the next characters (demo.c's EnemyRevealLighting factor), 1 = normal.

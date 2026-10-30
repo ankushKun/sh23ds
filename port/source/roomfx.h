@@ -25,8 +25,12 @@ void roomfx_room_loaded(void);
 // One game frame (dt 0 while paused): the classes run in steps of 1/30 s as on the PC. room is the
 // PC room id (bgm_room_id); a change of it counts as entering a room too.
 void roomfx_update(float dt, int room);
-// After the opaque scene, with the light environment unbound: the flames and the smoke.
+// After the opaque scene, with the light environment unbound: the flames and the smoke, then the
+// glow posted for the frame.
 void roomfx_draw(const C3D_Mtx* proj, const C3D_Mtx* view);
+// Port only (no PC counterpart): a soft additive glow at a world place for the next roomfx_draw,
+// a camera-facing quad of these half sizes; rgba 0..255, alpha the strength. Post it every frame.
+void roomfx_glow(const float at[3], float half_w, float half_h, const float rgba[4]);
 // The lake's light, drawn in front of everything (the PC puts it at screen depth 0.01).
 void roomfx_draw_flare(const C3D_Mtx* proj, const C3D_Mtx* view);
 const char* roomfx_status(void);         // debug HUD line

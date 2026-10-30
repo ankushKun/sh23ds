@@ -43,8 +43,9 @@ circle pad wins while it is pushed, and menus keep the D-Pad for moving through 
 the map can still be bound to the D-Pad or the C-Stick on the Buttons page. The Control Type defaults to Directional
 Style; an `options.txt` written before that (no `optver` line) is moved to it once.
 
-Console test combos (`main.c`): SELECT held with R steps the fog test (`chr.c`, port/TESTING.md),
-and SELECT held with L the map test. (An earlier SELECT + L frame capture froze the console and was
+Console test combos (`main.c`), only with the debug HUD on (`debughud 1` in `debug.txt`, since players
+hit them by accident): SELECT held with R steps the fog test (`chr.c`, port/TESTING.md), and SELECT
+held with L the map test. (An earlier SELECT + L frame capture froze the console and was
 taken out.)
 
 Pressing both strafe buttons together also turns James round, as on the PC (0x54b290). Menus keep

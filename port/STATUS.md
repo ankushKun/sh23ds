@@ -50,7 +50,9 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
   three directional lights per vertex, the material modes, the fog curve, clip planes, clear colour,
   James' flashlight as a fragment spotlight, brightness 1..7.
 - Character lighting (`chrlight.c`): the room's parallel lights plus each character's strongest point and
-  spot lights by the PC's influence formula, kept inside the GPU's 8-bit light range.
+  spot lights by the PC's influence formula, kept inside the GPU's 8-bit light range; a character near
+  a record light brighter than twice that range (ap50's red one on Pyramid Head, rr33's lamp) is lit at
+  a quarter and multiplied by four, as the PC's shader adds its lights unclamped.
 - The fog particle layer (`fog.c`, from the PS2 Fog module in the DC exe): drifting sprites, the screen
   layer, the `.fcl` areas, wind, the density grid, James pushing the fog, the wall test and blow points.
 - The PC's five European languages (English, French, German, Italian, Spanish) with its Language
@@ -280,6 +282,11 @@ Ordered by weight. Each line names where the work starts.
   (0x522b50; packs made before S3L and stagewalls.bin version 2 keep two-sided walls); the PC tests
   the previous frame's list where the port tests the current one. `clAddDynamicFloor` (0x522910) is not
   ported (stage 7 room 0x18, stage 34), nor four near-flat planes in stage 21's lists.
+- Pyramid Head behind the bars (stage 7, `enemy.c` `red_bars_glow`) has two touches of the port's
+  own over the PC's light on him (ap50's red record light, ported): a red point light behind him as
+  seen from the camera, which catches his outline, and a soft red haze behind him (`roomfx.c`
+  `roomfx_glow`, one additive quad that the bars, walls and fog cut). Both only while he stands
+  there.
 - Getting James out of a place he can't leave (`main.c` `unstick_update`) is the port's own. The
   autotest's stuck scan still finds 4 at the worst frame time (ma41, and three in ca12 and ps149
   that start inside solid blocks).

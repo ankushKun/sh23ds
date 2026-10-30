@@ -224,6 +224,7 @@ void chrlight_begin(const C3D_Mtx* view, const float ambient[3], float level, fl
 	L.active = true;
 	L.view = *view;
 	L.bright = bright;
+	chr_light_range(2);
 	float lv = level > 1.0f ? 1.0f : level;
 	for (int i = 0; i < 3; i++)        // 0x50d950 x material ambient 0.3 (0x501190)
 		L.amb[i] = (2.1f * ambient[i] + 0.3f * lv) * 0.3f * bright;
@@ -257,7 +258,12 @@ static void set_extra(C3D_Light* g, Slot* s, float k)
 {
 	C3D_FVec p = Mtx_MultiplyFVec4(&L.view, FVec4_New(s->pos[0], s->pos[1], s->pos[2], 1.0f));
 	C3D_LightPosition(g, &p);
-	chr_light_color(g, s->col[0] * k * L.bright, s->col[1] * k * L.bright, s->col[2] * k * L.bright, 0.7f);
+	// the flashlight keeps the doubled range's ceiling (2 after the 0.7 material) in either range,
+	// as it has always been drawn here
+	float c[3], cap = s == &L.fl ? 2.0f / 0.7f : 1e9f;
+	for (int i = 0; i < 3; i++)
+		c[i] = s->col[i] * k * L.bright < cap ? s->col[i] * k * L.bright : cap;
+	chr_light_color(g, c[0], c[1], c[2], 0.7f);
 	C3D_LightDistAttn(g, &s->da);
 	C3D_LightDistAttnEnable(g, true);
 	bool spot = s->kind == K_SPOT;
@@ -314,24 +320,27 @@ static int by_influence(const void* a, const void* b)
 	return x < y ? 1 : x > y ? -1 : 0;
 }
 
+static float max3(const float* c) { return c[0] > c[1] ? (c[0] > c[2] ? c[0] : c[2]) : (c[1] > c[2] ? c[1] : c[2]); }
+
 void chrlight_at(const float pos[3], bool james)
 {
 	if (!L.active)
 		return;
 	C3D_LightEnvBind(L.env);             // (a scene's own lights may have been bound meanwhile)
-	chr_light_ambient(L.env, L.amb[0], L.amb[1], L.amb[2]);
-	int g = 0;
 	// parallels (UpdateParallels, at most three here): record lights 1..3 and the fakes
+	float pdir[CL_PAR][3], pcol[CL_PAR][3];
+	int g = 0;
 	for (int i = 1; i < NSLOT && g < CL_PAR; i++) {
 		Slot* s = &L.s[i];
 		if (s->kind != K_PARALLEL)
 			continue;
 		if (s->fake) {
-			float dir[3], col[3];
-			if (fake_light(s, pos, dir, col))
-				set_parallel(&L.light[g++], dir, col);
+			if (fake_light(s, pos, pdir[g], pcol[g]))
+				g++;
 		} else {
-			set_parallel(&L.light[g++], s->dir, s->col);
+			memcpy(pdir[g], s->dir, sizeof pdir[g]);
+			memcpy(pcol[g], s->col, sizeof pcol[g]);
+			g++;
 		}
 	}
 	// points and spots by influence (0x50c3d0 with the character radius 800, 0x50ce10)
@@ -353,17 +362,49 @@ void chrlight_at(const float pos[3], bool james)
 	int room = CL_EXTRA - (fl ? 1 : 0);
 	if (room > profile_chr_point_lights())   // fewer on the low quality level (profile.c)
 		room = profile_chr_point_lights();
-	int e = 0;                           // packed after the parallels: lights g, g + 1, ...
+	Slot* ex[CL_EXTRA];
+	int e = 0;
 	for (int i = 0; i < n && e < room; i++)
 		if (pick[i].influence > 0.0f)
-			set_extra(&L.light[g + e++], pick[i].s, 1.0f);
+			ex[e++] = pick[i].s;
+	// 0x8a2ed8 sums the lights unclamped: a record light over the doubled range (ap50's red one at
+	// 5 x the brightness x the 0.7 material) gets the quadrupled one (chr_light_range)
+	float top = 0.0f;
+	for (int i = 0; i < g; i++)
+		top = max3(pcol[i]) > top ? max3(pcol[i]) : top;
+	for (int i = 0; i < e; i++)
+		top = max3(ex[i]->col) > top ? max3(ex[i]->col) : top;
+	chr_light_range(top * L.bright * 0.7f > 2.0f ? 4 : 2);
+	chr_light_ambient(L.env, L.amb[0], L.amb[1], L.amb[2]);
+	for (int i = 0; i < g; i++)
+		set_parallel(&L.light[i], pdir[i], pcol[i]);
+	for (int i = 0; i < e; i++)          // packed after the parallels: lights g, g + 1, ...
+		set_extra(&L.light[g + i], ex[i], 1.0f);
 	if (fl)
 		set_extra(&L.light[g + e++], &L.fl, 1.0f);
 	for (int i = g + e; i < CL_LIGHTS; i++)
 		C3D_LightEnable(&L.light[i], false);
 	L.used = g + e;
-	snprintf(L.status, sizeof L.status, "chr lights %d par %d extra amb %.2f %.2f %.2f", g, e, L.amb[0], L.amb[1],
-	         L.amb[2]);
+	snprintf(L.status, sizeof L.status, "chr lights %d par %d extra x%d amb %.2f %.2f %.2f", g, e, chr_light_range_now(),
+	         L.amb[0], L.amb[1], L.amb[2]);
+}
+
+// Port only, no PC counterpart (port/STATUS.md section 3): one more point light for the character
+// chrlight_at set up last, in the next free light. Pyramid Head behind the bars gets a red one
+// behind him (enemy.c red_bars_glow).
+void chrlight_add_point(const float pos[3], const float col[3], float start, float end)
+{
+	static Slot rim;
+	if (!L.active || L.used >= CL_LIGHTS)
+		return;
+	if (!rim.luts || rim.start != start || rim.end != end) {
+		rim.kind = K_POINT;
+		falloff(&rim, start, end);
+		slot_luts(&rim);
+	}
+	memcpy(rim.pos, pos, sizeof rim.pos);
+	memcpy(rim.col, col, sizeof rim.col);
+	set_extra(&L.light[L.used++], &rim, 1.0f);
 }
 
 void chrlight_ambient_scale(float k)
@@ -380,6 +421,7 @@ void chrlight_end(void)
 		C3D_LightEnable(&L.light[i], false);
 	C3D_LightEnvAmbient(L.env, 0.0f, 0.0f, 0.0f);
 	C3D_LightEnvBind(L.game);
+	chr_light_range(2);                  // the scenes' own lights and the item viewer use the default
 	L.active = false;
 }
 

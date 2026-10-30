@@ -12,7 +12,7 @@
 // A footer prompt: the button's glyph, then the label. A tap on it presses key.
 typedef struct { const char* label; u32 key; } TouiButton;
 
-enum { TOUI_TITLE, TOUI_LEVELS, TOUI_PAUSE, TOUI_ITEMS, TOUI_MEMOS, TOUI_SAVE, TOUI_OPTIONS, TOUI_MENUS };
+enum { TOUI_TITLE, TOUI_LEVELS, TOUI_PAUSE, TOUI_ITEMS, TOUI_MEMOS, TOUI_SAVE, TOUI_OPTIONS, TOUI_CHOICE, TOUI_MENUS };
 
 void touchui_init(void);                     // after C3D_Init and consoleInit
 void touchui_input(u32* down, u32* held);    // after the keys are read, before the game uses them

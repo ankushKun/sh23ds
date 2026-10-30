@@ -452,7 +452,15 @@ He cannot be killed. The port puts him where the stage programs need him and now
 
 * **Behind the bars** (stage 7, Enemy_List status 12, condition 0x180: flag 68 and not 70): event
   control, idle loop, can not be hit. He leaves when James first enters room 208 after the cry: stage
-  7's `sound_call_after_load` (0x59bc50) plays sound 16000 there and sets flag 70.
+  7's `sound_call_after_load` (0x59bc50) plays sound 16000 there and sets flag 70. He stands at
+  (-99400, 0, 31650) in ap50, 2600 behind the bars (the wall at z 29067, material 11), so James never
+  gets closer than about 2600. His red comes from nothing of his own: ap50's DrawEnvData record
+  (0x7fa5e8) has a fifth point light (0x7fa758) of colour (5, 0.9, 0.9), falloff 500..900, at
+  (-99400, -1000, 31275), 375 in front of him at the height of his helmet. Like every record light it
+  lights characters only, never the map, and nothing turns it on or off. The PC's character shader
+  adds it unclamped (5 x 0.7 = 3.5, so the red channel saturates wherever falloff x N.L passes 0.29);
+  `chrlight.c` does the same through `chr_light_range`. The port also adds a red rim light and a red
+  haze behind him (`red_bars_glow`, its own, STATUS section 3).
 * **The apartment stairwell** (stage 12). EvProgApartBoss (0x596220, program 5) plays the demo and then
   creates him with status 6 at (99846, -2203, -100532), facing -1.374 (0x8e1fe0). The port spawns him
   in `enemy_update` once flag 143 is set and flag 146 is not, so a save in that room brings him back.
