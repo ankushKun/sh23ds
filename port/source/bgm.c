@@ -380,8 +380,8 @@ static void start_page(int page)
 	if (!audio_play_layers(path, 1.0f))       // tracks start silent and fade in from the areas
 		return;
 	// the file brought to the music's loudness (levels.h) in place of the PC's master; a pack with
-	// no measurement keeps the master, 5 dB up (levels.h: the music 3 dB over its first target)
-	s_master = levels_gain(PACK_DIR "/sound/adx", rel, -1, LEVEL_MUSIC, LEVEL_PEAK_MUSIC, master_for(s_pages[page].start_id) * 1.78f);
+	// no measurement keeps the master, 7 dB up (levels.h: the music 5 dB over its first target)
+	s_master = levels_gain(PACK_DIR "/sound/adx", rel, -1, LEVEL_MUSIC, LEVEL_PEAK_MUSIC, master_for(s_pages[page].start_id) * 2.24f);
 	s_playing_page = page;
 }
 
