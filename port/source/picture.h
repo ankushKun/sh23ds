@@ -12,9 +12,11 @@
 // The scene is drawn into a texture in VRAM (supersample.h makes them), and four quads draw it into
 // the screen's target with one bilinear tap each, half a pixel off diagonally, each blended over
 // the ones before at 1/2, 1/3 and 1/4: the four taps' mean is the filter exactly. It is the item
-// screen's way (itemview.c), all in the frame's one command list: a mid-frame C3D_FrameSplit with a
-// GX_TextureCopy of the scene froze a New 3DS on the first frame of play, though Azahar ran it. All
-// on texture unit 0: citro3d 1.7.1's C3D_TexBind reads the texture's type for units 1 and 2 without
+// screen's way (itemview.c), all in the frame's one command list, with the movie's quad program and
+// vertex layout (movie.c), which consoles run. Two earlier versions froze a New 3DS on the first
+// frame of Soft though Azahar ran them: one copied the scene out between two halves of the frame
+// (C3D_FrameSplit, GX_TextureCopy), and both drew the taps with a program of the pass's own that took
+// a single vertex attribute, which no other draw in the port does. All on texture unit 0: citro3d 1.7.1's C3D_TexBind reads the texture's type for units 1 and 2 without
 // a NULL check, so a unit there could never be released again (binding NULL faults on a console).
 // The far edges, where a tap would leave the scene, take it as it is. From a supersampled scene
 // (supersample.h) the same taps are the downscale too: they read the larger texture at the
@@ -38,5 +40,8 @@ bool picture_soft(void);            // the soft pass runs (chosen, and ready)
 // which is left bound for the 2D.
 void picture_soft_pass(const PictureTarget* t);
 // debug.txt "picture N": 0 the option decides, 1 the scene drawn back as it is (a check that the
-// pass reproduces it exactly).
+// pass reproduces it exactly), 3 a console probe: the scene drawn straight to the screen as on
+// Sharp and the pass's draws made over it without changing a pixel (picture_probe), so a freeze
+// with 3 is in the draws and one only without it is in drawing the scene into a texture.
 void picture_debug(int mode);
+bool picture_probe(void);            // debug.txt "picture 3"

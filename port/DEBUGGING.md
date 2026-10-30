@@ -33,7 +33,8 @@ it to play normally.
 | `perflog 1` / `memlog 1` / `memtest <n>` | frame time breakdown, memory use, a memory stress test |
 | `gpucost 1` / `mapcull 0` / `fogfill <tenths>` | the GPU cost model in perf.txt, the map sent whole, the fog's area per eye in 3D (PERFORMANCE.md, "3D") |
 | `supersample <0\|1\|2\|3>` | the top screen drawn larger: off, as far as the GPU has the time (the default), always 2x, always 2x2 (VISUALS.md) |
-| `picture 1` | the Picture's copy drawn back without its filter, to check it against Sharp (picture.h) |
+| `picture 1` | the Picture's scene drawn back without its filter, to check it against Sharp (picture.h) |
+| `picture 3` | a console probe: the scene drawn as on Sharp and the soft pass's draws made over it without changing a pixel. A freeze with it is in the pass's draws; one only without it is in drawing the scene into a texture (picture.h) |
 | `die <frame>` / `hurt <frame> <percent>` | a blow at that main-loop frame: a killing one, or one taking that share of James' health (the death and game over, the hit flash) |
 | `mapmips 1` | sample the map textures' mipmaps (off by default: the PC makes its map textures with one level, and the mipmaps of its atlases drew lines along the ground's quad edges) |
 | `streamsync 1` | load streamed tiles on the main thread, to compare with the worker |

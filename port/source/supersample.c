@@ -142,8 +142,9 @@ void supersample_top(bool want, PictureTarget* t)
 	if (lv && !soft(1))
 		lv = 0;
 	t->out = S.top;
-	if (!soft(0)) {
+	if (!soft(0) || picture_probe()) {
 		t->scene = S.top;
+		t->tex = S.soft[0].rt ? &S.soft[0].tex : NULL;   // picture_probe: the draws over the scene
 		t->w = LEVEL[0].w, t->h = LEVEL[0].h;
 		return;
 	}

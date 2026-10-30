@@ -88,7 +88,11 @@ afterwards, as the PC draws its text and noise after its own filters. It costs f
 at the screen's size on both models, in 2D and per eye in 3D, and 1 MB of VRAM (3 MB with the 2x
 scene or a 3D frame's right eye). The first version copied the scene out with the transfer engine
 between two halves of the frame (`C3D_FrameSplit` and `GX_TextureCopy`); Azahar ran it, but a New 3DS
-froze on the first frame of play, so the frame now stays one command list.
+froze on the first frame of play, and so did the second, drawn from a texture in one command list.
+Both drew the taps with a program of their own that took a single vertex attribute, which no other
+draw in the port does, so the pass now draws with the movie's quad program and its two attributes
+(`movie.c`), its taps' texture coordinates worked out on the CPU. `picture 3` in `debug.txt` tells the
+two halves apart on a console if it freezes again.
 
 ### Supersampling
 
@@ -132,7 +136,9 @@ models' textures at their own sizes), against the build before this change on th
 - **Smoke run** (`tools/lr3ds/smoke.sh` on the new pack): 12 of 12 on the New 3DS and Old 3DS models.
 
 On 2026-10-30, the soft pass drawn from a texture target instead of a copy, with the console's own
-saves and options (CONTINUE into the town): `picture 1` against Sharp differs by 0.96 of 255 on
+saves and options (CONTINUE into the town), then again on the movie's program: `picture 1` against
+`picture 3` (the same GPU work, the scene drawn as on Sharp) differs by 0.002 of 255 on the top
+screen. On the texture target alone: `picture 1` against Sharp differs by 0.96 of 255 on
 average with no shifted row or column (the extra GPU work moves the frames' timing; two Sharp runs
 match exactly), 2x on Soft, 3D (`citra_render_3d`, `citra_factor_3d 100`) and the smoke run (12 of
 12 on both models) log nothing a console stops on.

@@ -191,8 +191,9 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
-- 2026-10-30, the soft pass from a texture target (`VISUALS.md`): the first version froze a New 3DS on
-  the first frame after CONTINUE; this one keeps the frame one command list. Azahar with the
+- 2026-10-30, the soft pass from a texture target, drawn with the movie's program (`VISUALS.md`): two
+  versions froze a New 3DS on their first frame of Soft (Sharp played); this one keeps the frame one
+  command list and draws with two vertex attributes like every other draw. Azahar with the
   console's saves and options, 2D, 3D and 2x, smoke run 12 of 12 on both models. Console run pending.
 - 2026-10-30, the Picture and the 2x2 step (`VISUALS.md`): the copy matches Sharp, the ladder climbs to
   2x2, 3D and the Old 3DS model run `1x soft`, smoke run 12 of 12 on both models. Azahar cannot show
