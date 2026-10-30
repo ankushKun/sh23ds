@@ -1,6 +1,7 @@
 // The behind camera (tpcam.h). A 3DS-only system: none of it comes from sh2pc.exe, whose camera is
 // game/view/sh2cam.c. Distances are world units (500 to the metre), angles radians, Y points down.
 #include "tpcam.h"
+#include "camray.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
@@ -29,6 +30,8 @@
 #define FOVY 0.9273f          // 53.13 degrees: the PC camera's default (scr_z 448 of 448 lines)
 
 static struct {
+	int debug;                // debug.txt "tpcam": 1 counts frames with the eye behind the room, 2 also without camray
+	u32 behind, frames;
 	float yaw, pitch, dist;   // the orbit
 	float eye[3], watch[3];
 	float idle;               // seconds since the last orbit input
@@ -39,6 +42,16 @@ static struct {
 } T;
 
 float tpcam_yaw(void) { return T.yaw; }
+void tpcam_debug(int mode) { T.debug = mode; }
+
+bool tpcam_behind_count(u32* behind, u32* frames)
+{
+	if (!T.debug || !T.frames)
+		return false;
+	*behind = T.behind, *frames = T.frames;
+	T.behind = T.frames = 0;
+	return true;
+}
 const float* tpcam_eye(void) { return T.eye; }
 const float* tpcam_watch(void) { return T.watch; }
 const char* tpcam_status(void)
@@ -94,6 +107,42 @@ static bool ceiling(const Collision* col, const float feet[3], float* y)
 	return any && feet[1] - top < 4000.0f;   // a few metres: a room's, not a building's outside
 }
 
+// The share of the way from the pivot to eye that nothing the room draws is in (camray.h): the centre
+// ray and one CAM_RADIUS to each side and above and below, the near plane's size. The side pair and
+// the up and down pair take turns a frame, each keeping its last share for the other's frames.
+static float mesh_share(const float pivot[3], const float eye[3], float yaw)
+{
+	static float pair[2] = { 1.0f, 1.0f };
+	static int turn;
+	turn ^= 1;
+	float rx = cosf(yaw) * CAM_RADIUS, rz = -sinf(yaw) * CAM_RADIUS;
+	const float off[2][2][3] = { { { rx, 0, rz }, { -rx, 0, -rz } }, { { 0, -CAM_RADIUS, 0 }, { 0, CAM_RADIUS, 0 } } };
+	pair[turn] = 1.0f;
+	for (int k = 0; k < 2; k++) {
+		float e[3] = { eye[0] + off[turn][k][0], eye[1] + off[turn][k][1], eye[2] + off[turn][k][2] };
+		pair[turn] = fminf(pair[turn], camray_cast(pivot, e));
+	}
+	return fminf(camray_cast(pivot, eye), fminf(pair[0], pair[1]));
+}
+
+// eye brought in front of the first of the room's triangles between it and the pivot, by the wall
+// gap (no closer to him than 120 units, or than the triangle)
+static void pull_in(const float pivot[3], float eye[3], float yaw, bool wide)
+{
+	if (T.debug == 2)
+		return;                          // the camera as before camray, for the count
+	float t = wide ? mesh_share(pivot, eye, yaw) : camray_cast(pivot, eye);
+	if (t >= 1.0f)
+		return;
+	float d[3] = { eye[0] - pivot[0], eye[1] - pivot[1], eye[2] - pivot[2] };
+	float len = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+	if (len < 1.0f)
+		return;
+	float got = t * len, k = fmaxf(got - WALL_GAP, fminf(120.0f, got)) / len;
+	for (int i = 0; i < 3; i++)
+		eye[i] = pivot[i] + d[i] * k;
+}
+
 // d towards 0 by the share a time constant of 1/rate takes off in dt
 static float ease(float rate, float dt) { return 1.0f - expf(-rate * dt); }
 
@@ -129,6 +178,17 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy)
 	T.ceil_gap = in->col && ceiling(in->col, in->pos, &cy) ? in->pos[1] - cy : 0.0f;
 	if (T.ceil_gap > 0.0f)
 		cap = cy + CEIL_GAP;
+	// and from the room's own triangles straight over him (camray.h): the walls' tops miss a
+	// stairwell's landing or a lowered ceiling, which the camera then rose through
+	{
+		float up[3] = { pivot[0], pivot[1] - 3000.0f, pivot[2] };
+		float t = T.debug == 2 ? 1.0f : camray_cast(pivot, up);
+		if (t < 1.0f) {
+			float y = pivot[1] - 3000.0f * t;
+			cap = fmaxf(cap, fminf(y + CEIL_GAP, pivot[1]));
+			T.ceil_gap = in->pos[1] - y;
+		}
+	}
 
 	// the orbit: the C-Stick (or D-Pad) as a rate, a touch drag as an angle
 	float ox = in->orbit_x + in->drag_x * DRAG_RAD / (dt > 0.0f ? dt * ORBIT_YAW : 1.0f);
@@ -228,6 +288,7 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy)
 		if (eye[1] < cap)
 			eye[1] = cap;
 	}
+	pull_in(pivot, eye, T.yaw, true);    // nor behind anything the room draws
 	float ke = ease(14.0f, dt), kw = ease(16.0f, dt);
 	for (int i = 0; i < 3; i++) {
 		// the orbit's own angles are already smooth; the easing takes the jolts of his steps
@@ -245,6 +306,13 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy)
 			ex = pivot[0] + (ex - pivot[0]) * k, ez = pivot[2] + (ez - pivot[2]) * k;
 		}
 		T.eye[0] = ex, T.eye[2] = ez;
+	}
+	pull_in(pivot, T.eye, T.yaw, false); // the eased eye too: easing must not carry it through
+	if (T.eye[1] < cap)
+		T.eye[1] = cap;
+	if (T.debug) {
+		T.frames++;
+		T.behind += camray_cast(pivot, T.eye) < 1.0f;
 	}
 	T.eye_d = hypotf(T.eye[0] - in->pos[0], T.eye[2] - in->pos[2]), T.eye_up = in->pos[1] - T.eye[1];
 	C3D_FVec e = FVec3_New(T.eye[0], T.eye[1], T.eye[2]);

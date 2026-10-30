@@ -34,3 +34,7 @@ float tpcam_yaw(void);              // the camera's forward, for the stick (forw
 const float* tpcam_eye(void);
 const float* tpcam_watch(void);
 const char* tpcam_status(void);     // the orbit and the room it found, for the frame dump's stats
+// debug.txt "tpcam N": 1 counts the frames whose eye has the room's geometry between it and James,
+// 2 the same with the camera's rays against it off (the camera before camray.h), for comparing.
+void tpcam_debug(int mode);
+bool tpcam_behind_count(u32* behind, u32* frames);   // since the last call; false when not counting

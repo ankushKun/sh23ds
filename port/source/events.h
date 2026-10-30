@@ -37,6 +37,8 @@ typedef struct {
 	// In a dark room with the flashlight off: whether a room light shows a model at pos (0x507e00),
 	// for item pickups; NULL: none does.
 	bool (*lit)(const float pos[3]);
+	// The reach assist (events.c): nothing of the room between James and (x, z); NULL: not tested.
+	bool (*clear)(float x, float z);
 } EvPlayer;
 
 void ev_reset(void);          // new game: all flags and items cleared

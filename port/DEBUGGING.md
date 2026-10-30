@@ -34,6 +34,7 @@ it to play normally.
 | `gpucost 1` / `mapcull 0` / `fogfill <tenths>` | the GPU cost model in perf.txt, the map sent whole, the fog's area per eye in 3D (PERFORMANCE.md, "3D") |
 | `supersample <0\|1\|2\|3>` | the top screen drawn larger: off, as far as the GPU has the time (the default), always 2x, always 2x2 (VISUALS.md) |
 | `picture 1` | the Picture's scene drawn back without its filter, to check it against Sharp (picture.h) |
+| `tpcam <n>` | the behind camera's check: 1 logs to perf.txt, once a second, how many frames its eye had the room's geometry between it and James; 2 the same with its rays against that geometry off, as the camera was before them |
 | `stalltest <frame>` | holds the main loop 5 s at that frame of play, to check the watchdog (with `perflog 1` it writes `stall.txt`, see below) |
 | `softness <percent>` | the share of the Picture's filter on Soft, 50 by default; 100 is the whole [1, 2, 1] filter, 0 the scene as it is (picture.h) |
 | `picture 3` | a console probe: the scene drawn as on Sharp and the soft pass's draws made over it without changing a pixel. A freeze with it is in the pass's draws; one only without it is in drawing the scene into a texture (picture.h) |

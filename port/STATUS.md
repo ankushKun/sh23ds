@@ -85,6 +85,7 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
 - A port-only behind camera (`tpcam.c`, Options > Controls > Camera: Original or Behind, also asked on the first run): orbit with the
   C-Stick (the D-Pad on an Old 3DS, a drag on the touch screen on both), the Look key recentres,
   over the shoulder when aiming, camera-relative movement; scenes and scripted shots keep the PC camera.
+  It stops in front of the room's drawn geometry too (`camray.c`), not only the collision's walls.
 - Collision from the `.cld` with the PC's floor and wall rules (James climbs stairs to the highest floor
   within a step; the ceiling list does not push). A frame's move goes in steps of at most 60 units and
   never crosses a wall (`walk_move`), so a run on a slow frame no longer takes James through a thin wall;
@@ -124,7 +125,10 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
 - Item pickups as on the PC: their models lie in the rooms (0x490080), `EventItemConditionCheck`
   (0x48cb20) decides which exist (35 town pickups only at night, flag 251), and in a dark room James
   needs the flashlight to take one (0x48e520) unless a room light shows it (0x507e00, `chrlight_lit`:
-  the strongest light the model is drawn with over 0.1, as the drink at Wood Side's stairs). Packs from
+  the strongest light the model is drawn with over 0.1, as the drink at Wood Side's stairs). A
+  port-only reach assist (`events.c`) takes the nearest pickup or Action point event within 650 units
+  and 60 degrees of his facing, with no wall between, when a press meets nothing under the PC's own 400
+  units and 30 degrees from 50 ahead (0x48b980); the light and height tests stay. Packs from
   before the condition was packed use a table of those pickups' flags. The item audit
   (`tests/playtest/item_audit.py`) takes every pickup in Azahar. Save points say James' line about the
   red square once in the game (flag 5, 0x48c680), not once per save point.

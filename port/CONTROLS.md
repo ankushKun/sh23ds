@@ -195,7 +195,13 @@ will be, at the height it will be (under the ceiling), so a wall at the edge of 
 (the near plane, 100 deep, would otherwise cut into it) and a low partition it would sink to does as
 well; it stays above
 the floor and under the ceiling (the highest top of the walls that stand on James' floor near him,
-which indoors reach the ceiling), and is never nearer than 450 unless a wall is. Squeezed against a
+which indoors reach the ceiling), and is never nearer than 450 unless a wall is. Those walls are the
+collision's, which marks where James walks: it has no ceilings, and in a stairwell or under a
+lowered ceiling the camera rose through what the room draws (seen on a New 3DS). So rays against the
+room's own opaque triangles (`camray.c`) also find the ceiling straight over James and stop the
+camera in front of anything between him and it, at the centre and a near plane's size to each side
+and above and below, before and after its easing. Railings, bars and glass (the transparent
+batches) let it through. Squeezed against a
 wall it turns, a little at a time, to the most open side near behind him, and in a room too small for
 that (a wall at his back) to the most open way round him, as the PC's fixed shots stand in a room's far
 corner; pulled in close it looks past him into the room rather than at his head. With the weapon

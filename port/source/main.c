@@ -63,6 +63,8 @@
 #include "profile.h"
 #include "gamecam.h"
 #include "tpcam.h"
+#include "camray.h"
+extern u32 camray_stat[4];   // camray.c: the rays' work, for debug.txt "tpcam"
 #include "game/view/sh2cam.h"
 #include "map.h"
 #include "movie.h"
@@ -904,6 +906,11 @@ static void apply_warp(void)
 	}
 	s_async_arrival = false;
 	perf_crumb("door: room loaded");
+	if (s_opt.camera == 1) {             // the behind camera's rays find this room ready (camray.h)
+		camray_warm(&s_cur);
+		for (int i = 0; i < s_nnb; i++)
+			camray_warm(&s_nb[i]);
+	}
 	u64 ts = svcGetSystemTick();
 	stagemdl_preload(ev_stage(), s_px, s_pz);   // the placed models in range, behind the fade
 	perf_part("ld_stagemdl", ts);
@@ -1158,11 +1165,23 @@ static void inventory_draw_top(void)
 	}
 }
 
+
+// The reach assist's line of sight (events.h): nothing of the room's collision between James and
+// (x, z) at his chest's height, as his head's look test has it (combat.c clear_line_to).
+static bool james_clear_to(float x, float z)
+{
+	if (!s_have_col)
+		return true;
+	float ex = x, ez = z, d = hypotf(x - s_px, z - s_pz);
+	col_clamp_ray(&s_col, s_px, s_pz, &ex, &ez, s_py - 900.0f);
+	return hypotf(ex - s_px, ez - s_pz) >= d - 1.0f;
+}
+
 static void events_update(u32 down)
 {
 	if (s_warp_pending || s_autotest)
 		return;
-	EvPlayer p = { s_px, s_py, s_pz, s_yaw, (down & KEY_A) != 0, s_use_item, james_can_see(), chrlight_lit };
+	EvPlayer p = { s_px, s_py, s_pz, s_yaw, (down & KEY_A) != 0, s_use_item, james_can_see(), chrlight_lit, james_clear_to };
 	EvAction a;
 	int used = s_use_item;
 	s_use_item = 0;
@@ -5013,6 +5032,7 @@ int main(void)
 			if (!strcmp(key, "sfxsync")) sfx_sync_loads(val != 0);
 			if (!strcmp(key, "die")) s_debug_die = (u32)val;      // a killing blow at that frame (tests)
 			if (!strcmp(key, "stalltest")) s_stalltest = (u32)val;
+			if (!strcmp(key, "tpcam")) tpcam_debug(val);   // tpcam.h: frames with the eye behind the room
 			if (!strcmp(key, "hurt") && sscanf(line, "%*s %lu %d", &s_debug_die, &s_debug_die_pct) != 2)
 				s_debug_die = 0;
 			if (!strcmp(key, "batch")) s_only_batch = val;
@@ -5541,6 +5561,14 @@ int main(void)
 				ti.stick_on = abs(cp.dx) > 31 || abs(cp.dy) > 31;
 				ti.stick_dir = atan2f(cp.dx, cp.dy);
 				ti.col = s_have_col ? &s_col : NULL;
+				{
+					const Room* rooms[1 + MAX_NB];
+					int n = 0;
+					rooms[n++] = &s_cur;
+					for (int i = 0; i < s_nnb; i++)
+						rooms[n++] = &s_nb[i];
+					camray_set(rooms, n);   // the camera's rays meet what is drawn (camray.h)
+				}
 				tpcam_update(&ti, s_paused ? 0.0f : dt, &mv, &fovy);
 			}
 			s_tp_live = tp;
@@ -5617,6 +5645,16 @@ int main(void)
 		// goes by the GPU's own time, which a console measures. Both eyes of a lit room take about
 		// twice one eye's 6 to 9 ms, inside a 60 fps frame; the fogged roads drop to 30 as in 2D
 		int cap = quality()->frame_cap;
+		if ((frame % 60) == 59) {
+			u32 behind, all;
+			if (tpcam_behind_count(&behind, &all)) {
+				perf_event("tpcam", "%s: eye behind the room in %lu of %lu frames; a frame: %lu rays, %lu cells, %lu triangles; %lu grids made",
+				           s_nrooms ? s_rooms[s_room] : "-", (unsigned long)behind, (unsigned long)all,
+				           (unsigned long)(camray_stat[0] / all), (unsigned long)(camray_stat[1] / all),
+				           (unsigned long)(camray_stat[2] / all), (unsigned long)camray_stat[3]);
+				memset(camray_stat, 0, sizeof camray_stat);
+			}
+		}
 		perf_crumb("ladder");
 		supersample_frame_end(perf_pace(cap), cap);
 		perf_crumb("ladder done");

@@ -950,29 +950,91 @@ static bool exec(int i, const EvRec* e, EvAction* out)
 // 0x48c840: can_see), in stages 43..46, in Born From a Wish, while flag 625 is set, or when 0x507e00
 // finds the item's model lit: the strongest room light it was drawn with is over 0.1
 // (chrlight_lit), as the health drink at the foot of Wood Side's stairs is by the lobby's lamp.
+static bool item_seen(const ItemRec* it, const EvPlayer* p)
+{
+	return p->can_see || (s_stage >= 43 && s_stage <= 46) || prog_chapter() || ev_flag(625) || (p->lit && p->lit(it->pos));
+}
+
+static bool item_reachable(const ItemRec* it, const EvPlayer* p)
+{
+	return item_lying(it, true) && it->pos[1] >= p->y - 750.0f && it->pos[1] <= p->y + 100.0f && item_seen(it, p);
+}
+
+static void take_pickup(ItemRec* it, EvAction* out)
+{
+	ev_flag_set(it->flag + 1, true);
+	ev_give_item(it->gives_item, ev_item_get_amount(it->gives_item));
+	prog_stat_item_get(it->gives_item);   // ItemGet counts the pickup (0x49e310)
+	memset(out, 0, sizeof *out);
+	out->kind = EV_MESSAGE;
+	out->event = -1;
+	out->text = msg_get(&s_common, it->system_message);
+}
+
 static bool items_update(const EvPlayer* p, EvAction* out)
 {
 	if (!p->action)
 		return false;
 	for (u32 i = 0; i < s_nitems; i++) {
 		ItemRec* it = &s_items[i];
-		if (!item_lying(it, true))
+		if (item_reachable(it, p) && look_point(p->x, p->z, p->yaw, it->pos[0], it->pos[2], 400.0f)) {
+			take_pickup(it, out);
+			return true;
+		}
+	}
+	return false;
+}
+
+// The reach assist, a 3DS-only system (port/STATUS.md): an Action press that the PC's own tests
+// above meet with nothing takes the nearest pickup, or Action event at a point (the handgun, a key,
+// a thing to look at), within REACH of James' feet and REACH_ANGLE of his facing, with nothing of
+// the room between them. The PC's 400 units and 30 degrees from a point 50 ahead (0x48b980) are a
+// fine aim on a 400 x 240 screen; its other tests stay: the light, the height window, the flags.
+#define REACH 650.0f
+#define REACH_COS 0.5f                   // 60 degrees either side
+
+static bool reach_ok(const EvPlayer* p, float x, float z, float* d)
+{
+	float dx = x - p->x, dz = z - p->z;
+	*d = sqrtf(dx * dx + dz * dz);
+	if (*d > REACH)
+		return false;
+	if (*d > 1.0f && (dx * sinf(p->yaw) + dz * cosf(p->yaw)) / *d < REACH_COS)
+		return false;
+	return !p->clear || p->clear(x, z);
+}
+
+static bool reach_assist(const EvPlayer* p, EvAction* out)
+{
+	if (!p->action)
+		return false;
+	int best_ev = -1, best_item = -1;
+	float bd = REACH + 1.0f, d;
+	for (u32 i = 0; i < s_nev; i++) {
+		EvRec* e = &s_ev[i];
+		if (!e->cond && !e->rslt0)
+			break;
+		if ((e->cond >> 28) != 2 || e->shape != SH_POINT || !flags_pass(e->flag) || !height_ok(e, p->y))
 			continue;
-		if (it->pos[1] < p->y - 750.0f || it->pos[1] > p->y + 100.0f)
+		if ((e->cond & 4) && !p->can_see)
 			continue;
-		if (!look_point(p->x, p->z, p->yaw, it->pos[0], it->pos[2], 400.0f))
+		if ((e->rslt0 >> 28) == RT_PROGRAM && !prog_exists(s_stage, (e->rslt1 >> 14) & 0x7f))
 			continue;
-		if (!p->can_see && !(s_stage >= 43 && s_stage <= 46) && !prog_chapter() && !ev_flag(625) &&
-		    !(p->lit && p->lit(it->pos)))
-			continue;
-		ev_flag_set(it->flag + 1, true);
-		ev_give_item(it->gives_item, ev_item_get_amount(it->gives_item));
-		prog_stat_item_get(it->gives_item);   // ItemGet counts the pickup (0x49e310)
-		memset(out, 0, sizeof *out);
-		out->kind = EV_MESSAGE;
-		out->event = -1;
-		out->text = msg_get(&s_common, it->system_message);
+		if (reach_ok(p, e->pts[0][0], e->pts[0][1], &d) && d < bd)
+			bd = d, best_ev = (int)i;
+	}
+	for (u32 i = 0; i < s_nitems; i++) {
+		ItemRec* it = &s_items[i];
+		if (item_reachable(it, p) && reach_ok(p, it->pos[0], it->pos[2], &d) && d < bd)
+			bd = d, best_item = (int)i, best_ev = -1;
+	}
+	if (best_item >= 0) {
+		take_pickup(&s_items[best_item], out);
 		return true;
+	}
+	if (best_ev >= 0) {
+		s_last_fired = -1;
+		return exec(best_ev, &s_ev[best_ev], out);
 	}
 	return false;
 }
@@ -989,7 +1051,7 @@ const char* ev_pickup_why(int i, const EvPlayer* p)
 		return "height window";
 	if (!look_point(p->x, p->z, p->yaw, it->pos[0], it->pos[2], 400.0f))
 		return "look test";
-	if (!p->can_see && !(s_stage >= 43 && s_stage <= 46) && !prog_chapter() && !ev_flag(625) && !(p->lit && p->lit(it->pos)))
+	if (!item_seen(it, p))
 		return "dark";
 	for (u32 k = 0; k < i; k++)
 		if (item_lying(&s_items[k], true) && s_items[k].pos[1] >= p->y - 750.0f && s_items[k].pos[1] <= p->y + 100.0f &&
@@ -1059,5 +1121,5 @@ bool ev_update(const EvPlayer* p, EvAction* out)
 		return exec((int)i, e, out);
 	}
 	s_last_fired = fired;
-	return items_update(p, out);
+	return items_update(p, out) || reach_assist(p, out);
 }
