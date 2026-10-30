@@ -17,6 +17,23 @@
 	// the area index reads the rooms' .s3m headers and .cam files, the shadow step lists the .s3c files.
 	const FREE_AFTER_SINK = /\.(t3x|mpg)$/i;
 
+	// An ffmpeg.wasm core made from its compiled module, ready when this returns: the core's factory takes
+	// the object it is given as its Module and starts at once when the instance comes at once
+	// (worker.js and run.mjs compile the module once; sh2host.run() needs a fresh core without waiting)
+	function ffmpegCore(factory, mod) {
+		const M = {
+			instantiateWasm(imports, ok) {
+				const inst = new WebAssembly.Instance(mod, imports);
+				ok(inst, mod);
+				return inst.exports;
+			},
+		};
+		const ready = factory(M);
+		if (ready && ready.catch) ready.catch(() => {});    // a core that fails to start throws below
+		if (!M.calledRun) throw new Error('ffmpeg.wasm did not start');
+		return M;
+	}
+
 	function isExtra(rel) {
 		// the files the 3DS doesn't read (pack.py is_extra): png folders and .json files
 		const parts = rel.split('/');
@@ -42,12 +59,20 @@
 		say('Loading the encoders');
 		const tex = await env.createTexenc();
 		tex._texenc_set_quality(env.quality === 'best' ? 2 : 1);
-		// ffmpeg.wasm (32 MB) only in a worker that runs a task needing it (movies, sound, scenes)
-		let ff = null;
+		// ffmpeg.wasm (32 MB) only in a worker that runs a task needing it (movies, sound, scenes). A core
+		// wears out: one traps with "memory access out of bounds" after about 160 decodes (0.12.10; 256 on
+		// 0.12.0), and the music's loudness alone makes 400. So a core runs FF_RUNS runs before a fresh one
+		// takes over (a few ms), and a run that throws is run once more in a fresh core.
+		const FF_RUNS = 32;
+		let newFF = null, ff = null, ffRuns = 0;
 		const ffLog = { out: [], err: [] };
 		async function ensureFFmpeg() {
-			if (ff) return;
-			ff = await env.createFFmpegCore();
+			if (!newFF) newFF = await env.loadFFmpeg();
+		}
+		function freshFF() {
+			ff = null;                       // the old core's memory goes with it
+			ff = newFF();
+			ffRuns = 0;
 			ff.setLogger(({ type, message }) => (type === 'stdout' ? ffLog.out : ffLog.err).push(message));
 		}
 
@@ -78,19 +103,26 @@
 			}
 		}
 
-		// ffprobe -show_entries format=duration:stream=codec_type,width,height -of json, for ffmpeg's build
-		// without SIMD (worker.js), which has no ffprobe: `ffmpeg -i` prints the same facts as it starts
-		function probeFromLog(lines) {
+		// The two probes the converters make, for ffmpeg's build without SIMD (worker.js), which has no
+		// ffprobe: `ffmpeg -i` prints the same facts as it starts. -of json with format=duration and
+		// stream=codec_type,width,height (movies.py), or -of csv=p=0 with stream=index, one line per
+		// stream of the kind -select_streams names (levels.py)
+		function probeFromLog(lines, args) {
 			const text = lines.join('\n');
 			const d = /Duration: (\d+):(\d+):(\d+(?:\.\d+)?)/.exec(text);
 			const streams = [];
-			for (const m of text.matchAll(/Stream #\d+:\d+[^:\n]*: (Video|Audio|Subtitle|Data): ([^\n]*)/g)) {
-				const s = { codec_type: m[1].toLowerCase() };
-				const wh = s.codec_type === 'video' && /(?:^|[ ,])(\d{2,5})x(\d{2,5})(?=[ ,[]|$)/.exec(m[2]);
+			for (const m of text.matchAll(/Stream #\d+:(\d+)[^:\n]*: (Video|Audio|Subtitle|Data): ([^\n]*)/g)) {
+				const s = { index: Number(m[1]), codec_type: m[2].toLowerCase() };
+				const wh = s.codec_type === 'video' && /(?:^|[ ,])(\d{2,5})x(\d{2,5})(?=[ ,[]|$)/.exec(m[3]);
 				if (wh) [s.width, s.height] = [Number(wh[1]), Number(wh[2])];
 				streams.push(s);
 			}
 			if (!d && !streams.length) return null;
+			if (args.includes('csv=p=0')) {
+				const kind = { a: 'audio', v: 'video' }[args[args.indexOf('-select_streams') + 1]];
+				const picked = streams.filter((s) => !kind || s.codec_type === kind);
+				return new TextEncoder().encode(picked.map((s) => s.index + '\n').join(''));
+			}
 			const json = { streams, format: d ? { duration: String(3600 * d[1] + 60 * d[2] + Number(d[3])) } : {} };
 			return new TextEncoder().encode(JSON.stringify(json));
 		}
@@ -113,73 +145,85 @@
 			return path;
 		}
 
+		function ffRun(argv, inputJs, lo, hi) {
+			const tool = argv[0].split('/').pop();
+			const args = argv.slice(1);
+			const mounts = [], outputs = [];
+			let stdoutFile = null;
+			for (let i = 0; i < args.length; i++) {
+				const a = args[i];
+				const isInput = args[i - 1] === '-i' || (tool === 'ffprobe' && i === args.length - 1);
+				if (/^(pipe:[01]?|-)$/.test(a)) {
+					if (isInput) {
+						ff.FS.writeFile('/stdin', inputJs ? new Uint8Array(inputJs) : new Uint8Array(0));
+						args[i] = '/stdin';
+						mounts.push('/stdin');
+					} else {
+						stdoutFile = args[i] = '/stdout';
+					}
+				} else if (a.startsWith('/') && isInput) {
+					args[i] = ffInput(a, mounts);
+				} else if (a.startsWith('/') && tool === 'ffmpeg' && i === args.length - 1) {
+					ffMkdirs(a);
+					outputs.push(a);
+				}
+			}
+			ffLog.out.length = ffLog.err.length = 0;
+			// ffmpeg's own progress (by the input's duration) fills this run's share of the step
+			ff.setProgress(({ progress }) => {
+				if (lo !== undefined && progress >= 0 && progress <= 1) report(lo + progress * (hi - lo));
+			});
+			let probed = null;
+			if (tool === 'ffprobe' && !ff.ffprobe) {
+				// the log level stays as the last run set it (-v error), so name it
+				ff.exec('-hide_banner', '-v', 'info', '-i', args[args.length - 1]);
+				probed = probeFromLog(ffLog.err, args);
+			} else if (tool === 'ffprobe') ff.ffprobe(...args);
+			else if (tool === 'ffmpeg') ff.exec(...args);
+			else return { code: 127, stdout: new Uint8Array(0), stderr: 'no ' + tool + ' in the browser' };
+			let code = probed ? 0 : ff.ret;
+			ff.reset();
+			let stdout;
+			if (tool === 'ffprobe' && !ff.ffprobe) {
+				stdout = probed || new Uint8Array(0);
+				if (!probed) code = 1;
+			} else if (stdoutFile) {
+				try { stdout = ff.FS.readFile(stdoutFile); ff.FS.unlink(stdoutFile); } catch (e) { stdout = new Uint8Array(0); }
+			} else {
+				stdout = new TextEncoder().encode(ffLog.out.join('\n') + (ffLog.out.length ? '\n' : ''));
+			}
+			if (tool === 'ffprobe' && code === -1 && ffLog.out.length) code = 0;   // ffprobe leaves ret unset
+			for (const o of outputs) {
+				try {
+					const data = ff.FS.readFile(o);
+					ff.FS.unlink(o);
+					FS.mkdirTree(o.slice(0, o.lastIndexOf('/')));
+					FS.writeFile(o, data);
+				} catch (e) {
+					if (code === 0) code = 1;
+				}
+			}
+			for (const m of mounts) {
+				try {
+					if (m.startsWith('/in')) { ff.FS.unmount(m); ff.FS.rmdir(m); } else ff.FS.unlink(m);
+				} catch (e) { /* gone */ }
+			}
+			return { code, stdout, stderr: ffLog.err.slice(-20).join('\n') };
+		}
+
 		const sh2host = {
 			run(argvJs, inputJs, lo, hi) {
 				const argv = Array.from(argvJs);
-				const tool = argv[0].split('/').pop();
-				if (!ff) return { code: 127, stdout: new Uint8Array(0), stderr: 'ffmpeg.wasm is not loaded in this worker' };
-				const args = argv.slice(1);
-				const mounts = [], outputs = [];
-				let stdoutFile = null;
-				for (let i = 0; i < args.length; i++) {
-					const a = args[i];
-					const isInput = args[i - 1] === '-i' || (tool === 'ffprobe' && i === args.length - 1);
-					if (/^(pipe:[01]?|-)$/.test(a)) {
-						if (isInput) {
-							ff.FS.writeFile('/stdin', inputJs ? new Uint8Array(inputJs) : new Uint8Array(0));
-							args[i] = '/stdin';
-							mounts.push('/stdin');
-						} else {
-							stdoutFile = args[i] = '/stdout';
-						}
-					} else if (a.startsWith('/') && isInput) {
-						args[i] = ffInput(a, mounts);
-					} else if (a.startsWith('/') && tool === 'ffmpeg' && i === args.length - 1) {
-						ffMkdirs(a);
-						outputs.push(a);
-					}
+				if (!newFF) return { code: 127, stdout: new Uint8Array(0), stderr: 'ffmpeg.wasm is not loaded in this worker' };
+				if (!ff || ffRuns >= FF_RUNS) freshFF();
+				ffRuns++;
+				try {
+					return ffRun(argv, inputJs, lo, hi);
+				} catch (e) {
+					freshFF();
+					ffRuns++;
+					return ffRun(argv, inputJs, lo, hi);
 				}
-				ffLog.out.length = ffLog.err.length = 0;
-				// ffmpeg's own progress (by the input's duration) fills this run's share of the step
-				ff.setProgress(({ progress }) => {
-					if (lo !== undefined && progress >= 0 && progress <= 1) report(lo + progress * (hi - lo));
-				});
-				let probed = null;
-				if (tool === 'ffprobe' && !ff.ffprobe) {
-					// the log level stays as the last run set it (-v error), so name it
-					ff.exec('-hide_banner', '-v', 'info', '-i', args[args.length - 1]);
-					probed = probeFromLog(ffLog.err);
-				} else if (tool === 'ffprobe') ff.ffprobe(...args);
-				else if (tool === 'ffmpeg') ff.exec(...args);
-				else return { code: 127, stdout: new Uint8Array(0), stderr: 'no ' + tool + ' in the browser' };
-				let code = probed ? 0 : ff.ret;
-				ff.reset();
-				let stdout;
-				if (tool === 'ffprobe' && !ff.ffprobe) {
-					stdout = probed || new Uint8Array(0);
-					if (!probed) code = 1;
-				} else if (stdoutFile) {
-					try { stdout = ff.FS.readFile(stdoutFile); ff.FS.unlink(stdoutFile); } catch (e) { stdout = new Uint8Array(0); }
-				} else {
-					stdout = new TextEncoder().encode(ffLog.out.join('\n') + (ffLog.out.length ? '\n' : ''));
-				}
-				if (tool === 'ffprobe' && code === -1 && ffLog.out.length) code = 0;   // ffprobe leaves ret unset
-				for (const o of outputs) {
-					try {
-						const data = ff.FS.readFile(o);
-						ff.FS.unlink(o);
-						FS.mkdirTree(o.slice(0, o.lastIndexOf('/')));
-						FS.writeFile(o, data);
-					} catch (e) {
-						if (code === 0) code = 1;
-					}
-				}
-				for (const m of mounts) {
-					try {
-						if (m.startsWith('/in')) { ff.FS.unmount(m); ff.FS.rmdir(m); } else ff.FS.unlink(m);
-					} catch (e) { /* gone */ }
-				}
-				return { code, stdout, stderr: ffLog.err.slice(-20).join('\n') };
 			},
 			copy(src, dst) {
 				virtual.set(dst, src);
@@ -354,6 +398,6 @@ STEPS = [(s[0], s[1]) for s in P.steps()]
 		return api;
 	}
 
-	root.SH2Packer = { createPacker, isExtra };
+	root.SH2Packer = { createPacker, isExtra, ffmpegCore };
 	if (typeof module !== 'undefined') module.exports = root.SH2Packer;
 })(typeof self !== 'undefined' ? self : globalThis);

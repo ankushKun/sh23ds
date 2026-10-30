@@ -26,8 +26,16 @@ The page and its files are static, so GitHub Pages serves it as is.
 with SSE4.1: on an older one (a Core 2 before Penryn, a Phenom II) the first task that loads ffmpeg failed
 with "Compiling function #81 failed: Wasm SIMD unsupported". Each worker compiles and calls a two-instruction
 SIMD function first and takes 0.12.0, the last build without SIMD, when that fails (`worker.js`;
-`?simd=0` in the address forces it). 0.12.0 has no `ffprobe`, so `core.js` answers the one probe `movies.py`
-makes from `ffmpeg -i`'s log. Pyodide, numpy, Pillow and `texenc.mjs` have no SIMD.
+`?simd=0` in the address forces it). 0.12.0 has no `ffprobe`, so `core.js` answers the two probes the
+converters make (`movies.py`'s JSON, `levels.py`'s stream count) from `ffmpeg -i`'s log. Pyodide, numpy,
+Pillow and `texenc.mjs` have no SIMD.
+
+An ffmpeg.wasm core wears out: after about 160 decodes in one core (0.12.10; 256 on 0.12.0) the next one
+traps with "memory access out of bounds", whatever the file, and its heap never grows. The loudness pass
+(`levels.py`) makes about 400 in the music alone, which stopped every pack at about a third from
+2026-10-29 to 2026-10-31. The worker compiles the wasm once (`loadFFmpeg`), `core.js` makes a fresh core
+from it every 32 runs (`ffmpegCore()`, a few ms, synchronous, as a run from Python needs), a run that
+throws is run once more in a fresh core, and a sound `levels.py` still can't measure keeps its own level.
 
 ### The browser check
 

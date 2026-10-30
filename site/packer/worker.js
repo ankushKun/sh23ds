@@ -45,10 +45,17 @@ async function init({ files, options, first }) {
 	const byPath = new Map(files.map((f) => [f.path, f.file]));
 	engine = await SH2Packer.createPacker({
 		loadPyodide: (o) => loadPyodide({ ...o, indexURL: PYODIDE_URL }),
-		createFFmpegCore: () => createFFmpegCore(SIMD ? {
-			mainScriptUrlOrBlob: FFMPEG_URL + 'ffmpeg-core.js#' +
-				btoa(JSON.stringify({ wasmURL: FFMPEG_URL + 'ffmpeg-core.wasm' })),
-		} : { locateFile: (name) => FF_URL + name }),
+		// compiled once; core.js makes a core from it whenever it needs a fresh one
+		loadFFmpeg: async () => {
+			const url = FF_URL + 'ffmpeg-core.wasm';
+			let mod;
+			try {
+				mod = await WebAssembly.compileStreaming(fetch(url));
+			} catch (e) {      // a server that doesn't say application/wasm
+				mod = await WebAssembly.compile(await (await fetch(url)).arrayBuffer());
+			}
+			return () => SH2Packer.ffmpegCore(createFFmpegCore, mod);
+		},
 		createTexenc: () => createTexenc(),
 		fetchBytes: async (name) => new Uint8Array(await (await fetch(name, { cache: 'no-cache' })).arrayBuffer()),
 		mountGame(py) {

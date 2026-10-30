@@ -32,7 +32,7 @@ const createFFmpegCore = require(path.join(FF_DIR, 'umd/ffmpeg-core.js'));
 const ffWasm = fs.readFileSync(path.join(FF_DIR, 'umd/ffmpeg-core.wasm'));
 const { loadPyodide } = await import(path.join(HERE, 'node_modules/pyodide/pyodide.mjs'));
 const { default: createTexenc } = await import(path.join(SITE, 'texenc.mjs'));
-const { createPacker } = require(path.join(SITE, 'core.js'));
+const { createPacker, ffmpegCore } = require(path.join(SITE, 'core.js'));
 const { ZipSink } = require(path.join(SITE, 'sinks.js'));
 
 let sink;
@@ -60,12 +60,10 @@ const packer = await createPacker({
 		packageBaseUrl: 'https://cdn.jsdelivr.net/pyodide/v314.0.7/full/',
 		packageCacheDir: path.join(HERE, 'node_modules', '.pyodide-cache'),   // else it caches under ./https:/
 	}),
-	createFFmpegCore: () => createFFmpegCore({
-		instantiateWasm: (imports, ok) => {
-			WebAssembly.instantiate(ffWasm, imports).then((r) => ok(r.instance, r.module));
-			return {};
-		},
-	}),
+	loadFFmpeg: async () => {
+		const mod = await WebAssembly.compile(ffWasm);
+		return () => ffmpegCore(createFFmpegCore, mod);
+	},
 	createTexenc: () => createTexenc(),
 	fetchBytes: async (name) => new Uint8Array(fs.readFileSync(path.join(SITE, name))),
 	mountGame(py) {

@@ -122,12 +122,18 @@ def main():
         path = os.path.join(root, rel)
         if src:
             path = ee.file(path)
-        n = streams(path)
-        if not n:
+        try:
+            n = streams(path)
+            if not n:
+                return []
+            if each:
+                return [(rel, s) + measure(path, [s]) for s in range(n)]
+            return [(rel, -1) + measure(path, range(n))]
+        except Exception as e:
+            # a sound with no line plays at the level it was mastered at (levels.c), so one that can't
+            # be measured costs only its evening out, not the pack
+            print('levels.py: %s not measured, it keeps its own level (%s)' % (rel, str(e).splitlines()[0] if str(e) else type(e).__name__), flush=True)
             return []
-        if each:
-            return [(rel, s) + measure(path, [s]) for s in range(n)]
-        return [(rel, -1) + measure(path, range(n))]
 
     rows = [row for r in host.pmap(one, names, 4) for row in r]
     os.makedirs(out, exist_ok=True)
