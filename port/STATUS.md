@@ -195,6 +195,11 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
+- 2026-10-31, room 205's light (`main.c` room_spot, `LIGHTING.md`): the flashlight lying on the
+  mannequin lights the back wall in place of James' beam until it is taken, lights James too, and
+  casts his shadow (`hhh_jms.kg1`, the PC's pairing) and his weapon's on the wall; James' beam is the
+  PC's formula (cookie, N.L, doubled, lamp on his hand, no 1.2). Compared in Azahar with the PC's
+  footage of the room; console run pending.
 - 2026-10-31, a door's black screen froze a New 3DS twice (Wood Side 2F hall to room 205, Soft at 2x).
   The watchdog's `stall.txt` stopped at the first frame after the room load, waiting for the GPU:
   `gpu_sync` (C3D_FrameSync) only waited for a refresh, and the hall's 18.6 ms of GPU work outlasted
@@ -361,8 +366,11 @@ Ordered by weight. Each line names where the work starts.
   slots of the loader 0x513210 (0xac9a38). 0x5aad70's two room lights are ported (`shadow_frame`):
   room 312 (rr91) casts from far above (light kind 4, as a parallel light), ap42 with the flashlight
   off from its lamp. The kind 4 volumes are the port's own (the PC's are 0x444a70's cases 3 and 4),
-  0x5a5860 (apartments) is not ported, and neither light has been seen casting in Azahar: James'
-  own .kg1 is empty, so only other characters cast, and none were in shot.
+  0x5a5860 (apartments) is not ported, and neither light has been seen casting in Azahar. James'
+  shadow comes from `hhh_jms.kg1` (the PC's pairing, 0x493260) with his own light (0x5acaf0): the
+  drop shadow and room 205's spot are ported; the self shadows under his flashlight (kinds 1 to 3,
+  0x5aa4b0, a planar volume falling under him) and the per-map overrides of 0x5acaf0 are not. Room
+  205's spot casts in the port as the PC's footage shows, though 0x5a8370 read alone would clear it.
 - Pickups (`events.c`): in a dark room the PC also lets James take an item that a light near it shows
   (0x507e00 keeps a list of lit objects); the port waits for the flashlight. A stack of an item holds
   255 in the port (a byte per item in the save), where ItemGet caps it at 999, which only Bullet Adjust

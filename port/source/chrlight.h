@@ -12,7 +12,8 @@
 // Data: pack/chrlight.txt from tools/sh2conv/lighting.py. See LIGHTING.md section 10.
 
 typedef struct {
-	bool on;                     // dark room with the flashlight switched on
+	bool on;                     // dark room with the flashlight switched on, or a room's own spot
+	bool room;                   // the spot is the room's (main.c room_spot): it lights James too
 	float pos[3], dir[3];        // world space (Y down)
 	float start, end, cone;      // the record's flashlight decay and half angle
 } ChrFlash;

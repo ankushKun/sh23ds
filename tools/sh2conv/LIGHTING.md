@@ -273,11 +273,15 @@ global ambient `2*gain*c19` or `2*c20*c21`, no specular, then texenv stage 0 =
 converter or with the stage scale set to 2), stage 1 = `previous * texture0`. Either way the
 vertex colour must be added, never multiplied.
 
-The flashlight should be a fragment spotlight (light 0 of the dark-room set) at James's light
-position: colour `min(0.25*SpotCol0, 1)` = 1.0, distance attenuation LUT falling linearly from
-`start` (1500) to `end` (6000), spot LUT shaped like the PC cookie texture (cone 0.785 rad), and
-its contribution added after the base: stage 0 `texture0 * primary_color`, stage 1
-`previous + texture0 * fragment_primary`. That reproduces `t0*v0 + t0*flash` closely enough.
+The flashlight is a fragment spotlight (light 0 of the dark-room set) at the lamp on James' bone 3
+(0x536190): colour `min(0.25*SpotCol0, 1)` = 1.0, distance attenuation LUT falling linearly from
+`start` (1500) to `end` (6000), the PC cookie as the spot LUT (0x5b6360: `1 - tan^2(angle) /
+tan^2(cone)`, inner radius 0, cone 0.785 rad), and N.L in the D0 LUT (LN input, signed), as VS5 and
+VS6 put N.L into oD0.w. PS1 doubles the beam (`mul_x2`) before adding the base: stage 0
+`2 * texture0 * fragment_secondary`, stage 1 `texture0 * primary_color + previous`, so
+`t0*v0 + 2*t0*beam*cookie*ramp*N.L`. A room's own spot (record +0x08 spotLNum 0, position +0xd0,
+direction +0xe0) takes the beam's place with the same colour and decay (0x47b100, 0x47b870); the
+port has room 205's before the flashlight is taken (main.c room_spot).
 
 Fog: the PICA fog LUT has 128 entries indexed by the depth-buffer value. Depth from any
 perspective projection is affine in 1/w, and the PC fog factor `A + B/w` is also affine in 1/w,
@@ -464,9 +468,12 @@ programs.
 
 - **Data.** Every character, item and weapon model has a shadow model, `data/chr/<folder>/<name>.kg1`
   (layout in `tools/sh2conv/shadows.py`): per bone a few closed triangle strips with a face normal
-  per triangle, in the bone's space. The gameplay models of James and Maria (`hll_jms.kg1`,
-  `lll_mar.kg1`) are empty files, so on the PC they cast none of these shadows; the enemies do,
-  and the cutscene models (`hhh_jms`, `hhh_mar`) have full ones.
+  per triangle, in the bone's space. The gameplay models' own files (`hll_jms.kg1`,
+  `lll_mar.kg1`) are empty, but the loader pairs James' `hll_jms` and `lll_jms` with the cutscene
+  model's full `hhh_jms.kg1` (CharaDataLoadExec 0x493260, record 0x7d8688; the bones 0..40 match).
+  James and his weapon get their own light (sh2shd_get_jms_shadow_env 0x5acaf0, Draw_Jms_Shadow
+  0x509870): a room's own spot as a point light (kind 5, room 205), self shadows under his
+  flashlight (kinds 1 to 3, not ported), never the flashlight's spot. Maria's pairing is unchecked.
 - **Which shadows.** `0x5a8370` picks one of two kinds every frame. In a dark room
   (`gFlashlightAvailable` 2, set from the record's NightOrDay by `0x47b200`) whose record has
   ShadowDarkNess (+0x0e, `0x47bb00`) set, `0x5aad70` draws the stencil shadows below. The light is
@@ -501,8 +508,8 @@ direction of (1000, -10000, 1000), almost straight down (`0x5ab830`: exactly dow
 projection). Every corner gets the colour of the drop env (`0x5ab750`, grey 8 by default) and an
 alpha of 2 x a0 at 700 units above the floor up to 2 x a1 at the floor, at most 128 (`0x444780`;
 a0 0 and a1 32 by default, with overrides for some maps of glb 1, 3, 5, 9 and 0xb), blended over the
-scene with D3D fog on and no depth writes. With James' and Maria's gameplay .kg1 files empty, these
-are the enemies' shadows in the town, the streets and the lit rooms: a soft dark patch around the
+scene with D3D fog on and no depth writes. These are James' (from `hhh_jms.kg1`) and the enemies'
+shadows in the town, the streets and the lit rooms: a soft dark patch around the
 feet that fades out higher up the body. The port draws them the same way (`shadow_begin_drop`).
 The distance factor `0x5a7730` computes per character (0.3..1) is stored but not used by the PC's
 drawing code, so the port leaves it out.

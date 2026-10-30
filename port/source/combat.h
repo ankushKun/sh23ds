@@ -84,6 +84,9 @@ bool combat_james_free(void);
 int combat_james_clip(float* blend);
 // After chr_draw(james): the plank on his right hand (same model view and skinning program).
 void combat_draw_weapon(int uBones);
+// After combat_draw_weapon: the weapon's shadow from James' light (0x5a5c70 copies his light block
+// for it; shadow_cast_james), the plank's wp_kakuzai.kg1 and the rest that have one.
+void combat_weapon_shadow(const float pos[3], float yaw, const float* light);
 // Before chr_draw(james): which of the player model's hands and the flashlight on his chest show,
 // from the weapon and what James is doing (move_state is move.c's MV_* when he is free).
 void combat_set_parts(int move_state);

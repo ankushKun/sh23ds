@@ -53,6 +53,9 @@ typedef struct {
 
 bool chr_load(Character* c, const char* dir, const char* name, char* err, size_t errlen);
 void chr_free(Character* c);
+// A shadow model from another file in place of <name>.kg1 (the PC pairs some models with another's:
+// James' hll_jms and lll_jms with hhh_jms.kg1). False when it cannot be read.
+bool chr_load_kg1(Character* c, const char* path);
 // A model loaded during a door gets its textures from their 512 level (stream.h stream_set_draft),
 // so the black screen lasts no longer than it did; once the room shows, chr_refine reads each whole
 // file and swaps it in, one a frame, at the same place in the Character (main thread, between

@@ -348,27 +348,13 @@ static void drop_cast(const Character* c, const float pos[3], float yaw)
 		S.dcasters++;
 }
 
-void shadow_cast(const Character* c, const float pos[3], float yaw)
+// The volumes of c's .kg1 from the light Lw; cull: the spot's range and cone tests (0x444b20)
+static void cast(const Character* c, const float pos[3], float yaw, V3 Lw, bool cull, bool count)
 {
-	if (stereo_eye())                // the second eye of a 3D frame draws the first one's (stereo.h)
-		return;
-	if (S.drop && c->kg1 && c->kg1_size >= 16) {
-		u64 t0 = svcGetSystemTick();
-		drop_cast(c, pos, yaw);
-		S.cast_ticks += svcGetSystemTick() - t0;
-		return;
-	}
-	if (!S.on || !c->kg1 || c->kg1_size < 16 || S.casters >= MAX_CASTERS)
-		return;
 	u64 t0 = svcGetSystemTick();
 	const u8* d = c->kg1;
 	u32 size = c->kg1_size;
-	V3 Lw = v3(S.light[0], S.light[1], S.light[2]), D = v3(S.dir[0], S.dir[1], S.dir[2]);
-	if (S.parallel)                  // the light tests see a point far back along the light's way
-		Lw = sub(v3(pos[0], pos[1], pos[2]), scl(D, 100000.0f));
-	V3 at = sub(v3(pos[0], pos[1], pos[2]), Lw);
-	if (!S.parallel && dot(at, at) > (RANGE + 2000.0f) * (RANGE + 2000.0f))
-		return;                                    // the whole character is out of reach
+	V3 D = v3(S.dir[0], S.dir[1], S.dir[2]);
 	C3D_Mtx cm;
 	Mtx_Identity(&cm);
 	Mtx_Translate(&cm, pos[0], pos[1], pos[2], true);
@@ -399,8 +385,8 @@ void shadow_cast(const Character* c, const float pos[3], float yaw)
 			// 0x444b20's object test: inside the range and the cone (with the bounding sphere)
 			V3 cw = sub(xf(&w, s16v(bnd)), Lw);
 			float r = bnd[3], dist = sqrtf(dot(cw, cw));
-			bool in = S.parallel || dist <= RANGE + r;
-			if (in && !S.parallel && dist > r) {
+			bool in = S.parallel || !cull || dist <= RANGE + r;
+			if (in && !S.parallel && cull && dist > r) {
 				float ca = dot(cw, D) / dist, sa = sqrtf(fmaxf(0.0f, 1.0f - ca * ca));
 				float sr = r / dist, cr = sqrtf(fmaxf(0.0f, 1.0f - sr * sr));
 				// angle to the axis minus the sphere's half angle, against the cone
@@ -416,9 +402,45 @@ void shadow_cast(const Character* c, const float pos[3], float yaw)
 		}
 		o = next;
 	}
-	if (S.nv > before)
+	if (S.nv > before && count)
 		S.casters++;
 	S.cast_ticks += svcGetSystemTick() - t0;
+}
+
+void shadow_cast(const Character* c, const float pos[3], float yaw)
+{
+	if (stereo_eye())                // the second eye of a 3D frame draws the first one's (stereo.h)
+		return;
+	if (S.drop && c->kg1 && c->kg1_size >= 16) {
+		u64 t0 = svcGetSystemTick();
+		drop_cast(c, pos, yaw);
+		S.cast_ticks += svcGetSystemTick() - t0;
+		return;
+	}
+	if (!S.on || !c->kg1 || c->kg1_size < 16 || S.casters >= MAX_CASTERS)
+		return;
+	V3 Lw = v3(S.light[0], S.light[1], S.light[2]), D = v3(S.dir[0], S.dir[1], S.dir[2]);
+	if (S.parallel)                  // the light tests see a point far back along the light's way
+		Lw = sub(v3(pos[0], pos[1], pos[2]), scl(D, 100000.0f));
+	V3 at = sub(v3(pos[0], pos[1], pos[2]), Lw);
+	if (!S.parallel && dot(at, at) > (RANGE + 2000.0f) * (RANGE + 2000.0f))
+		return;                                    // the whole character is out of reach
+	cast(c, pos, yaw, Lw, true, true);
+}
+
+void shadow_cast_james(const Character* c, const float pos[3], float yaw, const float* light)
+{
+	if (stereo_eye() || !c->kg1 || c->kg1_size < 16)
+		return;
+	if (S.drop) {
+		u64 t0 = svcGetSystemTick();
+		drop_cast(c, pos, yaw);
+		S.cast_ticks += svcGetSystemTick() - t0;
+		return;
+	}
+	if (!S.on || S.parallel || !light)
+		return;
+	cast(c, pos, yaw, v3(light[0], light[1], light[2]), false, false);
 }
 
 void shadow_mark_begin(void)

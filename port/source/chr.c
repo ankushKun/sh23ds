@@ -291,6 +291,18 @@ void chr_set_parts(Character* c, int a, int b, int d)
 	c->parts[d >> 5] |= 1u << (d & 31);
 }
 
+bool chr_load_kg1(Character* c, const char* path)
+{
+	long size = 0;
+	void* d = read_file(path, &size);
+	if (!d)
+		return false;
+	free(c->kg1);
+	c->kg1 = d;
+	c->kg1_size = (u32)size;
+	return true;
+}
+
 void chr_free(Character* c)
 {
 	draft_forget(c);

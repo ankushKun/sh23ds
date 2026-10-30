@@ -349,14 +349,15 @@ void chrlight_at(const float pos[3], bool james)
 		n++;
 	}
 	qsort(pick, n, sizeof pick[0], by_influence);
-	int room = CL_EXTRA - (L.flash.on && !james ? 1 : 0);
+	bool fl = L.flash.on && (!james || L.flash.room);   // a room's spot lights James (0x508060)
+	int room = CL_EXTRA - (fl ? 1 : 0);
 	if (room > profile_chr_point_lights())   // fewer on the low quality level (profile.c)
 		room = profile_chr_point_lights();
 	int e = 0;                           // packed after the parallels: lights g, g + 1, ...
 	for (int i = 0; i < n && e < room; i++)
 		if (pick[i].influence > 0.0f)
 			set_extra(&L.light[g + e++], pick[i].s, 1.0f);
-	if (L.flash.on && !james)
+	if (fl)
 		set_extra(&L.light[g + e++], &L.fl, 1.0f);
 	for (int i = g + e; i < CL_LIGHTS; i++)
 		C3D_LightEnable(&L.light[i], false);

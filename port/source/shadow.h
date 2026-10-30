@@ -24,6 +24,11 @@ void shadow_begin_parallel(const float dir[3], float strength);
 void shadow_begin_drop(int map_id, const float cam[3]);
 // After chr_pose: the character's shadow volume (or drop shadow), if it has a .kg1.
 void shadow_cast(const Character* c, const float pos[3], float yaw);
+// James (and his weapon), which the PC never casts from his own flashlight's spot: his drop shadow
+// in the drop mode, and with light non-NULL a point light's volume (kind 5 of sh2shd_get_jms_shadow_env
+// 0x5acaf0: room 205's spot), every part, with no range or cone (block 999), each vertex pulled
+// 6000 from the light (0x5a90e0's 5000 x 1.2). He does not count among the four casters.
+void shadow_cast_james(const Character* c, const float pos[3], float yaw, const float* light);
 // Around character draws: their pixels are marked so the darkening pass leaves them alone.
 void shadow_mark_begin(void);
 void shadow_mark_end(void);

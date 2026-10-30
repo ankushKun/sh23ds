@@ -1526,6 +1526,23 @@ static RoomEnv s_env;
 // The room is lit, or the flashlight is on (events with the "needs light" bit want this).
 // The flashlight shines once James has it (item 18, the PC's gFlashLightAcquired) and it is switched on.
 static bool flash_lit(void) { return s_flash_on && ev_have_item(18); }
+static bool s_flash_james;            // this frame: James' own flashlight lights the room
+
+// A room record's own spot (its byte +8, spotLNum, 0: on), which the PC draws in place of James'
+// beam. 0x476bf0 turns it off every frame (0x47cdc0) and a stage hook may turn it on again: the
+// apartments' 0x59bca0 does in room 205 (0x495220 room 0x17, EE's R_APT_E_RM_205) until the
+// flashlight is taken (gFlashLightAcquired 0x40000): the flashlight lying on the mannequin, at the
+// record's +0xd0 aimed along +0xe0 (record 0x7f9e28, map 0x9001e). Rooms 0xd0005 and 0xd0009 keep
+// theirs too (not ported: their beam replaces James' even when it is on).
+static bool room_spot(float pos[3], float dir[3])
+{
+	if (s_env.map_id != 0x9001e || ev_have_item(0x12) || bgm_room_id(ev_glb_crd(), s_px, s_pz) != 0x17)
+		return false;
+	static const float p[3] = { -20000.0f, -720.0f, 20000.0f }, d[3] = { 0.0f, 0.1788f, 0.98389f };
+	memcpy(pos, p, sizeof p);
+	memcpy(dir, d, sizeof d);
+	return true;
+}
 static bool james_can_see(void) { return !s_env.dark || flash_lit(); }
 static RoomEnvConst s_envc;
 static bool s_env_dirty = true;      // fog and flashlight LUTs need rebuilding
@@ -1621,10 +1638,80 @@ static float lut_one(float x, float unused)
 	return 1.0f;
 }
 
-// The PC flashlight is a projected cookie texture times a beam ramp, with no N.L term. On the PICA
-// the specular-0 path does that: specular0 * D0 (a constant 1 here) * spot * distance, with the
-// diffuse term zeroed. It comes out as the fragment secondary colour, which the map texenv adds as
-// texture * secondary. The ambient term (fragment primary) lights characters.
+// The PC's beam (port/VISUALS.md, "The flashlight"; the map shaders VS5 0x8f1f00, VS6 0x8f2160 and
+// PS1 0x8f2b78): out = t0 * light + 2 * t0 * beam * cookie * ramp * N.L. The cookie 0x5b6360 fills
+// is 255 * (1 - r^2 / h^2) with the flashlight's inner radius 0 (0x5b3d50), projected over the cone's
+// tangent (0x5b2790): 1 - tan^2(angle) / tan^2(cone). debug.txt "flashpc 0" draws the port's first
+// guess (a smoothstep cone, no N.L, not doubled, the 1.2 brightness on it) for comparing.
+static bool s_flash_pc = true;
+static float spot_cookie(float x, float half_angle)
+{
+	if (x <= 0.0f)
+		return 0.0f;
+	float tc = tanf(half_angle), t2 = (1.0f / (x * x) - 1.0f) / (tc * tc);
+	return t2 >= 1.0f ? 0.0f : 1.0f - t2;
+}
+static float lut_nl(float x, float unused)
+{
+	(void)unused;
+	return x > 0.0f ? x : 0.0f;
+}
+
+// The flashlight's lamp (0x536190): hung on James' bone 3 at (60.98, -78.37, 94.97) in its space and
+// aimed at (-9, -34, 1117), then through his world placement. False without his model.
+static bool flash_from_bone(float pos[3], float dir[3])
+{
+	const Character* c = &s_james;
+	if (!s_have_james || c->n_bones <= 3)
+		return false;
+	// the bone's world matrix B = skin * bind, bind the inverse of inv_bind
+	const Mtx34* sk = &c->skin[3];
+	const Mtx34* ib = &c->inv_bind[3];
+	float a[3][3], inv[3][3], bt[3];
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			a[i][j] = ib->m[i][j];
+	float det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) +
+	            a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+	if (fabsf(det) < 1e-12f)
+		return false;
+	inv[0][0] = (a[1][1] * a[2][2] - a[1][2] * a[2][1]) / det;
+	inv[0][1] = (a[0][2] * a[2][1] - a[0][1] * a[2][2]) / det;
+	inv[0][2] = (a[0][1] * a[1][2] - a[0][2] * a[1][1]) / det;
+	inv[1][0] = (a[1][2] * a[2][0] - a[1][0] * a[2][2]) / det;
+	inv[1][1] = (a[0][0] * a[2][2] - a[0][2] * a[2][0]) / det;
+	inv[1][2] = (a[0][2] * a[1][0] - a[0][0] * a[1][2]) / det;
+	inv[2][0] = (a[1][0] * a[2][1] - a[1][1] * a[2][0]) / det;
+	inv[2][1] = (a[0][1] * a[2][0] - a[0][0] * a[2][1]) / det;
+	inv[2][2] = (a[0][0] * a[1][1] - a[0][1] * a[1][0]) / det;
+	for (int i = 0; i < 3; i++)
+		bt[i] = -(inv[i][0] * ib->m[0][3] + inv[i][1] * ib->m[1][3] + inv[i][2] * ib->m[2][3]);
+	float B[3][4];
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++)
+			B[i][j] = sk->m[i][0] * inv[0][j] + sk->m[i][1] * inv[1][j] + sk->m[i][2] * inv[2][j];
+		B[i][3] = sk->m[i][0] * bt[0] + sk->m[i][1] * bt[1] + sk->m[i][2] * bt[2] + sk->m[i][3];
+	}
+	static const float P0[3] = { 60.98f, -78.37f, 94.97f }, P1[3] = { -9.0f, -34.0f, 1117.0f };
+	float m0[3], m1[3];
+	for (int i = 0; i < 3; i++) {
+		m0[i] = B[i][0] * P0[0] + B[i][1] * P0[1] + B[i][2] * P0[2] + B[i][3];
+		m1[i] = B[i][0] * P1[0] + B[i][1] * P1[1] + B[i][2] * P1[2] + B[i][3];
+	}
+	float cs = cosf(s_yaw), sn = sinf(s_yaw);
+	pos[0] = s_px + cs * m0[0] + sn * m0[2], pos[1] = s_py + m0[1], pos[2] = s_pz - sn * m0[0] + cs * m0[2];
+	float d[3] = { m1[0] - m0[0], m1[1] - m0[1], m1[2] - m0[2] };
+	float l = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+	if (l < 1.0f)
+		return false;
+	dir[0] = (cs * d[0] + sn * d[2]) / l, dir[1] = d[1] / l, dir[2] = (-sn * d[0] + cs * d[2]) / l;
+	return true;
+}
+
+// On the PICA the specular-0 path carries the beam: specular0 * D0 (N.L) * spot (the cookie) *
+// distance (the ramp), with the diffuse term zeroed. It comes out as the fragment secondary colour,
+// which the map texenv doubles and adds as texture * secondary. The ambient term (fragment primary)
+// lights characters.
 static void lighting_setup(void)
 {
 	static const C3D_Material mat = {
@@ -1654,12 +1741,22 @@ static void env_luts(void)
 {
 	float near, far;
 	env_clip(&near, &far);
-	float c = s_env.fl_col[0] * bright_scale();
+	// the beam's colour is the record's, as PS1 takes it; the brightness level's ramp is the same
+	// at the default level (0x47cb30), so no 1.2 on it
+	float c = s_env.fl_col[0] * (s_flash_pc ? 1.0f : bright_scale());
 	c = c > 1.0f ? 1.0f : c;                                     // the PC pixel shader clamps
 	C3D_LightColor(&s_flash, 0.0f, 0.0f, 0.0f);      // no diffuse term: see lighting_setup
 	C3D_LightSpecular0(&s_flash, c, c, c);
 	float cone = s_env.fl_cone > 0.1f ? s_env.fl_cone : 0.785f;
-	LightLut_FromFunc(&s_spot_lut, spot_soft, cone, true);     // record cone taken as the half angle
+	LightLut_FromFunc(&s_spot_lut, s_flash_pc ? spot_cookie : spot_soft, cone, true);   // record cone: the half angle
+	{
+		static C3D_LightLut d0;
+		bool nl = s_flash_pc;
+		LightLut_FromFunc(&d0, nl ? lut_nl : lut_one, 0.0f, nl);
+		// signed input, as the table was made (C3D_LightEnvLut's flag is "negative": false reads |N.L|,
+		// whose upper half then fell in the table's negative half and blacked out the floor under him)
+		C3D_LightEnvLut(&s_lenv, GPU_LUT_D0, nl ? GPU_LUTINPUT_LN : GPU_LUTINPUT_NH, nl, &d0);
+	}
 	C3D_LightSpotLut(&s_flash, &s_spot_lut);
 	float st = s_env.fl_start > 0.0f ? s_env.fl_start : 1500.0f, en = s_env.fl_end > st ? s_env.fl_end : 6000.0f;
 	LightLutDA_Create(&s_flash_da, flash_atten, 0.0f, en, st, en);
@@ -1681,9 +1778,13 @@ static void lighting_frame(const C3D_Mtx* view, bool player)
 	// for the whole scene.
 	int dn = demo_number();
 	bool flash = player && s_env.dark && flash_lit() && dn != 0x19 && dn != 0x5c;
-	// 0x50a7d0: dark rooms set the level every frame, lit rooms keep the last one
+	s_flash_james = flash;
+	float rp[3], rd[3];
+	bool room = player && s_env.dark && !flash && room_spot(rp, rd);
+	// 0x50a7d0: dark rooms set the level every frame, lit rooms keep the last one; a room's own
+	// spot counts as the flashlight switched on (level 0, no grey fill light)
 	if (player && s_env.dark)
-		s_flash_level = flash ? 0.0f : env_flash_off_level(&s_env, ev_have_item(0x12), ev_flag(625));
+		s_flash_level = flash || room ? 0.0f : env_flash_off_level(&s_env, ev_have_item(0x12), ev_flag(625));
 	if (player) {
 		int room = bgm_room_id(ev_glb_crd(), s_px, s_pz);
 		if (room != s_level_room) {
@@ -1707,12 +1808,30 @@ static void lighting_frame(const C3D_Mtx* view, bool player)
 		C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uLightCol + i, s_slot_col[i][0], s_slot_col[i][1], s_slot_col[i][2], 0.0f);
 	}
 	C3D_LightEnvAmbient(&s_lenv, 0.0f, 0.0f, 0.0f);
-	C3D_LightEnable(&s_flash, flash);
-	s_chrflash.on = flash;
+	C3D_LightEnable(&s_flash, flash || room);
+	s_chrflash.on = flash || room;
+	s_chrflash.room = room;
+	if (room) {
+		// the room's spot in place of James' beam (0x47b100), with the flashlight's colour and decay
+		// (0x47b870 keeps 0x9456b0): only where the beam starts and points changes
+		C3D_FVec wp = FVec4_New(rp[0], rp[1], rp[2], 1.0f), wd = FVec4_New(rd[0], rd[1], rd[2], 0.0f);
+		memcpy(s_chrflash.pos, rp, sizeof rp);
+		memcpy(s_chrflash.dir, rd, sizeof rd);
+		s_chrflash.start = s_env.fl_start > 0.0f ? s_env.fl_start : 1500.0f;
+		s_chrflash.end = s_env.fl_end > s_chrflash.start ? s_env.fl_end : 6000.0f;
+		s_chrflash.cone = s_env.fl_cone > 0.1f ? s_env.fl_cone : 0.785f;
+		C3D_FVec vp = Mtx_MultiplyFVec4(view, wp);
+		C3D_FVec vd = Mtx_MultiplyFVec4(view, wd);
+		C3D_LightPosition(&s_flash, &vp);
+		C3D_LightSpotDir(&s_flash, vd.x, vd.y, vd.z);
+	}
 	if (flash) {
 		float fx = sinf(s_yaw), fz = cosf(s_yaw);
 		C3D_FVec wp = FVec4_New(s_px + fx * 80.0f, s_py - 780.0f, s_pz + fz * 80.0f, 1.0f);
 		C3D_FVec wd = FVec4_New(fx, 0.3f, fz, 0.0f);        // aimed at the floor ahead (Y down)
+		float bp[3], bd[3];
+		if (s_flash_pc && flash_from_bone(bp, bd))            // where his hand holds it (0x536190)
+			wp = FVec4_New(bp[0], bp[1], bp[2], 1.0f), wd = FVec4_New(bd[0], bd[1], bd[2], 0.0f);
 		s_chrflash.pos[0] = wp.x, s_chrflash.pos[1] = wp.y, s_chrflash.pos[2] = wp.z;
 		s_chrflash.dir[0] = wd.x, s_chrflash.dir[1] = wd.y, s_chrflash.dir[2] = wd.z;
 		s_chrflash.start = s_env.fl_start > 0.0f ? s_env.fl_start : 1500.0f;
@@ -2366,9 +2485,14 @@ static void shadow_frame(bool paused)
 	// (IDirect3DDevice8.cpp SetShadowFading, zlib licence).
 	bool play = s_cam.mode == CAM_PLAYER && s_state == ST_GAME && !demo_active() && s_env.shadow != 0 &&
 	            quality()->stencil_shadows;
-	bool room312 = s_env.map_id == 0xc005b, lamp = s_env.map_id == 0x9002a && !s_chrflash.on;
+	// A room's own spot (room_spot) casts too: the PC's footage of room 205 before the flashlight is
+	// taken shows James and the mannequin throwing their shadows on the wall it lights, and the
+	// Enhanced Edition adds nothing there. (Read from 0x5a8370 alone, 0x5a5860 would clear them while
+	// 0x48c840 is 0; which test lets them through is not traced.)
+	bool room312 = s_env.map_id == 0xc005b, lamp = s_env.map_id == 0x9002a && !s_flash_james;
+	bool spot = s_chrflash.room;
 	static bool lamp_was;
-	if (play && (s_chrflash.on || room312 || lamp)) {
+	if (play && (s_flash_james || room312 || lamp || spot)) {
 		int room = bgm_room_id(ev_glb_crd(), s_px, s_pz);
 		if (lamp && !lamp_was)
 			fade = 0.0f;
@@ -2384,6 +2508,8 @@ static void shadow_frame(bool paused)
 	if (play && room312) {
 		static const float down[3] = { 0.0731137f, 0.683614f, 0.726173f };   // 0x3d95bca0 0x3f2f0154 0x3f39e673
 		shadow_begin_parallel(down, k);
+	} else if (play && spot) {
+		shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, k);
 	} else if (play && lamp) {
 		static const float at[3] = { -58350.0f, -700.0f, 19275.0f }, dir[3] = { -0.362000f, 0.769000f, 0.326000f };
 		shadow_begin(at, dir, s_chrflash.cone, k);
@@ -2479,10 +2605,15 @@ static void draw_james(const C3D_Mtx* proj, const C3D_Mtx* view)
 		C3D_FogGasMode(GPU_NO_FOG, GPU_PLAIN_DENSITY, false);
 	shadow_mark_begin();                  // characters take no shadow (shadow.c)
 	float jat[3] = { s_px, s_py, s_pz };
-	shadow_cast(&s_james, jat, s_yaw);    // the PC's hll_jms.kg1 is empty, so nothing yet
+	// James' shadow (Draw_Jms_Shadow 0x509870): his drop shadow in lit rooms; in a dark room the
+	// light of sh2shd_get_jms_shadow_env (0x5acaf0), of which only kind 5 at a room's own spot is
+	// ported (room 205 before the flashlight is taken: his wall shadow). The self shadows the PC
+	// casts under his own flashlight (kinds 1 to 3, 0x5aa4b0) are not ported (port/STATUS.md).
+	shadow_cast_james(&s_james, jat, s_yaw, s_chrflash.room ? s_chrflash.pos : NULL);
 	combat_set_parts(move_last()->state);
 	chr_draw(&s_james, s_uBones);
 	combat_draw_weapon(s_uBones);
+	combat_weapon_shadow(jat, s_yaw, s_chrflash.room ? s_chrflash.pos : NULL);
 	if (s_state == ST_GAME) {
 		enemy_draw(view, s_uSkinModelView, s_uBones, stereo_eye() ? 0.0f : s_anim_dt);
 		stagemdl_draw(view, s_uSkinModelView, s_uBones);   // the stage's own models (stagemdl.c)
@@ -2552,9 +2683,22 @@ static void texenv(bool textured, int group)
 		C3D_TexEnvColor(env, s_map_test == 5 ? 0xFF808080 : group_color[group]);
 	} else if (textured) {
 		// PC map pixel shader: texture * vertex light, plus texture * flashlight (fragment light)
+		C3D_TexEnv* e1 = C3D_GetTexEnv(1);
+		if (s_flash_pc && s_map_test != 3) {
+			// PS1's mul_x2: the beam doubled first, then texture * vertex light added
+			C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_FRAGMENT_SECONDARY_COLOR, 0);
+			C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
+			C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+			C3D_TexEnvScale(env, C3D_RGB, GPU_TEVSCALE_2);
+			C3D_TexEnvInit(e1);
+			C3D_TexEnvSrc(e1, C3D_RGB, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PREVIOUS);
+			C3D_TexEnvSrc(e1, C3D_Alpha, GPU_PREVIOUS, 0, 0);
+			C3D_TexEnvFunc(e1, C3D_RGB, GPU_MULTIPLY_ADD);
+			C3D_TexEnvFunc(e1, C3D_Alpha, GPU_REPLACE);
+			return;
+		}
 		C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
 		C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
-		C3D_TexEnv* e1 = C3D_GetTexEnv(1);
 		C3D_TexEnvInit(e1);
 		if (s_map_test == 3)
 			return;
@@ -4524,6 +4668,7 @@ static void dump_info(u32 n)
 		        (unsigned long)s_cur.n_vertices);
 		fprintf(f, "fog test %d (%s), %s, demo %s\n", fog_debug_mode(), fog_debug_name(), chrlight_status(), demo_status());
 		fprintf(f, "picture %s\n", supersample_status());
+		fprintf(f, "%s, room spot %d, james flash %d\n", shadow_status(), s_chrflash.room, s_flash_james);
 		fprintf(f, "camera %s%s, %s\n", s_tp_live ? "behind" : "pc", gamecam_scripted() ? " (a scripted shot)" : "",
 		        tpcam_status());
 		fclose(f);
@@ -5001,6 +5146,7 @@ int main(void)
 			if (sscanf(line, "%31s %d", key, &val) != 2)
 				continue;
 			if (!strcmp(key, "rendermode")) s_render_mode = val;
+			if (!strcmp(key, "flashpc")) s_flash_pc = val != 0, s_env_dirty = true;   // 0: the beam before the PC's formula
 			if (!strcmp(key, "perflog")) s_perflog = val != 0;
 			if (!strcmp(key, "gpucost")) gpucost_enable(val != 0);   // the GPU cost model (gpucost.h)
 			if (!strcmp(key, "mapcull")) s_map_cull = val != 0;
@@ -5074,6 +5220,10 @@ int main(void)
 	{
 		char err[128];
 		s_have_james = chr_load(&s_james, PACK_DIR "/chr/jms", "hll_jms", err, sizeof err);
+		// CharaDataLoadExec (0x493260) pairs hll_jms.mdl with the shadow file record 0x7d8688,
+		// hhh_jms.kg1: 16 rigid parts on bones 0..40, which hll_jms shares with hhh_jms
+		if (s_have_james)
+			chr_load_kg1(&s_james, PACK_DIR "/chr/jms/hhh_jms.kg1");
 		if (s_have_james) {
 			anim_load(&s_james_anim, PACK_DIR "/chr/jms/jms_basic1.s3a");   // clips: move.c's PC table
 			move_reset();

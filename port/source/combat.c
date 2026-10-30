@@ -28,6 +28,7 @@
 //   guns is the muzzle (handgun 125, shotgun 294, rifle 483 units out), the plank's second bone is its
 //   grip offset (frame 4 of wp/jms_weapon.anm). They are drawn rigidly on bone 35.
 #include "combat.h"
+#include "shadow.h"
 #include "gpusync.h"
 #include "controls.h"
 #include <math.h>
@@ -2016,6 +2017,13 @@ void combat_draw_weapon(int uBones)
 		s_wmodel.skin[i] = s_james->skin[pdef()->hand];
 	chr_draw(&s_wmodel, uBones);
 	draw_flash(uBones);
+}
+
+void combat_weapon_shadow(const float pos[3], float yaw, const float* light)
+{
+	if (!s_ok || !s_wmodel_ok || demo_active())
+		return;
+	shadow_cast_james(&s_wmodel, pos, yaw, light);
 }
 
 // PlayerCheckModelParts (0x52f6a0) picks one right hand (poses 3..13), one left hand (14..20) and

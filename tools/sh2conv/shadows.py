@@ -14,8 +14,10 @@ a 0x60-byte header (bone index at +4, geometry count at +6, bounding sphere s16 
 +0x18), then its geometries: a 16-byte header (vertex count, primitive type, -, size in 16-byte
 units including the header, bounding sphere), and for triangle strips (types 5, 6, 8, 9) two s16
 x, y, z, w vertices followed by a face normal and the next vertex per triangle, in the bone's space.
-The game ships empty .kg1 files for James' and Maria's gameplay models (hll_jms, lll_mar), so on
-the PC they cast no such shadow; those are skipped.
+The game ships empty .kg1 files for James' and Maria's gameplay models (hll_jms, lll_mar); those are
+skipped. The loader pairs James' gameplay models with the cutscene model's hull instead
+(CharaDataLoadExec 0x493260, shadow file record 0x7d8688: hhh_jms.kg1), which the port loads at
+run time (main.c, chr_load_kg1).
 """
 import argparse
 import os
