@@ -58,6 +58,10 @@ void enemy_killed_reset(void)
 static int s_diff = 2;                    // gActionDifficulty (0 beginner .. 3 hard, 4 unused)
 static char s_pack[64];
 static float s_px, s_pz;                  // James this frame, for body separation
+// The characters' push (enemy_push_apart): each enemy before this frame's move (enemy_update), and
+// James after last frame's push
+static float s_was[ENEMY_MAX][2], s_jwas[2];
+static bool s_was_ok[ENEMY_MAX], s_jwas_ok;
 
 // Models by chr folder, loaded the first time a room needs them and kept until enemy_exit.
 enum { MDL_SCU, MDL_MKN, MDL_NSE, MDL_XOO, MDL_TYU, MDL_RED, MDL_PAP, MDL_ONI, MDL_BOS, MDL_ARM, MDL_EDI, MDL_IKE,
@@ -1514,6 +1518,36 @@ static void scu_dying(Enemy* e)
 
 // ---------------------------------------------------------------- per-frame
 
+// The column enMoveExec registers for the characters' push (clSetCharaHitColumn 0x4a91f0, its
+// first column): radius size (EnLOCAL +0x70), from the feet up by tall (+0x78), with the kind's
+// weight (EnLOCAL +5, set by the init: Lying Figure 0x4c46c0, Mannequin 0x4c15c0 and nurse
+// 0x4ba1e0 2, creeper 0x4ae1f0 1). The dead have none (enMoveExec returns before it once
+// enDyingExec 0x4a96c0 sets +0x148 bit 2). The PC centres it on the root bone (0x4a7370, bone
+// 0x8927f0[kind]) once an anime has played 10 frames; in these kinds' anims the root stays within
+// 70 units of the feet point, lying or standing, so the port keeps it on the feet.
+// Port: only these four kinds have it so far; a creeper on a wall or the ceiling has none here
+// (its column hangs from there on the PC, flag 0x40), and the other kinds keep move_exec's stop.
+static bool push_column(const Enemy* e, float* r, int* weight)
+{
+	if (!e->used || !enemy_alive(e))
+		return false;
+	int w;
+	switch (e->kind) {
+	case EN_KIND_SCU: case EN_KIND_MKN: case EN_KIND_NSE: w = 2; break;
+	case EN_KIND_TYU:
+		if (e->mlv == TYU_WALL || e->mlv == TYU_CEILING)
+			return false;
+		w = 1;
+		break;
+	default: return false;
+	}
+	if (e->size <= 0.0f)
+		return false;
+	if (r) *r = e->size;
+	if (weight) *weight = w;
+	return true;
+}
+
 // enMoveExec 0x4a9e60: size easing, root motion, crawl velocity, hit-back and the room.
 static void move_exec(Enemy* e, float adv, float dt)
 {
@@ -1570,10 +1604,13 @@ static void move_exec(Enemy* e, float adv, float dt)
 	if (mx == 0.0f && mz == 0.0f)
 		return;
 	float nx = e->x + mx, nz = e->z + mz;
-	// bodies do not overlap: an upright enemy stops at James' collision radius (130) plus its own
+	// Port stand-in for the kinds without a push column yet (push_column): an upright enemy stops at
+	// James' collision radius (130) plus its own. The others meet James in enemy_push_apart, as on
+	// the PC, whose enMoveExec never looks at him.
 	float mind = 130.0f + e->size * 0.8f;
 	float dx = nx - s_px, dz = nz - s_pz, d = sqrtf(dx * dx + dz * dz);
-	if (d < mind && d < hypotf(e->x - s_px, e->z - s_pz) && (!enemy_is_down(e) || e->kind == EN_KIND_TYU)) {
+	if (!push_column(e, NULL, NULL) && d < mind && d < hypotf(e->x - s_px, e->z - s_pz) &&
+	    (!enemy_is_down(e) || e->kind == EN_KIND_TYU)) {
 		if (d < 1.0f) return;
 		nx = s_px + dx / d * mind;
 		nz = s_pz + dz / d * mind;
@@ -5865,6 +5902,7 @@ void enemy_event_remove(void)
 // does not run then).
 void enemy_event_tick(float dt)
 {
+	s_jwas_ok = false;                   // James is placed by the scene, not walked
 	if (s_ev_want.on && (s_ev_want.delay -= dt) <= 0.0f)
 		event_spawn();
 	if (s_ev_slot < 0 || !s_en[s_ev_slot].used)
@@ -5964,6 +6002,7 @@ void enemy_room_enter(int stage, const Collision* col)
 	enemy_clear();
 	s_col = col;
 	s_stage = stage;
+	s_jwas_ok = false;
 	maria_room_enter(col);
 	s_spawn_again = false;
 	s_load_now = true;
@@ -6000,9 +6039,139 @@ void enemy_stream_update(int stage, const Collision* col)
 	spawn_list(stage, col);
 }
 
+// 0x525ed0 (the PS2 beta's clCollectCharaALL), which 0x50b1e0 runs every frame after James and the
+// enemies chose their moves and before the blows are checked (0x527e60). clSetCharaHitColumn
+// (0x5278c0) puts each character's push column back where it stood last frame; then, in the order
+// the columns came (James first: his character runs in 0x538890, the enemies after in 0x4a88e0),
+// each column takes this frame's move (at most its radius), the walls (0x5258e0), and moves out of
+// every other column it overlaps, standing or already moved (clCheckSubColumnToColumn 0x5298a0:
+// the heights meet and the centres are nearer than the radii added up; it moves by the overlap
+// plus 1, at most its radius). So whoever walks into the other gives way. The other column is
+// pushed back on its next turn by a share of that move, 1 - {1, 0.98, 0.94, 0.9, 0.86}[mover's
+// weight - other's + 1]: nothing when the mover is the lighter, 2 % at equal weights, 6 % when it
+// is one heavier; shares from two columns keep the larger per axis when they agree and add up
+// when they don't (0x522940). The walls again after each turn. Up to three passes while any
+// column met another. Port: the walls are James' 130 and each enemy's own col_push; the moves come
+// from the port's own move code (James' last place is kept here, the enemies' by enemy_update), a
+// move longer than the radius counts as a placing, and a column that met nobody keeps the place
+// that code gave it.
+typedef struct { float cx, cz, mx, mz, feet, top, r, px, pz; int w; bool moved; Enemy* e; } PushCol;
+
+static void push_share(float* a, float b)       // 0x522940
+{
+	float s = *a + b, lo = *a < b ? *a : b, hi = *a < b ? b : *a;
+	*a = s < lo ? lo : s > hi ? hi : s;
+}
+
+static void push_walls(PushCol* c, float fx, float fz, float jy)
+{
+	if (!s_col)
+		return;
+	if (!c->e) {        // James: his feet, off the column's centre by its distance ahead
+		float x = c->cx - fx, z = c->cz - fz;
+		col_push(s_col, &x, &z, jy, 900.0f, 130.0f);
+		c->cx = x + fx, c->cz = z + fz;
+	} else {
+		col_push(s_col, &c->cx, &c->cz, c->e->y, c->e->tall, c->e->size);
+	}
+}
+
+void enemy_push_apart(float jx, float jz, float jy, float jyaw, float jr, float jahead, float* jdx, float* jdz)
+{
+	static const float SHARE[5] = { 1.0f, 0.98f, 0.94f, 0.9f, 0.86f };
+	PushCol c[ENEMY_MAX + 1];
+	int n = 0;
+	*jdx = *jdz = 0.0f;
+	float fx = sinf(jyaw) * jahead, fz = cosf(jyaw) * jahead;
+	// James' move this frame (none after a scene or a door, or one longer than his radius: a placing)
+	float wx = jx, wz = jz;
+	if (s_jwas_ok && hypotf(jx - s_jwas[0], jz - s_jwas[1]) <= jr)
+		wx = s_jwas[0], wz = s_jwas[1];
+	if (jr > 0.0f)       // 0x534d70: from 50 above his feet to 850 above, weight 2 (0x536f10)
+		c[n++] = (PushCol){ wx + fx, wz + fz, jx - wx, jz - wz, jy - 50.0f, jy - 850.0f, jr, 0.0f, 0.0f, 2, false, NULL };
+	for (int i = 0; i < ENEMY_MAX; i++) {
+		Enemy* e = &s_en[i];
+		float r;
+		int w;
+		if (!push_column(e, &r, &w))
+			continue;
+		// its move this frame; one longer than its radius (the PC's limit for a move) was a placing
+		float ox = s_was_ok[i] ? s_was[i][0] : e->x, oz = s_was_ok[i] ? s_was[i][1] : e->z;
+		if (hypotf(e->x - ox, e->z - oz) > r)
+			ox = e->x, oz = e->z;
+		c[n++] = (PushCol){ ox, oz, e->x - ox, e->z - oz, e->y, e->y - e->tall, r, 0.0f, 0.0f, w, false, e };
+	}
+	for (int pass = 0; pass < 3 && n > 1; pass++) {
+		int met = 0;
+		for (int i = 0; i < n; i++) {
+			PushCol* a = &c[i];
+			float mx = a->mx, mz = a->mz;      // its own move (first pass) and the shares it got
+			if (a->px != 0.0f)
+				mx = mx * a->px >= 0.0f ? (fabsf(a->px) > fabsf(mx) ? a->px : mx) : a->px;
+			if (a->pz != 0.0f)
+				mz = mz * a->pz >= 0.0f ? (fabsf(a->pz) > fabsf(mz) ? a->pz : mz) : a->pz;
+			if (mx != 0.0f || mz != 0.0f) {
+				a->cx += mx, a->cz += mz;
+				if (a->px != 0.0f || a->pz != 0.0f)
+					a->moved = true, push_walls(a, fx, fz, jy);
+			}
+			a->mx = a->mz = a->px = a->pz = 0.0f;
+			for (int j = 0; j < n; j++) {
+				PushCol* b = &c[j];
+				if (j == i || a->feet < b->top || b->feet < a->top)
+					continue;
+				float dx = a->cx - b->cx, dz = a->cz - b->cz, d = sqrtf(dx * dx + dz * dz);
+				float over = a->r + b->r - d;
+				if (over < 0.0f)
+					continue;
+				if (d < 1.0f)    // port guard: one on top of the other (the PC divides by 0)
+					dx = a->e ? sinf(a->e->yaw) : -sinf(jyaw), dz = a->e ? cosf(a->e->yaw) : -cosf(jyaw), d = 1.0f;
+				float k = (over + 1.0f) / d, qx = dx * k, qz = dz * k, l = hypotf(qx, qz);
+				if (l > a->r)
+					qx *= a->r / l, qz *= a->r / l;
+				a->cx += qx, a->cz += qz;
+				int s = a->w - b->w;
+				s = s < 0 ? 0 : s >= 4 ? 4 : s + 1;
+				float bx = -qx * (1.0f - SHARE[s]), bz = -qz * (1.0f - SHARE[s]), bl = hypotf(bx, bz);
+				if (bl > b->r)
+					bx *= b->r / bl, bz *= b->r / bl;
+				push_share(&b->px, bx);
+				push_share(&b->pz, bz);
+				a->moved = true;
+				met++;
+			}
+			if (a->moved)
+				push_walls(a, fx, fz, jy);
+		}
+		if (!met)
+			break;
+	}
+	for (int i = 0; i < n; i++) {
+		PushCol* a = &c[i];
+		if (!a->moved)        // the port's own move code placed it already
+			continue;
+		if (!a->e) {
+			*jdx = a->cx - fx - jx, *jdz = a->cz - fz - jz;
+			if (s_log)        // debug.txt "enemylog 1"
+				fprintf(s_log, "push J r%.0f ahead%.0f moved %.0f %.0f\n", jr, jahead, *jdx, *jdz);
+			continue;
+		}
+		Enemy* e = a->e;
+		float ny;
+		if (!s_col || col_floor(s_col, a->cx, a->cz, e->y, 200.0f, &ny))
+			e->x = a->cx, e->z = a->cz, e->y = s_col ? ny : e->y;
+	}
+	s_jwas[0] = jx + *jdx, s_jwas[1] = jz + *jdz;
+	s_jwas_ok = true;
+}
+
 void enemy_update(const EnPlayer* p, float dt)
 {
 	s_px = p->x, s_pz = p->z;
+	for (int i = 0; i < ENEMY_MAX; i++) {    // where the push columns start (enemy_push_apart)
+		s_was_ok[i] = s_en[i].used;
+		s_was[i][0] = s_en[i].x, s_was[i][1] = s_en[i].z;
+	}
 	if (s_spawn_again && s_col) {
 		s_spawn_again = false;          // set again while a model's files are still on their way
 		spawn_list(s_stage, s_col);

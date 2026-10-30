@@ -306,7 +306,9 @@ static int s_stick_dir;                 // last circle pad direction (0 centre, 
 static float s_invuln, s_dead_t, s_flash;
 static float s_die_t;                    // since the killing blow (combat_dying_time)
 static float s_hit_t = 99.0f;            // since the last blow that hurt (combat_hit_time)
-static float s_tip[3], s_root[3];       // plank or knife segment in James' bind space
+static float s_tip[3], s_root[3];       // melee weapon's grip and far end in James' bind space
+static float s_prev_end[3];             // the blow's far end the frame before (0x543b10 keeps it at +0x128)
+static bool s_prev_ok;
 static float s_muzzle[3];               // gun muzzle in James' bind space
 static void* s_flash_vbo;               // linear memory, muzzle flash quads (S3C vertex layout)
 static char s_line[48];
@@ -326,6 +328,8 @@ static bool s_god;                      // debug.txt "god 1": blows do not reach
 // combat_carry_james)
 static bool s_carried;
 static float s_carry[3];
+static float s_col_r = 200.0f, s_col_ahead;   // James' push column (combat_column)
+static bool s_die_held;                       // the blow that killed him came in a hold
 
 // How a clip starts (0x531a00 / 0x52fae0 and the modes of 0x538920): standing, walking, raising,
 // aiming and lowering crossfade over 8 frames (mode 4); swings, shots, reloads, kicks, stomps, hits
@@ -452,9 +456,15 @@ static void bind_pos(const Character* c, int bone, float out[3])
 		out[i] = -(m->m[0][i] * m->m[0][3] + m->m[1][i] * m->m[1][3] + m->m[2][i] * m->m[2][3]);
 }
 
+// 0x545c80: a melee weapon's blow runs from its bone 0 (the grip) toward its bone 1 (the far end);
+// a model without the second bone points at its farthest vertex instead.
 static void plank_segment(void)
 {
 	bind_pos(&s_wmodel, 0, s_root);
+	if (s_wmodel.n_bones > 1) {
+		bind_pos(&s_wmodel, 1, s_tip);
+		return;
+	}
 	float best = 0.0f;
 	const u8* v = (const u8*)s_wmodel.vertices;
 	for (u32 i = 0; i < s_wmodel.n_vertices; i++) {
@@ -530,7 +540,7 @@ static bool load_weapon(int w)
 		s_wmodel_ok = chr_load(&s_wmodel, dir, d->mdl, err, sizeof err);
 		if (s_wmodel_ok) {
 			if (w == W_PLANK || w == W_KNIFE || w == W_PIPE || w == W_NATA || w == W_CSAW)
-				plank_segment();       // the blade or shaft: hand to its far end
+				plank_segment();       // the blade or shaft: the grip and its direction
 			else if (s_wmodel.n_bones > 1)
 				bind_pos(&s_wmodel, 1, s_muzzle);
 		}
@@ -596,6 +606,7 @@ void combat_reset(void)
 	s_vis = s_stompable = s_stomp_e = NULL;
 	s_attack_seq = false;
 	s_carried = false;
+	s_col_r = 200.0f, s_col_ahead = 0.0f, s_die_held = false;   // 0x536f10
 	int w = s_maria ? W_MNONE : W_NONE;    // bare hands until a weapon is picked up
 	if (s_ok && s_weapon != w)
 		load_weapon(w);
@@ -774,6 +785,58 @@ void combat_carry_james(bool on, float x, float y, float z)
 }
 
 bool combat_dying(void) { return s_mode == M_DYING || s_mode == M_DEAD; }
+
+// James' push column (the PC's DAT_01fbaaa0): 0x52ed60 asks for a radius and a distance ahead of
+// his feet by the upper-body state (0x1fba8e4) and the grip, 0x534d70 eases both 5 units a 1/30 s
+// toward them (from 200 and 0, 0x536f10), and 0x535010 registers it while 0x1fbad17 < 2 (none
+// once the death motion is over). Standing, walking, kicking, hurt: 175, 25 ahead (Maria 150).
+// HOLD (the port's ready) and ATTACK (swings, shots, reloads, the spray) take the grip's row of
+// 0x52ed60's table, in metres; the handguns held after an attack on the left side reach 275, 115
+// ahead, and the great knife holds 265 at 50 ahead (right side) or 50 behind. Dying (DAMAGE with
+// 0x1fbad17 set): 375, or none when the blow that killed him was attack 54 or 61 (SC +0x114); the
+// port takes a death in a hold for those. At the place 0x1fba8d8 == 2 the radius is the standing one.
+void combat_column(float dt, float* radius, float* ahead)
+{
+	static const float ROW[10][4] = {   // per grip 1..10: HOLD radius, ahead, ATTACK radius, ahead
+		{ 0.35f, 0.05f, 0.55f, 0.23f }, { 0.45f, 0.05f, 0.55f, 0.05f }, { 0.65f, 0.2f, 0.65f, 0.2f },
+		{ 0.4f, 0.15f, 0.45f, 0.17f }, { 0.4f, 0.2f, 0.45f, 0.2f }, { 0.4f, 0.1f, 0.5f, 0.1f },
+		{ 0.45f, 0.12f, 0.45f, 0.12f }, { 0.45f, 0.18f, 0.5f, 0.18f }, { 0.3f, 0.05f, 0.5f, 0.23f },
+		{ 0.35f, 0.1f, 0.4f, 0.1f },
+	};
+	if (!s_ok || s_mode == M_DEAD) {
+		*radius = *ahead = 0.0f;
+		return;
+	}
+	float stand = s_maria ? 150.0f : 175.0f, r = stand, a = 25.0f;
+	int grip = WEAPONS[s_weapon].grip;
+	int side = s_attack_seq ? s_side : 0xff;        // 0x1fbad16
+	switch (s_mode) {
+	case M_READY:
+		if (grip >= 1 && grip <= 10)
+			r = ROW[grip - 1][0] * 500.0f, a = ROW[grip - 1][1] * 500.0f;
+		if ((grip == 1 || grip == 9) && side == 1)
+			r = 275.0f, a = 115.0f;
+		if (grip == 8)
+			r = 265.0f, a = side == 0 ? 50.0f : -50.0f;
+		break;
+	case M_SWING: case M_REBOUND: case M_RECOVER: case M_SHOT: case M_RELOAD: case M_SPRAY:
+		if (grip >= 1 && grip <= 10)
+			r = ROW[grip - 1][2] * 500.0f, a = ROW[grip - 1][3] * 500.0f;
+		break;
+	case M_DYING:
+		r = s_die_held ? 0.0f : 375.0f;
+		break;
+	default:
+		break;
+	}
+	if (s_place == 2)
+		r = stand;
+	float step = dt * 30.0f * 5.0f;
+	s_col_r += r > s_col_r + step ? step : r < s_col_r - step ? -step : r - s_col_r;
+	s_col_ahead += a > s_col_ahead + step ? step : a < s_col_ahead - step ? -step : a - s_col_ahead;
+	*radius = s_col_r;
+	*ahead = s_col_ahead;
+}
 float combat_dying_time(void) { return combat_dying() ? s_die_t : 0.0f; }
 float combat_hit_time(void) { return s_hit_t; }
 
@@ -808,6 +871,7 @@ void combat_hold_damage(float ap, float dt)
 		sfx_play(pdef()->snd_die, 1.0f, 0.0f);
 		s_mode = M_DYING;
 		s_die_t = 0.0f;
+		s_die_held = true;
 		play(&J_DIE);
 	}
 }
@@ -828,6 +892,7 @@ void combat_damage_james(int attack_id, float ap, float from_x, float from_z)
 		sfx_play(pdef()->snd_die, 1.0f, 0.0f);   // dying scream
 		s_mode = M_DYING;
 		s_die_t = 0.0f;
+		s_die_held = false;
 		play(&J_DIE);
 		return;
 	}
@@ -1108,47 +1173,79 @@ static void pose_james(void)
 	chr_pose_loop(s_james, &s_anim, s_frame, l[0], l[1]);
 }
 
-// shBattleAttackByHumanFightType (PS2 sh_character_battle.c), reduced: inside the attack's frame
-// window the plank segment (hand to far end) is tested against each enemy's hit column.
+// shBattleAttackByHumanFightType (PS2 sh_character_battle.c): 0x543b10 builds the blow every frame
+// of the attack, from the weapon's grip along it (0x545c80) out to the attack's min_range and
+// max_range (the plank -150..350, so it reaches back past the hands to a body pressed against James),
+// and keeps its far end (+0x128). Inside the frame window the check (0x527b60 for kind 2, 0x527cd0
+// for kind 1) tries five blows from this frame's start: to this frame's far end, then to points
+// 0.3, 0.5, 0.7 and all the way back to last frame's, until one meets something; a blow that
+// starts inside a column counts (0x528f00). The plank's and the pipe's attacks (12..18) stop
+// checking after their first hit (0x543b10 needs +0x124 clear). The checks run after the
+// characters' push (0x50b1e0), so a body is never inside James.
 static void swing_hits(const CombatBody* b)
 {
 	if (!s_atk)
 		return;
 	float f = s_frame - s_cur->start;
-	if (f < s_atk->first || f > s_atk->last + 0.99f)
+	bool window = f >= s_atk->first && f <= s_atk->last + 0.99f;
+	if (!window && f > s_atk->last + 0.99f)
 		return;
 	pose_james();
-	float a[3], t[3];
+	float a[3], t[3], s0[3], e0[3], pe[3];
 	to_world(b, s_root, a);
 	to_world(b, s_tip, t);
+	float d[3] = { t[0] - a[0], t[1] - a[1], t[2] - a[2] };
+	float dl = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+	if (dl < 1e-3f)
+		return;
+	for (int k = 0; k < 3; k++) {
+		d[k] /= dl;
+		s0[k] = a[k] + d[k] * s_atk->min_range;
+		e0[k] = a[k] + d[k] * s_atk->max_range;
+		pe[k] = s_prev_ok ? s_prev_end[k] : e0[k];
+		s_prev_end[k] = e0[k];
+	}
+	s_prev_ok = true;
+	if (!window || (s_hit_any && s_atk->id >= 12 && s_atk->id <= 18))
+		return;
 	float fx = sinf(*b->yaw), fz = cosf(*b->yaw);
 	float rx = fz, rz = -fx;                       // James' right
 	if (!s_hit_any && !s_swing_wall && s_col) {
 		// the weapon's far end inside a wall: the blow strikes the room
-		float ex = t[0], ez = t[2];
-		col_clamp_ray(s_col, *b->x, *b->z, &ex, &ez, t[1]);
-		if (hypotf(ex - t[0], ez - t[2]) > 1.0f) {
+		float ex = e0[0], ez = e0[2];
+		col_clamp_ray(s_col, *b->x, *b->z, &ex, &ez, e0[1]);
+		if (hypotf(ex - e0[0], ez - e0[2]) > 1.0f) {
 			s_swing_wall = true;
 			s_wall_ap_next = s_atk->ap;
 		}
 	}
-	for (int i = 0; i < enemy_count(); i++) {
-		Enemy* e = enemy_get(i);
-		if (!enemy_alive(e) || s_hit[i])
-			continue;
-		float cx, cz, r, top, bottom;
-		enemy_hit_cylinder(e, &cx, &cz, &r, &top, &bottom);
-		float ylo = a[1] < t[1] ? a[1] : t[1], yhi = a[1] < t[1] ? t[1] : a[1];
-		if (yhi < top || ylo > bottom)
-			continue;
-		if (seg_dist2d(a, t, cx, cz) > r)
-			continue;
-		s_hit[i] = true;
-		s_hit_any = true;
-		// the hit (0x5350d0): the plank's 11032, the knife's 17035, both at 0.8
-		sfx_play(md()->snd_hit, 0.8f, 0.0f);
-		float sgn = s_side == 0 ? -0.5f : 0.5f;    // the side the blow travels toward
-		enemy_damage(e, s_atk->id, s_atk->ap, s_atk->sp, fx + rx * sgn, fz + rz * sgn);
+	static const float BACK[5] = { 0.0f, 0.3f, 0.5f, 0.7f, 1.0f };   // 0x8bcdb8
+	for (int k = 0; k < 5; k++) {
+		float e[3];
+		for (int c = 0; c < 3; c++)
+			e[c] = e0[c] + (pe[c] - e0[c]) * BACK[k];
+		bool met = false;
+		for (int i = 0; i < enemy_count(); i++) {
+			Enemy* en = enemy_get(i);
+			if (!enemy_alive(en) || s_hit[i])
+				continue;
+			float cx, cz, r, top, bottom;
+			enemy_hit_cylinder(en, &cx, &cz, &r, &top, &bottom);
+			float ylo = s0[1] < e[1] ? s0[1] : e[1], yhi = s0[1] < e[1] ? e[1] : s0[1];
+			if (yhi < top || ylo > bottom)
+				continue;
+			if (seg_dist2d(s0, e, cx, cz) > r)
+				continue;
+			s_hit[i] = true;
+			s_hit_any = true;
+			met = true;
+			// the hit (0x5350d0): the plank's 11032, the knife's 17035, both at 0.8
+			sfx_play(md()->snd_hit, 0.8f, 0.0f);
+			float sgn = s_side == 0 ? -0.5f : 0.5f;    // the side the blow travels toward
+			enemy_damage(en, s_atk->id, s_atk->ap, s_atk->sp, fx + rx * sgn, fz + rz * sgn);
+		}
+		if (met)
+			break;
 	}
 }
 
@@ -1168,6 +1265,7 @@ static void start_swing(const CombatBody* b, bool combo, bool heavy)
 	s_attack_seq = true;             // 0x52fae0 sets the attack side byte with every swing
 	memset(s_hit, 0, sizeof s_hit);
 	s_hit_any = false;
+	s_prev_ok = false;
 	s_swing_wall = false;
 	s_combo_req = false;
 	s_atk_heavy = false;
@@ -1405,8 +1503,11 @@ static Enemy* stomp_target(const CombatBody* b)
 	return NULL;
 }
 
+static bool s_kick_voice;               // the kick's or stomp's effort still to come (0x549e20)
+
 static void start_stomp(bool stomp)
 {
+	s_kick_voice = true;
 	s_mode = M_STOMP;
 	s_stomp_e = s_stompable;
 	s_attack_seq = false;            // 0x5569b0: a kick or stomp sets 0x1fbad16 back to 0xff
@@ -1755,6 +1856,14 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		const AttackInfo* a = s_stomp_atk;
 		float f = s_frame - s_cur->start;
 		face(b, s_stomp_e, dt);           // 0x558f40: the kick turns him to the one on the floor
+		// 0x549e20 (upper state 0x1d, no motion change pending in 0x1fba904): James' effort 0x2b0d
+		// (Maria's 0x4288, 0x549500) at 0.9 at his feet, frame 8 of the kick (request 6) or 4 of the
+		// stomp (7), whatever the blow meets. The PC has no other stomp sound: no thud on a hit,
+		// nothing by floor or enemy.
+		if (s_kick_voice && f >= (a->id >= 36 ? 4.0f : 8.0f)) {
+			s_kick_voice = false;
+			sfx_play_at(s_maria ? 17032 : 11021, 0.9f, s_body_pos);
+		}
 		if (f >= a->first && f <= a->last + 0.99f) {
 			Enemy* e = stomp_target(b);
 			if (e) {
@@ -1763,7 +1872,6 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 					;
 				if (i < ENEMY_MAX && !s_hit[i]) {
 					s_hit[i] = true;
-					sfx_play(11040, 1.0f, 0.0f);      // thud
 					if (enemy_corpse_stompable(e))
 						enemy_stomp_corpse(e, sinf(*b->yaw), cosf(*b->yaw));
 					else

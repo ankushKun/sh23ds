@@ -137,6 +137,10 @@ void enemy_killed_set(const u8* in);
 void enemy_killed_reset(void);
 
 void enemy_update(const EnPlayer* p, float dt);
+// The characters' push after everyone moved (the PC's 0x525ed0): James' column (radius jr, its
+// centre jahead in front of his feet, combat_column) and the enemies' push each other out. The
+// enemies are moved here; James' move comes back in jdx / jdz for main.c to walk.
+void enemy_push_apart(float jx, float jz, float jy, float jyaw, float jr, float jahead, float* jdx, float* jdz);
 void enemy_spawn_list(void);              // the stage's list rows not present yet (0x586f40)
 void enemy_event_create(int status, float x, float y, float z, float yaw, float delay);   // a program's own figure (0x48fcc0)
 void enemy_event_remove(void);                                                // 0x53a350
@@ -157,7 +161,7 @@ void enemy_hit_cylinder(const Enemy* e, float* x, float* z, float* r, float* top
 void enemy_damage(Enemy* e, int attack_id, float ap, float sp, float dir_x, float dir_z);
 // 3DS-only, the port's choice (not the PC's, whose 0x542a10 never offers a dead body: enDyingExec
 // sets its +0x148 bit 2): a Lying Figure, mannequin or nurse that James killed can be stomped again
-// and again until he walks away from it (CORPSE_LEAVE). A stomp on it only thuds and bleeds.
+// and again until he walks away from it (CORPSE_LEAVE). A stomp on it only bleeds.
 bool enemy_corpse_stompable(const Enemy* e);
 void enemy_stomp_corpse(Enemy* e, float dir_x, float dir_z);
 

@@ -361,7 +361,19 @@ and 36..40 (stomp, frames 3..9), all kind 1, ap 9999.9, sp 0.1, reach 0..350; th
 only lets them count on an enemy that is down, so they finish a body on the floor. A digital button
 always reads full pressure, so the PC as shipped only ever stomps. The port follows the Enhanced
 Edition's "EnableHoldToStomp" (on by default, `holdstomp` in options.txt): with bare hands or a gun,
-**R + tap A** kicks and **R + hold A** for 0.2 s stomps. The sound is 11040.
+**R + tap A** kicks and **R + hold A** for 0.2 s stomps. The sound is James' effort 11021 at 0.9 on
+frame 4 of the stomp or 8 of the kick, whatever the foot meets (0x549e20; Maria 17032, 0x549500);
+there is no thud (the port played the steel pipe's 11040 on a hit until 2026-10-31).
+
+**Keeping apart.** Every frame after the characters move, clCollectCharaALL (0x525ed0) puts each
+column back where it stood, then in registration order replays its move and pushes it out of the
+columns it overlaps (clCheckSubColumnToColumn 0x5298a0, the overlap plus 1, at most its radius); the
+other gets back a share by weight (0x522940), up to three passes. James' column is 175 wide 25 ahead,
+wider with a weapon held or swung (0x52ed60, eased 5 a tick by 0x534d70); the Lying Figure,
+Mannequin and nurse weigh 2, the creepers 1 (`enemy_push_apart`, `combat_column`). A blow runs from
+the weapon's bone 0 towards bone 1 from the attack's min to max range (the plank and pipe from -150)
+and sweeps five steps back to last frame's end (0x543b10, 0x527b60), so an enemy pressed against
+James is still hit.
 
 How often: as often as there is a body to stomp. 0x542a10 offers the kick or stomp at the first
 camera slot whose enemy is down (+0x148 bit 4) and not dead (bit 2 clear) and at James' feet

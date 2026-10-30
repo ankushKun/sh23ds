@@ -5627,6 +5627,13 @@ int main(void)
 					EnPlayer ep = combat_enplayer(&body, flash_lit());
 					enemy_set_dark(s_env.dark);
 					enemy_update(&ep, dt);
+					// 0x50b1e0: then the characters' columns push each other apart (0x525ed0); the
+					// boat's own column is not ported
+					float jr, ja, jdx, jdz;
+					combat_column(dt, &jr, &ja);
+					enemy_push_apart(s_px, s_pz, s_py, s_yaw, boat_active() ? 0.0f : jr, ja, &jdx, &jdz);
+					if (jdx != 0.0f || jdz != 0.0f)
+						walk_move(&s_px, &s_py, &s_pz, jdx, jdz, true);
 					head_update(&cp, gheld, dt, !prog_running() || !prog_player_locked());
 				} else {
 					enemy_event_tick(dt);

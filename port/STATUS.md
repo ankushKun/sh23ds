@@ -197,6 +197,12 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
+- 2026-10-31, characters keep apart (`enemy_push_apart`, clCollectCharaALL 0x525ed0) and close blows
+  land (the PC's sweep from bone 0, 0x543b10); the stomp plays 11021 (0x549e20), not the pipe's
+  11040. Only the Lying Figure, Mannequin, nurse and creeper have push columns (the others keep the
+  port's one-sided stop; Maria and the boat are not in the push); enemy columns stand on the feet,
+  not the root bone (within 70); James dying in a hold keeps radius 0 without the PC's killing-attack
+  test (54, 61); the Lying Figure's hit cylinder is still the port's wider one. Azahar only.
 - 2026-10-31, the lens flare (`lensflare.c`, kari_shLensFlareEffect_Draw 0x510040, shLensFlareExec
   0x511db0): round James' lamp and room 205's spot, with the PC's Lens Flare option (0xa36000, on);
   `effect/lensflare.t3x` from the packer's ui step. Port stand-ins: the lamp's visibility is a ray
