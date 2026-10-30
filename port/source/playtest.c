@@ -75,6 +75,7 @@ static Walk W;
 static float s_wpad[2];
 static bool s_wpad_on;
 static u32 s_wheld;
+static u32 s_hold_keys;     // "hold"'s buttons, kept down between two holds until another command runs
 static int s_route_door, s_doors_taken;
 static bool s_walked;                    // the ev's James got there on foot (no placing)
 static bool s_on_way;                    // another trigger stopped the walk short of the ev's own
@@ -896,11 +897,14 @@ static void step(const PtState* st)
 	if (s_phase == 0 && s_frames == 0)
 		playtest_log("> %s", c);
 	s_frames++;
+	if (strcmp(op, "hold"))
+		s_hold_keys = 0;
 
 	// commands that do not wait for the game
 	if (!strcmp(op, "log")) { next(); return; }
 	if (!strcmp(op, "where")) {   // logs where James stands (scans that walk him and look where he got)
-		playtest_log("  at %.0f %.0f %.0f in %s", st->pos[0], st->pos[1], st->pos[2], st->map ? st->map : "-");
+		playtest_log("  at %.0f %.0f %.0f in %s, %s", st->pos[0], st->pos[1], st->pos[2], st->map ? st->map : "-",
+		             combat_status());
 		next();
 		return;
 	}
@@ -950,6 +954,30 @@ static void step(const PtState* st)
 		press(0, 1, 10);
 		next();
 		return;
+	}
+	if (!strcmp(op, "hold")) {
+		// "hold KEYS X Y SECONDS [TAP]": the buttons held and the stick at X, Y together, TAP pressed
+		// for two frames as it starts ("hold R 0 0 1.5", "hold R 0 1 1 A": ready, then swing and
+		// walk on with R never let go), logging where James is and what the weapon does every 0.1 s
+		char keys[64] = "", tap[64] = "";
+		if (sscanf(arg, "%63s %f %f %f %63s", keys, &f[0], &f[1], &f[2], tap) >= 4) {
+			static float log_t;
+			if (s_frames == 1) {
+				log_t = 0.0f;
+				if (tap[0])
+					press(parse_keys(tap), 2, 0);
+			}
+			s_wpad_on = true;
+			s_wpad[0] = f[0], s_wpad[1] = f[1];
+			s_wheld = s_hold_keys = parse_keys(keys);
+			if ((log_t -= s_dt) <= 0.0f) {
+				log_t = 0.1f;
+				playtest_log("  at %.0f %.0f %.0f, %s", st->pos[0], st->pos[1], st->pos[2], combat_status());
+			}
+			if (s_cmd_t >= f[2])
+				next();
+			return;
+		}
 	}
 	if (!strcmp(op, "walk") && sscanf(arg, "%f %f %f", &f[0], &f[1], &f[2]) == 3) {
 		if (s_phase == 0) {
@@ -1998,7 +2026,7 @@ void playtest_frame(const PtState* st, u32* down, u32* held, float dt)
 		step(st);
 	// the buttons: the script's presses replace the player's
 	*down = 0;
-	*held = s_wheld;
+	*held = s_wheld | s_hold_keys;
 	if (s_npress) {
 		Press* p = &s_press[0];
 		if (s_press_f < p->hold) {
