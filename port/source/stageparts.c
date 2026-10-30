@@ -7,6 +7,9 @@
 // leaves out: the motorhome hint (stage 2), Blue Creek 1F (10), the hospital garden (22), the
 // otherworld lobby (23), the hospital 3F ring door (25), the lake (38) and room 312 (42).
 //
+// The same functions switch off some of the maps' shadow objects (0x5a5560 / 0x5a55e0, PS2
+// sh2shd_add_map_to_shadow_off_work / sh2shd_off_obj): shadow_map_off, by the map's number.
+//
 // "on" ids take a mask bit, "off" ids are listed with none (bit -1), which shows only variant 0.
 // The town's per-tile code (stages 5, 14 and 54) runs for the 3 x 3 tiles around James; a switch
 // keyed by a tile's id only reaches that tile, so listing every tile's switch each frame is the
@@ -16,6 +19,7 @@
 #include "events.h"
 #include "prog_int.h"
 #include "room.h"
+#include "shadow.h"
 
 static RoomPartList L;
 static int s_glb;
@@ -86,6 +90,7 @@ void stageparts_tick(int stage, int room, float dt)
 	s_last_stage = stage, s_last_room = room;
 	int ms = (int)(dt * 1000.0f + 0.5f);
 	L.n = 0;
+	shadow_maps_off_begin();
 	s_glb = ev_glb_crd();
 	switch (stage) {
 	case 2:   // no display function on the PC; EE MapMeshToggle gives the motorhome one
@@ -112,6 +117,9 @@ void stageparts_tick(int stage, int room, float dt)
 		by(0x14, f(251), 0, -1);
 		by(0x15, f(251), 0, -1);
 		by(0x34, f(251), 1, 0);           // 0x59e440
+		shadow_map_off(0x34, f(251) ? 0x37 : 0x36);
+		if (!f(251))
+			shadow_map_off(0x15, 8);      // tile 0x7e
 		light_a(0x1b);
 		light_a(0x1c);
 		light_b(0x1d);
@@ -124,6 +132,7 @@ void stageparts_tick(int stage, int room, float dt)
 		if (room == 0x17) {
 			by(0x20, f(7) || f(8) || f(9), 0, -1);
 		} else if (room == 0x18) {
+			shadow_map_off(0x2a, f(69) ? 0x3f : 0x3e);
 			static const u8 on69[][2] = { { 42, 0 }, { 43, 0 }, { 43, 1 }, { 43, 2 }, { 43, 3 }, { 45, 0 }, { 45, 2 }, { 45, 4 } };
 			static const u8 off69[][2] = { { 42, 1 }, { 43, 4 }, { 45, 1 }, { 45, 3 }, { 45, 5 } };
 			if (f(69))
@@ -204,6 +213,9 @@ void stageparts_tick(int stage, int room, float dt)
 	case 18:  // 0x590df0
 		if (room == 0x33)
 			by(4, f(27), -1, 0);
+		else if (room == 0x31 && scene())
+			for (int o = 0x16; o <= 0x1c; o++)
+				shadow_map_off(0x2d, o);
 		break;
 	case 21:  // 0x58d2d0
 		if (room == 0x2a) {
@@ -213,8 +225,11 @@ void stageparts_tick(int stage, int room, float dt)
 		}
 		break;
 	case 22:  // 0x58c040
-		if (room == 0x30)
+		if (room == 0x30) {
 			by(0x27, f(213), -1, 0);
+			if (!f(213))
+				shadow_map_off(0x25, 0x16);
+		}
 		else if (room == 0x49) {
 			by(0xab, f(214), 0, -1);
 			on(0xaa, ev_have_item(0x4e) ? 0 : -1);   // EE MapMeshToggle: shown while James has the blue gem
@@ -225,8 +240,13 @@ void stageparts_tick(int stage, int room, float dt)
 			on(0x97, scene_no(0x32) ? 1 : 0);   // variant 1 during the third chase scene
 		break;
 	case 25:  // 0x589fa0
-		if (room == 0x54)
+		if (room == 0x54) {
 			on(0xd3, !f(232) ? -1 : f(240) ? 0 : 1);
+			if (!f(232) || !f(240))
+				shadow_map_off(0xd2, 9);
+			if (!f(232) || f(240))
+				shadow_map_off(0xd2, 8);
+		}
 		else if (room == 0x57) {           // EE MapMeshToggle: the rings placed on the door (flags 0xe3, 0xe4)
 			if (f(0xe3))
 				on(0xd6, 0);
@@ -279,6 +299,8 @@ void stageparts_tick(int stage, int room, float dt)
 				on(0x7b, 0);
 			}
 			by(0x7a, f(327), 0, 1);
+			if (!f(327))
+				shadow_map_off(0x79, 1);
 		} else if (room == 0x89) {
 			on(0x56, 1);
 		}
@@ -354,8 +376,10 @@ void stageparts_tick(int stage, int room, float dt)
 			bool hint = f(0x2d6) && !f(0x1db);
 			on(0x5b, hint ? 0 : -1);
 			ev_set_flag_lo(19, hint ? 0x2d6 : 0);
+			shadow_map_off(0x5b, f(475) ? 1 : 0);
 		} else if (room == 0xa3) {
 			by(0x5a, f(473), 1, 0);
+			shadow_map_off(0x57, f(473) ? 0x21 : 0x20);
 		}
 		break;
 	case 43:  // 0x577690

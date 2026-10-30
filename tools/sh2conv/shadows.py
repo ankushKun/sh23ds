@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Copy the characters' shadow models (.kg1) next to their converted S3C files.
+"""Copy the shadow models next to the converted files: the characters' (.kg1) next to their S3C
+files and the maps' (.kg2) next to their S3M rooms.
 
   shadows.py <game data dir> <pack dir>
   e.g. shadows.py "Silent Hill 2/data" pack
@@ -18,6 +19,15 @@ The game ships empty .kg1 files for James' and Maria's gameplay models (hll_jms,
 skipped. The loader pairs James' gameplay models with the cutscene model's hull instead
 (CharaDataLoadExec 0x493260, shadow file record 0x7d8688: hhh_jms.kg1), which the port loads at
 run time (main.c, chr_load_kg1).
+
+For every pack/bg/<area>/<map>.s3m, data/bg/<area>/<map>.kg2 (data/bg2/ma for the mansion) is
+copied to pack/bg/<area>/<map>.kg2 when it has objects. A .kg2 (PS2 beta SHADOW_OUTDOOR_HEAD,
+SHADOW_OUTDOOR_OBJ_HEAD) has the .kg1 layout with a 4x4 float matrix at +0x20 of each object header
+(rows, translation in the last, the object's place in the map) and these geometries besides the
+strips: planes (types 1, 2, 7) and billboards (3, 4, 10), a face normal and then the corners of one
+polygon. The PC loader writes the map's glb and number into the first two words of the header
+(0x513210); the file has zeros there and the port fills them in (shadow.c). port/source/shadow.c
+casts them under the flashlight (0x5aad70, 0x5a4ed0, 0x444b20, 0x4449f0).
 """
 import argparse
 import os
@@ -47,6 +57,61 @@ def valid(path):
             qw = struct.unpack_from('<h', d, o + 6)[0]
             o += 16 * max(qw, 1)
     return nobj > 0 and o <= len(d)
+
+
+def kg2_valid(d):
+    """A .kg2 with objects whose geometries fit the file and whose matrices turn without scaling."""
+    if len(d) < 16:
+        return False
+    nobj = struct.unpack_from('<h', d, 4)[0]
+    o = 16
+    for _ in range(max(nobj, 0)):
+        if o + 0x60 > len(d):
+            return False
+        ngeo = struct.unpack_from('<h', d, o + 6)[0]
+        m = struct.unpack_from('<16f', d, o + 0x20)
+        for r in range(3):
+            if abs(sum(x * x for x in m[4 * r:4 * r + 3]) - 1.0) > 0.01:
+                return False
+        o += 0x60
+        for _ in range(max(ngeo, 0)):
+            if o + 16 > len(d):
+                return False
+            qw = struct.unpack_from('<h', d, o + 6)[0]
+            o += 16 * max(qw, 1)
+    return nobj > 0 and o <= len(d)
+
+
+def maps(data, pack):
+    """The maps' shadow models (.kg2) next to the rooms."""
+    root = os.path.join(pack, 'bg')
+    copied = skipped = 0
+    for area in sorted(os.listdir(root)) if os.path.isdir(root) else ():
+        adir = os.path.join(root, area)
+        if not os.path.isdir(adir):
+            continue
+        srcs = [os.path.join(data, 'bg', area), os.path.join(data, 'bg2', area)]
+        for name in sorted(os.listdir(adir)):
+            if not name.endswith('.s3m'):
+                continue
+            stem = name[:-4]
+            src = next((os.path.join(s, stem + '.kg2') for s in srcs
+                        if os.path.exists(os.path.join(s, stem + '.kg2'))), None)
+            if not src:
+                continue
+            repl = ee.file(src)
+            if repl != src and kg2_valid(open(repl, 'rb').read()):
+                src = repl
+            d = open(src, 'rb').read()
+            if len(d) < 16 or struct.unpack_from('<h', d, 4)[0] <= 0:
+                continue
+            if not kg2_valid(d):
+                print(f'  {area}/{stem}.kg2: unexpected layout, skipped')
+                skipped += 1
+                continue
+            shutil.copyfile(src, os.path.join(adir, stem + '.kg2'))
+            copied += 1
+    print(f'{copied} map shadow models copied, {skipped} skipped')
 
 
 def main():
@@ -82,6 +147,7 @@ def main():
             shutil.copyfile(src, os.path.join(fdir, stem + '.kg1'))
             copied += 1
     print(f'{copied} shadow models copied, {skipped} skipped')
+    maps(a.data, a.pack)
 
 
 if __name__ == '__main__':

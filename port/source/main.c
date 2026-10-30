@@ -38,6 +38,7 @@
 #include "boat.h"
 #include "mist.h"
 #include "roomfx.h"
+#include "lensflare.h"
 #include "water.h"
 #include "gameover.h"
 #include "itemview.h"
@@ -1842,6 +1843,9 @@ static void lighting_frame(const C3D_Mtx* view, bool player)
 		C3D_LightPosition(&s_flash, &vp);
 		C3D_LightSpotDir(&s_flash, vd.x, vd.y, vd.z);
 	}
+	// the lens flare's lamp (lensflare.c): the room's spot, else James' (not in scenes)
+	lensflare_light(!s_opt.lens_flare || demo_active() ? LF_NONE : room ? LF_ROOM : flash ? LF_JAMES : LF_NONE,
+	                s_chrflash.pos, s_chrflash.dir, 7.0f);
 	if (player) {
 		C3D_FogGasMode(GPU_FOG, GPU_PLAIN_DENSITY, false);
 		u32 fog = (u32)s_env.fog_rgb[2] << 16 | (u32)s_env.fog_rgb[1] << 8 | (u32)s_env.fog_rgb[0];
@@ -2515,6 +2519,18 @@ static void shadow_frame(bool paused)
 		shadow_begin(at, dir, s_chrflash.cone, k);
 	} else {
 		shadow_begin(s_chrflash.pos, s_chrflash.dir, s_chrflash.cone, k);
+	}
+	// the maps' own shadow models under the same light (0x5aad70 -> 0x5a4ed0, shadow.c)
+	if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME && s_env.dark && s_env.shadow != 0) {
+		const char* rooms[1 + MAX_NB];
+		int n = 0;
+		rooms[n++] = s_rooms[s_room];
+		for (int i = 0; i < s_nnb; i++)
+			rooms[n++] = s_rooms[s_nb_idx[i]];
+		shadow_maps_set(s_areas[s_area], rooms, n);
+		ShadowMapCtx c = { s_env.map_id, s_env.shadow, s_flash_james, { s_px, s_py, s_pz }, s_yaw, { 0 } };
+		memcpy(c.cam, view_eye(), sizeof c.cam);
+		shadow_cast_maps(&c);
 	}
 }
 
@@ -3252,6 +3268,35 @@ static void ui_program_flat(const C3D_Mtx* proj, const C3D_Mtx* view)
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uAmb, 0.0f, 0.0f, 0.0f, 0.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uVgain, 1.0f, 1.0f, 1.0f, 1.0f);
 	C3D_FVUnifSet(GPU_VERTEX_SHADER, s_uBase, 0.0f, 0.0f, 0.0f, 0.0f);
+}
+
+// The lens flare's seen test (lensflare.h). The PC reads its depth buffer (0x511170); the port
+// casts a ray through the rooms' drawn triangles (camray.h) and, for a lamp that is not James' own,
+// past a column round him (his feet to 950 up, 120 round: a stand-in for his body in the depth).
+static bool flare_clear(const float a[3], const float b[3], bool james)
+{
+	if (!s_tp_live) {                    // the behind camera has set them this frame
+		const Room* rooms[1 + MAX_NB];
+		int n = 0;
+		rooms[n++] = &s_cur;
+		for (int i = 0; i < s_nnb; i++)
+			rooms[n++] = &s_nb[i];
+		camray_set(rooms, n);
+	}
+	if (camray_cast(a, b) < 1.0f)
+		return false;
+	if (!james)
+		return true;
+	float dx = b[0] - a[0], dz = b[2] - a[2], fx = a[0] - s_px, fz = a[2] - s_pz, r = 120.0f;
+	float A = dx * dx + dz * dz, B = 2.0f * (fx * dx + fz * dz), C = fx * fx + fz * fz - r * r, D = B * B - 4.0f * A * C;
+	if (A < 1e-6f || D < 0.0f)
+		return true;
+	float t0 = (-B - sqrtf(D)) / (2.0f * A), t1 = (-B + sqrtf(D)) / (2.0f * A);
+	t0 = t0 < 0.0f ? 0.0f : t0, t1 = t1 > 1.0f ? 1.0f : t1;
+	if (t0 > t1)
+		return true;
+	float y0 = a[1] + (b[1] - a[1]) * t0, y1 = a[1] + (b[1] - a[1]) * t1;
+	return fmaxf(y0, y1) < s_py - 950.0f || fminf(y0, y1) > s_py;   // Y points down
 }
 
 // font.c's glyphs: textured triangles tinted per vertex (the vertex colour passes straight through
@@ -4669,6 +4714,7 @@ static void dump_info(u32 n)
 		fprintf(f, "fog test %d (%s), %s, demo %s\n", fog_debug_mode(), fog_debug_name(), chrlight_status(), demo_status());
 		fprintf(f, "picture %s\n", supersample_status());
 		fprintf(f, "%s, room spot %d, james flash %d\n", shadow_status(), s_chrflash.room, s_flash_james);
+		fprintf(f, "%s\n", lensflare_status());
 		fprintf(f, "camera %s%s, %s\n", s_tp_live ? "behind" : "pc", gamecam_scripted() ? " (a scripted shot)" : "",
 		        tpcam_status());
 		fclose(f);
@@ -5010,6 +5056,8 @@ static u32 draw_top(const PictureTarget* t, const C3D_Mtx* proj, const C3D_Mtx* 
 			fog_frame(proj, mv, ortho, s_paused ? 0.0f : dt);
 		if (s_cam.mode == CAM_PLAYER)
 			roomfx_draw_flare(proj, mv);   // the lake's light, in front of the fog (roomfx.c)
+		if (s_cam.mode == CAM_PLAYER)
+			lensflare_draw(proj, mv, s_fogf.scr_z, s_paused ? 0.0f : dt);   // a lamp facing the camera
 		perf_part("r_fog", tr);
 		tr = svcGetSystemTick();
 		picture_frame(t);                // the scene is done: the Picture's soft pass, then the 2D on top
@@ -5098,6 +5146,7 @@ int main(void)
 	blood_init(PACK_DIR, ui_program_flat, blood_floor);
 	mist_init(PACK_DIR, ui_program_flat);
 	roomfx_init(PACK_DIR, ui_program_flat);
+	lensflare_init(PACK_DIR, ui_program_flat, flare_clear);
 	water_init(ui_program_flat);
 	gameover_init(PACK_DIR);
 	titlemenu_init(PACK_DIR);

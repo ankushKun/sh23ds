@@ -1,4 +1,5 @@
 #include "stagemdl.h"
+#include "shadow.h"
 #include "chr.h"
 #include "chrlight.h"
 #include "demo.h"
@@ -528,6 +529,7 @@ void stagemdl_draw(const C3D_Mtx* view, int uModelView, int uBones)
 		Mtx_Multiply(&mv, view, &model);
 		C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, uModelView, &mv);
 		pose(m->chr, p->kind, s_play);
+		shadow_cast_placed(m->chr, &model, p->kind);   // its .kg1's shadow, as the PC's characters (shadow.c)
 		chrlight_at(p->pos, false);
 		chr_draw(m->chr, uBones);
 	}

@@ -67,6 +67,7 @@ void opt_defaults(Options* o)
 	o->bgm = o->se = 12;
 	o->bright = 3;
 	o->shadows = o->fog = 1;
+	o->lens_flare = 1;           // 0x4f6ae0
 	o->bullet = 1;
 	o->ps2_flash = o->noise_ps2 = o->ps2_camera = o->cutscene_fov = 1;
 	o->hold_stomp = o->swap_attack = 1;
@@ -83,7 +84,8 @@ static const Key s_keys[] = {
 	K("controls", control_type, 0, 1), K("language", lang, 1, 5), K("subtitles", subtitles, 0, 1),
 	K("speaker", speaker, 0, 2),
 	K("bgmvol", bgm, 0, 15), K("sevol", se, 0, 15), K("brightness", bright, 0, 7), K("noise", noise, 0, 1),
-	K("shadows", shadows, 0, 1), K("fog", fog, 0, 1), K("weaponcontrol", weapon, 0, 1),
+	K("shadows", shadows, 0, 1), K("fog", fog, 0, 1), K("lensflare", lens_flare, 0, 1),
+	K("weaponcontrol", weapon, 0, 1),
 	K("mapzoom", map_zoom, 0, 1), K("walkrun", walk_run, 0, 2), K("viewcontrol", view, 0, 1),
 	K("bloodcolor", blood, 0, 3), K("bulletadjust", bullet, 1, 3), K("messagestop", msg_top, 0, 1),
 	K("stereo3d", stereo, 0, 1), K("picture", picture, 0, 1),
@@ -201,6 +203,8 @@ static const char* const SHADOWS_L[2] = { "No character shadows. Lighter for the
                                           "Characters cast shadows, softened as in the Enhanced Edition." };
 static const char* const FOG_L[2] = { "Fog without drifting particles. Lighter for the console.",
                                       "Drifting fog particles, as on the PC." };
+static const char* const FLARE_L[2] = { "Lamps show no glow.",
+                                        "A lamp facing the camera glows and throws streaks, as on the PC." };
 static const char* const SUBS_L[2] = { "Voices only.", "Spoken lines are written out as they play." };
 static const char* const SPEAKER_L[3] = { "One channel from both speakers.", "Left and right kept apart.",
                                           "The 3DS's virtual surround." };
@@ -306,6 +310,8 @@ static const Setting SETTINGS[] = {
 	  .what = "Shadows that characters cast from the lights.", .lines = SHADOWS_L, .dim = low, .note = shadows_note },
 	{ .tab = TAB_DISPLAY, .label = 178, .name = "Fog", AT(fog), .hi = 1, .names = FOG,
 	  .what = "How the drifting fog is drawn.", .lines = FOG_L, .note = fog_note },
+	{ .tab = TAB_DISPLAY, .label = 192, .name = "Lens Flare", AT(lens_flare), .hi = 1, .names = OFF_ON,
+	  .what = "The glow round a lamp that faces the camera.", .lines = FLARE_L },
 	// Sound
 	{ .tab = TAB_SOUND, .label = 74, .name = "Subtitles", AT(subtitles), .hi = 1, .names = OFF_ON,
 	  .what = "Spoken lines written out on screen.", .lines = SUBS_L },

@@ -197,6 +197,13 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
+- 2026-10-31, the lens flare (`lensflare.c`, kari_shLensFlareEffect_Draw 0x510040, shLensFlareExec
+  0x511db0): round James' lamp and room 205's spot, with the PC's Lens Flare option (0xa36000, on);
+  `effect/lensflare.t3x` from the packer's ui step. Port stand-ins: the lamp's visibility is a ray
+  through the rooms' triangles (camray) in place of the PC's depth readback (0x511170), no flare in
+  cutscenes or for the mirror's James (0x546280), and its rates follow dt. The map shadow models
+  (`.kg2`) and placed props cast flashlight shadows (shadows step); the barred gates of Wood Side
+  throw theirs. Azahar only; console run pending.
 - 2026-10-31, room 205's light (`main.c` room_spot, `LIGHTING.md`): the flashlight lying on the
   mannequin lights the back wall in place of James' beam until it is taken, lights James too, and
   casts his shadow (`hhh_jms.kg1`, the PC's pairing) and his weapon's on the wall; James' beam is the
@@ -369,8 +376,17 @@ Ordered by weight. Each line names where the work starts.
   the light override 0x945938 (0x47af80) is not read. Classes 22 and 23 (the boat mask, 0x4e0640 /
   0x4e02b0) and the emitters 54 and 55 are not ported.
 - Shadows only from the flashlight and only for characters: none from event lights or in cutscenes.
-  Characters are all the PC casts too: its caster list (0x512d60) holds only the eight character
-  slots of the loader 0x513210 (0xac9a38). 0x5aad70's two room lights are ported (`shadow_frame`):
+  Besides characters (16 a frame, sh2shd_add_char 0x5a5c70) the PC casts from up to four loaded maps'
+  shadow models, the `.kg2` next to each map (0x512e40, sh2shd_add_map 0x5a4ed0, 0x5a8630), with
+  per-map clip kinds and lengths (sh2shd_get_shadow_env_bg 0x5ac0a0: the 3F bars cast every
+  geometry, 8000 long), and from stage-placed props with a `.kg1` (kinds 0x4xx and 0x5xx, never the
+  pickups); all ported (`shadow.c`, `stagemdl.c`, `stageparts.c` for the stage code's switches).
+  Not ported: the maps' volumes under room 312's parallel light (0x5a54d0, 0x445030), the cone
+  narrowing to cos 0.5 for weapon shadow kinds 0x805..0x808 (0x5a6bc0), the cutscene shadow env
+  (0x5ac5d0, 0x5ae060), the light kinds of 0x5ad1e0 for props (they take the flashlight spot like the
+  enemies), and the own-light rooms other than ap42 and 312 with the flashlight off. The map volumes
+  are the port's closed, depth-fail ones, started 4 units behind their face and capped at 4096
+  triangles a frame. 0x5aad70's two room lights are ported (`shadow_frame`):
   room 312 (rr91) casts from far above (light kind 4, as a parallel light), ap42 with the flashlight
   off from its lamp. The kind 4 volumes are the port's own (the PC's are 0x444a70's cases 3 and 4),
   0x5a5860 (apartments) is not ported, and neither light has been seen casting in Azahar. James'

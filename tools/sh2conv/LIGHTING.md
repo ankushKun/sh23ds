@@ -478,9 +478,16 @@ programs.
   (`gFlashlightAvailable` 2, set from the record's NightOrDay by `0x47b200`) whose record has
   ShadowDarkNess (+0x0e, `0x47bb00`) set, `0x5aad70` draws the stencil shadows below. The light is
   `0x47e000`: an event's light when one is set, otherwise James' flashlight; light kind 0 (spot)
-  except in two rooms. Up to four characters are added (`0x5a4ed0`, `0x5a8630`: range 5000, the
-  cone from the light's parameters). Everywhere else, the lit rooms included, it draws the drop
-  shadows (`0x5a7c90`, see the end of this section).
+  except in two rooms. Up to four maps' shadow models are added (`.kg2`, `0x512e40`, `0x5a4ed0`,
+  `0x5a8630`: range 5000, the cone from the light's parameters, per-map clip kinds and lengths from
+  `0x5ac0a0`), and up to sixteen characters and placed props with a `.kg1` (`0x5a5c70`). Everywhere
+  else, the lit rooms included, it draws the drop shadows (`0x5a7c90`, see the end of this section).
+- **Map shadows.** Every map has a `.kg2` (`tools/sh2conv/shadows.py` copies them to
+  `pack/bg/<area>/<map>.kg2`): objects with a 4x4 matrix, made of planes (types 1, 2, 7, cast only
+  when lit from behind), billboards turned to face the light (types 3, 4, 10) and closed strips. The
+  culling is 0x444b20's: clip 999 casts everything, 666 nothing, otherwise each object's and
+  geometry's sphere within 5000 and inside the cone. They are cast only with James' flashlight on or
+  in the rooms with a light of their own (`0x5abfb0`), and not where ShadowDarkNess is 2.
 - **Volumes.** `0x444b20` culls each object and strip against the range and cone, and `0x4449f0`
   walks a strip: a triangle is lit when `(v - L) . n < 0`, and for each run of lit triangles it emits
   the side walls of the run's outer edges, each edge pulled away from the light (`0x442ae0`).

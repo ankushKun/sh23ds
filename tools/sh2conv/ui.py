@@ -12,7 +12,8 @@ and its texts (data/etc/message/m_card_x_msg_e.mes as pack/events/mcard.msg), an
 screens' texts (option_msg_e.mes as pack/events/option.msg) and the blood effects' texture
 (pack/effect/blood.t3x, see write_blood), the hyper spray's mist (pack/effect/mist.t3x, see
 write_mist), the room effects' sprites (pack/effect/fire.t3x, smoke.t3x, flare.t3x, see
-write_room_fx), and the title background, the game over text and its sound (see write_screens).
+write_room_fx), the lens flare's (pack/effect/lensflare.t3x, see write_lens_flare), and the
+title background, the game over text and its sound (see write_screens).
 
 Also writes the PC's text font (pack/ui/font.t3x and font.bin, see write_font), which the exe carries
 compressed; pass --exe to read another sh2pc.exe than the default one.
@@ -253,6 +254,22 @@ def write_room_fx(data, pack):
         print('wrote', t3x)
 
 
+def write_lens_flare(data, pack):
+    """The lens flare's sprites (port/source/lensflare.c): data/etc/effect/lens_flare.tbn2, which
+    0x511ab0 loads as texture 0x9e, a 128x128 sheet with alpha (a round glow and a ring in its top
+    half, the streaks' corner, an oval and a ghost in its lower half; the vertex colours tint them).
+    Written as RGBA8 at 128x128 without mipmaps, so the soft edges keep their gradient."""
+    os.makedirs(os.path.join(pack, 'effect'), exist_ok=True)
+    img = load_tex(os.path.join(data, 'etc', 'effect', 'lens_flare.tbn2')).convert('RGBA')
+    png, t3x = 'effect/lensflare.png', 'effect/lensflare.t3x'
+    img.resize((128, 128), Image.LANCZOS).save(os.path.join(pack, png))
+    if os.path.exists(os.path.join(pack, t3x)):
+        os.remove(os.path.join(pack, t3x))
+    encode_textures([(png, t3x, True)], pack, fmt='rgba8', mipmaps=False)
+    os.remove(os.path.join(pack, png))
+    print('wrote', t3x)
+
+
 def write_screens(data, pack, out_voice=True):
     """The PC's title background (data/pic/etc/start00.tex, the menus are text over it:
     pack/ui/start00.t3x, 512x512 DXT3 squeezed to 512x256 RGB565 like the stills) and its pulsing
@@ -349,6 +366,7 @@ def main():
     write_blood(data, pack)
     write_mist(data, pack)
     write_room_fx(data, pack)
+    write_lens_flare(data, pack)
     write_screens(data, pack)
     os.makedirs(os.path.join(pack, 'ui'), exist_ok=True)
     logo = os.path.join(data, 'pic', 'etc', 'sh2dc.tex')

@@ -28,6 +28,7 @@ typedef struct {
 	u8 noise;            // 0x1dbec0b: Noise Effect, 0 Off (the PC's default), 1 On
 	u8 shadows;          // 0xa35ffc: 0 Off, 1 On
 	u8 fog;              // 0xa35ff8: 0 Simple (no fog particles), 1 Complex
+	u8 lens_flare;       // 0xa36000: Lens Flare, 1 On (lensflare.c)
 	// GAME OPTIONS
 	u8 weapon;           // 0x1dbebfe: 0 Normal (hold R to aim), 1 Switch (R toggles)
 	u8 map_zoom;         // 0x1dbec0a: the map opens 0 Zoom In, 1 Zoom Out
