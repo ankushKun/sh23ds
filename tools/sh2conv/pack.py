@@ -178,7 +178,7 @@ class Packer:
         for sid in ('james', 'characters', 'events', 'fog', 'ui', 'pics', 'maps', 'music', 'sound', 'demos',
                     'stagemodels'):
             t.append({'id': sid, 'step': sid, 'lane': 'main', 'weight': STEP_SECONDS.get(sid, 5),
-                      'ffmpeg': sid in ('music', 'sound', 'demos')})
+                      'ffmpeg': sid in ('ui', 'music', 'sound', 'demos')})
         t.append({'id': 'shadows', 'step': 'shadows', 'lane': 'main', 'weight': 1})
         for bg in ('bg', 'bg2'):
             for area in sorted(os.listdir(os.path.join(self.data, bg))):

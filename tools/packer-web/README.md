@@ -120,6 +120,14 @@ node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip --url=https://ankush.
 `compare.py` fails when a file is missing or a file differs in a way it doesn't expect. CI checks that
 `tools/texenc/build.sh` rebuilds the committed `texenc.mjs` byte for byte.
 
+### ffmpeg for every main task (2026-10-31)
+
+With the Enhanced Edition's Audio Enhancement Pack, `voice.afs` holds most lines as WAV, and the title art
+step (`ui.py`, voice 143) encodes one to ADX with ffmpeg. That step had no ffmpeg flag and runs before the
+music in the first worker, so it found none and stopped with "returned non-zero exit status 127". `pack.py`
+flags it now, and `core.js` loads ffmpeg for every 'main' task whatever its flag. Checked on a copy of the
+game whose voice 143 is a WAV: the live site stopped there with 127; the fixed page encodes it.
+
 ### The live site after the ffmpeg fix (2026-10-31, Chrome for Testing 156 on an 11-core Mac)
 
 - The whole game from https://ankush.one/sh23ds/ (`e2e.mjs --url=...`): 13 min 53 s with Auto's three

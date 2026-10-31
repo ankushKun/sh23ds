@@ -355,7 +355,10 @@ STEPS = [(s[0], s[1]) for s in P.steps()]
 				return py.runPython('import json; json.dumps(P.tasks())');
 			},
 			async runTask(task) {
-				if (task.ffmpeg) await ensureFFmpeg();
+				// the main tasks always get it: they run in one worker that has it anyway, and a step can
+				// reach ffmpeg in ways its flag misses (the title art encodes voice 143 when the Audio
+				// Enhancement Pack holds it as a WAV, which stopped packs with 127 until 2026-10-31)
+				if (task.ffmpeg || task.lane === 'main') await ensureFFmpeg();
 				const s0 = Date.now();
 				count = null;
 				shown = -1;
