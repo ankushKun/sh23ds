@@ -13,6 +13,10 @@
   <a href="https://github.com/ankushKun/sh23ds/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/ankushKun/sh23ds?style=flat-square&color=8fa3b3"></a>
   <img alt="Platform: New 3DS and 3DS" src="https://img.shields.io/badge/platform-New%203DS%20%7C%203DS-c4453a?style=flat-square">
   <a href="LICENSE"><img alt="License: GPLv3" src="https://img.shields.io/badge/license-GPLv3-5b7083?style=flat-square"></a>
+  <br>
+  <a href="https://github.com/sponsors/ankushKun"><img alt="Sponsor on GitHub" src="https://img.shields.io/badge/Sponsor-EA4AAA?logo=githubsponsors&logoColor=white&style=flat-square"></a>
+  <a href="https://ko-fi.com/ankushkun"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-FF5E5B?logo=kofi&logoColor=white&style=flat-square"></a>
+  <a href="https://buymeacoffee.com/ankushkun"><img alt="Buy Me a Coffee" src="https://img.shields.io/badge/Buy_Me_a_Coffee-FFDD00?logo=buymeacoffee&logoColor=black&style=flat-square"></a>
 </p>
 
 <p align="center">
