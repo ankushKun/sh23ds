@@ -30,6 +30,12 @@ browser check (`check.js`) runs only once the visitor scrolls near it, since it 
 touches the CDN, and it shows nothing unless something is wrong. Film grain and scanlines sit over
 everything.
 
+Support (`#funds`) is pinned to the left edge below the brand: Buy Me a Coffee, GitHub Sponsors and
+Ko-fi, the accounts in `.github/FUNDING.yml`, as the game's menu, with the red bar on the item under the
+cursor and on the first until another is chosen. From 1660 px the margin beside the page fits it, so it
+stands there open; narrower, it waits behind a Support tab that hover or a tap slides out. The marks are
+Simple Icons (CC0).
+
 Keep it short. Every line on the page should be something a player needs to get the game running;
 details belong in the folds under step 1 or in the repository. The mark is the nine red squares from
 the last wall in the game. Every colour comes from the tokens at the top of `site.css`; the one accent

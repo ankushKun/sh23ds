@@ -198,6 +198,16 @@
     });
   }
 
+  // Support on the left edge. Where it doesn't fit beside the page, its tab slides it out and back.
+  function funds() {
+    var box = $("#funds");
+    if (!box) return;
+    var tab = $(".funds-tab", box);
+    tab.addEventListener("click", function () {
+      tab.setAttribute("aria-expanded", box.classList.toggle("is-open") ? "true" : "false");
+    });
+  }
+
   // ---------------------------------------------------------------- the Docker packer
 
   function detectOS() {
@@ -271,5 +281,6 @@
   window.addEventListener("hashchange", openTarget);
   titleVideo();
   tape();
+  funds();
   builder();
 })();

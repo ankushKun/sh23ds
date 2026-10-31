@@ -30,6 +30,12 @@ Key facts:
 - [Enhanced Edition fixes](https://raw.githubusercontent.com/ankushKun/sh23ds/main/port/EE_FIXES.md): every Enhanced Edition option and its state in the port
 - [Original 3DS profile](https://raw.githubusercontent.com/ankushKun/sh23ds/main/port/OLD3DS.md): what changes on an original 3DS or 2DS
 
+## Support
+
+- [Buy Me a Coffee](https://buymeacoffee.com/ankushkun)
+- [Sponsor on GitHub](https://github.com/sponsors/ankushKun)
+- [Ko-fi](https://ko-fi.com/ankushkun)
+
 ## Optional
 
 - [Silent Hill 2: Enhanced Edition](https://enhanced.townofsilenthill.com/SH2/): the PC fix project whose work the port builds on

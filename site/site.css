@@ -423,6 +423,58 @@ body::after {
 .faq p { font-size: 16px; line-height: 1.65; }
 .faq a { color: var(--ink); text-decoration-color: var(--red); text-underline-offset: 3px; }
 
+/* ---------------------------------------------------------------- support */
+
+/* Pinned to the left edge below the brand: the game's menu, its red bar on the item under the cursor and on
+   the first until another is chosen. It sits over the vignette, which would darken it at the edge. Where the
+   margin beside the page is too narrow (under 1660 px), it waits behind a Support tab that slides it out. */
+.funds {
+  position: fixed; left: 0; top: 96px; z-index: 92;
+  display: flex; align-items: stretch;
+  border: 1px solid var(--line); border-left: 0; background: rgba(5, 5, 5, .94);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, .6);
+  transform: translateX(calc(-100% + 32px));
+  transition: transform .45s cubic-bezier(.16, 1, .3, 1);
+}
+/* Hover only where there is a pointer, and focus only from the keyboard, so a tap on the tab closes it again. */
+.funds.is-open, .funds:has(:focus-visible) { transform: none; }
+@media (hover: hover) { .funds:hover { transform: none; } }
+
+.funds-list { display: flex; flex-direction: column; padding: 10px 0; }
+.fund {
+  position: relative; isolation: isolate;
+  display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 28px 0 18px;
+  color: var(--menu); text-decoration: none; white-space: nowrap;
+  font-size: 15px; font-weight: 500; line-height: 1.2;
+}
+.fund svg { flex: none; width: 16px; height: 16px; fill: currentColor; }
+.fund::before {
+  content: ""; position: absolute; inset: 6px 0; z-index: -1;
+  background: var(--bar); transform: scaleX(0); transform-origin: 0 50%;
+  transition: transform .25s cubic-bezier(.16, 1, .3, 1);
+}
+.fund:hover, .fund:focus-visible,
+.funds-list:not(:hover):not(:has(:focus-visible)) .fund:first-child { color: #fff; }
+.fund:hover::before, .fund:focus-visible::before,
+.funds-list:not(:hover):not(:has(:focus-visible)) .fund:first-child::before { transform: none; }
+.fund:focus-visible { outline-offset: -2px; }
+
+.funds-tab {
+  appearance: none; cursor: pointer; flex: none;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 32px; padding: 16px 0; border: 0; border-left: 1px solid var(--line);
+  background: transparent; color: var(--menu); font-size: 13px; writing-mode: vertical-rl;
+}
+.funds-tab::before { content: ""; flex: none; width: 7px; height: 7px; background: var(--red); }
+.funds-tab:hover { color: #fff; }
+
+/* Wide enough, the menu stands in the margin, always open, with no frame or tab. */
+@media (min-width: 1660px) {
+  .funds, .funds:hover { transform: none; border: 0; background: none; box-shadow: none; }
+  .funds-tab { display: none; }
+  .fund { text-shadow: 0 1px 14px rgba(0, 0, 0, .7); }
+}
+
 /* ---------------------------------------------------------------- 404 */
 
 .lost .title { font-size: clamp(34px, 6vw, 84px); letter-spacing: .1em; padding-left: .1em; }
