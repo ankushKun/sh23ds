@@ -7,10 +7,13 @@
 //     [--nosimd]     ffmpeg's build without WebAssembly SIMD (?simd=0 in the address), as on a processor without SSE4.1
 //     [--savefile]   the zip written into a picked file (the picker answered with a file in the site's storage,
 //                    which is then downloaded), not built in the storage and saved with the page's button
+//     [--lowmem]     the page told it runs on 2 GB and two cores, as a small laptop: Auto then takes one worker
+//
+// Prints the peak memory of all Chrome's processes together, sampled every 2 s, at the end.
 //
 // Needs Google Chrome (CHROME=<path> elsewhere), `npm install` here, and site/packer/sh2conv.zip
 // (bundle.py). Prints the page's progress as it goes; exits 0 when the zip was saved.
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +28,7 @@ const shots = (process.argv.find((a) => a.startsWith('--shots=')) || '').slice(8
 const url = (process.argv.find((a) => a.startsWith('--url=')) || '').slice(6);
 const nosimd = process.argv.includes('--nosimd');
 const savefile = process.argv.includes('--savefile');
+const lowmem = process.argv.includes('--lowmem');
 const [gameDir, outDir] = args.map((a) => path.resolve(a));
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -49,6 +53,12 @@ try {
 	if (nosimd) query.set('simd', '0');
 	// the pickers are dialogs headless Chrome can't answer: before the page's scripts run, take the save
 	// picker away (the zip is then built in the storage) or answer it with a file in the site's storage
+	if (lowmem) {
+		await page.evaluateOnNewDocument(() => {
+			Object.defineProperty(navigator, 'deviceMemory', { get: () => 2 });
+			Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 2 });
+		});
+	}
 	await page.evaluateOnNewDocument((save) => {
 		window.showSaveFilePicker = save
 			? async () => (await navigator.storage.getDirectory()).getFileHandle('picked.zip', { create: true })
@@ -65,6 +75,24 @@ try {
 		await page.$eval('[data-options]', (d) => { d.open = true; });   // the options are folded away
 		await page.click('[data-option="quality"] [data-step="1"]');
 	}
+	// the memory of Chrome and every process it started, the most seen at once
+	const root = browser.process().pid;
+	let peak = 0;
+	const sample = () => {
+		const rows = execFileSync('ps', ['-A', '-o', 'pid=,ppid=,rss=']).toString().trim().split('\n')
+			.map((l) => l.trim().split(/\s+/).map(Number));
+		const kids = new Map();
+		for (const [pid, ppid] of rows) (kids.get(ppid) || kids.set(ppid, []).get(ppid)).push(pid);
+		const rss = new Map(rows.map(([pid, , kb]) => [pid, kb]));
+		let total = 0;
+		for (const stack = [root]; stack.length; ) {
+			const pid = stack.pop();
+			total += rss.get(pid) || 0;
+			stack.push(...(kids.get(pid) || []));
+		}
+		peak = Math.max(peak, total);
+	};
+	const sampler = setInterval(sample, 2000);
 	const t0 = Date.now();
 	await page.click('[data-start]');
 	let last = '';
@@ -109,6 +137,8 @@ try {
 	} else {
 		console.log(await page.$eval('[data-log]', (e) => e.textContent.split('\n').slice(-30).join('\n')));
 	}
+	clearInterval(sampler);
+	console.log(`peak memory ${(peak / 1048576).toFixed(2)} GB (Chrome and its processes)`);
 } finally {
 	await browser.close();
 	server?.kill();

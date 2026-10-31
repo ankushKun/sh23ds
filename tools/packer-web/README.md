@@ -112,13 +112,20 @@ node tools/packer-web/run.mjs "Silent Hill 2" /tmp/web-pack [--best] [--half]
 .venv/bin/python tools/packer-web/compare.py /tmp/web-pack pack
 
 # the whole page in headless Chrome: folder input, Start, the zip download
-node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip [--only=collision,james] [--nosimd] [--savefile]
+node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip [--only=collision,james] [--nosimd] [--savefile] [--lowmem]
 # the same against the live site (its analytics host is blocked)
 node tools/packer-web/e2e.mjs "Silent Hill 2" /tmp/web-zip --url=https://ankush.one/sh23ds/
 ```
 
 `compare.py` fails when a file is missing or a file differs in a way it doesn't expect. CI checks that
 `tools/texenc/build.sh` rebuilds the committed `texenc.mjs` byte for byte.
+
+### The live site after the ffmpeg fix (2026-10-31, Chrome for Testing 156 on an 11-core Mac)
+
+- The whole game from https://ankush.one/sh23ds/ (`e2e.mjs --url=...`): 13 min 53 s with Auto's three
+  workers, 6,045 files in a 1.88 GB zip, all three `levels.txt`. Again with `--lowmem` (the page told 2 GB
+  and two cores, so Auto takes one worker): 38 min 44 s, the same 6,045 files CRC for CRC. Chrome and its
+  processes peaked at 1.72 GB and 1.74 GB.
 
 ### Changed exes, SIMD and the zip file (2026-10-27, Chrome for Testing on an 11-core Mac)
 
