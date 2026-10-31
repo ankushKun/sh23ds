@@ -91,7 +91,7 @@ The same on both consoles:
 | | Button |
 | --- | --- |
 | Move | Circle Pad |
-| Check, open, attack | A |
+| Check, open, pick up (attack while aiming) | A |
 | Run (hold) | B |
 | Aim (hold) | L |
 | Quick turn | R |
@@ -102,8 +102,8 @@ The same on both consoles:
 | Map | D-Pad right, or the touch screen |
 | Pause | START |
 
-A attacks an enemy ahead by itself, and checks or picks up everything else (*Options*, *Controls*,
-*Attack*: One Button). The New 3DS adds strafing on ZL and ZR and changing target with the C-Stick.
+Hold L to aim, then A attacks. The New 3DS adds strafing on ZL and ZR and changing target with the
+C-Stick.
 Every action can be rebound in *Options*, *Controls*, *Buttons*. The full layouts are in
 [CONTROLS.md](port/CONTROLS.md).
 

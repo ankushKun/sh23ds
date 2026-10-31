@@ -198,10 +198,11 @@ tree after the players' reports):
   console yet.
 
 - 2026-10-31, the controls: one layout on both consoles (L aim, R quick turn, the D-Pad look, next
-  weapon, quick heal, map; no D-Pad walking), One Button (A alone fights: an enemy at his feet, then
-  one ahead, then an event; the attack follows the raise), Quick heal, the play page's Attack / Check
-  hint and a Controls page that ends the first run. Playtest scripts press game keys whatever is
-  bound, and keep the PC's way unless `onebutton 1`. Azahar only.
+  weapon, quick heal, map; no D-Pad walking), Quick heal (the cancel sound when it can't), the play
+  page's Attack / Check hint, Look as a toggle by default, Aim and Action pressed together attacking
+  as the weapon is ready, and a Controls page that ends the first run. One Button (A alone attacking
+  an enemy ahead) was tried and taken out the same day: an enemy behind room 205's flashlight kept
+  it from being picked up (console). Playtest scripts press game keys whatever is bound. Azahar only.
 - 2026-10-31, enemy timing against the PC (`enemy.c`): the rolls and counters the PC makes once a
   call (wanders, retargets, idle noises, the communication queue, the size easing, the hit-back) now
   count the PC's 30 fps calls, so they no longer run twice as often at 60 fps; the Lying Figure spits
@@ -433,11 +434,10 @@ Ordered by weight. Each line names where the work starts.
   x3 reaches.
 - The controls (`controls.c`, `CONTROLS.md`): one default layout for every button both consoles
   have (L aim, R quick turn, the D-Pad look, next weapon, quick heal and map; the Circle Pad alone
-  moves James), where the PC binds keys of its own and its direction keys walk him. One Button
-  (`combat_one_button`, on by default) lets A alone fight: the PC raises the weapon by itself only on
-  Beginner and Easy with Action held (0x542620), and needs the aim key otherwise. Quick heal (D-Pad
-  left) has no PC key. The first run ends on a Controls page (`setup.c`), shown once to players who
-  had made the choices before it.
+  moves James), where the PC binds keys of its own and its direction keys walk him; View Control
+  defaults to Switch. Quick heal (D-Pad left) has no PC key, and an Action press during the raise is
+  kept for the moment the weapon is ready (`s_raise_press`). The first run ends on a Controls page
+  (`setup.c`), shown once to players who had made the choices before it.
 - James' death (`combat.c` `die_range`): the PC's choice of damage motion for the killing blow is in
   the encrypted 0x56e456 (after 0x534700); the port plays the knockdown (anime 112, which ends
   standing again) from the set's fall to its last frame on the floor and holds it there, as the PC

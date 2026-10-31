@@ -2014,16 +2014,17 @@ static u32 move_keys(u32 held, u32 down, const circlePosition* cp)
 // View Control (0x5342b0): Normal shows the search view while the look button is held (0x1fbab13),
 // Switch turns it on and off with each press (0x52e110 flips 0x1fba8fb); neither while a stage
 // program holds James (the PC's player flags 0x6000).
+static bool s_look_on;               // the search view is up (with Switch, between two presses)
 static bool search_view(u32 held, u32 down)
 {
 	static bool on;
 	if (s_opt.view == 0) {
 		on = false;
-		return (held & GK_LOOK) != 0;
+		return s_look_on = (held & GK_LOOK) != 0;
 	}
 	if (down & GK_LOOK)
 		on = !on;
-	return on && !(prog_running() && prog_player_locked());
+	return s_look_on = on && !(prog_running() && prog_player_locked());
 }
 
 // The outdoor water (water.c): the PC's Effect2 water classes run while the frame is drawn
@@ -2395,7 +2396,9 @@ static void head_update(const circlePosition* cp, u32 gheld, float dt, bool on)
 	float ty = 0.0f, tp = 0.0f;
 	int st = move_last()->state;
 	if (on && st != MV_RELAX && st != MV_ALERT) {
-		if (gheld & GK_LOOK) {
+		// looking (the key held, or turned on with Switch; the behind camera's Look only recentres
+		// it, so there the key held): the head follows the circle pad
+		if (s_tp_live ? (gheld & GK_LOOK) != 0 : s_look_on) {
 			float x = cp->dx / 156.0f, y = cp->dy / 156.0f;
 			ty = x * 0.8f;                     // the stick right turns the head right (yaw up)
 			tp = y * (y >= 0.0f ? 0.5f : 0.4f);
@@ -4616,7 +4619,6 @@ static u32 s_debug_die;              // debug.txt "die N" / "hurt N P": a blow a
 static u32 s_stalltest;              // debug.txt "stalltest N": the main loop held 5 s at frame N (perf_watchdog_start)
 static int s_debug_die_pct = 300;    // of his health
 static int s_debug_weapon;           // debug.txt "weapon <item>": equipped on the first free frame
-static bool s_debug_one_button;      // debug.txt "onebutton 1": One Button in playtest runs too
 static u32 s_dump_frames[8];
 static int s_ndump;
 
@@ -5283,8 +5285,7 @@ int main(void)
 			while (fgets(line, sizeof line, dbg)) {
 				if (sscanf(line, "flag %d %d", &a, &b) == 2) ev_flag_set(a, b != 0);
 				if (sscanf(line, "item %d %d", &a, &b) == 2) ev_give_item(a, b);
-				if (sscanf(line, "weapon %d", &a) == 1) s_debug_weapon = a;
-				if (sscanf(line, "onebutton %d", &a) == 1) s_debug_one_button = a != 0;   // equip this item once in play
+				if (sscanf(line, "weapon %d", &a) == 1) s_debug_weapon = a;   // equip this item once in play
 				if (sscanf(line, "hp %d", &a) == 1) combat_set_hp((float)a);   // e.g. the low health cross
 				prog_debug_line(line);
 			}
@@ -5577,46 +5578,44 @@ int main(void)
 					if (quick == TQ_HEAL && ev_item_count(quick_item) > 0 && !s_msg_page && !s_save_prompt)
 						inventory_use(quick_item, 0, 0);
 					// Quick heal (3DS-only, the PC has no such key): the smallest healing item James has,
-					// as the item screen's Use would, so the bigger ones keep (heal_item: nothing at full
-					// health)
-					if ((gdown & GK_HEAL) && !s_msg_page && !s_save_prompt && !combat_held() && !combat_dying())
-						for (int item = 1; item <= 3; item++)
-							if (ev_item_count(item) > 0) {
-								inventory_use(item, 0, 0);
-								break;
-							}
+					// as the item screen's Use would, so the bigger ones keep; at full health or with none
+					// the menu's cancel sound says so (heal_item itself does nothing then)
+					if ((gdown & GK_HEAL) && !s_msg_page && !s_save_prompt && !combat_held() && !combat_dying()) {
+						int item = 1;
+						while (item <= 3 && ev_item_count(item) <= 0)
+							item++;
+						if (item <= 3 && combat_hp() < JAMES_HP_MAX)
+							inventory_use(item, 0, 0);
+						else
+							sfx_play(SFX_MENU_CANCEL, 1.0f, 0.0f);
+					}
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held = move_keys(gheld, gdown, &cp);
-					// One Button (combat_one_button, the Options' Attack): Action alone fights; the
-					// playtest scripts keep the PC's way unless debug.txt says "onebutton 1"
-					bool one_button = s_opt.attack == 0 && !boat_active() && (!playtest_active() || s_debug_one_button);
-					u32 cdown = gdown;                   // the game keys combat sees
-					bool took = false;                   // the Action press was the weapon's
 					{
 						// 0x52e110 on beginner and easy: Action held readies the weapon at an enemy
 						// ahead, unless the press meets an event (EventCheckLookLine 0x48e520)
 						bool ahead = false;
-						if ((gdown & KEY_A) && (enemy_difficulty() < 2 || one_button)) {
+						if ((gdown & KEY_A) && enemy_difficulty() < 2) {
 							EvPlayer ep = { s_px, s_py, s_pz, s_yaw, true, 0, james_can_see(), chrlight_lit };
 							ahead = ev_look_line(&ep) >= 0;
 						}
-						if (one_button)
-							free_held |= combat_one_button(&body, &free_held, &cdown, ahead, dt, &took);
-						else if (combat_auto_ready(&body, free_held, gdown, ahead))
+						if (combat_auto_ready(&body, free_held, gdown, ahead))
 							free_held |= KEY_R;
-						CombatLegs al;
-						touchui_action_attacks((one_button && combat_attack_ahead(&body)) || (combat_legs(&al) && al.aim));
 					}
 					if (s_debug_weapon && combat_equip_item(s_debug_weapon))
 						s_debug_weapon = 0;
-					bool busy = !boat_active() && combat_update(&body, &cp, cdown, free_held, dt,
+					bool busy = !boat_active() && combat_update(&body, &cp, gdown, free_held, dt,
 					                                            s_have_col ? &s_col : NULL, &free_held);
+					// the play page's Action hint: Attack while the weapon is up (Action attacks only
+					// then, as on the PC), else Check
+					CombatLegs al;
+					touchui_action_attacks(combat_legs(&al) && al.aim);
 					// the legs go on under the weapon as far as it lets them (combat_legs)
 					CombatLegs lg;
 					if (!busy || combat_legs(&lg))
 						player_update(&cp, free_held, dt);
 					if (!busy)
-						events_update(took ? gdown & ~KEY_A : gdown);
+						events_update(gdown);
 				}
 				if (!prog_running() || !prog_player_locked()) {
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };

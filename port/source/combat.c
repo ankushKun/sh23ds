@@ -317,6 +317,10 @@ static bool s_rb_light;                 // the rebound plays back a light or com
 static int s_queue;                     // 0 none, 1 light, 2 heavy
 static float s_queue_t, s_qhold = -1.0f;
 static bool s_shot_queued;              // 0x544ac0: the next shot asked for during this one
+// 3DS-only: an Action press while the weapon comes up (Aim and Action pressed together, or close)
+// is kept and taken the frame it is ready, for every weapon. The PC drops it unless the Enhanced
+// Edition's 0.3 s tap buffer (melee, Swap Light/Heavy) still holds it as the raise ends.
+static bool s_raise_press, s_ready_press;
 static const AttackInfo* s_stomp_atk;   // ATK_KICK or ATK_STOMP while M_STOMP
 static float s_hold;                    // grab meter (DAT_01fbacd4): frame times of struggling left
 static int s_stick_dir;                 // last circle pad direction (0 centre, 1..4), for flicks
@@ -1687,8 +1691,6 @@ static const Enemy* enemy_ahead(const CombatBody* b)
 	return NULL;
 }
 
-bool combat_attack_ahead(const CombatBody* b) { return s_ok && (s_stompable || enemy_ahead(b)); }
-
 bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead)
 {
 	if (!s_ok || enemy_difficulty() >= 2 || !(held & KEY_A) || (held & KEY_R) || s_stompable)
@@ -1696,81 +1698,6 @@ bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead
 	if ((down & KEY_A) && event_ahead)
 		return false;
 	return enemy_ahead(b) != NULL;
-}
-
-// One Button (the Options' Attack, 3DS-only): Action fights without the aim key. A press takes, in
-// order: an enemy on the floor at James' feet (s_stompable: the kick or stomp), an enemy ahead by
-// 0x542620's measure (the weapon comes up, locked on as the aim key does, and the attack follows
-// as it is ready: a gun fires, a melee weapon swings when the enemy stands within the light swing's
-// reach plus 450, else he only faces it), then an event ahead (main.c's check, untouched). With
-// nothing there a tap does nothing and A held 0.3 s raises the weapon. The weapon stays up while an
-// enemy is ahead and 2 s after; run held with A let go lowers it; the aim key held is the PC's way.
-static float s_ob_keep;                 // seconds the weapon stays up without an enemy ahead
-static float s_ob_hold = -1.0f;         // A held with nothing to attack (raises at 0.3 s)
-static bool s_ob_fire;                  // an attack asked for while the weapon came up
-static bool s_ob_release;               // raised by a hold: A counts again once let go
-
-u32 combat_one_button(const CombatBody* b, u32* held_keys, u32* down, bool event_ahead, float dt, bool* took)
-{
-	u32 held = *held_keys;
-	*took = false;
-	if (s_ob_release) {
-		// the hold that raised the weapon is not an attack held on (0x52e110's again)
-		if (held & KEY_A)
-			*held_keys &= ~KEY_A, *down &= ~KEY_A;
-		else
-			s_ob_release = false;
-	}
-	if (!s_ok || (held & KEY_R) || s_mode >= M_DYING || s_mode == M_HELD) {
-		s_ob_keep = 0.0f, s_ob_hold = -1.0f, s_ob_fire = false;
-		return 0;
-	}
-	bool press = (*down & KEY_A) != 0;
-	const Enemy* e = enemy_ahead(b);
-	bool foe = e || s_stompable;
-	bool up = s_mode != M_FREE && s_mode != M_LOWER;
-	if ((held & KEY_B) && !(held & KEY_A)) {            // running away: down it goes
-		s_ob_keep = 0.0f, s_ob_hold = -1.0f, s_ob_fire = false;
-		return 0;
-	}
-	// up by One Button's own doing (a press or a hold), it stays up while an enemy is ahead
-	if (s_ob_keep > 0.0f)
-		s_ob_keep = foe ? 2.0f : s_ob_keep > dt ? s_ob_keep - dt : 0.0f;
-	if (press) {
-		if (foe) {
-			*took = true;
-			if (!up) {
-				bool reach = true;
-				if (is_melee() && !s_stompable) {
-					const MeleeDef* m = md();
-					reach = hypotf(e->x - *b->x, e->z - *b->z) <= m->a_light[s_side].max_range + 450.0f;
-				}
-				s_ob_fire = reach;
-				s_ob_keep = 2.0f;
-				*down &= ~KEY_A;                // the attack follows as the weapon is ready
-			}
-		} else if (up && event_ahead) {
-			s_ob_keep = 0.0f;                   // lowered for the event; the next press takes it
-			*took = true;
-			*down &= ~KEY_A;
-		} else if (up) {
-			*took = true;                       // swung at nothing, as the aim key would
-		} else {
-			s_ob_hold = 0.0f;
-		}
-	}
-	if (s_ob_hold >= 0.0f) {
-		if (!(held & KEY_A) || foe)
-			s_ob_hold = -1.0f;
-		else if ((s_ob_hold += dt) >= 0.3f)
-			s_ob_keep = 2.0f, s_ob_hold = -1.0f, s_ob_release = true;
-	}
-	if (s_ob_fire && s_mode == M_READY) {
-		s_ob_fire = false;
-		*down |= KEY_A;
-		*took = true;
-	}
-	return s_ob_keep > 0.0f || s_ob_fire ? KEY_R : 0;
 }
 
 // The EE's SwapLightHeavyAttack (HandleAttackInput, on in the hold and attack statuses 0x1a and
@@ -1871,7 +1798,8 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 	// 0x52e110 keeps ten frames of the keys: Action held through all of them gives 0x533ff0 a
 	// pressure again (0x1fbab0f), so holding it attacks again, light, as each attack ends. On
 	// beginner and easy letting go of it drops a queued attack (0x1fbad13, 0x1fbad14).
-	bool action_down = (down & KEY_A) != 0;
+	bool action_down = (down & KEY_A) != 0 || s_ready_press;
+	s_ready_press = false;
 	if (!(held & KEY_A))
 		s_action_held = -1.0f;
 	else if (action_down || s_action_held < 0.0f)
@@ -1896,8 +1824,10 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		// walking, running and the quick turn go on until they end
 		if ((held & KEY_R) && move_can_aim()) {
 			lock_on(b);                      // 0x533ca0: locked as he readies
+			s_raise_press = action_down;
 			if (is_bare()) {
 				s_mode = M_READY;          // bare hands: nothing to raise
+				s_ready_press = action_down;
 			} else if (is_melee()) {
 				s_mode = M_RAISE;
 				play(&md()->raise[s_side]);
@@ -1915,11 +1845,14 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 		// the raise is the hold status' clip too (0x52fae0 case 0x1a): the attack waits for its end
 		if (is_melee())
 			ee_queue_update(held, action_down, dt);
+		s_raise_press |= action_down;
 		if (s_end) {
 			s_mode = M_READY;
 			play(is_melee() ? &md()->ready[s_side] : &w->aim);
 			if (is_melee())
 				ee_queue_fire(b, held);
+			s_ready_press = s_raise_press && s_mode == M_READY;   // unless the EE's buffer took it
+			s_raise_press = false;
 		}
 		break;
 	case M_READY:

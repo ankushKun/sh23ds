@@ -74,6 +74,7 @@ void opt_defaults(Options* o)
 	o->msg_top = 1;              // messages are the top screen's (port/UI.md)
 	o->stereo = 1;               // 3D follows the slider
 	o->control_type = 1;         // Directional Style: the stick points where James goes
+	o->view = 1;                 // View Control Switch: Look is on the D-Pad, under the thumb that steers
 	o->inf_stamina = 1;
 	o->lang = (u8)ev_system_language();   // 0x4f6cc0 when there is no language.ini
 }
@@ -93,13 +94,13 @@ static const Key s_keys[] = {
 	K("cutscenefov", cutscene_fov, 0, 1), K("togglerun", toggle_run, 0, 1), K("holdstomp", hold_stomp, 0, 1),
 	K("swapattack", swap_attack, 0, 1), K("hwprofile", hwprofile, 0, 2), K("quality", quality, 0, 2),
 	K("framerate", framerate, 0, 2), K("ctrllayout", ctrllayout, 0, 2), K("infstamina", inf_stamina, 0, 1),
-	K("infammo", inf_ammo, 0, 1), K("camera", camera, 0, 1), K("setup", setup, 0, 1), K("attack", attack, 0, 1),
-	K("ctlseen", ctl_seen, 0, 1),
+	K("infammo", inf_ammo, 0, 1), K("camera", camera, 0, 1), K("setup", setup, 0, 1), K("ctlseen", ctl_seen, 0, 1),
 };
 
 // options.txt files written before these defaults (no "optver" line) take the new defaults of the
-// settings that changed: Directional Style and messages on the top screen.
-#define OPT_VERSION 2
+// settings that changed: Directional Style and messages on the top screen; before version 3, View
+// Control's Switch (2026-10-31: Look moved to the D-Pad, so holding it left no thumb for the pad).
+#define OPT_VERSION 3
 
 void opt_load(Options* o, const char* path)
 {
@@ -125,6 +126,11 @@ void opt_load(Options* o, const char* path)
 		opt_defaults(&d);
 		o->control_type = d.control_type;
 		o->msg_top = d.msg_top;
+	}
+	if (version < 3) {
+		Options d;
+		opt_defaults(&d);
+		o->view = d.view;
 	}
 	if (!bgm && music >= 0)
 		o->bgm = music > 10 ? 15 : (music * 15 + 5) / 10;
@@ -163,7 +169,6 @@ static const char* const PICTURE[2] = { "Soft", "Sharp" };
 static const char* const FRAMING[2] = { "Full Width", "4:3" };
 static const char* const CAMERA[2] = { "Original", "Behind" };
 static const char* const HEAVY[2] = { "PC", "Hold {ACT}" };
-static const char* const ATTACK[2] = { "One Button", "With {AIM}" };
 static const char* const OFF_ON_TEXT[2] = { "Off", "On" };
 // the hardware profile's rows (profile.c): three values each, Auto first
 static const char* const HARDWARE[3] = { "Auto", "Old 3DS", "New 3DS" };
@@ -178,8 +183,6 @@ static const char* const CAMSPEED_L[2] = { "The PC's slower turns, which float a
                                            "Quicker, steadier turns, as on the PS2." };
 static const char* const WEAPON_L[2] = { "Hold {AIM} to keep the weapon up. Let go to lower it.",
                                          "Press {AIM} to raise the weapon, and again to lower it." };
-static const char* const ATTACK_L[2] = { "{ACT} attacks an enemy ahead, and checks or picks up the rest.",
-                                         "Hold {AIM} to raise the weapon, then {ACT} attacks, as on the PC." };
 static const char* const WALKRUN_L[4] = { "James walks. Hold {RUN} to run.", "Press {RUN} to run, until James stops.",
                                           "Push the Circle Pad all the way to run.", "James runs. Hold {RUN} to walk." };
 static const char* const VIEW_L[2] = { "Hold {LOOK} to look ahead of James.",
@@ -272,8 +275,6 @@ static const Setting SETTINGS[] = {
 	{ .tab = TAB_CONTROLS, .label = -1, .name = "Camera Speed", AT(ps2_camera), .hi = 1, .texts = PC_PS2,
 	  .what = "How quickly the PC camera turns and settles.", .lines = CAMSPEED_L, .dim = behind,
 	  .note = scripted_note },
-	{ .tab = TAB_CONTROLS, .label = -1, .name = "Attack", AT(attack), .hi = 1, .texts = ATTACK, .fig = FIG_AIM,
-	  .what = "How {ACT} fights.", .lines = ATTACK_L },
 	{ .tab = TAB_CONTROLS, .label = 44, .name = "Weapon Control", AT(weapon), .hi = 1, .names = NORMAL_SWITCH,
 	  .fig = FIG_AIM, .what = "How {AIM} raises the weapon.", .lines = WEAPON_L },
 	{ .tab = TAB_CONTROLS, .label = 57, .name = "Walk/Run Control", .hi = 3, .names = WALK_RUN, .texts = WALK_RUN_T,

@@ -129,10 +129,11 @@ void setup_update(u32 down)
 
 // The buttons as they are bound now (controls.c), in two columns: the Circle Pad, the face buttons,
 // the shoulders and START, then the D-Pad and the New 3DS's own. An action with no button is left
-// out. The Action row says what One Button makes of it (optmenu.h "attack").
+// out. Action checks and picks up; it attacks while Aim is held, which the Aim row says.
 typedef struct { int act; const char* name; } Row;
 static const Row ROWS[2][8] = {
-	{ { -1, "Move" }, { ACT_ACTION, NULL }, { ACT_RUN, "Run" }, { ACT_AIM, "Aim" }, { ACT_TURN180, "Quick turn" },
+	{ { -1, "Move" }, { ACT_ACTION, "Check, pick up" }, { ACT_RUN, "Run" }, { ACT_AIM, NULL },
+	  { ACT_TURN180, "Quick turn" },
 	  { ACT_FLASHLIGHT, "Flashlight" }, { ACT_ITEMS, "Items" }, { ACT_PAUSE, "Pause" } },
 	{ { ACT_LOOK, "Look" }, { ACT_WEAPON_NEXT, "Next weapon" }, { ACT_HEAL, "Quick heal" }, { ACT_MAP, "Map" },
 	  { ACT_STRAFE_LEFT, "Strafe left" }, { ACT_STRAFE_RIGHT, "Strafe right" }, { ACT_TARGET_LEFT, "Target left" },
@@ -141,7 +142,13 @@ static const Row ROWS[2][8] = {
 
 static const char* row_name(const Row* r)
 {
-	return r->name ? r->name : s_live && s_live->attack == 0 ? "Check, attack" : "Check, attack when aiming";
+	if (r->name)
+		return r->name;
+	static char aim[32];
+	char k[16];
+	u32 act = controls_keys(ACT_ACTION);
+	snprintf(aim, sizeof aim, "Aim, then %s attacks", controls_key_text(act & -act, k, sizeof k));
+	return aim;
 }
 
 // A D-Pad direction: the cross, the arm pressed lit

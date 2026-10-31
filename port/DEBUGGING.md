@@ -14,7 +14,6 @@ it to play normally.
 | `stage <n>` | the stage to start the spawn in (otherwise taken from the room) |
 | `flag <n> <0\|1>` | set a game flag before the spawn |
 | `item <id> <count>` | give an item before the spawn |
-| `onebutton 1` | One Button in playtest runs too (`combat_one_button`); without it the `pt` scripts keep the PC's way, and they press game keys (R aims) whatever the bindings |
 | `hp <n>` | start with this much health |
 | `action <0..3>` / `riddle <0..3>` | action and riddle difficulty |
 | `enemy <kind> <x> <z> <yaw> [status] [height]` | place an extra enemy, kind in hex (`enemy 202 ...` is a creeper) |

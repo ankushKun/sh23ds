@@ -16,7 +16,7 @@ page of the Options' Controls tab (`controls.c`, drawn in the Options screen's m
 | Action | New 3DS | Old 3DS |
 | --- | --- | --- |
 | Move | Circle Pad | Circle Pad |
-| Action (check, open, pick up, attack) | A | A |
+| Action (check, open, pick up; attack while aiming) | A | A |
 | Run (hold; Walk/Run Control has Toggle, Analog and Run too) | B | B |
 | Aim (hold) | L | L |
 | Quick turn (180 degrees) | R | R |
@@ -36,7 +36,12 @@ This layout is the port's own (2026-10-31), not the PC's keys. Before it, R aime
 James where no action sat on it, and the two layouts put Look, the next weapon and the quick turn
 on different buttons; players found neither the aim key nor that attacking needed it. Bindings
 saved on the Buttons page stay as they were, and a button a player bound to one action is taken off
-any other action's new default (`controls_keys`).
+any other action's new default (`controls_keys`). For a day the layout came with One Button, A
+alone attacking an enemy ahead before anything it could check; an enemy standing behind the
+flashlight in room 205 made the flashlight impossible to take, so it went: A attacks only while Aim
+is held, as on the PC. With Look on the D-Pad under the thumb that steers, View Control defaults to
+Switch (a press turns the search view on, the next off; `options.txt` before `optver 3` moved to it
+once), and with the PC camera the head follows the circle pad while it is on.
 
 The Circle Pad alone moves James; the D-Pad is four actions. On the New 3DS the C-Stick moves the
 lock to the next enemy left or right while James aims (the PC has two keys of its own for that,
@@ -68,26 +73,11 @@ old one), Y puts that action back to its default and "Defaults" resets the whole
 does one thing: binding it to an action takes it off the action that had it. The page edits the
 layout in use, so an Old 3DS player never sees ZL, ZR or the C-Stick offered.
 
-## One Button (combat.c combat_one_button)
-
-The Options' Controls tab, Attack: One Button (the default) or With L, the PC's way. With One
-Button, A alone fights, by priority: an enemy lying at James' feet (within 600, 0x542a10) is kicked
-or stomped; an enemy ahead by the PC's own measure for its Beginner and Easy auto-raise (0x542620:
-in clear sight within 2500 of the point 2500 ahead) brings the weapon up locked on to it, as the aim
-key does, and the attack follows as soon as it is ready: a gun fires, a melee weapon swings when the
-enemy stands within the light swing's reach plus 450, else James only faces it until the next
-press; with no enemy, an event ahead (EventCheckLookLine 0x48e520) is checked or picked up as
-before. A tap with nothing there does nothing; holding A 0.3 s raises the weapon, and the next press
-swings. The weapon stays up while an enemy is ahead and 2 s after; run held with A let go lowers
-it, and an event ahead with no enemy lowers it so the next press takes the event. The aim key held
-is the PC's way at any time. The play page's footer names what A does now: Attack or Check.
-3DS-only; the PC raises the weapon by itself only on Beginner and Easy, with Action held.
-
 ## Quick heal
 
 D-Pad left uses the smallest healing item James has, a health drink, then a first aid kit, then an
-ampoule, exactly as the item screen's Use (`heal_item`, 0x49e7e0): nothing at full health, not
-while held or dying. 3DS-only; the PC has no such key, and since its item screen stops time while
+ampoule, exactly as the item screen's Use (`heal_item`, 0x49e7e0); at full health or with none it
+plays the menu's cancel sound and uses nothing, and it does nothing while he is held or dying. 3DS-only; the PC has no such key, and since its item screen stops time while
 the key works in play, it gives nothing the item screen did not.
 
 ## Toggle running
@@ -140,6 +130,10 @@ with nothing of the room in between, one on its feet before one on the floor (0x
 James turns to it by 0.3235 x 15 of the gap a second (0x5568c0) while he aims and attacks, and the
 stick turns him not at all; without one the stick turns him in the stance at 2.4 rad/s, 3.6 with run
 held (0x54dcc0). The handgun and Maria's revolver lock again with each shot if the lock was lost.
+
+An Action press while the weapon comes up (Aim and Action pressed together, or close) is kept and
+taken the frame it is ready, for every weapon (3DS-only, `s_raise_press`); the PC drops it unless
+the Enhanced Edition's 0.3 s tap buffer still holds it as a melee raise ends.
 
 Under the weapon the legs keep moving as the PC's grip flags allow (0x6cf7cc, 0x54e0f0): the plank,
 bare hands, the spray and Maria's knife walk, back off, strafe and run (no running indoors for the

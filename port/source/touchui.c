@@ -1062,7 +1062,7 @@ static void draw_play(bool waiting)
 		return;
 	}
 	// the map is the map itself: a tap on it opens it, so it has no prompt. Action says what a
-	// press does now: attack (an enemy ahead with One Button, or the weapon up) or check
+	// press does now: attack (the weapon up) or check
 	char labels[4][16] = { "Check", "Items", "Light", "Pause" };
 	if (s_act_attack)
 		snprintf(labels[0], sizeof labels[0], "Attack");
