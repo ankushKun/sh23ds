@@ -40,7 +40,7 @@ static inline bool controls_have_cstick(void) { return controls_layout() == CONT
 // The player's actions; controls.c binds each to buttons per layout (controls_default, controls_name).
 typedef enum {
 	ACT_RUN,            // hold
-	ACT_ACTION,         // check, open, pick up, attack while aiming, next message
+	ACT_ACTION,         // check, open, pick up, attack (with One button, or while aiming), next message
 	ACT_AIM,            // hold: ready the weapon
 	ACT_WEAPON_NEXT,
 	ACT_FLASHLIGHT,
@@ -52,6 +52,7 @@ typedef enum {
 	ACT_MAP,
 	ACT_TARGET_LEFT,    // while aiming: the next enemy to the left / right (0x54f100)
 	ACT_TARGET_RIGHT,
+	ACT_HEAL,           // the smallest healing item James has (3DS-only, main.c quick_heal)
 	ACT_PAUSE,
 	ACT_CANCEL,
 	ACT_COUNT

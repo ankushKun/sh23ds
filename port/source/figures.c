@@ -275,10 +275,17 @@ void fig_ring(float cx, float cy, const char* label, u32 rgba)
 	u32 c = rgba | 0xff;
 	float w = font_width_px(FONT_SMALL, label);
 	if (strlen(label) > 1) {
-		float hw = w * 0.5f + 5.0f;
-		circ(cx - hw + 6, cy, 6.0f, c), circ(cx + hw - 6, cy, 6.0f, c);
-		seg(cx - hw + 6, cy - 6, cx + hw - 6, cy - 6, 1.0f, c);
-		seg(cx - hw + 6, cy + 6, cx + hw - 6, cy + 6, 1.0f, c);
+		// a pill round the name: half circles at the ends, clear of the letters
+		const float r = 6.5f;
+		float hw = w * 0.5f + 3.0f;
+		const int n = 9;
+		for (int i = 0; i < n; i++) {
+			float a0 = PI * 0.5f + i * PI / n, a1 = PI * 0.5f + (i + 1) * PI / n;
+			seg(cx - hw + cosf(a0) * r, cy + sinf(a0) * r, cx - hw + cosf(a1) * r, cy + sinf(a1) * r, 1.0f, c);
+			seg(cx + hw - cosf(a0) * r, cy + sinf(a0) * r, cx + hw - cosf(a1) * r, cy + sinf(a1) * r, 1.0f, c);
+		}
+		seg(cx - hw, cy - r, cx + hw, cy - r, 1.0f, c);
+		seg(cx - hw, cy + r, cx + hw, cy + r, 1.0f, c);
 	} else {
 		circ(cx, cy, 6.5f, c);
 	}

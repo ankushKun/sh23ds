@@ -1673,12 +1673,8 @@ bool combat_legs(CombatLegs* o)
 // sight within 2500 of the point 2500 in front of James. Not on a press an event ahead takes
 // (EventCheckLookLine 0x48e520), not with Aim held, nor with one on the floor to kick (0x1fbad00).
 // The PC measures from James' 0xa0 height to the enemy's feet; the port takes both feet.
-bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead)
+static const Enemy* enemy_ahead(const CombatBody* b)
 {
-	if (!s_ok || enemy_difficulty() >= 2 || !(held & KEY_A) || (held & KEY_R) || s_stompable)
-		return false;
-	if ((down & KEY_A) && event_ahead)
-		return false;
 	float cx = *b->x + sinf(*b->yaw) * 2500.0f, cz = *b->z + cosf(*b->yaw) * 2500.0f;
 	for (int i = 0; i < s_ncand; i++) {
 		const Enemy* e = s_cand[i];
@@ -1686,9 +1682,95 @@ bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead
 			continue;
 		float dx = cx - e->x, dy = *b->y - e->y, dz = cz - e->z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) <= 2500.0f)
-			return true;
+			return e;
 	}
-	return false;
+	return NULL;
+}
+
+bool combat_attack_ahead(const CombatBody* b) { return s_ok && (s_stompable || enemy_ahead(b)); }
+
+bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead)
+{
+	if (!s_ok || enemy_difficulty() >= 2 || !(held & KEY_A) || (held & KEY_R) || s_stompable)
+		return false;
+	if ((down & KEY_A) && event_ahead)
+		return false;
+	return enemy_ahead(b) != NULL;
+}
+
+// One Button (the Options' Attack, 3DS-only): Action fights without the aim key. A press takes, in
+// order: an enemy on the floor at James' feet (s_stompable: the kick or stomp), an enemy ahead by
+// 0x542620's measure (the weapon comes up, locked on as the aim key does, and the attack follows
+// as it is ready: a gun fires, a melee weapon swings when the enemy stands within the light swing's
+// reach plus 450, else he only faces it), then an event ahead (main.c's check, untouched). With
+// nothing there a tap does nothing and A held 0.3 s raises the weapon. The weapon stays up while an
+// enemy is ahead and 2 s after; run held with A let go lowers it; the aim key held is the PC's way.
+static float s_ob_keep;                 // seconds the weapon stays up without an enemy ahead
+static float s_ob_hold = -1.0f;         // A held with nothing to attack (raises at 0.3 s)
+static bool s_ob_fire;                  // an attack asked for while the weapon came up
+static bool s_ob_release;               // raised by a hold: A counts again once let go
+
+u32 combat_one_button(const CombatBody* b, u32* held_keys, u32* down, bool event_ahead, float dt, bool* took)
+{
+	u32 held = *held_keys;
+	*took = false;
+	if (s_ob_release) {
+		// the hold that raised the weapon is not an attack held on (0x52e110's again)
+		if (held & KEY_A)
+			*held_keys &= ~KEY_A, *down &= ~KEY_A;
+		else
+			s_ob_release = false;
+	}
+	if (!s_ok || (held & KEY_R) || s_mode >= M_DYING || s_mode == M_HELD) {
+		s_ob_keep = 0.0f, s_ob_hold = -1.0f, s_ob_fire = false;
+		return 0;
+	}
+	bool press = (*down & KEY_A) != 0;
+	const Enemy* e = enemy_ahead(b);
+	bool foe = e || s_stompable;
+	bool up = s_mode != M_FREE && s_mode != M_LOWER;
+	if ((held & KEY_B) && !(held & KEY_A)) {            // running away: down it goes
+		s_ob_keep = 0.0f, s_ob_hold = -1.0f, s_ob_fire = false;
+		return 0;
+	}
+	// up by One Button's own doing (a press or a hold), it stays up while an enemy is ahead
+	if (s_ob_keep > 0.0f)
+		s_ob_keep = foe ? 2.0f : s_ob_keep > dt ? s_ob_keep - dt : 0.0f;
+	if (press) {
+		if (foe) {
+			*took = true;
+			if (!up) {
+				bool reach = true;
+				if (is_melee() && !s_stompable) {
+					const MeleeDef* m = md();
+					reach = hypotf(e->x - *b->x, e->z - *b->z) <= m->a_light[s_side].max_range + 450.0f;
+				}
+				s_ob_fire = reach;
+				s_ob_keep = 2.0f;
+				*down &= ~KEY_A;                // the attack follows as the weapon is ready
+			}
+		} else if (up && event_ahead) {
+			s_ob_keep = 0.0f;                   // lowered for the event; the next press takes it
+			*took = true;
+			*down &= ~KEY_A;
+		} else if (up) {
+			*took = true;                       // swung at nothing, as the aim key would
+		} else {
+			s_ob_hold = 0.0f;
+		}
+	}
+	if (s_ob_hold >= 0.0f) {
+		if (!(held & KEY_A) || foe)
+			s_ob_hold = -1.0f;
+		else if ((s_ob_hold += dt) >= 0.3f)
+			s_ob_keep = 2.0f, s_ob_hold = -1.0f, s_ob_release = true;
+	}
+	if (s_ob_fire && s_mode == M_READY) {
+		s_ob_fire = false;
+		*down |= KEY_A;
+		*took = true;
+	}
+	return s_ob_keep > 0.0f || s_ob_fire ? KEY_R : 0;
 }
 
 // The EE's SwapLightHeavyAttack (HandleAttackInput, on in the hold and attack statuses 0x1a and

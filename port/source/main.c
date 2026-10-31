@@ -1494,8 +1494,7 @@ static int s_controls;              // move.h MOVE_*: 0 Rotational (3D, tank, PC
 static int s_place;                 // 0x1fba8d8: 0 out of doors, 1 indoors, 2 a room 0x8bcce0 marks (james_place)
 static bool s_tp_live;              // the port's behind camera is the one shown (tpcam.c, options "camera")
 static bool behind_camera(void) { return s_tp_live; }
-static bool s_dpad_walking;         // dpad_walk stood in for the circle pad this frame
-static float s_orbit[2];            // the behind camera's turn this frame, -1..1 (C-Stick or D-Pad)
+static float s_orbit[2];            // the behind camera's turn this frame, -1..1 (the C-Stick)
 static const float* view_eye(void) { return s_tp_live ? tpcam_eye() : gamecam_eye(); }
 
 // 0x556490: 2 in the rooms whose byte in 0x8bcce0 (by the PC room id, 0x524db0) is 0, else 0 on the
@@ -2004,45 +2003,12 @@ static u32 move_keys(u32 held, u32 down, const circlePosition* cp)
 	}
 	if (s_opt.walk_run == 2) {
 		held ^= KEY_B;
-	} else if (s_opt.walk_run == 1 && !s_dpad_walking && (cp->dx || cp->dy)) {
-		// Analog: with the stick in use (no direction keys), a tilt past 110 of 127 runs
+	} else if (s_opt.walk_run == 1 && (cp->dx || cp->dy)) {
+		// Analog: a tilt past 110 of 127 runs
 		float m = hypotf(cp->dx, cp->dy) / 156.0f * 127.0f;
 		held = m > 110.0f ? held | KEY_B : held & ~KEY_B;
 	}
 	return held;
-}
-
-// The D-Pad walks James in each direction no game action is bound to (the New 3DS layout binds none;
-// the Old 3DS keeps the next weapon and the quick turn on up and down), as the PC's direction keys
-// do: move.c takes it as the keys (0x52e110 0x1fbac6a 0), full turns and the movers' speed ramps.
-// The circle pad wins when it is pushed.
-static void dpad_walk(circlePosition* cp, u32 held)
-{
-	s_dpad_walking = false;
-	if (abs(cp->dx) > 20 || abs(cp->dy) > 20)
-		return;
-	u32 bound = 0;
-	for (int a = 0; a < ACT_COUNT; a++)
-		bound |= controls_keys((ControlsAction)a);
-	u32 d = held & ~bound;
-	int x = (d & KEY_DRIGHT ? 1 : 0) - (d & KEY_DLEFT ? 1 : 0), y = (d & KEY_DUP ? 1 : 0) - (d & KEY_DDOWN ? 1 : 0);
-	if (!x && !y)
-		return;
-	float k = x && y ? 156.0f * 0.70710678f : 156.0f;
-	cp->dx = (s16)(x * k);
-	cp->dy = (s16)(y * k);
-	s_dpad_walking = true;
-}
-
-// The behind camera on the Old 3DS layout: the D-Pad's directions no action is bound to turn it.
-static void dpad_orbit(u32 held)
-{
-	u32 bound = 0;
-	for (int a = 0; a < ACT_COUNT; a++)
-		bound |= controls_keys((ControlsAction)a);
-	u32 d = held & ~bound;
-	s_orbit[0] = (d & KEY_DRIGHT ? 1.0f : 0.0f) - (d & KEY_DLEFT ? 1.0f : 0.0f);
-	s_orbit[1] = (d & KEY_DUP ? 1.0f : 0.0f) - (d & KEY_DDOWN ? 1.0f : 0.0f);
 }
 
 // View Control (0x5342b0): Normal shows the search view while the look button is held (0x1fbab13),
@@ -2367,7 +2333,6 @@ static void player_update(const circlePosition* cp, u32 held, float dt)
 		in.keep_gait = lg.attacking;
 		in.stick_strafe = behind_camera();
 	}
-	in.digital = s_dpad_walking;
 	// a program's walk (host_walk_to), asked for again each frame it goes on
 	s_auto.walking = s_auto.asked;
 	s_auto.asked = false;
@@ -4168,7 +4133,6 @@ static void options_apply(void)
 {
 	s_bright = s_opt.bright;
 	s_controls = s_opt.control_type;
-	controls_set_rotational(s_controls == MOVE_TANK);
 	s_toggle_run = s_opt.toggle_run;
 	s_ps2_flash = s_opt.ps2_flash;
 	s_hold_stomp = s_opt.hold_stomp, s_swap_attack = s_opt.swap_attack;
@@ -4260,7 +4224,7 @@ static void title_start(int what)
 static int s_title_sub;          // 1: New Game levels, 2: Born From a Wish levels
 // The first run is due: options.txt has no "setup 1", or debug.txt "setup 1" asks for it. Not while
 // debug.txt starts a test or skips the logos (DEBUGGING.md), unless "setup 1" is there.
-static bool s_setup_due;
+static bool s_setup_due, s_controls_due;   // the first run, or its Controls page alone
 static int s_setup_debug = -1;   // debug.txt "setup": 0 never, 1 always
 static bool s_logos_off, s_textcheck;
 
@@ -4344,9 +4308,10 @@ static bool title_update(u32 down, float dt)
 			s_title_t = 0.0f;            // done: the title fades in as after the logos
 		return true;
 	}
-	if (s_setup_due && !titlemenu_booting()) {
-		s_setup_due = false;
-		setup_open(&s_opt, opt_changed, opt_keep);
+	if ((s_setup_due || s_controls_due) && !titlemenu_booting()) {
+		touchui_menu_close(TOUI_TITLE);      // the title's own, set as it came up; back after setup
+		setup_open(&s_opt, opt_changed, opt_keep, !s_setup_due);
+		s_setup_due = s_controls_due = false;
 		return true;
 	}
 	if (s_title_sub)
@@ -4651,6 +4616,7 @@ static u32 s_debug_die;              // debug.txt "die N" / "hurt N P": a blow a
 static u32 s_stalltest;              // debug.txt "stalltest N": the main loop held 5 s at frame N (perf_watchdog_start)
 static int s_debug_die_pct = 300;    // of his health
 static int s_debug_weapon;           // debug.txt "weapon <item>": equipped on the first free frame
+static bool s_debug_one_button;      // debug.txt "onebutton 1": One Button in playtest runs too
 static u32 s_dump_frames[8];
 static int s_ndump;
 
@@ -5257,7 +5223,7 @@ int main(void)
 			if (!strcmp(key, "brightness")) s_bright = val < 1 ? 1 : val > 7 ? 7 : val;
 			if (!strcmp(key, "dumpframe") && s_ndump < 8) s_dump_frames[s_ndump++] = (u32)val;
 			if (!strcmp(key, "newgame")) s_debug_newgame = val != 0;
-			if (!strcmp(key, "controls")) s_controls = val == 1, controls_set_rotational(val != 1);
+			if (!strcmp(key, "controls")) s_controls = val == 1;
 			if (!strcmp(key, "riddle")) s_riddle = val;
 			if (!strcmp(key, "action")) s_action = val;
 			if (!strcmp(key, "stage")) s_spawn_stage = val;
@@ -5268,6 +5234,7 @@ int main(void)
 	bool test = s_logos_off || playtest_active() || s_autotest || s_spawn_map[0] || s_debug_demo[0] ||
 	            s_debug_movie[0] || s_debug_newgame;
 	s_setup_due = s_setup_debug == 1 || (s_setup_debug < 0 && !s_opt.setup && !test);
+	s_controls_due = !s_setup_due && s_setup_debug < 0 && !s_opt.ctl_seen && !test;
 	if (s_textcheck) {
 		// every explainer and first-run choice laid out in each language and button layout (optmenu.h)
 		FILE* f = fopen(PACK_DIR "/textcheck.txt", "w");
@@ -5316,7 +5283,8 @@ int main(void)
 			while (fgets(line, sizeof line, dbg)) {
 				if (sscanf(line, "flag %d %d", &a, &b) == 2) ev_flag_set(a, b != 0);
 				if (sscanf(line, "item %d %d", &a, &b) == 2) ev_give_item(a, b);
-				if (sscanf(line, "weapon %d", &a) == 1) s_debug_weapon = a;   // equip this item once in play
+				if (sscanf(line, "weapon %d", &a) == 1) s_debug_weapon = a;
+				if (sscanf(line, "onebutton %d", &a) == 1) s_debug_one_button = a != 0;   // equip this item once in play
 				if (sscanf(line, "hp %d", &a) == 1) combat_set_hp((float)a);   // e.g. the low health cross
 				prog_debug_line(line);
 			}
@@ -5411,7 +5379,10 @@ int main(void)
 			held &= ~KEY_L;
 		}
 		u32 gdown, gheld;                    // the game keys (controls.c): actions, not buttons
-		controls_game(down, held, &gdown, &gheld);
+		if (playtest_active())
+			gdown = down, gheld = held;      // the scripts press game keys (R aims), whatever is bound
+		else
+			controls_game(down, held, &gdown, &gheld);
 		if (quick == TQ_WEAPON)
 			gdown |= KEY_L;                  // the game key of the next weapon (controls.h)
 		s_gdown = gdown;
@@ -5556,18 +5527,13 @@ int main(void)
 		} else if (s_cam.mode == CAM_PLAYER && screens_update(down, held, &cp, dt)) {
 			// the map screen or the memo list has the buttons; the game waits
 		} else if (s_cam.mode == CAM_PLAYER) {
-			// the behind camera turns with the C-Stick on the New 3DS layout, with the D-Pad's free
-			// directions on the Old one (which then do not walk James)
+			// the behind camera turns with the C-Stick on the New 3DS, and on either console with a
+			// drag on the touch screen (touchui_free_drag); Look sets it behind James again
 			s_orbit[0] = s_orbit[1] = 0.0f;
-			if (s_tp_live && controls_layout() == CONTROLS_LAYOUT_OLD) {
-				dpad_orbit(held);
-			} else {
-				dpad_walk(&cp, held);
-				if (s_tp_live) {
-					s_orbit[0] = cs.dx / 150.0f, s_orbit[1] = cs.dy / 150.0f;
-					s_orbit[0] = s_orbit[0] > 1.0f ? 1.0f : s_orbit[0] < -1.0f ? -1.0f : s_orbit[0];
-					s_orbit[1] = s_orbit[1] > 1.0f ? 1.0f : s_orbit[1] < -1.0f ? -1.0f : s_orbit[1];
-				}
+			if (s_tp_live && controls_layout() == CONTROLS_LAYOUT_NEW) {
+				s_orbit[0] = cs.dx / 150.0f, s_orbit[1] = cs.dy / 150.0f;
+				s_orbit[0] = s_orbit[0] > 1.0f ? 1.0f : s_orbit[0] < -1.0f ? -1.0f : s_orbit[0];
+				s_orbit[1] = s_orbit[1] > 1.0f ? 1.0f : s_orbit[1] < -1.0f ? -1.0f : s_orbit[1];
 			}
 			if (!save_prompt_update(down) && !message_update(down) && !s_warp_pending) {
 				prog_stage_tick(ev_stage(), dt);
@@ -5610,29 +5576,47 @@ int main(void)
 					// a healing item tapped on the play page: used as the item screen's Use would
 					if (quick == TQ_HEAL && ev_item_count(quick_item) > 0 && !s_msg_page && !s_save_prompt)
 						inventory_use(quick_item, 0, 0);
+					// Quick heal (3DS-only, the PC has no such key): the smallest healing item James has,
+					// as the item screen's Use would, so the bigger ones keep (heal_item: nothing at full
+					// health)
+					if ((gdown & GK_HEAL) && !s_msg_page && !s_save_prompt && !combat_held() && !combat_dying())
+						for (int item = 1; item <= 3; item++)
+							if (ev_item_count(item) > 0) {
+								inventory_use(item, 0, 0);
+								break;
+							}
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };
 					u32 free_held = move_keys(gheld, gdown, &cp);
+					// One Button (combat_one_button, the Options' Attack): Action alone fights; the
+					// playtest scripts keep the PC's way unless debug.txt says "onebutton 1"
+					bool one_button = s_opt.attack == 0 && !boat_active() && (!playtest_active() || s_debug_one_button);
+					u32 cdown = gdown;                   // the game keys combat sees
+					bool took = false;                   // the Action press was the weapon's
 					{
 						// 0x52e110 on beginner and easy: Action held readies the weapon at an enemy
 						// ahead, unless the press meets an event (EventCheckLookLine 0x48e520)
 						bool ahead = false;
-						if ((gdown & KEY_A) && enemy_difficulty() < 2) {
+						if ((gdown & KEY_A) && (enemy_difficulty() < 2 || one_button)) {
 							EvPlayer ep = { s_px, s_py, s_pz, s_yaw, true, 0, james_can_see(), chrlight_lit };
 							ahead = ev_look_line(&ep) >= 0;
 						}
-						if (combat_auto_ready(&body, free_held, gdown, ahead))
+						if (one_button)
+							free_held |= combat_one_button(&body, &free_held, &cdown, ahead, dt, &took);
+						else if (combat_auto_ready(&body, free_held, gdown, ahead))
 							free_held |= KEY_R;
+						CombatLegs al;
+						touchui_action_attacks((one_button && combat_attack_ahead(&body)) || (combat_legs(&al) && al.aim));
 					}
 					if (s_debug_weapon && combat_equip_item(s_debug_weapon))
 						s_debug_weapon = 0;
-					bool busy = !boat_active() && combat_update(&body, &cp, gdown, free_held, dt,
+					bool busy = !boat_active() && combat_update(&body, &cp, cdown, free_held, dt,
 					                                            s_have_col ? &s_col : NULL, &free_held);
 					// the legs go on under the weapon as far as it lets them (combat_legs)
 					CombatLegs lg;
 					if (!busy || combat_legs(&lg))
 						player_update(&cp, free_held, dt);
 					if (!busy)
-						events_update(gdown);
+						events_update(took ? gdown & ~KEY_A : gdown);
 				}
 				if (!prog_running() || !prog_player_locked()) {
 					CombatBody body = { &s_px, &s_py, &s_pz, &s_yaw };

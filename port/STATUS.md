@@ -197,6 +197,11 @@ tree after the players' reports):
   on beginner, hard and extra riddle levels (`run_levels.sh`, 17 of 17 each). Nothing of these fixes has run on a
   console yet.
 
+- 2026-10-31, the controls: one layout on both consoles (L aim, R quick turn, the D-Pad look, next
+  weapon, quick heal, map; no D-Pad walking), One Button (A alone fights: an enemy at his feet, then
+  one ahead, then an event; the attack follows the raise), Quick heal, the play page's Attack / Check
+  hint and a Controls page that ends the first run. Playtest scripts press game keys whatever is
+  bound, and keep the PC's way unless `onebutton 1`. Azahar only.
 - 2026-10-31, enemy timing against the PC (`enemy.c`): the rolls and counters the PC makes once a
   call (wanders, retargets, idle noises, the communication queue, the size easing, the hit-back) now
   count the PC's 30 fps calls, so they no longer run twice as often at 60 fps; the Lying Figure spits
@@ -426,6 +431,13 @@ Ordered by weight. Each line names where the work starts.
   (0x507e00 keeps a list of lit objects); the port waits for the flashlight. A stack of an item holds
   255 in the port (a byte per item in the save), where ItemGet caps it at 999, which only Bullet Adjust
   x3 reaches.
+- The controls (`controls.c`, `CONTROLS.md`): one default layout for every button both consoles
+  have (L aim, R quick turn, the D-Pad look, next weapon, quick heal and map; the Circle Pad alone
+  moves James), where the PC binds keys of its own and its direction keys walk him. One Button
+  (`combat_one_button`, on by default) lets A alone fight: the PC raises the weapon by itself only on
+  Beginner and Easy with Action held (0x542620), and needs the aim key otherwise. Quick heal (D-Pad
+  left) has no PC key. The first run ends on a Controls page (`setup.c`), shown once to players who
+  had made the choices before it.
 - James' death (`combat.c` `die_range`): the PC's choice of damage motion for the killing blow is in
   the encrypted 0x56e456 (after 0x534700); the port plays the knockdown (anime 112, which ends
   standing again) from the set's fall to its last frame on the floor and holds it there, as the PC

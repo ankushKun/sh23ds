@@ -86,20 +86,26 @@ If sh23ds starts and can't find its data, it says so: whether the folder is miss
 
 ## Controls
 
-| | New 3DS | Original 3DS |
-| --- | --- | --- |
-| Walk and turn | Circle Pad or D-Pad | Circle Pad, or D-Pad left and right |
-| Check, open, attack | A | A |
-| Run (hold) | B | B |
-| Aim (hold) | R | R |
-| Look around (hold) | ZL | L |
-| Next weapon | L | D-Pad up |
-| Quick turn | ZR | D-Pad down |
-| Flashlight / items | X / Y | X / Y |
-| Map | touch screen | touch screen |
-| Pause | START | START |
+The same on both consoles:
 
-Every action can be rebound in *Options*, *Controls*, *Buttons*. The full layouts are in [CONTROLS.md](port/CONTROLS.md).
+| | Button |
+| --- | --- |
+| Move | Circle Pad |
+| Check, open, attack | A |
+| Run (hold) | B |
+| Aim (hold) | L |
+| Quick turn | R |
+| Flashlight / items | X / Y |
+| Look around (hold) | D-Pad up |
+| Next weapon | D-Pad down |
+| Quick heal | D-Pad left |
+| Map | D-Pad right, or the touch screen |
+| Pause | START |
+
+A attacks an enemy ahead by itself, and checks or picks up everything else (*Options*, *Controls*,
+*Attack*: One Button). The New 3DS adds strafing on ZL and ZR and changing target with the C-Stick.
+Every action can be rebound in *Options*, *Controls*, *Buttons*. The full layouts are in
+[CONTROLS.md](port/CONTROLS.md).
 
 ## Building from source
 

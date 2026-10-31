@@ -11,8 +11,8 @@
 
 // The actions the menu lists, in its order (pause and cancel stay on START and B)
 static const ControlsAction MENU_ACTS[] = {
-	ACT_ACTION, ACT_RUN, ACT_AIM, ACT_WEAPON_NEXT, ACT_FLASHLIGHT, ACT_ITEMS, ACT_LOOK, ACT_TURN180,
-	ACT_STRAFE_LEFT, ACT_STRAFE_RIGHT, ACT_MAP, ACT_TARGET_LEFT, ACT_TARGET_RIGHT,
+	ACT_ACTION, ACT_RUN, ACT_AIM, ACT_TURN180, ACT_FLASHLIGHT, ACT_ITEMS, ACT_LOOK, ACT_WEAPON_NEXT,
+	ACT_HEAL, ACT_MAP, ACT_STRAFE_LEFT, ACT_STRAFE_RIGHT, ACT_TARGET_LEFT, ACT_TARGET_RIGHT,
 };
 #define N_MENU_ACTS ((int)(sizeof MENU_ACTS / sizeof MENU_ACTS[0]))
 
@@ -38,34 +38,26 @@ ControlsLayout controls_layout(void)
 }
 #endif
 
-static bool s_rotational;
-
-void controls_set_rotational(bool on) { s_rotational = on; }
-
 u32 controls_default(ControlsLayout layout, ControlsAction act)
 {
 	bool n = layout == CONTROLS_LAYOUT_NEW;
-	// The PC's 3D control type moves James with the direction keys (0x52e110 reads keys 1, 2, 4 and
-	// 8 beside the stick: forward, back, turn left, turn right), so with Rotational Style the D-Pad
-	// stays free for walking on the Old 3DS too; the next weapon is then a tap on the touch screen's
-	// weapon and the quick turn both strafe buttons, as on the PC (0x54b290), or a binding.
-	bool dpad = !n && !s_rotational;
+	// One layout for every button both consoles have (3DS-only: the PC binds keys of its own): the
+	// circle pad alone moves James, the shoulders aim and turn him round, the D-Pad holds four
+	// actions. The New 3DS adds the PC's strafe keys on ZL / ZR (both together turn him round,
+	// 0x54b290) and the target keys on the C-Stick.
 	switch (act) {
-	// The circle pad walks and turns James, so the C-Stick and the D-Pad carry nothing by default
-	// on the New 3DS (strafing and the map stay bindable; the map is also a tap on the touch
-	// screen); the Old 3DS, short of buttons, keeps the next weapon and the quick turn on the D-Pad
-	// with Directional Style.
 	case ACT_RUN: return KEY_B;
 	case ACT_ACTION: return KEY_A;
-	case ACT_AIM: return KEY_R;
-	case ACT_WEAPON_NEXT: return n ? KEY_L : dpad ? KEY_DUP : 0;
+	case ACT_AIM: return KEY_L;
+	case ACT_WEAPON_NEXT: return KEY_DDOWN;
 	case ACT_FLASHLIGHT: return KEY_X;
 	case ACT_ITEMS: return KEY_Y;
-	case ACT_LOOK: return n ? KEY_ZL : KEY_L;
-	case ACT_TURN180: return n ? KEY_ZR : dpad ? KEY_DDOWN : 0;
-	case ACT_STRAFE_LEFT: return 0;
-	case ACT_STRAFE_RIGHT: return 0;
-	case ACT_MAP: return 0;                       // a tap on the touch screen's map, both layouts
+	case ACT_LOOK: return KEY_DUP;
+	case ACT_TURN180: return KEY_R;
+	case ACT_STRAFE_LEFT: return n ? KEY_ZL : 0;
+	case ACT_STRAFE_RIGHT: return n ? KEY_ZR : 0;
+	case ACT_MAP: return KEY_DRIGHT;              // a tap on the touch screen's map as well
+	case ACT_HEAL: return KEY_DLEFT;
 	// The PC changes the locked target with two keys of its own (0x54f100); the New 3DS has the
 	// C-Stick free for them while James aims. The Old 3DS has no button to spare (bindable).
 	case ACT_TARGET_LEFT: return n ? KEY_CSTICK_LEFT : 0;
@@ -80,7 +72,8 @@ const char* controls_name(ControlsAction act)
 {
 	static const char* const names[ACT_COUNT] = { "Run", "Action", "Aim", "Next weapon", "Flashlight", "Items",
 	                                               "Look", "Quick turn", "Strafe left", "Strafe right", "Map",
-	                                               "Target left", "Target right", "Pause", "Cancel" };
+	                                               "Target left", "Target right", "Quick heal", "Pause",
+	                                               "Cancel" };
 	return act < ACT_COUNT ? names[act] : "";
 }
 
@@ -89,7 +82,17 @@ static int L(void) { return controls_layout() == CONTROLS_LAYOUT_NEW ? 1 : 0; }
 u32 controls_keys(ControlsAction act)
 {
 	int l = L();
-	u32 k = C.set[l][act] ? C.user[l][act] : controls_default((ControlsLayout)l, act);
+	u32 k;
+	if (C.set[l][act]) {
+		k = C.user[l][act];
+	} else {
+		// a button the player bound to another action is that action's alone (the defaults moved on
+		// 2026-10-31, so an older binding can sit on a new default)
+		k = controls_default((ControlsLayout)l, act);
+		for (int a = 0; a < ACT_COUNT && k; a++)
+			if (a != (int)act && C.set[l][a])
+				k &= ~C.user[l][a];
+	}
 	return l ? k : k & ~(KEY_ZL | KEY_ZR | KEY_CSTICK_UP | KEY_CSTICK_DOWN | KEY_CSTICK_LEFT | KEY_CSTICK_RIGHT);
 }
 
@@ -144,7 +147,7 @@ void controls_game(u32 down, u32 held, u32* gdown, u32* gheld)
 		{ ACT_ACTION, KEY_A }, { ACT_RUN, KEY_B }, { ACT_AIM, KEY_R }, { ACT_WEAPON_NEXT, KEY_L },
 		{ ACT_FLASHLIGHT, KEY_X }, { ACT_ITEMS, KEY_Y }, { ACT_LOOK, GK_LOOK }, { ACT_TURN180, GK_TURN180 },
 		{ ACT_STRAFE_LEFT, GK_STRAFE_L }, { ACT_STRAFE_RIGHT, GK_STRAFE_R }, { ACT_MAP, GK_MAP },
-		{ ACT_TARGET_LEFT, GK_TARGET_L }, { ACT_TARGET_RIGHT, GK_TARGET_R },
+		{ ACT_TARGET_LEFT, GK_TARGET_L }, { ACT_TARGET_RIGHT, GK_TARGET_R }, { ACT_HEAL, GK_HEAL },
 	};
 	u32 d = 0, h = 0;
 	for (unsigned i = 0; i < sizeof MAP / sizeof MAP[0]; i++) {

@@ -51,6 +51,12 @@ bool combat_update(CombatBody* b, const circlePosition* cp, u32 down, u32 held, 
 // Beginner and easy (0x52e110): Action held readies the weapon at an enemy ahead; the caller adds
 // the Aim key when this is true. event_ahead: the Action press has an event in front of James.
 bool combat_auto_ready(const CombatBody* b, u32 held, u32 down, bool event_ahead);
+// One Button (Options' Attack, 3DS-only): Action alone fights (combat.c). Once a frame before
+// combat_update with the game keys: returns the aim key to hold for James, may move this frame's
+// Action press (the attack follows as the weapon is ready) or hold it back, and sets took when the
+// press is the weapon's, so the event check does not see it.
+bool combat_attack_ahead(const CombatBody* b);   // an enemy for One Button: down at his feet or ahead
+u32 combat_one_button(const CombatBody* b, u32* held, u32* down, bool event_ahead, float dt, bool* took);
 
 // Once per game frame, before combat_update and the camera (0x533c10): the candidates in James'
 // sight, nearest first, and whether the lock still holds.

@@ -57,6 +57,7 @@ void touchui_debug(bool on);                 // the debug page: the console on t
 void touchui_movie(bool on);                 // a movie plays: "skip" only
 void touchui_map(bool open);                 // the map screen is up (map.c): its buttons
 void touchui_map_readable(bool yes);         // the small map shows (false: too dark, as the map key)
+void touchui_action_attacks(bool on);        // the play page's Action hint reads Attack, not Check
 
 // The play page's quick slots: TQ_HEAL with the healing item (1 drink, 2 first aid kit,
 // 3 ampoule) that was tapped, once; main.c uses it as the item screen's Use would. TQ_WEAPON: the

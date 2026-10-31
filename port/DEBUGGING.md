@@ -14,6 +14,7 @@ it to play normally.
 | `stage <n>` | the stage to start the spawn in (otherwise taken from the room) |
 | `flag <n> <0\|1>` | set a game flag before the spawn |
 | `item <id> <count>` | give an item before the spawn |
+| `onebutton 1` | One Button in playtest runs too (`combat_one_button`); without it the `pt` scripts keep the PC's way, and they press game keys (R aims) whatever the bindings |
 | `hp <n>` | start with this much health |
 | `action <0..3>` / `riddle <0..3>` | action and riddle difficulty |
 | `enemy <kind> <x> <z> <yaw> [status] [height]` | place an extra enemy, kind in hex (`enemy 202 ...` is a creeper) |
@@ -26,7 +27,7 @@ it to play normally.
 | `debughud 1` | start with the debug page on the bottom screen (SELECT twice shows or hides it in game) |
 | `viewer 1` | add the room viewer to the title's touch list |
 | `logos 0` | skip the start-up screens |
-| `setup 0` / `setup 1` | never or always show the first run (`setup.c`). Without the key it shows once, while `options.txt` has no `setup 1`, unless `debug.txt` skips the logos or starts a test (`spawn`, `demo`, `movie`, `newgame`, `autotest`, `pt` lines) |
+| `setup 0` / `setup 1` | never or always show the first run (`setup.c`). Without the key it shows once, while `options.txt` has no `setup 1`, unless `debug.txt` skips the logos or starts a test (`spawn`, `demo`, `movie`, `newgame`, `autotest`, `pt` lines). With `setup 1` in `options.txt` but no `ctlseen 1`, the Controls page shows alone, once |
 | `textcheck 1` | lay out every Options explainer and first-run choice in each language and button layout at start-up and write the texts that had to be cut to `textcheck.txt` (UI.md, "Text that always fits") |
 | `sdthrottle <KB/s> [open ms]` | simulate a console's slower SD card |
 | `dumpframe <n>` | save frame *n* as `frame_<n>.bmp` and its stats as text; a 3D frame also as `frame_<n>_right.bmp` |

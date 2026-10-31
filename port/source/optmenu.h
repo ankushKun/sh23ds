@@ -47,6 +47,7 @@ typedef struct {
 	u8 toggle_run;       // EE "EnableToggleSprint"
 	u8 hold_stomp;       // EE hold A to stomp
 	u8 swap_attack;      // EE light and heavy attacks swapped
+	u8 attack;           // Control Options "Attack": 0 One Button (combat_one_button), 1 with the aim key
 	// the hardware profile (profile.c, port/OLD3DS.md): 0 Auto, then Old 3DS / Low / 30 fps or
 	// New 3DS / High / 60 fps
 	u8 hwprofile;        // Advanced Options "Hardware"
@@ -58,6 +59,8 @@ typedef struct {
 	u8 inf_stamina;      // James runs without tiring
 	u8 inf_ammo;         // firing takes no rounds
 	u8 setup;            // the first run's choices were made (setup.c)
+	u8 ctl_seen;         // the first run's Controls page was shown (setup.c; once more for players
+	                     // from before the 2026-10-31 layout)
 } Options;
 
 typedef struct {

@@ -17,7 +17,7 @@ save file, the setting being changed. Nothing is drawn on both screens.
 | Question ("Save the game?") | the question in the message window | the answers as rows that act on one tap |
 | Cutscene, movie | the scene | black, START Skip |
 | Pause | the dimmed world, PAUSED, where James is and the play time | Resume, Save Game, Load Game, Options, Quit, Map, Memos |
-| First run | the step's name and its two drawings, the chosen one lit | the two choices side by side, Back and Choose |
+| First run | the step's name and its two drawings, the chosen one lit; then the buttons as bound | the two choices side by side, Back and Choose; then Back and Start |
 | Options | the chosen setting explained: what it does, each value and what it changes, a note when another setting overrides it; the brightness picture | five tabs, the tab's rows with their values |
 | Buttons page | the chosen action and its buttons, "press a button" while waiting | the actions and their buttons |
 | Save and load | James' picture framed as on the PC at the right, its left edge mirrored to fill the width, slowly drifting, with the chosen file in full at the lower left (place on the touch screen's red band, play time, saves, levels) sliding in when another is chosen, and the questions | the ten files |
@@ -126,9 +126,13 @@ after Behind, since that camera moves James the way the stick points except in s
 step shows its two drawings on the top screen and the two choices on the touch screen, left above
 left; the current value starts chosen, so A through keeps the defaults. A tap or the D-Pad chooses,
 a second tap or A goes on, B goes back (dim on the first step but in its place: B on the left and A
-on the right, as on the console). Choices apply at once; the last one saves `options.txt` with
-`setup 1`, so existing players see it once too, with their settings chosen. Everything here is in
-the Options as well.
+on the right, as on the console). Choices apply at once. Then Controls: the buttons as they are
+bound, in two columns on the top screen (the Circle Pad, the face buttons, the shoulders and START,
+then the D-Pad's four actions and the New 3DS's own), and on the touch screen the one line that
+says every button can be changed in the Options, with Back and Start. Start saves `options.txt`
+with `setup 1` and `ctlseen 1`. A player who made the choices before the Controls page was there
+(`setup 1` without `ctlseen`) sees that page alone once, with Start only, since the buttons moved
+under them on 2026-10-31. Everything here is in the Options as well.
 
 ## 3D
 

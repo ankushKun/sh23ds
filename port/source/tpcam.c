@@ -190,7 +190,7 @@ void tpcam_update(const TpCamInput* in, float dt, C3D_Mtx* view, float* fovy)
 		}
 	}
 
-	// the orbit: the C-Stick (or D-Pad) as a rate, a touch drag as an angle
+	// the orbit: the C-Stick as a rate, a touch drag as an angle
 	float ox = in->orbit_x + in->drag_x * DRAG_RAD / (dt > 0.0f ? dt * ORBIT_YAW : 1.0f);
 	float oy = in->orbit_y - in->drag_y * DRAG_RAD / (dt > 0.0f ? dt * ORBIT_PITCH : 1.0f);
 	bool orbiting = fabsf(in->orbit_x) > 0.15f || fabsf(in->orbit_y) > 0.15f || in->drag_x || in->drag_y;

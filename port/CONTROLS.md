@@ -2,9 +2,10 @@
 
 James is controlled the PC way. The Options' Control Type is the PC's: Rotational Style (the "3D"
 type: the circle pad turns him and walks him forward or back) or Directional Style (the "2D" type,
-see below). The buttons are actions, and the actions are bound per layout. The New 3DS layout uses ZL, ZR and the C-Stick on top
-of the buttons every 3DS has; the Old 3DS layout gets by with L, R, A, B, X, Y, the D-Pad, the
-Circle Pad, START, SELECT and the touch screen. Which layout is used follows the console unless the
+see below). The buttons are actions, and the actions are bound per layout. Every button both
+consoles have does the same thing on each; the New 3DS layout adds ZL, ZR and the C-Stick, the Old
+3DS layout gets by with L, R, A, B, X, Y, the D-Pad, the Circle Pad, START, SELECT and the touch
+screen. Which layout is used follows the console unless the
 player picks one (`profile.c`, `controls_layout()`). Every action can be rebound on the Buttons
 page of the Options' Controls tab (`controls.c`, drawn in the Options screen's menu slot through
 `controls_menu_slot(TOUI_OPTIONS)`), separately for each layout; the bindings are kept in
@@ -14,34 +15,36 @@ page of the Options' Controls tab (`controls.c`, drawn in the Options screen's m
 
 | Action | New 3DS | Old 3DS |
 | --- | --- | --- |
-| Walk, turn | Circle Pad | Circle Pad |
-| Action (check, open, pick up, attack while aiming) | A | A |
+| Move | Circle Pad | Circle Pad |
+| Action (check, open, pick up, attack) | A | A |
 | Run (hold; Walk/Run Control has Toggle, Analog and Run too) | B | B |
-| Aim (hold) | R | R |
-| Look (hold: the PC's search view) | ZL | L |
-| Next weapon | L | D-Pad up |
+| Aim (hold) | L | L |
+| Quick turn (180 degrees) | R | R |
 | Flashlight | X | X |
 | Items | Y | Y |
-| Quick turn (180 degrees) | ZR | D-Pad down |
-| Strafe left / right | none (bindable) | none (bindable) |
+| Look (hold: the PC's search view) | D-Pad up | D-Pad up |
+| Next weapon | D-Pad down | D-Pad down |
+| Quick heal | D-Pad left | D-Pad left |
+| Map | D-Pad right, or a tap on the touch screen's map | the same |
+| Strafe left / right | ZL / ZR | none (bindable) |
 | Target left / right (while aiming) | C-Stick left / right | none (bindable) |
-| Map | tap the map on the touch screen, or the pause menu | the same |
 | Brightness | the Options (Display tab) | the same |
 | Pause | START | START |
 | Debug page | SELECT twice | SELECT twice |
 
-The circle pad walks and turns James. On the New 3DS the C-Stick moves the lock to the next enemy
-left or right while James aims (the PC has two keys of its own for that, 0x54f100), and turns the
-behind camera otherwise. The D-Pad walks him as the PC's direction keys do (0x52e110): full turns,
-and the speed ramps up as it does for the keys (walk to 1.5 m/s at 2.5 m/s/s, back to 1.2 after a
-stop), in each direction no action is bound to (`main.c` `dpad_walk`): all four on the New
-3DS, left and right on the Old 3DS, whose up and down keep the next weapon and the quick turn. With
-Rotational Style the Old 3DS defaults leave up and down free too, since the PC's 3D type walks James
-with the direction keys (0x52e110): the next weapon is then a tap on the touch screen's weapon and the
-quick turn both strafe buttons together (0x54b290), unless the player binds them. The
-circle pad wins while it is pushed, and menus keep the D-Pad for moving through rows. Strafing and
-the map can still be bound to the D-Pad or the C-Stick on the Buttons page. The Control Type defaults to Directional
-Style; an `options.txt` written before that (no `optver` line) is moved to it once.
+This layout is the port's own (2026-10-31), not the PC's keys. Before it, R aimed, the D-Pad walked
+James where no action sat on it, and the two layouts put Look, the next weapon and the quick turn
+on different buttons; players found neither the aim key nor that attacking needed it. Bindings
+saved on the Buttons page stay as they were, and a button a player bound to one action is taken off
+any other action's new default (`controls_keys`).
+
+The Circle Pad alone moves James; the D-Pad is four actions. On the New 3DS the C-Stick moves the
+lock to the next enemy left or right while James aims (the PC has two keys of its own for that,
+0x54f100), and turns the behind camera otherwise; ZL and ZR are the PC's strafe keys, and both
+together turn James round as on the PC (0x54b290). On the Old 3DS the behind camera turns with a
+drag on the touch screen (which the New 3DS has too), and Look sets it behind James again. Menus
+keep the D-Pad for moving through rows. The Control Type defaults to Directional Style; an
+`options.txt` written before that (no `optver` line) is moved to it once.
 
 Console test combos (`main.c`), only with the debug HUD on (`debughud 1` in `debug.txt`, since players
 hit them by accident): SELECT held with R steps the fog test (`chr.c`, port/TESTING.md), and SELECT
@@ -64,6 +67,28 @@ Pause, Options, the Controls tab, then "Buttons". Up and down choose an action, 
 old one), Y puts that action back to its default and "Defaults" resets the whole layout. A button
 does one thing: binding it to an action takes it off the action that had it. The page edits the
 layout in use, so an Old 3DS player never sees ZL, ZR or the C-Stick offered.
+
+## One Button (combat.c combat_one_button)
+
+The Options' Controls tab, Attack: One Button (the default) or With L, the PC's way. With One
+Button, A alone fights, by priority: an enemy lying at James' feet (within 600, 0x542a10) is kicked
+or stomped; an enemy ahead by the PC's own measure for its Beginner and Easy auto-raise (0x542620:
+in clear sight within 2500 of the point 2500 ahead) brings the weapon up locked on to it, as the aim
+key does, and the attack follows as soon as it is ready: a gun fires, a melee weapon swings when the
+enemy stands within the light swing's reach plus 450, else James only faces it until the next
+press; with no enemy, an event ahead (EventCheckLookLine 0x48e520) is checked or picked up as
+before. A tap with nothing there does nothing; holding A 0.3 s raises the weapon, and the next press
+swings. The weapon stays up while an enemy is ahead and 2 s after; run held with A let go lowers
+it, and an event ahead with no enemy lowers it so the next press takes the event. The aim key held
+is the PC's way at any time. The play page's footer names what A does now: Attack or Check.
+3DS-only; the PC raises the weapon by itself only on Beginner and Easy, with Action held.
+
+## Quick heal
+
+D-Pad left uses the smallest healing item James has, a health drink, then a first aid kit, then an
+ampoule, exactly as the item screen's Use (`heal_item`, 0x49e7e0): nothing at full health, not
+while held or dying. 3DS-only; the PC has no such key, and since its item screen stops time while
+the key works in play, it gives nothing the item screen did not.
 
 ## Toggle running
 

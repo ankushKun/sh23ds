@@ -61,6 +61,7 @@ static char s_weapon[40];
 static int s_heal[3];                // the healing items' counts (the quick slots)
 static char s_sound[64];             // a sound problem the player should know of (audio_problem)
 static bool s_have_light;
+static bool s_act_attack;          // Action attacks now (touchui_action_attacks)
 static int s_quick, s_quick_item;    // a quick slot tapped, for touchui_quick
 typedef struct {                     // the first run's two choices (touchui_choices)
 	bool on;
@@ -1060,10 +1061,13 @@ static void draw_play(bool waiting)
 		footer(next, a, 1, 0);
 		return;
 	}
-	// the map is the map itself: a tap on it opens it, so it has no prompt
-	char labels[3][16] = { "Items", "Light", "Pause" };
-	u32 keys[3] = { bound(ACT_ITEMS), bound(ACT_FLASHLIGHT), KEY_START };
-	footer(labels, keys, 3, s_have_light ? 0 : 2);
+	// the map is the map itself: a tap on it opens it, so it has no prompt. Action says what a
+	// press does now: attack (an enemy ahead with One Button, or the weapon up) or check
+	char labels[4][16] = { "Check", "Items", "Light", "Pause" };
+	if (s_act_attack)
+		snprintf(labels[0], sizeof labels[0], "Attack");
+	u32 keys[4] = { bound(ACT_ACTION), bound(ACT_ITEMS), bound(ACT_FLASHLIGHT), KEY_START };
+	footer(labels, keys, 4, s_have_light ? 0 : 4);
 }
 
 // The map screen (on the top screen): its name, the other floors and maps, zoom and close; while
@@ -1153,6 +1157,14 @@ static void status_check(void)
 		memcpy(s_weapon, weapon, sizeof s_weapon);
 		memcpy(s_heal, heal, sizeof heal);
 		s_have_light = light;
+		s_dirty = true;
+	}
+}
+
+void touchui_action_attacks(bool on)
+{
+	if (on != s_act_attack) {
+		s_act_attack = on;
 		s_dirty = true;
 	}
 }
