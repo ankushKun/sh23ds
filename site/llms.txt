@@ -11,7 +11,7 @@ Key facts:
 - Two screens: the game on the top screen; the map, items and memos on the touch screen.
 - Game data: the packer runs in a desktop browser (Pyodide and ffmpeg.wasm, nothing uploaded) or in Docker (ghcr.io/ankushkun/sh23ds-packer). It uses Enhanced Edition packs if they are installed.
 - Install, in three steps on the home page: pack the game in the browser, copy the 3ds folder to the SD card root, then install sh23ds.cia with 3dsDL (Scan QR Code, then Download). Run DSP1 once for sound.
-- Status: version 0.2.2, an experimental development build released October 2026. Every part of the game is in; a few of the PC's effects and finer behaviours are still to do.
+- Status: version 0.3.0, an experimental development build released October 2026. Every part of the game is in; a few of the PC's effects and finer behaviours are still to do.
 - Author: Ankush Singh (ankushKun). Not affiliated with Konami or Nintendo.
 
 ## Pages

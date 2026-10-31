@@ -239,6 +239,15 @@ body::after {
 .title-screen .lede { font-size: clamp(18px, 1.6vw, 22px); text-shadow: 0 1px 14px rgba(0, 0, 0, .7); }
 .lede a { color: var(--hi); text-decoration-color: var(--red); text-underline-offset: 3px; }
 
+/* Under the lede: the latest release, linked to its notes. site.js keeps the tag current. */
+.release {
+  display: inline-flex; align-items: center; gap: 10px; margin-top: -12px;
+  color: var(--menu); text-decoration: none; text-shadow: 0 1px 14px rgba(0, 0, 0, .7);
+  font-size: 15px; font-weight: 500; letter-spacing: .02em;
+}
+.release::before { content: ""; width: 6px; height: 6px; background: var(--red); }
+.release:hover { color: #fff; }
+
 /* At the foot of the title screen: where to go next, with a chevron that sinks and returns. */
 .title-screen > .scroll-cue { position: absolute; left: 50%; bottom: clamp(28px, 6vh, 56px); transform: translateX(-50%); }
 .scroll-cue {

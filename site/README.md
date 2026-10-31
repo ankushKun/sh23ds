@@ -39,8 +39,9 @@ there are no texture images. Motion stops under `prefers-reduced-motion`.
 When the install steps change, update `index.html` and the README together. The page's `<head>` carries
 its title, description, social card and JSON-LD (the game, its source code, the install as a HowTo, the
 packer and the questions). On a release, bump `softwareVersion` and `dateModified` in `index.html`, the
-facts in `llms.txt` and the `lastmod` date in `sitemap.xml`. Questions added to the page go in its
-FAQPage JSON-LD too. The release version and file sizes come from the GitHub API at load time.
+`data-version` tags (under the title and in the footer), the facts in `llms.txt` and the `lastmod` date
+in `sitemap.xml`. Questions added to the page go in its FAQPage JSON-LD too. The release version and
+file sizes come from the GitHub API at load time; the tags in the page are what shows until it answers.
 
 ## Analytics
 
