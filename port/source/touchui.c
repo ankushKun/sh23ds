@@ -29,7 +29,7 @@
 
 typedef struct {
 	bool on;
-	char title[48];
+	char title[192];       // a stage program's question can be long (wrapped, draw_menu)
 	char rows[MAX_ROWS][72];     // the other languages' rows run longer than the English ones
 	int n, shown_sel;
 	int* sel;
@@ -715,16 +715,56 @@ static void blocks(float x1, float cy, int level, int max, bool on)
 	}
 }
 
+// A title too long for the header (a stage program's question): wrapped across the page above the
+// rows, in the big font while it takes three lines at most. Returns where the rows may start.
+static float wrapped_title(const char* s)
+{
+	int f = FONT_BIG;
+	char lines[8][96];
+	int n = 0;
+	for (int pass = 0; pass < 2; pass++, f = FONT_SMALL) {
+		n = 0;
+		const char* c = s;
+		while (*c && n < 8) {
+			while (*c == ' ')
+				c++;
+			int len = 0, cut = 0;
+			char ln[96];
+			while (c[len] && len < 95) {
+				snprintf(ln, sizeof ln, "%.*s", len + 1, c);
+				if (font_width_px(f, ln) > 290.0f)
+					break;
+				len++;
+				if (c[len] == ' ' || !c[len])
+					cut = len;
+			}
+			if (!cut)
+				cut = len ? len : 1;             // a word longer than the line: cut where it ends
+			snprintf(lines[n++], sizeof lines[0], "%.*s", cut, c);
+			c += cut;
+		}
+		if (n <= 3)
+			break;
+	}
+	float y = 8.0f, lh = font_line_px(f);
+	for (int i = 0; i < n; i++, y += lh)
+		text_lit(f, 15, y, lines[i], FONT_LEFT, s_white);
+	return y + 6.0f;
+}
+
 static void draw_menu(int id)
 {
 	Menu* m = &s_menus[id];
+	float top = 32.0f;
 	if (m->ntabs)
 		draw_tabs(m, id);
+	else if (spaced_width(FONT_BIG, m->title, 1.0f) > 280.0f)
+		top = wrapped_title(m->title);
 	else
 		header(m->title);
 	int sel = m->sel ? *m->sel : -1;
 	float right = 312;
-	float top = 32.0f, bottom = m->nb ? FOOT_Y - 4 : 234.0f;
+	float bottom = m->nb ? FOOT_Y - 4 : 234.0f;
 	float rh = m->n ? (bottom - top) / m->n : 20.0f;
 	rh = rh > 24.0f ? 24.0f : rh < 19.0f ? 19.0f : rh;
 	int fit = (int)((bottom - top) / rh);

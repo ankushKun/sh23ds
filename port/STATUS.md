@@ -462,9 +462,8 @@ Ordered by weight. Each line names where the work starts.
   the port's.
 - The map screen (`map.c`) fills the top screen's width where the PC fills its 4:3 middle, a fifth of
   the zoomed-out sheet out of sight at a time (`PROGRAMS.md` "Map screen").
-- Stills on their own (the chute's among them) fill the top screen's width where the PC shows them
-  4:3, losing a tenth of their height at the top and at the bottom; puzzle stills keep 4:3 for their
-  sprites (`PROGRAMS.md` "Pictures").
+- Stills fill the top screen's width where the PC shows them 4:3, losing a tenth of their height at
+  the top and at the bottom; a puzzle's sprites scale with them (`PROGRAMS.md` "Pictures").
 
 ### 4. Renderer features the port does not have
 

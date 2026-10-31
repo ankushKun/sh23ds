@@ -3136,17 +3136,13 @@ static bool host_picture(const char* name)
 	return true;
 }
 
-static bool s_sheet_ok;          // a puzzle's sprite sheet is up (puzzle overlays, below)
-
+// Every still fills the top screen's width (3DS-only, STATUS section 3): 400 x 300 round the middle,
+// a tenth of its height cut at the top and at the bottom, where the PC keeps it 4:3 in the middle; a
+// puzzle's sprites scale with it (draw_sprites).
 static void draw_picture(const C3D_Mtx* ortho)
 {
 	typedef struct { float x, y, z, u, v; u8 c[4]; s8 n[4]; } V;
-	static const V quad[12] = {
-		{ 40, 240, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },  { 40, 0, 0.5f, 0, 1, {255,255,255,255}, {0,0,127,0} },
-		{ 360, 0, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} },   { 40, 240, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },
-		{ 360, 0, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} },   { 360, 240, 0.5f, 1, 0, {255,255,255,255}, {0,0,127,0} },
-		// the screen's width, 400 x 300 round the middle: a still alone fills it where the PC keeps
-		// 4:3 (3DS-only, STATUS section 3)
+	static const V quad[6] = {
 		{ 0, 270, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },   { 0, -30, 0.5f, 0, 1, {255,255,255,255}, {0,0,127,0} },
 		{ 400, -30, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} }, { 0, 270, 0.5f, 0, 0, {255,255,255,255}, {0,0,127,0} },
 		{ 400, -30, 0.5f, 1, 1, {255,255,255,255}, {0,0,127,0} }, { 400, 270, 0.5f, 1, 0, {255,255,255,255}, {0,0,127,0} },
@@ -3166,7 +3162,7 @@ static void draw_picture(const C3D_Mtx* ortho)
 	C3D_BufInfo* bi = C3D_GetBufInfo();
 	BufInfo_Init(bi);
 	BufInfo_Add(bi, s_picquad, ROOM_VERTEX_SIZE, 4, 0x3210);
-	C3D_DrawArrays(GPU_TRIANGLES, s_sheet_ok ? 0 : 6, 6);   // a puzzle's sprites go over the 4:3 frame
+	C3D_DrawArrays(GPU_TRIANGLES, 0, 6);
 }
 
 // ---------------------------------------------------------------- map screen and memo list
@@ -3571,7 +3567,8 @@ static void host_sprite(const float xy[4][2], const float uv[4], float alpha)
 	s->alpha = alpha;
 }
 
-// Over the still: sprite units are -256..256 across the 320x240 picture area, y down.
+// Over the still: sprite units are -256..256 across the picture, y down; the PC's 320x240 picture
+// area here is the still's full-width 400x300 (draw_picture).
 static void draw_sprites(void)
 {
 	if (!s_sheet_ok || !s_pic_shown)
@@ -3582,7 +3579,7 @@ static void draw_sprites(void)
 		float u1 = s->uv[2] / s_sheet_tex.width, v1 = s->uv[3] / s_sheet_tex.height;
 		MapVert c[4];
 		for (int k = 0; k < 4; k++)
-			c[k] = (MapVert){ 200.0f + s->xy[k][0] * 0.625f, 120.0f + s->xy[k][1] * 0.46875f,
+			c[k] = (MapVert){ 200.0f + s->xy[k][0] * 0.78125f, 120.0f + s->xy[k][1] * 0.5859375f,
 			                  k & 1 ? u1 : u0, k & 2 ? v1 : v0 };
 		const MapVert v[6] = { c[0], c[1], c[3], c[0], c[3], c[2] };
 		int a = (int)(s->alpha * 255.0f);

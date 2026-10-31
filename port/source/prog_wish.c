@@ -20,7 +20,9 @@ static int s53_wish_start(Prog* p)
 {
 	switch (p->step) {
 	case 0: {
-		const char* labels[2] = { ev_stage_message(0), ev_stage_message(1) };
+		// static: p_choice keeps the array for the touch screen's menu while the question is up
+		static const char* labels[2];
+		labels[0] = ev_stage_message(0), labels[1] = ev_stage_message(1);
 		if (!labels[0]) labels[0] = "Yes.";
 		if (!labels[1]) labels[1] = "No.";
 		p_lock(p, true);
