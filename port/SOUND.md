@@ -192,6 +192,28 @@ when solved or a layer per box. SeBgmChange runs only on a stage load or warp (0
 - Per-room footstep overrides (`sfx.c`, rooms 0x78, 0x2a, 0x46, 0x3e, 0xb8, 0x92..0xa3).
 - The `.dat` files per building (see above; the PC sound code doesn't read them either).
 
+## The radio
+
+James' radio (item 19) hisses when something dangerous is near. `radio.c` is the PC's RadioNoise
+(0x48cbc0, called every frame from the game loop): four looping buffers (sddata ids 5360..5363, started
+by 0x5182d0 and driven through 0x514400: track, volume, pan), eased towards their targets and ducked
+behind the map and item screen (x0.5) and the memos (x0.25). `sfx.c` plays them as pseudo-ids
+`RADIO_ID0`.. (90000..), `sfx_radio_start/set/running/stop`.
+
+- Modes (the PC's DAT_01f7d584, `radio_set_mode`): 0 the enemies (needs the radio item; the static
+  rises with the nearest enemy of the table at 0x88cce0 by `sfx_distance_level`), 1 a fixed point's
+  static by distance (the first Lying Figure's street in stage 5 until flag 43, 0x59e295), 2 steady
+  static at 0.4 (the first Lying Figure's scene, 0x59db80 .. 0x59dc8c, `prog_town.c`), 3 steady full
+  static even with the radio off (not ported, see `STATUS.md` 3).
+- The switch and the volume (0..15, default on and 10 for a new game as 0x49e980 does) are the PC's
+  0x1f7d407 / 0x1f7d408. They live in the saved state (events.c `ev_radio_state`, byte 255 of the
+  flag block's spare area), so a save keeps them.
+- Item screen (`main.c`, 0x471d09 / 0x471e96): with the radio chosen, A switches it on and off
+  (SE 10002) and Left / Right set the volume (SE 10009 at (volume + 4) x 0.05). The touch screen's
+  buttons On/Off, Vol - and Vol + do the same; the top screen shows "ON / OFF  Volume n / 15".
+- The radio is silent in the options, the save screen, movies, the results screen, a warp and on
+  the title; `radio_stop()` runs on game over, on the title and on every new game or load.
+
 ## Levels (3DS-only)
 
 The PC plays its music, scene voices and movies at the levels the files were mastered at, with the

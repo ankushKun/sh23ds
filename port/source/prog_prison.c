@@ -1,4 +1,5 @@
 #include "prog_int.h"
+#include "i18n.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -114,7 +115,9 @@ static int s30_coc_room_lock(Prog* p)
 			}
 			n += snprintf(buf + n, sizeof buf - n, "\n");
 		}
-		snprintf(buf + n, sizeof buf - n, "\n Pressed %d of 3\n\n D-pad: panel  A: press  B: leave", p->work[2]);
+		char pressed[64];
+		snprintf(pressed, sizeof pressed, tr("Pressed %d of 3"), p->work[2]);
+		snprintf(buf + n, sizeof buf - n, "\n %s\n\n D-pad: panel  A: press  B: leave", pressed);
 		p_panel(buf);
 		if (p->work[2] >= 3) {
 			if (got[0] == goal[0] && got[1] == goal[1] && got[2] == goal[2])
@@ -424,8 +427,8 @@ static int s34_control_cube(Prog* p)
 		ev_flag_set(326, table[a * 4 + b] > 1);
 		{
 			char buf[200];
-			snprintf(buf, sizeof buf, "\n   Outer ring  %d / 4\n   Inner ring  %d / 4\n\n\n\n\n"
-			         "   Up/Down: outer  Left/Right: inner\n   B: leave", a + 1, b + 1);
+			snprintf(buf, sizeof buf, "\n   %s  %d / 4\n   %s  %d / 4\n\n\n\n\n"
+			         "   Up/Down: outer  Left/Right: inner\n   B: leave", tr("Outer ring"), a + 1, tr("Inner ring"), b + 1);
 			p_panel(buf);
 		}
 		if (!(p->down & KEY_B))

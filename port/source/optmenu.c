@@ -1,4 +1,5 @@
 #include "optmenu.h"
+#include "i18n.h"
 #include "profile.h"
 #include "controls.h"
 #include "events.h"
@@ -373,7 +374,7 @@ static const char* expand(const char* src, char* out, size_t n)
 {
 	size_t k = 0;
 	out[0] = 0;
-	for (const char* p = src ? src : ""; *p && k + 1 < n;) {
+	for (const char* p = src ? tr(src) : ""; *p && k + 1 < n;) {      // translated before its {TOKENS} are filled in
 		const char* e = *p == '{' ? strchr(p, '}') : NULL;
 		if (!e) {
 			out[k++] = *p++;
@@ -386,10 +387,10 @@ static const char* expand(const char* src, char* out, size_t n)
 		else if (!strcmp(tok, "ACT")) key_of(ACT_ACTION, val, sizeof val);
 		else if (!strcmp(tok, "LOOK")) key_of(ACT_LOOK, val, sizeof val);
 		else if (!strcmp(tok, "CAMTURN"))   // tpcam.c: the C-Stick on the New 3DS layout, the D-Pad's free directions on the Old
-			snprintf(val, sizeof val, "%s, and %s puts it back.",
-			         layout() == CONTROLS_LAYOUT_NEW ? "The C-Stick turns it" : "The D-Pad or a drag turns it",
-			         key_of(ACT_LOOK, key, sizeof key));
-		else if (!strcmp(tok, "AUTOQ")) snprintf(val, sizeof val, "%s", profile_new() ? "High" : "Low");
+			snprintf(val, sizeof val, "%s, %s %s %s.",
+			         tr(layout() == CONTROLS_LAYOUT_NEW ? "The C-Stick turns it" : "The D-Pad or a drag turns it"),
+			         tr("and"), key_of(ACT_LOOK, key, sizeof key), tr("puts it back"));
+		else if (!strcmp(tok, "AUTOQ")) snprintf(val, sizeof val, "%s", tr(profile_new() ? "High" : "Low"));
 		else if (!strcmp(tok, "AUTOFPS")) snprintf(val, sizeof val, "%d", profile_quality() == QUALITY_LOW ? 30 : 60);
 		else if (!strcmp(tok, "CONSOLE")) snprintf(val, sizeof val, "%s", profile_console_new() ? "New" : "Old");
 		k += snprintf(out + k, n - k, "%s", val);
@@ -462,7 +463,7 @@ static void touch(void)
 	static char text[MAX_ROWS][72];
 	const char* rows[MAX_ROWS];
 	if (s_page == PG_BRIGHT) {
-		snprintf(text[0], sizeof text[0], "Level   < %d >", s_live->bright);
+		snprintf(text[0], sizeof text[0], "%s   < %d >", tr("Level"), s_live->bright);
 		rows[0] = text[0];
 		s_bright_sel = 0;
 		touchui_menu(TOUI_OPTIONS, page_title(PG_BRIGHT), rows, 1, &s_bright_sel, back, 1);

@@ -105,6 +105,7 @@ bool ev_pickup_info(int i, int* item, float pos[3], bool* available);
 const char* ev_item_desc(int item);
 int ev_count(void);
 const char* ev_stage_message(int n);     // current stage's message n, NULL if none
+const char* ev_stage_message_of(int stage, int n);   // the same for another stage's file (valid until the next call)
 const char* ev_system_message(int n);    // common_msg n
 const char* ev_memo_message(int n);     // memo list message n (titles, then texts)
 const char* ev_result_message(int n);   // the results screen's labels
@@ -127,6 +128,10 @@ const char* ev_msg_expand(const char* text);   // static buffer; returns text wh
 const char* ev_item_message(int n);      // item_msg n (16: "It looks like I can't use that here.")
 // The game flag words (PC gGameFlag 0x1f7d5e0); the PC keeps a few counters in the same block.
 void* ev_flag_block(void);
+
+// The radio's saved state (radio.c): 0 until set, then 0x80 | switch << 4 | volume.
+int ev_radio_state(void);
+void ev_radio_state_set(int v);
 
 // Flags and possessions for save files.
 #define EV_STATE_SIZE (EV_MAX_FLAGS / 8 + 256)

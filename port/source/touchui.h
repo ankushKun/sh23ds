@@ -55,6 +55,7 @@ void touchui_panel(const char* text);
 bool touchui_select(void);
 void touchui_debug(bool on);                 // the debug page: the console on the screen
 void touchui_movie(bool on);                 // a movie plays: "skip" only
+void touchui_movie_text(const char* text);    // a movie's subtitle on this screen (NULL / "": none)
 void touchui_map(bool open);                 // the map screen is up (map.c): its buttons
 void touchui_map_readable(bool yes);         // the small map shows (false: too dark, as the map key)
 void touchui_action_attacks(bool on);        // the play page's Action hint reads Attack, not Check

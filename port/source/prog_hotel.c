@@ -1,4 +1,5 @@
 #include "prog_int.h"
+#include "i18n.h"
 #include "bgm.h"
 #include "stagemdl.h"
 #include "boat.h"
@@ -413,7 +414,7 @@ static int s41_use_elevator_key(Prog* p) { return p_item_use(p, 0x2d, 0xf, 0x4a3
 static void button_panel(int sel, int n)
 {
 	char buf[200];
-	int k = snprintf(buf, sizeof buf, "\n   Buttons ");
+	int k = snprintf(buf, sizeof buf, "\n   %s ", tr("Buttons"));
 	for (int i = 0; i < n; i++)
 		k += snprintf(buf + k, sizeof buf - k, "%c%d%c", sel == i ? '[' : ' ', i + 1, sel == i ? ']' : ' ');
 	snprintf(buf + k, sizeof buf - k, "\n\n\n\n\n\n\n   D-pad: button  A: press  B: leave");
@@ -510,7 +511,7 @@ static int s41_get_baggage(Prog* p)
 static void shelf_panel(Prog* p, int* items, int n)
 {
 	char buf[400];
-	int k = snprintf(buf, sizeof buf, " Put on the shelf:\n");
+	int k = snprintf(buf, sizeof buf, " %s\n", tr("Put on the shelf:"));
 	int first = p->work[1] > 6 ? p->work[1] - 6 : 0;
 	for (int i = first; i < n && i < first + 7; i++) {
 		const char* name = ev_item_name(items[i]);
@@ -521,7 +522,7 @@ static void shelf_panel(Prog* p, int* items, int n)
 		k += snprintf(buf + k, sizeof buf - k, "  %c %s\n", p->work[1] == i ? '>' : ' ', line);
 	}
 	if (!n)
-		k += snprintf(buf + k, sizeof buf - k, "   (nothing left to put)\n");
+		k += snprintf(buf + k, sizeof buf - k, "   %s\n", tr("(nothing left to put)"));
 	snprintf(buf + k, sizeof buf - k, "\n   D-pad: item  A: put  B: done");
 	p_panel(buf);
 }
@@ -683,7 +684,7 @@ static int s41_picture_with_marker(Prog* p)
 	case 0x10:
 		if (p_flag(411) || p_flag(412)) {
 			char buf[80];
-			snprintf(buf, sizeof buf, "\n   Under the marker:  %.4s", s_trunk_words + trunk_word() * 4);
+			snprintf(buf, sizeof buf, "\n   %s  %.4s", tr("Under the marker:"), s_trunk_words + trunk_word() * 4);
 			p_panel(buf);
 		}
 		if (!(p->down & (KEY_A | KEY_B)))

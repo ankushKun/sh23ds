@@ -789,6 +789,30 @@ static void print_stats(void)
 static bool s_skip_all;
 void movie_skip_all(bool on) { s_skip_all = on; }
 
+// The game's hooks (main.c): the music that plays under a movie and the subtitles over it.
+static MovieHooks s_hooks;
+static bool s_music;                 // begin() said the game's music goes on under this movie
+static u64 s_music_tick;             // when music_step last ran
+void movie_set_hooks(const MovieHooks* h)
+{
+	if (h)
+		s_hooks = *h;
+	else
+		memset(&s_hooks, 0, sizeof s_hooks);
+}
+
+// The PC's movie loop (0x43ded0) runs SeBgmManager (0x516080) every frame except for gero.sfd, so the
+// stage's music goes on under the movie; the fades and the frame loop here call this once a frame.
+static void music_step(void)
+{
+	if (!s_music || !s_hooks.tick)
+		return;
+	u64 now = svcGetSystemTick();
+	float dt = s_music_tick ? (float)(now - s_music_tick) / SYSCLOCK_ARM11 : 0.0f;
+	s_music_tick = now;
+	s_hooks.tick(dt > 0.1f ? 0.1f : dt);
+}
+
 // Transitions (port/MOVIES.md, "Fades"): a movie no longer cuts in over the game. The game's last
 // picture stays in the top target (nothing clears it), and the movie's first frame is laid over it
 // at a growing alpha, so the room fades into the movie's first picture (white for the Laura scenes,
@@ -816,6 +840,7 @@ static bool fade(float secs, FadeDraw draw, bool* skip)
 			*skip = true;
 			return true;
 		}
+		music_step();
 		float f = (float)(svcGetSystemTick() - t0) / SYSCLOCK_ARM11 / secs;
 		f = f > 1.0f ? 1.0f : f;
 		f = f * f * (3.0f - 2.0f * f);          // eased at both ends
@@ -839,8 +864,10 @@ static void fade_in_step(float a) { draw_frame(a); }
 static bool fade_in(void)
 {
 	u64 t0 = svcGetSystemTick();
-	while (load_acq(&s_wr) < 1 && !s_vdone && svcGetSystemTick() - t0 < SYSCLOCK_ARM11)
+	while (load_acq(&s_wr) < 1 && !s_vdone && svcGetSystemTick() - t0 < SYSCLOCK_ARM11) {
+		music_step();
 		svcSleepThread(2000000);
+	}
 	if (load_acq(&s_wr) < 1)
 		return aptMainLoop();
 	show_next();                             // frame 0, on screen from the start
@@ -864,12 +891,16 @@ bool movie_play(const char* name)
 	// The title's game start sound (main.c) belongs to the title: when New Game goes straight into
 	// the opening movie it ends there instead of resuming mid-sound a minute later.
 	sfx_stop(SFX_GAME_START);
+	// The game decides whether its music goes on (the PC: every movie but gero.sfd, in the game).
+	s_music = s_hooks.begin && s_hooks.begin(name);
+	s_music_tick = 0;
 	// Music and effects stop for the movie: their channels are paused (nothing refills them while
-	// this loop runs) and continue afterwards from where they were.
+	// this loop runs) and continue afterwards from where they were. The music channel (audio.c, 0)
+	// is left running when the music goes on under the movie.
 	bool paused[24] = { false };
 	if (s_ndsp)
 		for (int ch = 0; ch < 24; ch++)
-			if (ch != MOVIE_CH && !ndspChnIsPaused(ch)) {
+			if (ch != MOVIE_CH && !(s_music && ch == 0) && !ndspChnIsPaused(ch)) {
 				ndspChnSetPaused(ch, true);
 				paused[ch] = true;
 			}
@@ -881,6 +912,7 @@ bool movie_play(const char* name)
 		hidScanInput();
 		u32 kd = hidKeysDown(), kh = 0;
 		touchui_input(&kd, &kh);        // the touch screen's Skip button
+		music_step();
 		if (!movie_update(kd))
 			break;
 		perf_crumb("movie frame");
@@ -889,6 +921,8 @@ bool movie_play(const char* name)
 		C3D_RenderTargetClear(s_top, C3D_CLEAR_ALL, 0x000000FF, 0);
 		C3D_FrameDrawOn(s_top);
 		movie_draw();
+		if (s_hooks.overlay)
+			s_hooks.overlay(name, s_front_idx);      // the subtitles
 		touchui_frame();
 		C3D_FrameEnd(0);
 		if ((frame++ % 15) == 0)
@@ -903,6 +937,9 @@ bool movie_play(const char* name)
 	for (int ch = 0; ch < 24; ch++)
 		if (paused[ch])
 			ndspChnSetPaused(ch, false);
+	s_music = false;
+	if (s_hooks.end)
+		s_hooks.end(name);
 	consoleClear();
 	if (alive) {
 		// black while the caller loads what comes next, instead of the last movie frame

@@ -69,6 +69,9 @@ extern u32 camray_stat[4];   // camray.c: the rays' work, for debug.txt "tpcam"
 #include "game/view/sh2cam.h"
 #include "map.h"
 #include "movie.h"
+#include "movsubs.h"
+#include "radio.h"
+#include "i18n.h"
 #include "playtest.h"
 #include "prog.h"
 #include "room.h"
@@ -962,12 +965,15 @@ static void memtest_step(u32 frame)
 // ---------------------------------------------------------------- inventory (bottom screen)
 
 static bool s_inv_open;
+static int s_radio_stage = -1;   // the stage the radio's mode was last set up for (radio_frame)
 static int s_inv_sel;
 static int s_inv_mark[2];        // items marked with R to combine with the next one (0 = none)
 static bool s_inv_dirty;
 static int s_inv_examined;       // the item whose text shows on the top screen (X), 0 none
 static C3D_Tex* s_inv_tex;       // this frame's item model (itemview_render), NULL none
 static u64 s_inv_tick;           // when the chosen item came up: its model turns from there
+
+#define ITEM_RADIO 19        // James' radio: on the item screen A switches it and Left / Right set its volume
 
 static int inv_list(int* items, int max)
 {
@@ -1054,6 +1060,26 @@ static bool inventory_update(u32 down)
 		s_inv_tick = svcGetSystemTick();
 		if (s_inv_examined != shown)
 			s_inv_examined = 0;
+		s_inv_dirty = true;              // the radio has buttons of its own
+	}
+	// The radio on the item screen (0x471d09 / 0x471e96): A switches it on or off, Right and Left set the
+	// volume 0..15 with SE 10009 at (volume + 4) * 0.05. Marked items still combine with A.
+	if (n && items[s_inv_sel] == ITEM_RADIO) {
+		if (down & (KEY_DLEFT | KEY_DRIGHT)) {
+			int old = radio_volume(), v = old + (down & KEY_DRIGHT ? 1 : -1);
+			v = v < 0 ? 0 : v > 15 ? 15 : v;
+			if (v != old) {
+				radio_set_volume(v);
+				sfx_play(10009, (float)(v + 4) * 0.05f, 0.0f);
+				s_inv_dirty = true;
+			}
+		}
+		if ((down & KEY_A) && !s_inv_mark[0] && !s_inv_mark[1]) {
+			radio_set_on(!radio_is_on());
+			sfx_play(SFX_MENU_OK, 1.0f, 0.0f);
+			s_inv_dirty = true;
+			return true;
+		}
 	}
 	if (n && (down & KEY_X)) {
 		// the item's text under its model on the top screen (port/UI.md); the item screen stays
@@ -1103,6 +1129,9 @@ static void inventory_draw(void)
 			if (ev_item_count(items[i]) > 1)
 				snprintf(rowtext[i] + strlen(rowtext[i]), sizeof rowtext[i] - strlen(rowtext[i]), "   x%d",
 				         ev_item_count(items[i]));
+			if (items[i] == ITEM_RADIO)
+				snprintf(rowtext[i] + strlen(rowtext[i]), sizeof rowtext[i] - strlen(rowtext[i]), "   %s %d",
+				         radio_is_on() ? "ON" : "OFF", radio_volume());
 			if (s_inv_mark[0] == items[i] || s_inv_mark[1] == items[i]) {    // marked to combine
 				memmove(rowtext[i] + 2, rowtext[i], sizeof rowtext[i] - 2);
 				rowtext[i][0] = '+', rowtext[i][1] = ' ';
@@ -1113,7 +1142,12 @@ static void inventory_draw(void)
 		// Mark is R (up to two items); with items marked A uses them together with the chosen one
 		static const TouiButton use[4] = { { "Use", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Back", KEY_B } };
 		static const TouiButton join[4] = { { "Combine", KEY_A }, { "Examine", KEY_X }, { "Mark", KEY_R }, { "Back", KEY_B } };
-		touchui_menu(TOUI_ITEMS, "Items", rows, k, &s_inv_sel, s_inv_mark[0] || s_inv_mark[1] ? join : use, 4);
+		// the radio: A switches it, the D-pad (or these buttons) sets its volume
+		static const TouiButton radio[5] = { { "On/Off", KEY_A }, { "Vol -", KEY_DLEFT }, { "Vol +", KEY_DRIGHT },
+		                                    { "Examine", KEY_X }, { "Back", KEY_B } };
+		bool on_radio = k && s_inv_sel < k && items[s_inv_sel] == ITEM_RADIO && !s_inv_mark[0] && !s_inv_mark[1];
+		touchui_menu(TOUI_ITEMS, "Items", rows, k, &s_inv_sel, on_radio ? radio : s_inv_mark[0] || s_inv_mark[1] ? join : use,
+		             on_radio ? 5 : 4);
 	}
 }
 
@@ -1135,7 +1169,7 @@ static void inventory_draw_top(void)
 		return;
 	int it = inv_current();
 	if (!it) {
-		font_text(FONT_BIG, 256, 256, "No items", FONT_CENTER, 0x808080ff, 0x808080ff);
+		font_text(FONT_BIG, 256, 256, tr("No items"), FONT_CENTER, 0x808080ff, 0x808080ff);
 		return;
 	}
 	if (s_inv_tex) {
@@ -1154,6 +1188,19 @@ static void inventory_draw_top(void)
 	font_text(FONT_BIG, 257.6f, 376.1f, name, FONT_CENTER, 0x000000c0, 0x000000c0);
 	u32 nc = s_inv_mark[0] == it || s_inv_mark[1] == it ? yellow : white;     // marked to combine: yellow
 	font_text(FONT_BIG, 256, 374, name, FONT_CENTER, nc, nc);
+	if (it == ITEM_RADIO) {
+		// the switch and the volume (the PC's item screen shows them beside the radio)
+		char line[96];
+		snprintf(line, sizeof line, "%s   %s %d / 15", radio_is_on() ? "ON" : "OFF", tr("Volume"), radio_volume());
+		u32 rc = radio_is_on() ? white : 0x909090ff;
+		font_text(FONT_BIG, 257.6f, 344.1f, line, FONT_CENTER, 0x000000c0, 0x000000c0);
+		font_text(FONT_BIG, 256, 342, line, FONT_CENTER, rc, rc);
+		if (s_inv_examined != it) {
+			const char* hint = tr("A: on / off   Left, Right: volume");
+			font_text(FONT_SMALL, 257.0f, 412.1f, hint, FONT_CENTER, 0x000000c0, 0x000000c0);
+			font_text(FONT_SMALL, 256, 410, hint, FONT_CENTER, 0xc8c8c8ff, 0xc8c8c8ff);
+		}
+	}
 	if (s_inv_examined == it) {
 		char text[400];
 		const char* d = ev_item_desc(it);
@@ -3961,6 +4008,9 @@ static void new_game(void)
 	prog_abort();
 	boat_reset();
 	ev_reset();
+	radio_stop();
+	radio_set_mode(RADIO_ENEMIES);       // DAT_01f7d584 starts as 0, a stage's code sets it
+	s_radio_stage = -1;
 	combat_reset();
 	enemy_killed_reset();
 	prog_new_game(s_riddle, s_action);     // FlagInit: difficulty flags, puzzle answers
@@ -3985,6 +4035,9 @@ static void new_game_wish(void)
 {
 	prog_abort();
 	ev_reset();
+	radio_stop();
+	radio_set_mode(RADIO_ENEMIES);       // DAT_01f7d584 starts as 0, a stage's code sets it
+	s_radio_stage = -1;
 	combat_reset();
 	enemy_killed_reset();
 	prog_new_game_wish(s_riddle, s_action);
@@ -4017,6 +4070,9 @@ static void enter_title(void)
 	show_message(NULL);
 	bgm_stop();
 	sfx_stop_all();
+	radio_stop();
+	radio_set_mode(RADIO_ENEMIES);
+	s_radio_stage = -1;
 	consoleClear();
 }
 
@@ -4090,6 +4146,9 @@ static bool continue_game(void)
 	}
 	prog_abort();
 	ev_reset();
+	radio_stop();
+	radio_set_mode(RADIO_ENEMIES);       // DAT_01f7d584 starts as 0, a stage's code sets it
+	s_radio_stage = -1;
 	combat_reset();
 	ev_state_set(sv.events);
 	if (sv.version >= 3)
@@ -4264,8 +4323,8 @@ static bool title_levels(u32 down)
 	printf("\x1b[19;7H%c Start                    ", sel == 2 ? '>' : ' ');
 	printf("\x1b[27;2HD-pad: choose, change  A: go  B: back");
 	char ra[40], rr[40];
-	snprintf(ra, sizeof ra, "Action level   < %s >", action[s_action & 3]);
-	snprintf(rr, sizeof rr, "Riddle level   < %s >", r);
+	snprintf(ra, sizeof ra, "%s   < %s >", tr("Action level"), tr(action[s_action & 3]));
+	snprintf(rr, sizeof rr, "%s   < %s >", tr("Riddle level"), tr(r));
 	const char* rows[3] = { ra, rr, "Start" };
 	static const TouiButton back[1] = { { "Back", KEY_B } };
 	touchui_menu(TOUI_LEVELS, s_title_sub == 2 ? "Born From a Wish" : "New Game", rows, 3, &sel, back, 1);
@@ -4367,6 +4426,32 @@ static bool title_update(u32 down, float dt)
 		break;
 	}
 	return true;
+}
+
+// ---------------------------------------------------------------- the radio (radio.c)
+
+// Once a frame in the game, with the real frame time. Stage 5's load function (0x59e1e0, in the stage's
+// table at 0x8e97cc) puts the radio in mode 1 on a point of the street (47716.9, -268.4, 49627.9) while
+// flag 43 is clear, until the first Lying Figure's scene takes the mode over (prog_town.c).
+static void radio_frame(float dt)
+{
+	int stage = ev_stage();
+	if (stage != s_radio_stage) {
+		s_radio_stage = stage;
+		static const float street[3] = { 47716.9f, -268.4f, 49627.9f };
+		if (stage == 5 && !ev_flag(43) && radio_mode() == RADIO_ENEMIES) {
+			radio_set_mode(RADIO_POINT);
+			radio_set_point(street);
+		}
+	}
+	RadioIn in = {
+		.playing = true,
+		.silent = optmenu_active() || savescreen_active() || s_warp_pending,
+		.duck = map_is_open() || s_inv_open ? 1 : s_memo_open ? 2 : 0,
+		.has_radio = ev_have_item(ITEM_RADIO),
+		.x = s_px, .y = s_py, .z = s_pz,
+	};
+	radio_update(&in, dt);
 }
 
 // ---------------------------------------------------------------- pause menu (START in game)
@@ -4571,6 +4656,70 @@ static void draw_message_top(const char* page)
 	font_pc_color(0, &white, &dummy);
 	font_text(FONT_BIG, x + 1.6f, y + 2.1f, buf, FONT_LEFT, 0x000000c0, 0x000000c0);
 	font_text(FONT_BIG, x, y, buf, FONT_LEFT, white, white);
+}
+
+// ---------------------------------------------------------------- movies: music under them, subtitles over them
+
+// The game's part of a movie (movie.h hooks). The PC's movie loop (0x43ded0) runs SeBgmManager (0x516080)
+// every frame except for gero.sfd, so inside the game the stage's music goes on under the picture and the
+// movie's own sound; and it shows the subtitles of the stage's message file between the frames of a table
+// (movsubs.h) when the Subtitles option is on. The title's Movie Menu has no music (the title has none
+// playing) and gets the subtitles from the stage's file as well, which the PC's menu does not do.
+static const MovieSubs* s_mv_subs;
+static int s_mv_sub;                 // the table entry shown now, -1 none
+static char s_mv_text[256];
+
+static bool movie_hook_begin(const char* name)
+{
+	radio_stop();                    // the PC stops the radio on its movie screen
+	s_mv_subs = movsubs_find(name);
+	s_mv_sub = -1;
+	s_mv_text[0] = 0;
+	touchui_movie_text(NULL);
+	return s_state == ST_GAME && strcmp(name, "gero") != 0;
+}
+
+static void movie_hook_tick(float dt)
+{
+	audio_update();
+	if (bgm_ready()) {
+		float feet[3] = { s_px, s_py, s_pz };
+		bgm_update(ev_stage(), ev_glb_crd(), feet, dt);
+	}
+}
+
+static void movie_hook_overlay(const char* name, u32 frame)
+{
+	(void)name;
+	if (!s_mv_subs || !s_opt.subtitles)
+		return;
+	int i = movsubs_at(s_mv_subs, frame);
+	if (i != s_mv_sub) {
+		s_mv_sub = i;
+		s_mv_text[0] = 0;
+		if (i >= 0) {
+			int n = s_mv_subs->base + i;
+			const char* m = ev_stage() == s_mv_subs->stage ? ev_stage_message(n) : ev_stage_message_of(s_mv_subs->stage, n);
+			size_t k = 0;
+			for (; m && m[k] && m[k] != '\f' && k < sizeof s_mv_text - 1; k++)
+				s_mv_text[k] = m[k];
+			s_mv_text[k] = 0;
+		}
+	}
+	bool top = s_msg_top && font_ready();
+	touchui_movie_text(top ? NULL : s_mv_text);        // Messages on the bottom: under the Skip button's screen
+	if (top && s_mv_text[0]) {
+		s_ui_used = 0;
+		draw_message_top(s_mv_text);
+		font_flush();
+	}
+}
+
+static void movie_hook_end(const char* name)
+{
+	(void)name;
+	s_mv_subs = NULL;
+	touchui_movie_text(NULL);
 }
 
 static float s_test_shown;      // seconds left of the console test's name (SELECT + R)
@@ -5110,6 +5259,10 @@ int main(void)
 	setup_pipeline();
 	picture_init();                  // the Picture's soft pass (picture.h)
 	movie_init(top);
+	{
+		static const MovieHooks hooks = { movie_hook_begin, movie_hook_tick, movie_hook_overlay, movie_hook_end };
+		movie_set_hooks(&hooks);
+	}
 	touchui_init();                  // the touch screen is drawn from here on (touchui.c)
 
 	C3D_Mtx proj;
@@ -5385,6 +5538,7 @@ int main(void)
 			gdown |= KEY_L;                  // the game key of the next weapon (controls.h)
 		s_gdown = gdown;
 		s_anim_dt = dt;
+		const float real_dt = dt;            // the radio runs on real time, behind every menu (radio.h)
 		touchui_debug(s_state == ST_VIEWER || s_debug_hud);
 		if (s_state != ST_TITLE) {
 			touchui_menu_close(TOUI_TITLE);
@@ -5469,6 +5623,11 @@ int main(void)
 			down = held = gdown = gheld = s_gdown = 0;   // the menu took the buttons; the game is frozen below
 			dt = s_anim_dt = 0.0f;
 		}
+		// The item screen stops the whole game, not only James: nothing of the room runs behind it (no
+		// enemy, door, timer, program or animation), as with the pause menu. Music and the radio go on.
+		const bool inv_wait = s_state == ST_GAME && s_cam.mode == CAM_PLAYER && s_inv_open && !s_paused && !demo_active();
+		if (inv_wait)
+			dt = s_anim_dt = 0.0f;
 		if (gdown & KEY_B)
 			s_run_pressed = true;
 		if (viewer && (down & (KEY_DRIGHT | KEY_DLEFT)) && s_nrooms) {
@@ -5518,6 +5677,9 @@ int main(void)
 		t_part = svcGetSystemTick();
 		if (s_paused) {
 			cp.dx = cp.dy = 0;
+		} else if (inv_wait) {
+			cp.dx = cp.dy = 0;
+			inventory_update(down);          // the item screen's own keys; Y or B closes it
 		} else if (s_cam.mode == CAM_PLAYER && demo_active()) {
 			enemy_event_tick(dt);
 			if (demo_update(down, dt))
@@ -5632,6 +5794,7 @@ int main(void)
 				}
 				blood_frame(dt);
 				if (combat_dead()) {     // game over: the PC's screen, then the title (0x401fc0)
+					radio_stop();
 					gameover_start();
 					u32 transfer;
 					C3D_RenderTarget* shown = supersample_shown(&transfer);
@@ -5657,6 +5820,8 @@ int main(void)
 		}
 
 		perf_part("game", t_part);
+		if (s_state == ST_GAME && s_cam.mode == CAM_PLAYER)
+			radio_frame(real_dt);
 		t_part = svcGetSystemTick();
 		// the room's effects (roomfx.c) run in scenes too: the burning stairs' flames come with fire_agl
 		if (s_cam.mode == CAM_PLAYER && s_state == ST_GAME)

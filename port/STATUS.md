@@ -154,6 +154,10 @@ PC's 512 px, mipmaps), `area.idx`; `chr/<folder>/<model>.s3c` + `.s3a` + `tex/`;
 
 ### Screens and interface
 
+- Every text of the port's own screens follows the language in effect (`tr()`, `UI.md` "Language");
+  the item screen freezes the whole game and has the radio's switch and volume; movies play the
+  stage's music and show subtitles (`MOVIES.md`).
+
 - The PC's start-up logos, title with its logo pulse, scenario and level screens, Movie Menu, attract
   mode, game over, every setting of the PC's options screens (Bullet Adjust after a clear), regrouped
   into the port's five tabs.
@@ -464,6 +468,16 @@ Ordered by weight. Each line names where the work starts.
   the zoomed-out sheet out of sight at a time (`PROGRAMS.md` "Map screen").
 - Stills fill the top screen's width where the PC shows them 4:3, losing a tenth of their height at
   the top and at the bottom; a puzzle's sprites scale with them (`PROGRAMS.md` "Pictures").
+
+- Radio (`radio.c`): the hotel room 312 scene that forces static with the radio off (the PC's mode 3)
+  is not hooked; the radio's pan sign and SE 10009 / 10002 for the item screen are assumed from the
+  PC's tables; its switch and volume are stored in byte 255 of the saved state (the PC keeps them
+  in its own system block).
+- Movies: subtitles also show in the title's Movie Menu (the PC's menu shows none); the music under a
+  movie follows the stage that is loaded (the PC's SeBgmManager), so a movie from the Movie Menu has
+  none.
+- Text in other languages (`i18n.c`) is the port's own wording for what the PC never had: the
+  missing-game-data screen and the console debug text stay English.
 
 ### 4. Renderer features the port does not have
 

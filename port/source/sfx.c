@@ -76,8 +76,21 @@ static struct {
 
 // ---------------------------------------------------------------- bank
 
+// The radio's four static loops (RadioNoise, 0x48cbc0): the PC starts sddata.bin's internal ids
+// 5360..5363 at start-up (0x5182d0 loops over 0x8a93b4, each through 0x518000 with the loop flag the
+// WAV carries) and only ever changes their volume and pan. No game SE id names them, so the bank
+// is asked by number: they are samples 360..363 of sddata.bin (the bank keeps its order, the
+// Audio Enhancement Pack's too). The loop flag is checked in case a bank came out in another order.
+#define RADIO_ID0 90000
+#define RADIO_TRACKS 4
+#define RADIO_SAMPLE0 360
+
 static int find_sample(int id)
 {
+	if (id >= RADIO_ID0 && id < RADIO_ID0 + RADIO_TRACKS) {
+		u32 s = RADIO_SAMPLE0 + (u32)(id - RADIO_ID0);
+		return s < s_nsamples && (s_samples[s].flags & 1) ? (int)s : -1;
+	}
 	u32 lo = 0, hi = s_nids;
 	while (lo < hi) {
 		u32 mid = (lo + hi) / 2;
@@ -508,6 +521,75 @@ bool sfx_playing(int id)
 		if (s_voices[i].active && s_voices[i].id == id)
 			return true;
 	return false;
+}
+
+// ---------------------------------------------------------------- the radio's static
+
+void sfx_radio_start(void)
+{
+	for (int t = 0; t < RADIO_TRACKS; t++) {
+		if (sfx_playing(RADIO_ID0 + t))
+			continue;
+		Voice* v = start(RADIO_ID0 + t, 0.0f);
+		if (!v)
+			continue;
+		voice_mix(v, 0.0f, 0.0f);          // silent until sfx_radio_set
+		if (!v->waiting)
+			ndspChnWaveBufAdd(FIRST_CH + (v - s_voices), &v->wb);
+	}
+}
+
+void sfx_radio_set(int track, float gain, float pan)
+{
+	if (track < 0 || track >= RADIO_TRACKS)
+		return;
+	for (int i = 0; i < NVOICES; i++)
+		if (s_voices[i].active && s_voices[i].id == RADIO_ID0 + track) {
+			voice_mix(&s_voices[i], gain < 0.0f ? 0.0f : gain, pan);
+			return;
+		}
+}
+
+bool sfx_radio_running(void)
+{
+	for (int t = 0; t < RADIO_TRACKS; t++)
+		if (!sfx_playing(RADIO_ID0 + t))
+			return false;
+	return true;
+}
+
+void sfx_radio_stop(void)
+{
+	for (int t = 0; t < RADIO_TRACKS; t++)
+		sfx_stop(RADIO_ID0 + t);
+}
+
+// 0x515230: how much of a level a source keeps by its and the camera's distance to the player (1 near).
+float sfx_distance_level(const float pos[3])
+{
+	if (!s_have_listener)
+		return 1.0f;
+	return distance_factor(pos, s_player) * distance_factor(s_eye, s_player);
+}
+
+// 0x515ab0: the angle (degrees, truncated) of a source seen from the camera, positive on the right.
+int sfx_source_angle(const float pos[3])
+{
+	if (!s_have_listener)
+		return 0;
+	float fx = s_player[0] - s_eye[0], fz = s_player[2] - s_eye[2];
+	float fl = sqrtf(fx * fx + fz * fz);
+	if (fl < 1.0f)
+		return 0;
+	fx /= fl, fz /= fl;
+	float rx = pos[0] - s_eye[0], rz = pos[2] - s_eye[2];
+	float side = rx * fz - rz * fx;
+	float ahead = rx * fx + rz * fz;
+	float l = sqrtf(side * side + ahead * ahead);
+	if (l < 1.0f)
+		return 0;
+	int deg = (int)(80.0f * (1.0f - ahead / l));
+	return side < 0.0f ? -deg : deg;
 }
 
 void sfx_listener(const float player[3], const float eye[3])

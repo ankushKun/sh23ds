@@ -1,4 +1,5 @@
 #include "map.h"
+#include "i18n.h"
 #include "bgm.h"
 #include "events.h"
 #include "prog.h"
@@ -870,11 +871,11 @@ const char* map_legend(void)
 	static const char* const floor[4] = { "BF", "1F", "2F", "3F" };
 	char name[48];
 	if (s_shown >= 20 && s_shown < 36)
-		snprintf(name, sizeof name, "Lakeview Hotel %s", floor[(s_shown - 20) & 3]);
+		snprintf(name, sizeof name, "%s %s", tr("Lakeview Hotel"), floor[(s_shown - 20) & 3]);
 	else if (s_shown == 36)
-		snprintf(name, sizeof name, "Baldwin Mansion");
+		snprintf(name, sizeof name, "%s", tr("Baldwin Mansion"));
 	else
-		snprintf(name, sizeof name, "%s", s_shown > 0 && s_shown < 20 ? place[s_shown] : "");
+		snprintf(name, sizeof name, "%s", s_shown > 0 && s_shown < 20 ? tr(place[s_shown]) : "");
 	snprintf(s_legend, sizeof s_legend, "%-30s\n\n%s", name,
 	         s_zoom_state >= 2 ? "Circle Pad / D-pad: look around\nA: whole map   B: close"
 	                           : "D-pad: other floors and maps\nA: zoom in   B: close");

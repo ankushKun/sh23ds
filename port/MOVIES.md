@@ -185,6 +185,25 @@ in Azahar, an lr3ds build also printed the audio sample count at each screenshot
 `debug.txt` in the pack folder: `movie <name>` plays a movie before the title screen,
 `movielog 1` logs per-frame times, `movielog 2` uses the CPU converter, `movielog 3` both.
 
+## Music and subtitles
+
+The PC's movie loop keeps running SeBgmManager every frame (except for `gero`), so the stage's music
+plays under a movie shown in the game; the port did not, and the movies played in silence. `movie.c` now
+has `MovieHooks` (`movie_set_hooks`, set up in `main.c`): `begin(name)` stops the radio, finds the
+subtitle table and says whether music goes on (in the game, not for `gero`); `tick(dt)` runs
+`audio_update` and `bgm_update` from the movie's loops (fades, wait and play), so the music streams and
+fades as in the game; `overlay` draws the subtitle after the picture; `end` restores the game. The
+music channel is the only ndsp channel not paused under a movie.
+
+Subtitles (`movsubs.c`): tables of frame pairs (30 a second, shown while `start < frame <= end`) from
+the PC movie loop, each with the stage whose message file holds the text and the first message number:
+`murder` (stage 42), `rouya` (34), `korosu_a` and `korosu_b` (31), `saikai` (26), `deai` and `hei`
+(14), `knife` (10), `hakaba` (stage 4). The text is the stage's message `base + i`, in the language
+in effect, read with `ev_stage_message_of` when the movie is shown from the title's Movie Menu (no stage
+loaded). It follows the Messages option: the top screen's message window, or the bottom screen above
+Skip (`touchui_movie_text`). The Subtitles option turns it off. The Movie Menu shows subtitles too (the
+PC's does not have them there: this is an addition).
+
 ## Open issues
 
 - Not run on a console yet. Things to watch there: that the CIA really gets core 2 (the bottom screen
@@ -197,7 +216,8 @@ in Azahar, an lr3ds build also printed the audio sample count at each screenshot
   in `demo.c` that the ending programs ask for, the boss and story movies (`flash`, `murder`,
   `rouya`, `saikai`, `korosu_*`) the same way, and `open_bgm` / `open_voc` from the title's attract
   mode and its Movie Menu.
-- The PC draws subtitles over some movies; the port draws none.
+- Music under the movies and subtitles are ported (see "Music and subtitles" below). Not ported: the
+  PC's skip rules (below).
 - The PC's skip rules are not ported. It skips on its own button tests (0x43ded0) and treats `gero`
   differently; here A or START always skip.
 - The audio instance keeps a video decoder with three unused reference frames (about 430 KB of heap),

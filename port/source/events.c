@@ -49,8 +49,11 @@ static int s_stage;
 static char s_name[24];
 static int s_glb_crd;
 static MsgFile s_msg, s_common, s_itemtext, s_memotext, s_resulttext, s_mcardtext, s_optiontext, s_pausetext;
+// Another stage's messages, for text the title shows without a stage loaded (the Movie Menu's subtitles)
+static MsgFile s_guest;
+static int s_guest_stage;
 static MsgFile* const MSG_FILES[] = { &s_msg, &s_common, &s_itemtext, &s_memotext, &s_resulttext, &s_mcardtext,
-	&s_optiontext, &s_pausetext };
+	&s_optiontext, &s_pausetext, &s_guest };
 static u32 s_flags[EV_MAX_FLAGS / 32];
 static u8 s_items_held[256];        // count per item number (ammo and health items stack)
 static int s_last_fired = -1;       // rising edge for non-button triggers
@@ -75,7 +78,13 @@ void ev_set_flag_lo(int index, u16 lo)
 	if (index >= 0 && (u32)index < s_nev)
 		s_ev[index].flag = (s_ev[index].flag & 0xffff0000u) | lo;
 }
-int ev_item_count(int item) { return item > 0 && item < 256 ? s_items_held[item] : 0; }
+// 3DS-only: the last slot is not an item. It holds the radio's switch and volume (radio.c) so that the
+// saved state carries them; ev_item_count and ev_give_item leave it alone.
+#define RADIO_SLOT 255
+int ev_radio_state(void) { return s_items_held[RADIO_SLOT]; }
+void ev_radio_state_set(int v) { s_items_held[RADIO_SLOT] = (u8)v; }
+
+int ev_item_count(int item) { return item > 0 && item < RADIO_SLOT ? s_items_held[item] : 0; }
 
 // Packs from before the item records kept the condition type: the pickups that have one, by their
 // flag n (Item_List.st bits 24..20; every pickup's difficulty class is 0). Type 1: 21 in the town's
@@ -153,7 +162,7 @@ bool ev_pickup_shown(int i) { return i >= 0 && (u32)i < s_nitems && item_lying(&
 
 void ev_give_item(int item, int n)
 {
-	if (item > 0 && item < 256)
+	if (item > 0 && item < RADIO_SLOT)
 		s_items_held[item] = s_items_held[item] + n > 255 ? 255 : s_items_held[item] + n;
 }
 
@@ -262,6 +271,24 @@ void ev_set_glb_crd(int glb) { s_glb_crd = glb; }
 const char* ev_stage_name(void) { return s_name; }
 int ev_count(void) { return (int)s_nev; }
 const char* ev_stage_message(int n) { return n >= 0 ? msg_get(&s_msg, (u32)n) : NULL; }
+// Message n of another stage's file (the language in effect). The text stays valid until the next call
+// for a different stage or a language change; the current stage's own file is used when it is that one.
+static bool load_named(MsgFile* m, const char* name);
+const char* ev_stage_message_of(int stage, int n)
+{
+	if (n < 0 || stage <= 0)
+		return NULL;
+	if (stage == s_stage && s_msg.data)
+		return msg_get(&s_msg, (u32)n);
+	if (s_guest_stage != stage || !s_guest.data) {
+		char name[16];
+		snprintf(name, sizeof name, "s%02d.msg", stage);
+		s_guest_stage = stage;
+		if (!load_named(&s_guest, name))
+			return NULL;
+	}
+	return msg_get(&s_guest, (u32)n);
+}
 const char* ev_system_message(int n) { return n >= 0 ? msg_get(&s_common, (u32)n) : NULL; }
 // Inserted values (PC MesSetInsert 0x47fd70): the converter keeps the PC's ff e0..ff e3 codes as
 // bytes 1..4 and the question code ff f6 as byte 5 (tools/sh2conv/sh2mes.py); a message is expanded
@@ -412,6 +439,7 @@ int ev_set_language(int lang)
 		}
 		memset(m, 0, sizeof *m);
 	}
+	s_guest_stage = 0;
 	if (stage) {
 		char name[16];
 		snprintf(name, sizeof name, "s%02d.msg", s_stage);
