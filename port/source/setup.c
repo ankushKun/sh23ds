@@ -3,6 +3,7 @@
 #include "events.h"
 #include "figures.h"
 #include "font.h"
+#include "i18n.h"
 #include "sfx.h"
 #include "touchui.h"
 #include <string.h>
@@ -144,10 +145,10 @@ static const char* row_name(const Row* r)
 {
 	if (r->name)
 		return r->name;
-	static char aim[32];
+	static char aim[64];
 	char k[16];
 	u32 act = controls_keys(ACT_ACTION);
-	snprintf(aim, sizeof aim, "Aim, then %s attacks", controls_key_text(act & -act, k, sizeof k));
+	snprintf(aim, sizeof aim, tr("Aim, then %s attacks"), controls_key_text(act & -act, k, sizeof k));
 	return aim;
 }
 

@@ -1,4 +1,5 @@
 #include "prog_int.h"
+#include "i18n.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -364,7 +365,7 @@ static int s20_get_roof_key(Prog* p) { return p_item_get(p, 0x22, 0x10); }
 static const char* symbols_text(const u8* s)
 {
 	static char buf[64];
-	snprintf(buf, sizeof buf, "\n   The symbols read:  %d  %d  %d  %d", s[0] + 1, s[1] + 1, s[2] + 1, s[3] + 1);
+	snprintf(buf, sizeof buf, tr("\n   The symbols read:  %d  %d  %d  %d"), s[0] + 1, s[1] + 1, s[2] + 1, s[3] + 1);
 	return buf;
 }
 
@@ -455,15 +456,17 @@ static void box_panel(Prog* p)
 	const u8* last = (const u8*)&p->work[2];
 	int cur = p->work[1];
 	char buf[480];
-	int n = snprintf(buf, sizeof buf, " Purple Bull %-6s  Lapis Eye %s\n Wheels      %-6s  Buttons   %s\n\n Wheels ",
-	                 p_flag(193) ? "open" : "locked", p_flag(195) ? "open" : "locked",
-	                 p_flag(197) ? "open" : "locked", p_flag(198) ? "open" : "locked");
+	int n = snprintf(buf, sizeof buf, " %s %s   %s %s\n %s %s   %s %s\n\n %s ",
+	                 tr("Purple Bull"), p_flag(193) ? tr("open") : tr("locked"),
+	                 tr("Lapis Eye"), p_flag(195) ? tr("open") : tr("locked"),
+	                 tr("Wheels"), p_flag(197) ? tr("open") : tr("locked"),
+	                 tr("Buttons"), p_flag(198) ? tr("open") : tr("locked"), tr("Wheels"));
 	for (int i = 0; i < 4; i++)
 		n += snprintf(buf + n, sizeof buf - n, "%c%d%c", cur == i ? '[' : ' ', w[i] + 1, cur == i ? ']' : ' ');
-	n += snprintf(buf + n, sizeof buf - n, "\n Buttons ");
+	n += snprintf(buf + n, sizeof buf - n, "\n %s ", tr("Buttons"));
 	for (int i = 0; i < 9; i++)
 		n += snprintf(buf + n, sizeof buf - n, "%c%d%c", cur == 4 + i ? '[' : ' ', i + 1, cur == 4 + i ? ']' : ' ');
-	n += snprintf(buf + n, sizeof buf - n, "\n Pressed ");
+	n += snprintf(buf + n, sizeof buf - n, "\n %s ", tr("Pressed"));
 	for (int i = 4 - (p->work[3] < 4 ? p->work[3] : 4); i < 4; i++)
 		n += snprintf(buf + n, sizeof buf - n, " %d", last[i] + 1);
 	snprintf(buf + n, sizeof buf - n, "\n\n Left/Right: pick  Up/Down: turn\n A: press  B: leave");
@@ -959,7 +962,7 @@ static int s25_try_quiz(Prog* p)
 		int n = snprintf(buf, sizeof buf, "\n");
 		for (int r = 0; r < 3; r++) {
 			int a = p_flag(234 + 2 * r) | p_flag(235 + 2 * r) << 1;
-			n += snprintf(buf + n, sizeof buf - n, "  %c Row %d  ", p->work[1] == r ? '>' : ' ', r + 1);
+			n += snprintf(buf + n, sizeof buf - n, "  %c %s %d  ", p->work[1] == r ? '>' : ' ', tr("Row"), r + 1);
 			for (int c = 0; c < 3; c++)
 				n += snprintf(buf + n, sizeof buf - n, "%c%c%c ", p->work[1] == r && p->work[2] == c ? '[' : ' ',
 				              a == c + 1 ? '*' : 'o', p->work[1] == r && p->work[2] == c ? ']' : ' ');

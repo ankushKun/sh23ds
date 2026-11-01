@@ -4,6 +4,7 @@
 #include "combat.h"
 #include "controls.h"
 #include "events.h"
+#include "i18n.h"
 #include "font.h"
 #include "itemview.h"
 #include "map.h"
@@ -324,6 +325,18 @@ void touchui_debug(bool on)
 	}
 }
 
+static char s_movie_text[256];       // the subtitle on the touch screen while a movie plays
+
+void touchui_movie_text(const char* text)
+{
+	if (!text)
+		text = "";
+	if (strcmp(text, s_movie_text)) {
+		snprintf(s_movie_text, sizeof s_movie_text, "%s", text);
+		s_dirty = true;
+	}
+}
+
 void touchui_movie(bool on)
 {
 	if (on != s_movie) {
@@ -475,6 +488,7 @@ static void bar_img(float x0, float y0, float x1, float y1, u32 rgba)
 
 static void text(int font, float x, float y, const char* s, int align, u32 top, u32 bottom)
 {
+	s = tr(s);                           // the port's own wording in the language in effect (i18n.h)
 	FontVert fv[6 * 80];
 	int n = font_layout_px(font, x, y, s, align, top, bottom, fv, (int)(sizeof fv / sizeof *fv));
 	for (int i = 0; i < n && IMAGE_END + s_ntext < MAX_VERTS; i++) {
@@ -529,10 +543,14 @@ static void text_spaced(int font, float cx, float y, const char* s, float gap, u
 // A small grey capitals label ("CONDITION").
 static void label(float x, float y, const char* s, int align)
 {
-	char up[32];
+	char up[48];
 	int i = 0;
-	for (; s[i] && i < 31; i++)
-		up[i] = s[i] >= 'a' && s[i] <= 'z' ? s[i] - 32 : s[i];
+	s = tr(s);
+	for (; s[i] && i < 47; i++) {
+		unsigned char c = (unsigned char)s[i];
+		// capitals, accented ones too (Windows-1252: 0xe0..0xfe but the division sign, shifted by 0x20)
+		up[i] = (char)((c >= 'a' && c <= 'z') || (c >= 0xe0 && c <= 0xfe && c != 0xf7) ? c - 32 : c);
+	}
 	up[i] = 0;
 	text(FONT_SMALL, x, y, up, align, LABEL, LABEL);
 }
@@ -615,11 +633,19 @@ static void footer(char label_[][16], const u32* key, int n, u32 dim)
 	for (int i = 0; i < n; i++) {
 		bool off = dim >> i & 1;
 		u32 c = off ? DIM : RING;
-		float gw = glyph_width(key[i]), lw = font_width_px(FONT_SMALL, label_[i]);
+		// the translated word may be longer than the slot: cut it back (its start still reads)
+		char lab_buf[24];
+		snprintf(lab_buf, sizeof lab_buf, "%s", tr(label_[i]));
+		const char* lab = lab_buf;
+		float gw = glyph_width(key[i]), lw = font_width_px(FONT_SMALL, lab);
+		for (size_t l = strlen(lab_buf); l > 3 && gw + 5.0f + lw > slot - 3.0f; ) {
+			lab_buf[--l] = 0;
+			lw = font_width_px(FONT_SMALL, lab);
+		}
 		float w = gw + (gw > 0 && lw > 0 ? 5.0f : 0.0f) + lw;
 		float x = 8 + slot * i + (slot - w) * 0.5f;
 		glyph(x, cy, key[i], c);
-		text(FONT_SMALL, x + w - lw, cy - font_line_px(FONT_SMALL) * 0.5f, label_[i], FONT_LEFT, off ? DIM : s_grey_top,
+		text(FONT_SMALL, x + w - lw, cy - font_line_px(FONT_SMALL) * 0.5f, lab, FONT_LEFT, off ? DIM : s_grey_top,
 		     off ? DIM : s_grey_bottom);
 		if (!off)
 			hit(8 + slot * i, FOOT_Y + 1, 8 + slot * (i + 1), 240, HIT_KEY, 0, 0, key[i]);
@@ -642,6 +668,7 @@ static void header(const char* title)
 {
 	if (!title || !*title)
 		return;
+	title = tr(title);
 	float w = spaced_width(FONT_BIG, title, 1.0f), y = 7.0f, mid = y + font_line_px(FONT_BIG) * 0.5f;
 	text_spaced(FONT_BIG, 160, y, title, 1.0f, s_white);
 	float l = 160 - w * 0.5f - 10, r = 160 + w * 0.5f + 10;
@@ -682,8 +709,11 @@ static void draw_tabs(const Menu* m, int id)
 	float w[TOUI_MAX_TABS], total = 0.0f;
 	for (int i = 0; i < m->ntabs; i++) {
 		int k = 0;
-		for (; m->tabs[i][k] && k < 15; k++)
-			up[i][k] = m->tabs[i][k] >= 'a' && m->tabs[i][k] <= 'z' ? m->tabs[i][k] - 32 : m->tabs[i][k];
+		const char* tab = tr(m->tabs[i]);
+		for (; tab[k] && k < 15; k++) {
+			unsigned char c = (unsigned char)tab[k];
+			up[i][k] = (char)((c >= 'a' && c <= 'z') || (c >= 0xe0 && c <= 0xfe && c != 0xf7) ? c - 32 : c);
+		}
 		up[i][k] = 0;
 		w[i] = spaced_width(FONT_SMALL, up[i], 1.0f);
 		total += w[i];
@@ -719,6 +749,7 @@ static void blocks(float x1, float cy, int level, int max, bool on)
 // rows, in the big font while it takes three lines at most. Returns where the rows may start.
 static float wrapped_title(const char* s)
 {
+	s = tr(s);
 	int f = FONT_BIG;
 	char lines[8][96];
 	int n = 0;
@@ -785,10 +816,10 @@ static void draw_menu(int id)
 		snprintf(lab, sizeof lab, "%.*s", gap ? (int)(gap - m->rows[i]) : 71, m->rows[i]);
 		// a label too long for the row (some languages' scenario names) in the small font
 		const TouiRow* kind = &m->kinds[i];
-		float room = (gap ? right - 18 - font_width_px(FONT_BIG, gap) : right - 4) - 22;
+		float room = (gap ? right - 18 - font_width_px(FONT_BIG, tr(gap + strspn(gap, " < "))) : right - 4) - 22;
 		if (kind->kind == TOUI_ROW_BAR)
 			room = right - 26 - (kind->max ? kind->max : 15) * 6.0f - 22;
-		int lf = font_width_px(FONT_BIG, lab) > room ? FONT_SMALL : FONT_BIG;
+		int lf = font_width_px(FONT_BIG, tr(lab)) > room ? FONT_SMALL : FONT_BIG;
 		float ly = lf == FONT_BIG ? ty : y + (rh - font_line_px(FONT_SMALL)) * 0.5f;
 		if (on && !off)
 			text_lit(lf, 22, ly, lab, FONT_LEFT, s_white);
@@ -817,7 +848,7 @@ static void draw_menu(int id)
 			else
 				text(FONT_BIG, vx, ty, val, FONT_RIGHT, ct, cb);
 			if (lr && on) {
-				float w = font_width_px(FONT_BIG, val), cy = y + rh * 0.5f;
+				float w = font_width_px(FONT_BIG, tr(val)), cy = y + rh * 0.5f;
 				arrow(vx - w - 8, cy, -1, 0, 3.5f, RING);
 				arrow(right - 9, cy, 1, 0, 3.5f, RING);
 			}
@@ -850,7 +881,7 @@ static void draw_choices(void)
 	for (int i = 0; i < 2; i++) {
 		float x0 = i ? 164.0f : 8.0f, x1 = i ? 312.0f : 156.0f, cx = (x0 + x1) * 0.5f;
 		bool on = i == sel;
-		int f = font_width_px(FONT_BIG, s_ch.name[i]) > x1 - x0 - 12 ? FONT_SMALL : FONT_BIG;
+		int f = font_width_px(FONT_BIG, tr(s_ch.name[i])) > x1 - x0 - 12 ? FONT_SMALL : FONT_BIG;
 		if (on) {
 			band(x0, ny - 5, x1, ny + font_line_px(FONT_BIG) + 4);
 			text_lit(f, cx, ny, s_ch.name[i], FONT_CENTER, s_white);
@@ -858,7 +889,7 @@ static void draw_choices(void)
 			text(f, cx, ny, s_ch.name[i], FONT_CENTER, s_grey_top, s_grey_bottom);
 		}
 		FontFit ff;
-		font_fit_px(s_ch.line[i], x1 - x0 - 16, 3, false, &ff);
+		font_fit_px(tr(s_ch.line[i]), x1 - x0 - 16, 3, false, &ff);
 		for (int k = 0; k < ff.n; k++)
 			text(ff.font, cx, ly + k * lh, ff.line[k], FONT_CENTER, on ? RING : LABEL, on ? RING : LABEL);
 		hit(x0, 8, x1, FOOT_Y - 2, HIT_CHOICE, 0, i, 0);
@@ -922,7 +953,7 @@ static void draw_panel(void)
 	for (char* e = body + strlen(body); e > body && (e[-1] == '\n' || e[-1] == ' '); )
 		*--e = 0;                        // the blank lines the console kept above its keys
 	// the keys: "<keys>: <verb>" pairs two spaces apart
-	char a_verb[16] = "OK", pad_verb[32] = "";
+	char a_verb[24] = "OK", pad_verb[96] = "";
 	for (char* t = help; *t; ) {
 		while (*t == ' ')
 			t++;
@@ -934,13 +965,17 @@ static void draw_panel(void)
 		if (!strncmp(t, "A:", 2)) {
 			snprintf(a_verb, sizeof a_verb, "%.*s", vn, colon + 2);
 		} else if (strncmp(t, "B:", 2)) {           // D-pad, Left/Right, Up/Down
+			// the verbs are English (the programs write them so this can read the keys), shown translated
+			char one_verb[40];
+			snprintf(one_verb, sizeof one_verb, "%.*s", vn < 39 ? vn : 39, colon + 2);
 			size_t k = strlen(pad_verb);
-			snprintf(pad_verb + k, sizeof pad_verb - k, "%s%.*s", k ? " / " : "", vn, colon + 2);
+			snprintf(pad_verb + k, sizeof pad_verb - k, "%s%s", k ? " / " : "", tr(one_verb));
 		}
 		t = end ? end : colon + 2 + vn;
 	}
 	if (a_verb[0] >= 'a' && a_verb[0] <= 'z')
-		a_verb[0] -= 32;
+		a_verb[0] -= 32;                 // "press" -> "Press", looked up as the table has it
+	snprintf(a_verb, sizeof a_verb, "%s", tr(a_verb));
 	// the text, the cursor's line on the band
 	int lines = 0;
 	for (const char* c = body; *c; c++)
@@ -976,8 +1011,8 @@ static void draw_panel(void)
 		pad(cx + r, cy - r, cx + 3 * r, cy + r, "", KEY_DRIGHT, 1, 0);
 	}
 	char labels[2][16];
-	snprintf(labels[0], 16, "%s", a_verb);
-	snprintf(labels[1], 16, "Back");
+	snprintf(labels[0], 16, "%.15s", a_verb);
+	snprintf(labels[1], 16, "Back");        // footer() translates the labels
 	static const u32 keys[2] = { KEY_A, KEY_B };
 	footer(labels, keys, 2, 0);
 }
@@ -1162,6 +1197,23 @@ static void draw_movie(void)
 {
 	static char skip[1][16] = { "Skip" };
 	static const u32 keys[1] = { KEY_START };
+	// a subtitle with Messages on the bottom screen (main.c), above the Skip button
+	int lines = 1;
+	for (const char* c = s_movie_text; *c; c++)
+		lines += *c == '\n';
+	if (s_movie_text[0]) {
+		int f = lines > 6 ? FONT_SMALL : FONT_BIG;
+		float y = 60.0f;
+		for (const char* s = s_movie_text; *s; ) {
+			const char* e = strchr(s, '\n');
+			int n = e ? (int)(e - s) : (int)strlen(s);
+			char ln[96];
+			snprintf(ln, sizeof ln, "%.*s", n < 95 ? n : 95, s);
+			text_lit(f, 20, y, ln, FONT_LEFT, s_white);
+			y += font_line_px(f);
+			s = e ? e + 1 : s + n;
+		}
+	}
 	footer(skip, keys, 1, 0);
 }
 
@@ -1257,6 +1309,11 @@ void touchui_frame(void)
 			s_grain_frame = g;
 			s_dirty = true;
 		}
+	}
+	static int s_lang_drawn;
+	if (s_lang_drawn != ev_language()) {      // Language changed in the options: every text is drawn again
+		s_lang_drawn = ev_language();
+		s_dirty = true;
 	}
 	if (!s_dirty || s_debug)
 		return;

@@ -1,4 +1,5 @@
 #include "savescreen.h"
+#include "i18n.h"
 #include "events.h"
 #include "font.h"
 #include "sfx.h"
@@ -311,24 +312,24 @@ void savescreen_draw_top(void)
 	font_quad_px(NULL, 0.0f, 151.0f, bx - fade, 169.0f, 0, 0, 0, 0, solid);
 	font_quad_px(NULL, bx - fade, 151.0f, bx, 169.0f, 0, 0, 0, 0, edge);
 	char line[64];
-	snprintf(line, sizeof line, "File %d", s_sel + 1);
+	snprintf(line, sizeof line, tr("File %d"), s_sel + 1);
 	font_text(FONT_SMALL, x, pcy(140.0f), line, FONT_LEFT, faded(grey_t, k), faded(grey_b, k));
 	if (!f->used) {
 		font_text(FONT_BIG, x, pcy(154.0f), title, FONT_LEFT, faded(white, k), faded(white, k));
 	} else {
 		font_text(FONT_BIG, x, pcy(154.0f), title, FONT_LEFT, faded(yellow, k), faded(yellow, k));
 		if (f->clear) {
-			snprintf(line, sizeof line, "Clears %d", f->clears);
+			snprintf(line, sizeof line, tr("Clears %d"), f->clears);
 			font_text(FONT_SMALL, x, pcy(176.0f), line, FONT_LEFT, faded(white, k), faded(white, k));
 		} else {
 			char tm[16];
 			play_time(f, tm, sizeof tm);
-			snprintf(line, sizeof line, "Play time %s     Saves %d", tm, f->saves);
+			snprintf(line, sizeof line, tr("Play time %s     Saves %d"), tm, f->saves);
 			font_text(FONT_SMALL, x, pcy(176.0f), line, FONT_LEFT, faded(white, k), faded(white, k));
 			if (f->chapter == 1)
-				snprintf(line, sizeof line, "Born From a Wish     Action %s", level(3 - f->action));
+				snprintf(line, sizeof line, tr("Born From a Wish     Action %s"), level(3 - f->action));
 			else
-				snprintf(line, sizeof line, "Action %s     Riddle %s", level(3 - f->action), level(2 - f->riddle));
+				snprintf(line, sizeof line, tr("Action %s     Riddle %s"), level(3 - f->action), level(2 - f->riddle));
 			font_text(FONT_SMALL, x, pcy(189.0f), line, FONT_LEFT, faded(grey_t, k), faded(grey_b, k));
 		}
 	}

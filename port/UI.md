@@ -70,6 +70,32 @@ The PC's own front end, as on the website: no boxes.
   no prompt: tapping the map is the way to it. The zoom ring is drawn with the map's pictures so the
   map never covers it.
 
+## The item screen
+
+The whole game stands still while it is open (Y): James, enemies, the camera and every program wait,
+and the music and the radio go on (the radio ducked by half). The PC does the same (the game loop's
+inventory branch). With the radio chosen, A switches it and Left / Right set its volume; the
+touch screen's buttons say On/Off, Vol - and Vol + (`radio` in `inventory_draw`).
+
+## Language
+
+Everything the PC wrote comes from the pack in the language in effect (the Language option, the
+console's language by default). What the port wrote itself is English in the source and goes through
+`tr()` (`i18n.c`) wherever it is shown: `touchui.c` (`text`, `label`, the footer, the header, the tabs
+and the menu rows), `figures.c`, `optmenu.c` (`expand`), `savescreen.c`, `map.c`, `controls.c`, `setup.c`
+and the puzzle panels of `prog_*.c`. `tr()` looks the English text up in a table (French, German,
+Italian, Spanish) and returns it unchanged when there is no entry, so it is safe on any string. Rules:
+
+- Translations are Windows-1252 bytes written as octal escapes (the font's codes, `font.h`).
+- Format strings go through `tr()` before `snprintf` (`tr("File %d")`), with the same specifiers in
+  the same order; `{TOKENS}` of the options' texts stay in the translation.
+- A puzzle panel's last line holds its keys in English ("D-pad: floor  A: press  B: leave"): touchui
+  reads them to build the footer and the D-pad caption, then shows the verbs translated (lower case
+  for the pad's, capitalised for A's). Keep the keys' text English in the programs.
+- Button labels are cut to the slot (`footer`); keep them short, about 9 letters.
+- Not translated: the missing-game-data screen (`nodata.c`, it has its own bitmap font and is
+  shown before a language exists), the debug text on the console screen, and proper names.
+
 ## Options
 
 The PC's settings in five tabs (`optmenu.c`): Controls, Game, Display, Sound and System, in that

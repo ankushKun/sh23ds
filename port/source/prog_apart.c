@@ -1,4 +1,5 @@
 #include "prog_int.h"
+#include "i18n.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -118,7 +119,9 @@ static int clock_needles(Prog* p)
 	}
 	int t = (CLOCK + 0x20) >> 6;
 	char buf[160];
-	snprintf(buf, sizeof buf, "\n   The clock reads %d:%02d\n\n\n\n\n\n\n%s", t / 60, t % 60,
+	char reads[64];
+	snprintf(reads, sizeof reads, tr("The clock reads %d:%02d"), t / 60, t % 60);
+	snprintf(buf, sizeof buf, "\n   %s\n\n\n\n\n\n\n%s", reads,
 	         p_flag(83) ? "                           B: leave" : "      Left/Right: move hands  B: leave");
 	p_panel(buf);
 	if (p->down & KEY_B) {
@@ -439,12 +442,12 @@ static void coin_panel(Prog* p, bool placing)
 	char row[5][16];
 	for (int h = 0; h < 5; h++) {
 		int c = coin_in_hole(h);
-		snprintf(row[h], sizeof row[h], "%s", c < 0 ? "(empty)" : name[c]);
+		snprintf(row[h], sizeof row[h], "%s", c < 0 ? tr("(empty)") : tr(name[c]));
 	}
 	char buf[400];
 	int n = snprintf(buf, sizeof buf, "\n");
 	for (int h = 0; h < 5; h++)
-		n += snprintf(buf + n, sizeof buf - n, "  %c Hole %d   %s\n", h == p->work[1] ? '>' : ' ', h + 1, row[h]);
+		n += snprintf(buf + n, sizeof buf - n, "  %c %s %d   %s\n", h == p->work[1] ? '>' : ' ', tr("Hole"), h + 1, row[h]);
 	snprintf(buf + n, sizeof buf - n, "\n\n  D-pad: hole  A: %s  B: leave", placing ? "put in" : "take out");
 	p_panel(buf);
 }
@@ -691,8 +694,10 @@ static int s11_open_safe(Prog* p)
 		}
 		{
 			char buf[160];
-			snprintf(buf, sizeof buf, "\n   The dial points at %d\n\n%s\n\n\n\n\n%s", safe_dial() + 1,
-			         p_flag(108) ? "   It opened." : "", p_flag(108) ? "" : "      Left/Right: turn  B: leave");
+			char points[64];
+			snprintf(points, sizeof points, tr("The dial points at %d"), safe_dial() + 1);
+			snprintf(buf, sizeof buf, "\n   %s\n\n   %s\n\n\n\n\n%s", points,
+			         p_flag(108) ? tr("It opened.") : "", p_flag(108) ? "" : "      Left/Right: turn  B: leave");
 			p_panel(buf);
 		}
 		if (p_flag(108)) {

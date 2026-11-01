@@ -1,4 +1,5 @@
 #include "figures.h"
+#include "i18n.h"
 #include "font.h"
 #include <math.h>
 #include <string.h>
@@ -104,6 +105,7 @@ float fig_text(const char* s, float x, float y, float w, int max, bool big, int 
 	FontFit f;
 	if (!s || !*s)
 		return 0.0f;
+	s = tr(s);                           // i18n.h
 	if (!font_fit_px(s, w, max, big, &f)) {
 		s_cuts++;
 		if (s_log)
@@ -130,6 +132,7 @@ void fig_title(const char* s, float y)
 {
 	if (!s || !*s)
 		return;
+	s = tr(s);
 	const float gap = 1.0f;
 	char one[6];
 	float w = 0.0f;
@@ -270,6 +273,7 @@ void fig_ring(float cx, float cy, const char* label, u32 rgba)
 {
 	if (!label || !*label)
 		return;
+	label = tr(label);
 	float ox = s_ox, oy = s_oy, fa = s_fa;
 	s_ox = s_oy = 0.0f, s_fa = (rgba & 0xff) / 255.0f;
 	u32 c = rgba | 0xff;

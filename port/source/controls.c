@@ -1,5 +1,6 @@
 // Button layouts and remapping (see controls.h and port/CONTROLS.md).
 #include "controls.h"
+#include "i18n.h"
 #include <string.h>
 #include "sfx.h"
 #include "touchui.h"
@@ -175,7 +176,7 @@ static const char* key_names(u32 k, char* out, size_t n)
 	out[0] = 0;
 	for (unsigned i = 0; i < sizeof K / sizeof K[0]; i++)
 		if (k & K[i].bit)
-			len += snprintf(out + len, len < n ? n - len : 0, "%s%s", len ? " / " : "", K[i].name);
+			len += snprintf(out + len, len < n ? n - len : 0, "%s%s", len ? " / " : "", tr(K[i].name));
 	if (!len)
 		snprintf(out, n, "-");
 	return out;
@@ -205,7 +206,7 @@ int controls_help(char lines[][40], int max)
 
 const char* controls_menu_label(void)
 {
-	snprintf(C.label, sizeof C.label, "Buttons     %s 3DS layout", L() ? "New" : "Old");
+	snprintf(C.label, sizeof C.label, "%s     %s", tr("Buttons"), tr(L() ? "New 3DS layout" : "Old 3DS layout"));
 	return C.label;
 }
 

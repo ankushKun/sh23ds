@@ -28,6 +28,19 @@ void movie_draw(void);
 void movie_stop(void);
 bool movie_active(void);
 
+// What the game adds to a movie (main.c sets them once). begin: a movie starts (name as movie_play got
+// it); true when the game's music goes on under it, which is the PC's behaviour for every movie but
+// gero.sfd inside the game. tick: once per frame while it does (stage music, SeBgmManager 0x516080).
+// overlay: after the picture is drawn, on the top screen, with the number of the frame shown (the
+// subtitles). end: the movie is over.
+typedef struct {
+	bool (*begin)(const char* name);
+	void (*tick)(float dt);
+	void (*overlay)(const char* name, u32 frame);
+	void (*end)(const char* name);
+} MovieHooks;
+void movie_set_hooks(const MovieHooks* hooks);
+
 // Plays a movie to the end (or until skipped) with its own frame loop, then returns. Prints timing on
 // the bottom screen. False if it could not start or the app is closing (aptMainLoop returned false).
 bool movie_play(const char* name);
