@@ -49,11 +49,8 @@ static int s_stage;
 static char s_name[24];
 static int s_glb_crd;
 static MsgFile s_msg, s_common, s_itemtext, s_memotext, s_resulttext, s_mcardtext, s_optiontext, s_pausetext;
-// Another stage's messages, for text the title shows without a stage loaded (the Movie Menu's subtitles)
-static MsgFile s_guest;
-static int s_guest_stage;
 static MsgFile* const MSG_FILES[] = { &s_msg, &s_common, &s_itemtext, &s_memotext, &s_resulttext, &s_mcardtext,
-	&s_optiontext, &s_pausetext, &s_guest };
+	&s_optiontext, &s_pausetext };
 static u32 s_flags[EV_MAX_FLAGS / 32];
 static u8 s_items_held[256];        // count per item number (ammo and health items stack)
 static int s_last_fired = -1;       // rising edge for non-button triggers
@@ -210,7 +207,7 @@ static void take_item(int item)
 		s_items_held[0] = 0;
 		return;
 	}
-	if (item > 0 && item < 256) s_items_held[item] = 0;
+	if (item > 0 && item < RADIO_SLOT) s_items_held[item] = 0;
 }
 
 void ev_take_item(int item) { take_item(item); }
@@ -271,24 +268,6 @@ void ev_set_glb_crd(int glb) { s_glb_crd = glb; }
 const char* ev_stage_name(void) { return s_name; }
 int ev_count(void) { return (int)s_nev; }
 const char* ev_stage_message(int n) { return n >= 0 ? msg_get(&s_msg, (u32)n) : NULL; }
-// Message n of another stage's file (the language in effect). The text stays valid until the next call
-// for a different stage or a language change; the current stage's own file is used when it is that one.
-static bool load_named(MsgFile* m, const char* name);
-const char* ev_stage_message_of(int stage, int n)
-{
-	if (n < 0 || stage <= 0)
-		return NULL;
-	if (stage == s_stage && s_msg.data)
-		return msg_get(&s_msg, (u32)n);
-	if (s_guest_stage != stage || !s_guest.data) {
-		char name[16];
-		snprintf(name, sizeof name, "s%02d.msg", stage);
-		s_guest_stage = stage;
-		if (!load_named(&s_guest, name))
-			return NULL;
-	}
-	return msg_get(&s_guest, (u32)n);
-}
 const char* ev_system_message(int n) { return n >= 0 ? msg_get(&s_common, (u32)n) : NULL; }
 // Inserted values (PC MesSetInsert 0x47fd70): the converter keeps the PC's ff e0..ff e3 codes as
 // bytes 1..4 and the question code ff f6 as byte 5 (tools/sh2conv/sh2mes.py); a message is expanded
@@ -439,7 +418,6 @@ int ev_set_language(int lang)
 		}
 		memset(m, 0, sizeof *m);
 	}
-	s_guest_stage = 0;
 	if (stage) {
 		char name[16];
 		snprintf(name, sizeof name, "s%02d.msg", s_stage);

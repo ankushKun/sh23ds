@@ -1,17 +1,16 @@
 #pragma once
 #include <3ds.h>
 
-// Subtitles of the PC game's movies. SubtitlesExec-style code in the movie loop (0x43de41) shows the
-// message base + i of the stage's message file while the movie's frame number lies between the two
-// frames of entry i of a table (a start below the frame and an end not below it), at the movie's own
-// 30 frames a second, when the Subtitles option is on (0x1dbec07). The tables are the PC's, set up by
-// each story program with 0x4a2b30 (movie name, table, first message); the PC's Movie Menu has none, this
-// port shows them there too, reading the stage's file for it.
+// Subtitles of the PC game's movies. The movie loop's subtitle step (0x43de10) shows message base + i
+// of the loaded stage's message file while the movie's frame number lies between the two frames of
+// entry i of a table (a start below the frame and an end not below it), at the movie's own 30 frames a
+// second, when the Subtitles option is on (0x1dbec07). The tables are the PC's, handed over by each
+// story program through 0x4a2b30 (movie name, table, first message) and 0x43dde0; the Movie Menu
+// (0x43e900) clears them, so a movie shown from the title has none.
 
 typedef struct {
 	const char* movie;       // the name movie_play gets
-	int stage;               // the stage whose message file the texts are in
-	int base;                // message number of entry 0
+	int base;                // message number of entry 0 in the stage's file
 	int n;
 	const u16 (*frames)[2];  // start, end per entry
 } MovieSubs;

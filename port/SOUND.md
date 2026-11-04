@@ -198,16 +198,20 @@ James' radio (item 19) hisses when something dangerous is near. `radio.c` is the
 (0x48cbc0, called every frame from the game loop): four looping buffers (sddata ids 5360..5363, started
 by 0x5182d0 and driven through 0x514400: track, volume, pan), eased towards their targets and ducked
 behind the map and item screen (x0.5) and the memos (x0.25). `sfx.c` plays them as pseudo-ids
-`RADIO_ID0`.. (90000..), `sfx_radio_start/set/running/stop`.
+`RADIO_ID0`.. (90000..) through `sfx_radio_set` and `sfx_radio_stop`. The PC keeps its four buffers
+playing at volume 0 when they are quiet; here a track's loop starts when it gets a level and stops at
+silence, so a quiet radio holds none of the 16 voices (3DS-only, nothing to hear changes).
 
 - Modes (the PC's DAT_01f7d584, `radio_set_mode`): 0 the enemies (needs the radio item; the static
-  rises with the nearest enemy of the table at 0x88cce0 by `sfx_distance_level`), 1 a fixed point's
-  static by distance (the first Lying Figure's street in stage 5 until flag 43, 0x59e295), 2 steady
-  static at 0.4 (the first Lying Figure's scene, 0x59db80 .. 0x59dc8c, `prog_town.c`), 3 steady full
-  static even with the radio off (not ported, see `STATUS.md` 3).
+  rises with the enemies near James, by kind from the table at 0x88cce0), 1 a fixed point's static by
+  `sfx_distance_level` (the first Lying Figure's street, set by stage 5's load function 0x59e1e0 while
+  flag 43 is clear), 2 steady static at 0.4 (the first Lying Figure's scene, from
+  EvProgFirstMonsterStart 0x59da20 to EvProgFirstMonsterCorpse 0x59dbd0, `prog_town.c`), 3 steady
+  full static even with the radio off (not hooked, see `STATUS.md` 3).
 - The switch and the volume (0..15, default on and 10 for a new game as 0x49e980 does) are the PC's
-  0x1f7d407 / 0x1f7d408. They live in the saved state (events.c `ev_radio_state`, byte 255 of the
-  flag block's spare area), so a save keeps them.
+  0x1f7d407 / 0x1f7d408, applied in modes 0 and 3 only, as the PC. They live in the saved state
+  (events.c `ev_radio_state`, slot 255 of the saved item counts, which no item uses), so a save keeps
+  them.
 - Item screen (`main.c`, 0x471d09 / 0x471e96): with the radio chosen, A switches it on and off
   (SE 10002) and Left / Right set the volume (SE 10009 at (volume + 4) x 0.05). The touch screen's
   buttons On/Off, Vol - and Vol + do the same; the top screen shows "ON / OFF  Volume n / 15".

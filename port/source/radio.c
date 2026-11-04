@@ -6,7 +6,7 @@
 #include <string.h>
 
 // RadioNoise (0x48cbc0) and what it calls, as the PC runs it. Global addresses are the PC's.
-//   0x1f7d580 s_active    the static is running (the four loops are started)
+//   0x1f7d580 s_active    the static is running
 //   0x1f7d584 s_mode      RADIO_ENEMIES .. RADIO_FORCED (set by stage programs)
 //   0x1f7d588 s_lvl[4]    each track's level now, eased toward its target
 //   0x1f7d5a8 s_pan[4]    each track's pan now (-1 .. 1), eased
@@ -14,20 +14,21 @@
 //   0x1f7d5cc s_point     mode 1's target
 // The tracks are the PC's four DirectSound buffers; a track's volume is the byte 0x514400 hands to
 // 0x518320 (twice it, 0..255, a DirectSound level of 20 log10(v / 255) dB), its pan the byte
-// 64 - pan * 32 (0..127, 64 centre) that 0x517a00 turns into a source position.
+// 64 - pan * 32 (0..127, 64 centre) that 0x517a00 turns into a source position. The PC keeps all
+// four buffers playing; here a track's loop only runs while it is audible (sfx_radio_set), so a
+// quiet radio leaves the sound pool's voices to the game (3DS-only, nothing to hear changes).
 
 static bool s_active;
 static int s_mode;
 static float s_lvl[4], s_pan[4], s_duck;
 static float s_point[3];
-static float s_retry;               // seconds before the loops are asked for again after a failed start
 
 // ---------------------------------------------------------------- the radio's state (saved)
 
 // 3DS-only: the PC keeps the switch and the volume in its save block (0x1f7d407 / 0x1f7d408); here
 // they ride in the last slot of the saved item counts (events.c), which no item uses: bit 7 says
 // they were set, bit 4 is the switch, bits 0..3 the volume. 0 (a new game, an old save) is the
-// PC's start: on, volume 10 (0x49e9f0).
+// PC's start: on, volume 10 (0x49e980, a new game's FlagInit part).
 static int state_get(void) { return ev_radio_state(); }
 
 bool radio_is_on(void)
@@ -103,7 +104,7 @@ static float radio_factor(const Enemy* e, int type)
 	if (!e->used)
 		return 0.0f;
 	if (type == 4)
-		return e->type == 0 && e->ctrl == 1 ? 1.0f : 0.0f;       // Pyramid Head, only the plain one
+		return e->type == 0 ? 1.0f : 0.0f;                       // Pyramid Head, only the plain one (+4 == 0)
 	if (type == 5 || type == 7 || type == 9 || type == 11)
 		return 0.0f;                                             // the spear one, Flesh Lip, Eddie, Mary
 	if (type == 3 && e->type != 6)
@@ -255,26 +256,18 @@ void radio_update(const RadioIn* in, float dt)
 	}
 	if (dt > 0.1f)
 		dt = 0.1f;
-	if (s_retry > 0.0f)
-		s_retry -= dt;
-	if (!s_active || !sfx_radio_running()) {
-		if (!s_active) {
-			memset(s_lvl, 0, sizeof s_lvl);
-			memset(s_pan, 0, sizeof s_pan);
-			s_duck = 0.0f;
-			s_active = true;
-		}
-		if (s_retry <= 0.0f) {
-			sfx_radio_start();             // also after sfx_stop_all (a movie, a menu sound reset)
-			if (!sfx_radio_running())
-				s_retry = 2.0f;
-		}
+	if (!s_active) {
+		// the PC's start: the levels and the ducking from 0, the pans as they were
+		memset(s_lvl, 0, sizeof s_lvl);
+		s_duck = 0.0f;
+		s_active = true;
 	}
 
 	switch (s_mode) {
 	case RADIO_POINT: {
-		// a fixed spot: louder the nearer James is to it, panned toward it (0x48cc81)
-		float near = floorf(0.8f * sfx_distance_level(s_point) * 255.0f) / 255.0f;
+		// a fixed spot: louder the nearer James is to it, panned toward it (0x48cc81). 0x515230 returns
+		// 255 - level * 255 truncated, and the PC takes 255 minus that over 255: the level rounded up.
+		float near = ceilf(0.8f * sfx_distance_level(s_point) * 255.0f) / 255.0f;
 		int ang = sfx_source_angle(s_point);
 		if (ang > 90)
 			ang = 180 - ang;

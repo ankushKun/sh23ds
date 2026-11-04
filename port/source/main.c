@@ -1195,11 +1195,6 @@ static void inventory_draw_top(void)
 		u32 rc = radio_is_on() ? white : 0x909090ff;
 		font_text(FONT_BIG, 257.6f, 344.1f, line, FONT_CENTER, 0x000000c0, 0x000000c0);
 		font_text(FONT_BIG, 256, 342, line, FONT_CENTER, rc, rc);
-		if (s_inv_examined != it) {
-			const char* hint = tr("A: on / off   Left, Right: volume");
-			font_text(FONT_SMALL, 257.0f, 412.1f, hint, FONT_CENTER, 0x000000c0, 0x000000c0);
-			font_text(FONT_SMALL, 256, 410, hint, FONT_CENTER, 0xc8c8c8ff, 0xc8c8c8ff);
-		}
 	}
 	if (s_inv_examined == it) {
 		char text[400];
@@ -4431,22 +4426,23 @@ static bool title_update(u32 down, float dt)
 // ---------------------------------------------------------------- the radio (radio.c)
 
 // Once a frame in the game, with the real frame time. Stage 5's load function (0x59e1e0, in the stage's
-// table at 0x8e97cc) puts the radio in mode 1 on a point of the street (47716.9, -268.4, 49627.9) while
-// flag 43 is clear, until the first Lying Figure's scene takes the mode over (prog_town.c).
+// table at 0x8e97cc) puts the radio in mode 1 on a point of the street (47716.9, -268.4, 49627.9) each
+// time the stage loads with flag 43 clear, until the first Lying Figure's scene takes the mode over
+// (prog_town.c). The debug cameras (CAM_ORBIT, CAM_FLY) silence it.
 static void radio_frame(float dt)
 {
 	int stage = ev_stage();
 	if (stage != s_radio_stage) {
 		s_radio_stage = stage;
 		static const float street[3] = { 47716.9f, -268.4f, 49627.9f };
-		if (stage == 5 && !ev_flag(43) && radio_mode() == RADIO_ENEMIES) {
+		if (stage == 5 && !ev_flag(43)) {
 			radio_set_mode(RADIO_POINT);
 			radio_set_point(street);
 		}
 	}
 	RadioIn in = {
 		.playing = true,
-		.silent = optmenu_active() || savescreen_active() || s_warp_pending,
+		.silent = optmenu_active() || savescreen_active() || s_warp_pending || s_cam.mode != CAM_PLAYER,
 		.duck = map_is_open() || s_inv_open ? 1 : s_memo_open ? 2 : 0,
 		.has_radio = ev_have_item(ITEM_RADIO),
 		.x = s_px, .y = s_py, .z = s_pz,
@@ -4663,20 +4659,21 @@ static void draw_message_top(const char* page)
 // The game's part of a movie (movie.h hooks). The PC's movie loop (0x43ded0) runs SeBgmManager (0x516080)
 // every frame except for gero.sfd, so inside the game the stage's music goes on under the picture and the
 // movie's own sound; and it shows the subtitles of the stage's message file between the frames of a table
-// (movsubs.h) when the Subtitles option is on. The title's Movie Menu has no music (the title has none
-// playing) and gets the subtitles from the stage's file as well, which the PC's menu does not do.
+// (movsubs.h) when the Subtitles option is on (0x43de10). The title's Movie Menu has neither: no music
+// plays there, and 0x43e900 clears the table before its movie.
 static const MovieSubs* s_mv_subs;
 static int s_mv_sub;                 // the table entry shown now, -1 none
 static char s_mv_text[256];
 
 static bool movie_hook_begin(const char* name)
 {
+	bool game = s_state == ST_GAME;
 	radio_stop();                    // the PC stops the radio on its movie screen
-	s_mv_subs = movsubs_find(name);
+	s_mv_subs = game ? movsubs_find(name) : NULL;
 	s_mv_sub = -1;
 	s_mv_text[0] = 0;
 	touchui_movie_text(NULL);
-	return s_state == ST_GAME && strcmp(name, "gero") != 0;
+	return game && strcmp(name, "gero") != 0;
 }
 
 static void movie_hook_tick(float dt)
@@ -4698,8 +4695,7 @@ static void movie_hook_overlay(const char* name, u32 frame)
 		s_mv_sub = i;
 		s_mv_text[0] = 0;
 		if (i >= 0) {
-			int n = s_mv_subs->base + i;
-			const char* m = ev_stage() == s_mv_subs->stage ? ev_stage_message(n) : ev_stage_message_of(s_mv_subs->stage, n);
+			const char* m = ev_stage_message(s_mv_subs->base + i);     // the loaded stage's file, as the PC
 			size_t k = 0;
 			for (; m && m[k] && m[k] != '\f' && k < sizeof s_mv_text - 1; k++)
 				s_mv_text[k] = m[k];
@@ -4709,7 +4705,7 @@ static void movie_hook_overlay(const char* name, u32 frame)
 	bool top = s_msg_top && font_ready();
 	touchui_movie_text(top ? NULL : s_mv_text);        // Messages on the bottom: under the Skip button's screen
 	if (top && s_mv_text[0]) {
-		s_ui_used = 0;
+		s_ui_used = 0;                   // each movie frame starts the 2D vertices over (ui_draw_font)
 		draw_message_top(s_mv_text);
 		font_flush();
 	}
@@ -5443,9 +5439,11 @@ int main(void)
 		}
 		apply_warp();
 		s_cam.mode = s_spawn_mode;
+		// in the game before the scene starts, as a stage program's: a sequence plays its movies from
+		// demo_start, and the movie hooks give music and subtitles only in the game
+		s_state = s_spawn_mode == CAM_PLAYER ? ST_GAME : ST_VIEWER;
 		if (s_debug_demo[0] && s_spawn_mode == CAM_PLAYER && demo_start_key(PACK_DIR, s_debug_demo))
 			demo_seek(s_debug_demo_at);
-		s_state = s_spawn_mode == CAM_PLAYER ? ST_GAME : ST_VIEWER;
 	} else {
 		enter_title();
 	}
@@ -5538,7 +5536,7 @@ int main(void)
 			gdown |= KEY_L;                  // the game key of the next weapon (controls.h)
 		s_gdown = gdown;
 		s_anim_dt = dt;
-		const float real_dt = dt;            // the radio runs on real time, behind every menu (radio.h)
+		const float real_dt = dt;            // the radio and the music run on real time, behind every menu
 		touchui_debug(s_state == ST_VIEWER || s_debug_hud);
 		if (s_state != ST_TITLE) {
 			touchui_menu_close(TOUI_TITLE);
@@ -5820,7 +5818,7 @@ int main(void)
 		}
 
 		perf_part("game", t_part);
-		if (s_state == ST_GAME && s_cam.mode == CAM_PLAYER)
+		if (s_state == ST_GAME)
 			radio_frame(real_dt);
 		t_part = svcGetSystemTick();
 		// the room's effects (roomfx.c) run in scenes too: the burning stairs' flames come with fire_agl
@@ -5862,7 +5860,7 @@ int main(void)
 			s_fogf.scr_z = 224.0f / tanf(fovy * 0.5f);
 			sfx_listener(feet, eye);
 			u64 tb = svcGetSystemTick();
-			bgm_update(ev_stage(), ev_glb_crd(), feet, dt);
+			bgm_update(ev_stage(), ev_glb_crd(), feet, real_dt);       // real time: see below
 			perf_part("bgm", tb);
 			float near, far;
 			env_clip(&near, &far);
@@ -5943,7 +5941,10 @@ int main(void)
 			s_fogf.scr_z = tp ? 224.0f / tanf(fovy * 0.5f) : gamecam_scr_z();
 			sfx_listener(gp.pos, view_eye());
 			tb = svcGetSystemTick();
-			bgm_update(gp.stage, gp.glb_crd, gp.pos, dt);
+			// real time: the PC's frame loop (0x402d00) runs SeBgmManager (0x516080, through 0x516dd0)
+			// every frame whatever screen is up, so fades and ducking go on behind the pause menu and
+			// the item screen, which freeze dt
+			bgm_update(gp.stage, gp.glb_crd, gp.pos, real_dt);
 			perf_part("bgm", tb);
 			float near, far;
 			env_clip(&near, &far);

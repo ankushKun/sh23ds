@@ -812,25 +812,12 @@ static void draw_menu(int id)
 		// "Label    value" rows: the value goes to the right edge, a "< value >" one with the
 		// PC's arrows either side while it is chosen
 		const char* gap = strstr(m->rows[i], "  ");
-		char lab[72];
+		char lab[72], val[72] = "";
 		snprintf(lab, sizeof lab, "%.*s", gap ? (int)(gap - m->rows[i]) : 71, m->rows[i]);
-		// a label too long for the row (some languages' scenario names) in the small font
-		const TouiRow* kind = &m->kinds[i];
-		float room = (gap ? right - 18 - font_width_px(FONT_BIG, tr(gap + strspn(gap, " < "))) : right - 4) - 22;
-		if (kind->kind == TOUI_ROW_BAR)
-			room = right - 26 - (kind->max ? kind->max : 15) * 6.0f - 22;
-		int lf = font_width_px(FONT_BIG, tr(lab)) > room ? FONT_SMALL : FONT_BIG;
-		float ly = lf == FONT_BIG ? ty : y + (rh - font_line_px(FONT_SMALL)) * 0.5f;
-		if (on && !off)
-			text_lit(lf, 22, ly, lab, FONT_LEFT, s_white);
-		else
-			text(lf, 22, ly, lab, FONT_LEFT, ct, cb);
 		bool lr = false;
 		if (gap) {
-			while (*gap == ' ')
-				gap++;
-			char val[72];
-			snprintf(val, sizeof val, "%s", gap);
+			// the value without the spaces before it and a choice's "< >"
+			snprintf(val, sizeof val, "%s", gap + strspn(gap, " "));
 			size_t k = strlen(val);
 			if (val[0] == '<' && k > 2 && val[k - 1] == '>') {
 				lr = true;
@@ -842,6 +829,22 @@ static void draw_menu(int id)
 					*--e = 0;
 				memmove(val, v, strlen(v) + 1);
 			}
+		}
+		// a label too long for the row (some languages' scenario names) in the small font; the value
+		// takes the room its English text took, plus what its translation (text() draws it) adds
+		const TouiRow* kind = &m->kinds[i];
+		float vw = gap ? font_width_px(FONT_BIG, gap) + font_width_px(FONT_BIG, tr(val)) - font_width_px(FONT_BIG, val)
+		               : 0.0f;
+		float room = (gap ? right - 18 - vw : right - 4) - 22;
+		if (kind->kind == TOUI_ROW_BAR)
+			room = right - 26 - (kind->max ? kind->max : 15) * 6.0f - 22;
+		int lf = font_width_px(FONT_BIG, tr(lab)) > room ? FONT_SMALL : FONT_BIG;
+		float ly = lf == FONT_BIG ? ty : y + (rh - font_line_px(FONT_SMALL)) * 0.5f;
+		if (on && !off)
+			text_lit(lf, 22, ly, lab, FONT_LEFT, s_white);
+		else
+			text(lf, 22, ly, lab, FONT_LEFT, ct, cb);
+		if (gap) {
 			float vx = right - (lr ? 18 : 10);
 			if (on && !off)
 				text_lit(FONT_BIG, vx, ty, val, FONT_RIGHT, s_white);
@@ -899,15 +902,17 @@ static void draw_choices(void)
 	footer(s_ch.blabel, s_ch.bkey, s_ch.nb, s_ch.dim);
 }
 
-static void draw_box(void)
+// A message's lines from the left edge, in the big font from y_big, or the small one from y_small
+// when it has more than max_big lines.
+static void text_lines(const char* text, int max_big, float y_big, float y_small)
 {
 	int lines = 1;
-	for (const char* c = s_box; *c; c++)
+	for (const char* c = text; *c; c++)
 		lines += *c == '\n';
-	int f = lines > 9 ? FONT_SMALL : FONT_BIG;
-	float y = lines > 9 ? 10 : 18;
+	int f = lines > max_big ? FONT_SMALL : FONT_BIG;
+	float y = lines > max_big ? y_small : y_big;
 	char ln[96];
-	for (const char* s = s_box; *s; ) {
+	for (const char* s = text; *s; ) {
 		const char* e = strchr(s, '\n');
 		int n = e ? (int)(e - s) : (int)strlen(s);
 		snprintf(ln, sizeof ln, "%.*s", n < 95 ? n : 95, s);
@@ -915,6 +920,11 @@ static void draw_box(void)
 		y += font_line_px(f);
 		s = e ? e + 1 : s + n;
 	}
+}
+
+static void draw_box(void)
+{
+	text_lines(s_box, 9, 18, 10);
 	if (s_box_nb < 0)
 		return;                          // a subtitle over the game: no prompt, the taps aren't ours
 	hit(0, 0, 320, FOOT_Y, HIT_KEY, 0, 0, s_box_nb ? 0 : KEY_A);
@@ -1197,23 +1207,7 @@ static void draw_movie(void)
 {
 	static char skip[1][16] = { "Skip" };
 	static const u32 keys[1] = { KEY_START };
-	// a subtitle with Messages on the bottom screen (main.c), above the Skip button
-	int lines = 1;
-	for (const char* c = s_movie_text; *c; c++)
-		lines += *c == '\n';
-	if (s_movie_text[0]) {
-		int f = lines > 6 ? FONT_SMALL : FONT_BIG;
-		float y = 60.0f;
-		for (const char* s = s_movie_text; *s; ) {
-			const char* e = strchr(s, '\n');
-			int n = e ? (int)(e - s) : (int)strlen(s);
-			char ln[96];
-			snprintf(ln, sizeof ln, "%.*s", n < 95 ? n : 95, s);
-			text_lit(f, 20, y, ln, FONT_LEFT, s_white);
-			y += font_line_px(f);
-			s = e ? e + 1 : s + n;
-		}
-	}
+	text_lines(s_movie_text, 6, 60, 60);     // a subtitle with Messages on the bottom screen (main.c)
 	footer(skip, keys, 1, 0);
 }
 

@@ -93,6 +93,9 @@ Italian, Spanish) and returns it unchanged when there is no entry, so it is safe
   reads them to build the footer and the D-pad caption, then shows the verbs translated (lower case
   for the pad's, capitalised for A's). Keep the keys' text English in the programs.
 - Button labels are cut to the slot (`footer`); keep them short, about 9 letters.
+- Changing an English text means changing its key in `i18n.c` too. `tools/i18n_check.py` (run by CI)
+  fails on a key no source string holds any more, on a translation whose specifiers, `{TOKENS}` or
+  line breaks differ from the English, and on bytes the font has no glyph for.
 - Not translated: the missing-game-data screen (`nodata.c`, it has its own bitmap font and is
   shown before a language exists), the debug text on the console screen, and proper names.
 

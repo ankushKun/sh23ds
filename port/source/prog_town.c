@@ -298,7 +298,7 @@ static int s05_sanders_back(Prog* p)
 static int s05_first_monster_start(Prog* p)
 {
 	PROG_BEGIN(p)
-		radio_set_mode(RADIO_STEADY);   // 0x59db80: DAT_01f7d584 = 2, steady static at 0.4 through the scene
+		radio_set_mode(RADIO_STEADY);   // EvProgFirstMonsterStart's DAT_01f7d584 = 2: steady static at 0.4
 	PROG_STEP(p, 0x16, p_demo(p, DEMO_FIRST_MONSTER))
 		p_item_get_now(0xd);
 		p_item_get_now(0x13);
@@ -312,7 +312,7 @@ static int s05_first_monster_start(Prog* p)
 static int s05_first_monster_corpse(Prog* p)
 {
 	PROG_BEGIN(p)
-		radio_set_mode(RADIO_ENEMIES);  // 0x59dc8c: DAT_01f7d584 = 0, the enemies' static from here on
+		radio_set_mode(RADIO_ENEMIES);  // EvProgFirstMonsterCorpse's DAT_01f7d584 = 0: the enemies' static
 		p_clear(518);
 		p_set(41);                      // FLAGW_32 |= 0x200
 	PROG_STEP(p, 0x17, p_demo(p, DEMO_FIRST_MONSTER_CORPSE))

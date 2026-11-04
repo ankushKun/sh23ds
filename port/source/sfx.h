@@ -35,11 +35,9 @@ void sfx_stop(int id);
 void sfx_stop_all(void);
 bool sfx_playing(int id);
 
-// The radio's four static loops (radio.c, RadioNoise 0x48cbc0). Start runs them silent; set gives a
-// track (0..3) the PC's 0..1 level (0x518140: the volume byte * 2 / 255) and pan (-1 left .. 1 right).
-void sfx_radio_start(void);
-void sfx_radio_set(int track, float gain, float pan);
-bool sfx_radio_running(void);              // all four loops are playing
+// The radio's four static loops (radio.c, RadioNoise 0x48cbc0). Set gives a track (0..3) the PC's
+// 0..1 level (0x518140: the volume byte * 2 / 255) and pan (-1 left .. 1 right).
+void sfx_radio_set(int track, float gain, float pan);    // 0 stops the track's loop, a level starts it
 void sfx_radio_stop(void);
 // 0x515ab0: where a source is as heard from the camera, in degrees (truncated), positive on the right.
 int sfx_source_angle(const float pos[3]);

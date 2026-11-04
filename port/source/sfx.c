@@ -365,9 +365,8 @@ static float distance_factor(const float a[3], const float b[3])
 }
 
 // 0x515ab0: the source direction from the camera in view space gives an angle of
-// 80 * (1 - forward) degrees toward its side (0 ahead, 80 abeam, 160 behind); DirectSound pans
-// by the sine of it.
-static float position_pan(const float pos[3])
+// 80 * (1 - forward) degrees toward its side (0 ahead, 80 abeam, 160 behind), negative on the left.
+static float source_angle(const float pos[3])
 {
 	float fx = s_player[0] - s_eye[0], fz = s_player[2] - s_eye[2];
 	float fl = sqrtf(fx * fx + fz * fz);
@@ -381,9 +380,11 @@ static float position_pan(const float pos[3])
 	if (l < 1.0f)
 		return 0.0f;
 	float deg = 80.0f * (1.0f - ahead / l);
-	float p = sinf(deg * (float)M_PI / 180.0f);
-	return side < 0.0f ? -p : p;
+	return side < 0.0f ? -deg : deg;
 }
+
+// DirectSound pans by the sine of that angle.
+static float position_pan(const float pos[3]) { return sinf(source_angle(pos) * (float)M_PI / 180.0f); }
 
 static float s_gain = 1.0f;       // the options' effects volume (sfx_set_gain)
 
@@ -525,37 +526,30 @@ bool sfx_playing(int id)
 
 // ---------------------------------------------------------------- the radio's static
 
-void sfx_radio_start(void)
-{
-	for (int t = 0; t < RADIO_TRACKS; t++) {
-		if (sfx_playing(RADIO_ID0 + t))
-			continue;
-		Voice* v = start(RADIO_ID0 + t, 0.0f);
-		if (!v)
-			continue;
-		voice_mix(v, 0.0f, 0.0f);          // silent until sfx_radio_set
-		if (!v->waiting)
-			ndspChnWaveBufAdd(FIRST_CH + (v - s_voices), &v->wb);
-	}
-}
-
+// A track's loop starts when it gets a level and stops at silence (sfx.h), so it is back after
+// sfx_stop_all (a movie, a menu's sound reset) and never sits in a voice at volume 0.
 void sfx_radio_set(int track, float gain, float pan)
 {
 	if (track < 0 || track >= RADIO_TRACKS)
 		return;
-	for (int i = 0; i < NVOICES; i++)
-		if (s_voices[i].active && s_voices[i].id == RADIO_ID0 + track) {
-			voice_mix(&s_voices[i], gain < 0.0f ? 0.0f : gain, pan);
+	int id = RADIO_ID0 + track;
+	Voice* v = NULL;
+	for (int i = 0; i < NVOICES && !v; i++)
+		if (s_voices[i].active && s_voices[i].id == id)
+			v = &s_voices[i];
+	if (gain <= 0.0f) {
+		if (v)
+			voice_stop(v);
+		return;
+	}
+	if (!v) {
+		v = start(id, 0.0f);
+		if (!v)
 			return;
-		}
-}
-
-bool sfx_radio_running(void)
-{
-	for (int t = 0; t < RADIO_TRACKS; t++)
-		if (!sfx_playing(RADIO_ID0 + t))
-			return false;
-	return true;
+		if (!v->waiting)
+			ndspChnWaveBufAdd(FIRST_CH + (v - s_voices), &v->wb);
+	}
+	voice_mix(v, gain, pan);
 }
 
 void sfx_radio_stop(void)
@@ -573,24 +567,7 @@ float sfx_distance_level(const float pos[3])
 }
 
 // 0x515ab0: the angle (degrees, truncated) of a source seen from the camera, positive on the right.
-int sfx_source_angle(const float pos[3])
-{
-	if (!s_have_listener)
-		return 0;
-	float fx = s_player[0] - s_eye[0], fz = s_player[2] - s_eye[2];
-	float fl = sqrtf(fx * fx + fz * fz);
-	if (fl < 1.0f)
-		return 0;
-	fx /= fl, fz /= fl;
-	float rx = pos[0] - s_eye[0], rz = pos[2] - s_eye[2];
-	float side = rx * fz - rz * fx;
-	float ahead = rx * fx + rz * fz;
-	float l = sqrtf(side * side + ahead * ahead);
-	if (l < 1.0f)
-		return 0;
-	int deg = (int)(80.0f * (1.0f - ahead / l));
-	return side < 0.0f ? -deg : deg;
-}
+int sfx_source_angle(const float pos[3]) { return s_have_listener ? (int)source_angle(pos) : 0; }
 
 void sfx_listener(const float player[3], const float eye[3])
 {

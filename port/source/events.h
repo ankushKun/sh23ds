@@ -105,7 +105,6 @@ bool ev_pickup_info(int i, int* item, float pos[3], bool* available);
 const char* ev_item_desc(int item);
 int ev_count(void);
 const char* ev_stage_message(int n);     // current stage's message n, NULL if none
-const char* ev_stage_message_of(int stage, int n);   // the same for another stage's file (valid until the next call)
 const char* ev_system_message(int n);    // common_msg n
 const char* ev_memo_message(int n);     // memo list message n (titles, then texts)
 const char* ev_result_message(int n);   // the results screen's labels

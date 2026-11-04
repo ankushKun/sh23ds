@@ -456,11 +456,15 @@ static void box_panel(Prog* p)
 	const u8* last = (const u8*)&p->work[2];
 	int cur = p->work[1];
 	char buf[480];
-	int n = snprintf(buf, sizeof buf, " %s %s   %s %s\n %s %s   %s %s\n\n %s ",
-	                 tr("Purple Bull"), p_flag(193) ? tr("open") : tr("locked"),
-	                 tr("Lapis Eye"), p_flag(195) ? tr("open") : tr("locked"),
-	                 tr("Wheels"), p_flag(197) ? tr("open") : tr("locked"),
-	                 tr("Buttons"), p_flag(198) ? tr("open") : tr("locked"), tr("Wheels"));
+	// two columns of "lock state", their words padded to the longer one so the columns line up
+	const char *bull = tr("Purple Bull"), *eye = tr("Lapis Eye"), *wheels = tr("Wheels"), *buttons = tr("Buttons");
+	const char *open = tr("open"), *locked = tr("locked");
+	int w1 = (int)(strlen(bull) > strlen(wheels) ? strlen(bull) : strlen(wheels));
+	int w2 = (int)(strlen(eye) > strlen(buttons) ? strlen(eye) : strlen(buttons));
+	int ws = (int)(strlen(open) > strlen(locked) ? strlen(open) : strlen(locked));
+	int n = snprintf(buf, sizeof buf, " %-*s %-*s  %-*s %s\n %-*s %-*s  %-*s %s\n\n %s ",
+	                 w1, bull, ws, p_flag(193) ? open : locked, w2, eye, p_flag(195) ? open : locked,
+	                 w1, wheels, ws, p_flag(197) ? open : locked, w2, buttons, p_flag(198) ? open : locked, wheels);
 	for (int i = 0; i < 4; i++)
 		n += snprintf(buf + n, sizeof buf - n, "%c%d%c", cur == i ? '[' : ' ', w[i] + 1, cur == i ? ']' : ' ');
 	n += snprintf(buf + n, sizeof buf - n, "\n %s ", tr("Buttons"));
