@@ -2122,7 +2122,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x0048c950		DEFAULT	0x0048c950-0x0048c9c4		unknown	DEFAULT		game/Event/event.c
 0x0048c9d0	RadioNoise	USER_DEFINED	0x0048c9d0-0x0048cb1a		unknown	DEFAULT		game/Event/event.c
 0x0048cb20	EventItemConditionCheck	USER_DEFINED	0x0048cb20-0x0048cbbd		unknown	DEFAULT		game/Event/event.c
-0x0048cbc0		DEFAULT	0x0048cbc0-0x0048cdb9,0x0048cdc0-0x0048d28c,0x0048d290-0x0048d2c4,0x0048d2d0-0x0048d6fc,0x0048d700-0x0048d7ad		unknown	DEFAULT		game/Event/event.c
+0x0048cbc0	RadioNoise	USER_DEFINED	0x0048cbc0-0x0048cdb9,0x0048cdc0-0x0048d28c,0x0048d290-0x0048d2c4,0x0048d2d0-0x0048d6fc,0x0048d700-0x0048d7ad		unknown	DEFAULT		game/Event/event.c
 0x0048d7e0		DEFAULT	0x0048d7e0-0x0048d874		unknown	DEFAULT		game/Event/event.c
 0x0048d880		DEFAULT	0x0048d880-0x0048d913		unknown	DEFAULT		game/Event/event.c
 0x0048d980		DEFAULT	0x0048d980-0x0048df2c		unknown	DEFAULT		game/Event/event.c
@@ -3921,25 +3921,25 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x0050f8d0		DEFAULT	0x0050f8d0-0x0050f97c,0x0050f980-0x0050f989,0x0050f990-0x0050fa18		unknown	DEFAULT		
 0x0050fa20		DEFAULT	0x0050fa20-0x0050fa92		unknown	DEFAULT		
 0x0050fb50		DEFAULT	0x0050fb50-0x0050fbf2		unknown	DEFAULT		
-0x0050fc00		DEFAULT	0x0050fc00-0x0050fd29		unknown	DEFAULT		
-0x0050fd30		DEFAULT	0x0050fd30-0x0050fe59		unknown	DEFAULT		
-0x0050fe60		DEFAULT	0x0050fe60-0x0050ff8a		unknown	DEFAULT		
+0x0050fc00	shLensFlareSpriteAddPacketGif	USER_DEFINED	0x0050fc00-0x0050fd29		unknown	DEFAULT		
+0x0050fd30	shLensFlarePolyFT4AddPacketGif	USER_DEFINED	0x0050fd30-0x0050fe59		unknown	DEFAULT		
+0x0050fe60	shLensFlareDrawCommon	USER_DEFINED	0x0050fe60-0x0050ff8a		unknown	DEFAULT		
 0x0050ff90		DEFAULT	0x0050ff90-0x00510039		unknown	DEFAULT		
-0x00510040		DEFAULT	0x00510040-0x00510639,0x00510640-0x0051094c,0x00510950-0x00510c66,0x00510c70-0x0051115d		unknown	DEFAULT		
-0x00511170		DEFAULT	0x00511170-0x00511719		unknown	DEFAULT		
+0x00510040	kari_shLensFlareEffect_Draw	USER_DEFINED	0x00510040-0x00510639,0x00510640-0x0051094c,0x00510950-0x00510c66,0x00510c70-0x0051115d		unknown	DEFAULT		
+0x00511170	shLensFlareLightCenterIsVisible	USER_DEFINED	0x00511170-0x00511719		unknown	DEFAULT		
 0x00511720		DEFAULT	0x00511720-0x00511790		unknown	DEFAULT		
-0x005117a0		DEFAULT	0x005117a0-0x00511819,0x00511820-0x00511845		unknown	DEFAULT		
-0x00511850		DEFAULT	0x00511850-0x005118d0		unknown	DEFAULT		
-0x005118e0		DEFAULT	0x005118e0-0x005119d3		unknown	DEFAULT		
-0x005119e0		DEFAULT	0x005119e0-0x00511aad		unknown	DEFAULT		
+0x005117a0	shLensFlareOresenHokan	USER_DEFINED	0x005117a0-0x00511819,0x00511820-0x00511845		unknown	DEFAULT		
+0x00511850	shLensFlareMakeEffectTargetRate	USER_DEFINED	0x00511850-0x005118d0		unknown	DEFAULT		
+0x005118e0	shLensFlareMakeScreenPos	USER_DEFINED	0x005118e0-0x005119d3		unknown	DEFAULT		
+0x005119e0	shLensFlareSetLightSeed	USER_DEFINED	0x005119e0-0x00511aad		unknown	DEFAULT		
 0x00511ab0		DEFAULT	0x00511ab0-0x00511b36		unknown	DEFAULT		
 0x00511b40		DEFAULT	0x00511b40-0x00511b72		unknown	DEFAULT		
 0x00511b80		DEFAULT	0x00511b80-0x00511b9c		unknown	DEFAULT		
 0x00511ba0		DEFAULT	0x00511ba0-0x00511bae		unknown	DEFAULT		
-0x00511bb0		DEFAULT	0x00511bb0-0x00511c40		unknown	DEFAULT		
+0x00511bb0	kari_shLensFlareDraw	USER_DEFINED	0x00511bb0-0x00511c40		unknown	DEFAULT		
 0x00511c50		DEFAULT	0x00511c50-0x00511cac		unknown	DEFAULT		
-0x00511d00		DEFAULT	0x00511d00-0x00511daa		unknown	DEFAULT		
-0x00511db0		DEFAULT	0x00511db0-0x00511e7f		unknown	DEFAULT		
+0x00511d00	shLensFlareMakeScreenInfo	USER_DEFINED	0x00511d00-0x00511daa		unknown	DEFAULT		
+0x00511db0	shLensFlareExec	USER_DEFINED	0x00511db0-0x00511e7f		unknown	DEFAULT		
 0x00511ea0		DEFAULT	0x00511ea0-0x00511eb0		unknown	DEFAULT		
 0x00511ec0		DEFAULT	0x00511ec0-0x00511f1a		unknown	DEFAULT		
 0x00511f20		DEFAULT	0x00511f20-0x00511f97		unknown	DEFAULT		
@@ -3966,7 +3966,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x00512b40		DEFAULT	0x00512b40-0x00512ce5		unknown	DEFAULT		
 0x00512cf0		DEFAULT	0x00512cf0-0x00512d56		unknown	DEFAULT		
 0x00512d60		DEFAULT	0x00512d60-0x00512e31		unknown	DEFAULT		
-0x00512e40		DEFAULT	0x00512e40-0x00512e54		unknown	DEFAULT		
+0x00512e40	loadBgKG2_GetLoadedDataAddrList	USER_DEFINED	0x00512e40-0x00512e54		unknown	DEFAULT		
 0x00512e60		DEFAULT	0x00512e60-0x00512e74		unknown	DEFAULT		
 0x00512eb0		DEFAULT	0x00512eb0-0x00512ede		unknown	DEFAULT		
 0x00512ee0		DEFAULT	0x00512ee0-0x00512ee0		unknown	DEFAULT		
@@ -4030,7 +4030,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x00515ab0		DEFAULT	0x00515ab0-0x00515b5e		unknown	DEFAULT		game/sound/sh_sound.c
 0x00515b60		DEFAULT	0x00515b60-0x00515c18		unknown	DEFAULT		game/sound/sh_sound.c
 0x00515c20	SeBgmChange	USER_DEFINED	0x00515c20-0x00515f8c		unknown	DEFAULT		game/sound/sh_sound.c
-0x00516080		DEFAULT	0x00516080-0x0051636c,0x00516370-0x005165cf		unknown	DEFAULT		game/sound/sh_sound.c
+0x00516080	SeBgmManager	USER_DEFINED	0x00516080-0x0051636c,0x00516370-0x005165cf		unknown	DEFAULT		game/sound/sh_sound.c
 0x00516640		DEFAULT	0x00516640-0x00516753		unknown	DEFAULT		game/sound/sh_sound.c
 0x00516760		DEFAULT	0x00516760-0x005167d2		unknown	DEFAULT		game/sound/sh_sound.c
 0x005167e0		DEFAULT	0x005167e0-0x00516996		unknown	DEFAULT		game/sound/sh_sound.c
@@ -4192,7 +4192,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x00522910		DEFAULT	0x00522910-0x00522938		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522940		DEFAULT	0x00522940-0x00522a2f		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522a30		DEFAULT	0x00522a30-0x00522b43		unknown	DEFAULT		game/Collision/cl_main.c
-0x00522b50		DEFAULT	0x00522b50-0x00522dd5		unknown	DEFAULT		game/Collision/cl_main.c
+0x00522b50	clCheckColumn2WallHit	USER_DEFINED	0x00522b50-0x00522dd5		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522de0	clCheckColumn2ColumnHit	USER_DEFINED	0x00522de0-0x00522e84		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522e90	clBattleCheckExec	USER_DEFINED	0x00522e90-0x00522ed3		unknown	DEFAULT		game/Collision/cl_main.c
 0x00522ee0		DEFAULT	0x00522ee0-0x00522f39		unknown	DEFAULT		game/Collision/cl_main.c
@@ -6161,7 +6161,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x005a4320		DEFAULT	0x005a4320-0x005a48a5		unknown	DEFAULT		
 0x005a4900		DEFAULT	0x005a4900-0x005a4b75		unknown	DEFAULT		
 0x005a4d20		DEFAULT	0x005a4d20-0x005a4eca		unknown	DEFAULT		
-0x005a4ed0		DEFAULT	0x005a4ed0-0x005a4fd6		unknown	DEFAULT		
+0x005a4ed0	sh2shd_add_map	USER_DEFINED	0x005a4ed0-0x005a4fd6		unknown	DEFAULT		
 0x005a513c		DEFAULT	0x005a513c-0x005a5144	0x005a515e	unknown	DEFAULT		import
 0x005a5145		DEFAULT	0x005a5145-0x005a514d	0x005a515e	unknown	DEFAULT		import
 0x005a514e		DEFAULT	0x005a514e-0x005a5156	0x005a515e	unknown	DEFAULT		import
@@ -6174,12 +6174,12 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x005a5430		DEFAULT	0x005a5430-0x005a54cb		unknown	DEFAULT		
 0x005a54d0		DEFAULT	0x005a54d0-0x005a550a		unknown	DEFAULT		
 0x005a5510		DEFAULT	0x005a5510-0x005a555c		unknown	DEFAULT		
-0x005a5560		DEFAULT	0x005a5560-0x005a55ac		unknown	DEFAULT		
-0x005a55e0		DEFAULT	0x005a55e0-0x005a564d		unknown	DEFAULT		
+0x005a5560	sh2shd_add_map_to_shadow_off_work	USER_DEFINED	0x005a5560-0x005a55ac		unknown	DEFAULT		
+0x005a55e0	sh2shd_off_obj	USER_DEFINED	0x005a55e0-0x005a564d		unknown	DEFAULT		
 0x005a5700		DEFAULT	0x005a5700-0x005a5753		unknown	DEFAULT		
 0x005a5760		DEFAULT	0x005a5760-0x005a57eb		unknown	DEFAULT		
 0x005a57f0		DEFAULT	0x005a57f0-0x005a5843		unknown	DEFAULT		
-0x005a5860		DEFAULT	0x005a5860-0x005a5869		unknown	DEFAULT		
+0x005a5860	sh2shd_bg_shadow_off	USER_DEFINED	0x005a5860-0x005a5869		unknown	DEFAULT		
 0x005a5870		DEFAULT	0x005a5870-0x005a5889		unknown	DEFAULT		
 0x005a58b0		DEFAULT	0x005a58b0-0x005a5923		unknown	DEFAULT		
 0x005a5930		DEFAULT	0x005a5930-0x005a5958		unknown	DEFAULT		
@@ -6196,7 +6196,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x005a6860		DEFAULT	0x005a6860-0x005a69d4		unknown	DEFAULT		
 0x005a69e0		DEFAULT	0x005a69e0-0x005a6ac9		unknown	DEFAULT		
 0x005a6ad0		DEFAULT	0x005a6ad0-0x005a6bb9		unknown	DEFAULT		
-0x005a6bc0		DEFAULT	0x005a6bc0-0x005a738c,0x005a7390-0x005a7723		unknown	DEFAULT		
+0x005a6bc0	sh2shd_renew_shadow_man	USER_DEFINED	0x005a6bc0-0x005a738c,0x005a7390-0x005a7723		unknown	DEFAULT		
 0x005a7730		DEFAULT	0x005a7730-0x005a79f0		unknown	DEFAULT		
 0x005a7a00		DEFAULT	0x005a7a00-0x005a7ae9,0x005a7af0-0x005a7c87		unknown	DEFAULT		
 0x005a7c90		DEFAULT	0x005a7c90-0x005a7d79,0x005a7d80-0x005a7f81		unknown	DEFAULT		
@@ -6210,12 +6210,12 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x005a8300		DEFAULT	0x005a8300-0x005a832e		unknown	DEFAULT		
 0x005a8370		DEFAULT	0x005a8370-0x005a8403		unknown	DEFAULT		
 0x005a8500		DEFAULT	0x005a8500-0x005a858b		unknown	DEFAULT		
-0x005a8630		DEFAULT	0x005a8630-0x005a8829		unknown	DEFAULT		
-0x005a8830		DEFAULT	0x005a8830-0x005a8945		unknown	DEFAULT		
+0x005a8630	sh2shd_init_outdoor_man2	USER_DEFINED	0x005a8630-0x005a8829		unknown	DEFAULT		
+0x005a8830	sh2shd_make_reftag_pool_outdoor	USER_DEFINED	0x005a8830-0x005a8945		unknown	DEFAULT		
 0x005a8950		DEFAULT	0x005a8950-0x005a8a48		unknown	DEFAULT		
-0x005a8a50		DEFAULT	0x005a8a50-0x005a8afc,0x005a8b00-0x005a8b17,0x005a8b20-0x005a8c13		unknown	DEFAULT		
+0x005a8a50	sh2shd_add_outdoor_to_kick_packet	USER_DEFINED	0x005a8a50-0x005a8afc,0x005a8b00-0x005a8b17,0x005a8b20-0x005a8c13		unknown	DEFAULT		
 0x005a8c20		DEFAULT	0x005a8c20-0x005a8d16		unknown	DEFAULT		
-0x005a8d80		DEFAULT	0x005a8d80-0x005a8f5d		unknown	DEFAULT		
+0x005a8d80	sh2shd_renew_outdoor_man	USER_DEFINED	0x005a8d80-0x005a8f5d		unknown	DEFAULT		
 0x005a9020		DEFAULT	0x005a9020-0x005a90ab		unknown	DEFAULT		
 0x005a90e0		DEFAULT	0x005a90e0-0x005a91e4		unknown	DEFAULT		
 0x005a91f0		DEFAULT	0x005a91f0-0x005a928c,0x005a9290-0x005a92ed		unknown	DEFAULT		
@@ -6241,7 +6241,7 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x005aa940		DEFAULT	0x005aa940-0x005aaa0c		unknown	DEFAULT		
 0x005aaa30		DEFAULT	0x005aaa30-0x005aab47		unknown	DEFAULT		
 0x005aab50		DEFAULT	0x005aab50-0x005aacef		unknown	DEFAULT		
-0x005aad70		DEFAULT	0x005aad70-0x005aae68		unknown	DEFAULT		
+0x005aad70	stencil_shadow_main	USER_DEFINED	0x005aad70-0x005aae68		unknown	DEFAULT		
 0x005aae70		DEFAULT	0x005aae70-0x005aae74	0x005a7c90	unknown	DEFAULT		import
 0x005aae90		DEFAULT	0x005aae90-0x005aaefb		unknown	DEFAULT		
 0x005aaf00		DEFAULT	0x005aaf00-0x005aaf57		unknown	DEFAULT		
@@ -6252,15 +6252,15 @@ entry	name	name_source	body	thunk	callconv	sig_source	signature	tags
 0x005ab130		DEFAULT	0x005ab130-0x005ab515		unknown	DEFAULT		
 0x005ab750		DEFAULT	0x005ab750-0x005ab800		unknown	DEFAULT		
 0x005ab830		DEFAULT	0x005ab830-0x005ab8cb		unknown	DEFAULT		
-0x005ab8d0		DEFAULT	0x005ab8d0-0x005abbe8		unknown	DEFAULT		
+0x005ab8d0	sh2shd_shadow_off	USER_DEFINED	0x005ab8d0-0x005abbe8		unknown	DEFAULT		
 0x005abcd0		DEFAULT	0x005abcd0-0x005abf13		unknown	DEFAULT		
 0x005abf70		DEFAULT	0x005abf70-0x005abfaf		unknown	DEFAULT		
-0x005abfb0		DEFAULT	0x005abfb0-0x005ac035		unknown	DEFAULT		
+0x005abfb0	check_bg_light_exist	USER_DEFINED	0x005abfb0-0x005ac035		unknown	DEFAULT		
 0x005ac060		DEFAULT	0x005ac060-0x005ac076		unknown	DEFAULT		
-0x005ac0a0		DEFAULT	0x005ac0a0-0x005ac139,0x005ac140-0x005ac35c,0x005ac360-0x005ac499		unknown	DEFAULT		
+0x005ac0a0	sh2shd_get_shadow_env_bg	USER_DEFINED	0x005ac0a0-0x005ac139,0x005ac140-0x005ac35c,0x005ac360-0x005ac499		unknown	DEFAULT		
 0x005ac5d0		DEFAULT	0x005ac5d0-0x005ac6d1		unknown	DEFAULT		
 0x005ac740		DEFAULT	0x005ac740-0x005aca58		unknown	DEFAULT		
-0x005acaf0		DEFAULT	0x005acaf0-0x005ace40		unknown	DEFAULT		
+0x005acaf0	sh2shd_get_jms_shadow_env	USER_DEFINED	0x005acaf0-0x005ace40		unknown	DEFAULT		
 0x005acf30		DEFAULT	0x005acf30-0x005ad154		unknown	DEFAULT		
 0x005ad1e0		DEFAULT	0x005ad1e0-0x005adb10		unknown	DEFAULT		
 0x005adbf0		DEFAULT	0x005adbf0-0x005add00		unknown	DEFAULT		
